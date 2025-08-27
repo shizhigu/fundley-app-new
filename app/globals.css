@@ -1,0 +1,230 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --foreground-rgb: 0, 0, 0;
+    --background-start-rgb: 214, 219, 220;
+    --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --foreground-rgb: 255, 255, 255;
+        --background-start-rgb: 0, 0, 0;
+        --background-end-rgb: 0, 0, 0;
+    }
+}
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+    
+    /* Fix for artifact messages */
+    .artifact-messages {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Override width constraints for all messages in artifact view */
+    .artifact-messages [data-testid^="message-"],
+    .artifact-messages [data-testid="message-assistant-loading"] {
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    .artifact-messages .prose {
+        max-width: none !important;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .artifact-messages pre {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+}
+
+@layer base {
+    :root {
+        /* Fundley Blue Color Palette */
+        /* #E3F2F9 - Light blue background */
+        --background: 200 63% 95%; /* #E3F2F9 */
+        --foreground: 206 44% 22%; /* #1F3A50 dark blue text */
+        
+        /* Card backgrounds - slightly lighter than main bg */
+        --card: 0 0% 100%;
+        --card-foreground: 206 44% 22%; /* #1F3A50 */
+        
+        /* Popovers */
+        --popover: 0 0% 100%;
+        --popover-foreground: 206 44% 22%;
+        
+        /* Primary - main brand color #345A7B */
+        --primary: 207 40% 35%; /* #345A7B */
+        --primary-foreground: 200 63% 95%; /* Light text on primary */
+        
+        /* Secondary - lighter blue #6096B4 */
+        --secondary: 202 36% 55%; /* #6096B4 */
+        --secondary-foreground: 0 0% 100%;
+        
+        /* Muted elements */
+        --muted: 200 50% 96%; /* Very light blue */
+        --muted-foreground: 207 40% 40%; /* Darker blue for text */
+        
+        /* Accent color */
+        --accent: 202 36% 55%; /* #6096B4 */
+        --accent-foreground: 0 0% 100%;
+        
+        /* Destructive/Error states */
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        
+        /* Borders and inputs */
+        --border: 200 30% 90%; /* Light blue borders */
+        --input: 200 30% 92%;
+        --ring: 207 40% 35%; /* #345A7B for focus rings */
+        
+        /* Chart colors - blue variations */
+        --chart-1: 207 40% 35%; /* #345A7B */
+        --chart-2: 202 36% 55%; /* #6096B4 */
+        --chart-3: 206 44% 22%; /* #1F3A50 */
+        --chart-4: 200 50% 70%; /* Light blue */
+        --chart-5: 207 30% 50%; /* Mid blue */
+        
+        --radius: 0.5rem;
+        
+        /* Sidebar specific */
+        --sidebar-background: 206 44% 22%; /* #1F3A50 dark blue */
+        --sidebar-foreground: 200 63% 95%; /* Light text */
+        --sidebar-primary: 202 36% 55%; /* #6096B4 */
+        --sidebar-primary-foreground: 0 0% 98%;
+        --sidebar-accent: 207 40% 35%; /* #345A7B */
+        --sidebar-accent-foreground: 200 63% 95%;
+        --sidebar-border: 206 44% 30%; /* Darker blue border */
+        --sidebar-ring: 202 36% 55%;
+    }
+    .dark {
+        /* Dark theme with Fundley Blue palette */
+        --background: 206 44% 12%; /* Very dark blue based on #1F3A50 */
+        --foreground: 200 63% 95%; /* #E3F2F9 light blue text */
+        
+        --card: 206 44% 15%; /* Slightly lighter than bg */
+        --card-foreground: 200 63% 95%;
+        
+        --popover: 206 44% 15%;
+        --popover-foreground: 200 63% 95%;
+        
+        /* Primary - lighter in dark mode */
+        --primary: 202 36% 55%; /* #6096B4 */
+        --primary-foreground: 206 44% 12%;
+        
+        /* Secondary */
+        --secondary: 207 40% 35%; /* #345A7B */
+        --secondary-foreground: 200 63% 95%;
+        
+        /* Muted */
+        --muted: 206 44% 20%; /* Dark blue muted */
+        --muted-foreground: 200 30% 70%; /* Lighter blue text */
+        
+        /* Accent */
+        --accent: 207 40% 35%; /* #345A7B */
+        --accent-foreground: 200 63% 95%;
+        /* Destructive/Error states */
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        
+        /* Borders and inputs - darker blue tones */
+        --border: 206 44% 25%; /* Darker blue border */
+        --input: 206 44% 20%;
+        --ring: 202 36% 55%; /* #6096B4 for focus rings */
+        
+        /* Chart colors - blue variations for dark mode */
+        --chart-1: 202 36% 55%; /* #6096B4 */
+        --chart-2: 207 40% 45%; /* Lighter #345A7B */
+        --chart-3: 200 63% 75%; /* Light blue */
+        --chart-4: 206 44% 35%; /* Mid dark blue */
+        --chart-5: 202 36% 65%; /* Lighter #6096B4 */
+        
+        /* Sidebar - inverted blue scheme for dark mode */
+        --sidebar-background: 206 44% 15%; /* Very dark blue */
+        --sidebar-foreground: 200 63% 95%; /* #E3F2F9 light */
+        --sidebar-primary: 202 36% 55%; /* #6096B4 */
+        --sidebar-primary-foreground: 206 44% 12%;
+        --sidebar-accent: 207 40% 35%; /* #345A7B */
+        --sidebar-accent-foreground: 200 63% 95%;
+        --sidebar-border: 206 44% 25%; /* Dark blue border */
+        --sidebar-ring: 202 36% 55%; /* #6096B4 */
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+.skeleton {
+    * {
+        pointer-events: none !important;
+    }
+
+    *[class^="text-"] {
+        color: transparent;
+        @apply rounded-md bg-foreground/20 select-none animate-pulse;
+    }
+
+    .skeleton-bg {
+        @apply bg-foreground/10;
+    }
+
+    .skeleton-div {
+        @apply bg-foreground/20 animate-pulse;
+    }
+}
+
+.ProseMirror {
+    outline: none;
+}
+
+.cm-editor,
+.cm-gutters {
+    @apply bg-background dark:bg-zinc-800 outline-none selection:bg-zinc-900 !important;
+}
+
+.ͼo.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+.ͼo.cm-selectionBackground,
+.ͼo.cm-content::selection {
+    @apply bg-zinc-200 dark:bg-zinc-900 !important;
+}
+
+.cm-activeLine,
+.cm-activeLineGutter {
+    @apply bg-transparent !important;
+}
+
+.cm-activeLine {
+    @apply rounded-r-sm !important;
+}
+
+.cm-lineNumbers {
+    @apply min-w-7;
+}
+
+.cm-foldGutter {
+    @apply min-w-3;
+}
+
+.cm-lineNumbers .cm-activeLineGutter {
+    @apply rounded-l-sm !important;
+}
+
+.suggestion-highlight {
+    @apply bg-blue-200 hover:bg-blue-300 dark:hover:bg-blue-400/50 dark:text-blue-50 dark:bg-blue-500/40;
+}
