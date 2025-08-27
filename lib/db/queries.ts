@@ -29,14 +29,11 @@ import {
   stream,
   organization,
   type Organization,
-  organizationMember,
   position,
   orgData,
   visualizationCache,
-  type VisualizationCache,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
-import { generateUUID } from '../utils';
 import type { VisibilityType } from '@/components/visibility-selector';
 import { ChatSDKError } from '../errors';
 

@@ -14,16 +14,19 @@ interface StoredArtifact {
 }
 
 /**
- * Hook to persist artifact state across sessions
+ * Hook to persist artifact state across sessions per chat
  * Saves to localStorage and restores on mount
  */
-export function useArtifactPersistence() {
+export function useArtifactPersistence(chatId?: string) {
   const { artifact, setArtifact } = useArtifact();
+  const storageKey = chatId ? `${STORAGE_KEY}-${chatId}` : STORAGE_KEY;
 
   // Load artifact from localStorage on mount
   useEffect(() => {
+    if (!chatId) return;
+    
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed: StoredArtifact = JSON.parse(stored);
         
@@ -34,22 +37,27 @@ export function useArtifactPersistence() {
           const maxAge = 24 * 60 * 60 * 1000; // 24 hours
           
           if (age < maxAge && parsed.artifact.documentId !== 'init') {
-            // Restore the artifact state
-            setArtifact(parsed.artifact);
+            // Restore the artifact state but always set isVisible to false
+            setArtifact({
+              ...parsed.artifact,
+              isVisible: false  // Never auto-open artifact
+            });
           } else {
             // Clear old artifact
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(storageKey);
           }
         }
       }
     } catch (error) {
       console.error('Error loading artifact from storage:', error);
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
-  }, []);
+  }, [chatId, storageKey]);
 
   // Save artifact to localStorage whenever it changes
   useEffect(() => {
+    if (!chatId) return;
+    
     if (artifact.documentId && artifact.documentId !== 'init') {
       try {
         const toStore: StoredArtifact = {
@@ -57,16 +65,16 @@ export function useArtifactPersistence() {
           artifact,
           timestamp: new Date().toISOString()
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+        localStorage.setItem(storageKey, JSON.stringify(toStore));
       } catch (error) {
         console.error('Error saving artifact to storage:', error);
       }
     }
-  }, [artifact]);
+  }, [artifact, chatId, storageKey]);
 
   // Function to manually clear persisted artifact
   const clearPersistedArtifact = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey);
     setArtifact({
       documentId: 'init',
       content: '',

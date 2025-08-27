@@ -279,11 +279,11 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder="Send a message..."
+        placeholder="Ask me anything about financial markets, portfolios, or investments..."
         value={input}
         onChange={handleInput}
         className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
+          'professional-input min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-transparent border-0 pb-12 pl-4 pr-20 placeholder:text-text-secondary/60 focus:ring-0 focus:border-0',
           className,
         )}
         rows={2}
@@ -305,11 +305,11 @@ function PureMultimodalInput({
         }}
       />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
+      <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
       </div>
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
+      <div className="absolute bottom-0 right-0 p-3 flex flex-row items-center">
         {status === 'submitted' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
@@ -347,7 +347,7 @@ function PureAttachmentsButton({
   return (
     <Button
       data-testid="attachments-button"
-      className="rounded-md rounded-bl-lg p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      className="glass-input-button rounded-lg p-2 h-fit hover:bg-white/10 transition-all duration-200"
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
@@ -355,7 +355,7 @@ function PureAttachmentsButton({
       disabled={status !== 'ready'}
       variant="ghost"
     >
-      <PaperclipIcon size={14} />
+      <PaperclipIcon size={16} />
     </Button>
   );
 }
@@ -372,14 +372,14 @@ function PureStopButton({
   return (
     <Button
       data-testid="stop-button"
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+      className="glass-send-button rounded-full p-2 h-fit bg-error/10 border border-error/20 hover:bg-error/20 transition-all duration-200"
       onClick={(event) => {
         event.preventDefault();
         stop();
         setMessages((messages) => messages);
       }}
     >
-      <StopIcon size={14} />
+      <StopIcon size={16} />
     </Button>
   );
 }
@@ -398,14 +398,14 @@ function PureSendButton({
   return (
     <Button
       data-testid="send-button"
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+      className="glass-send-button rounded-full p-2 h-fit bg-brand-accent hover:bg-brand-accent/80 border-0 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
       onClick={(event) => {
         event.preventDefault();
         submitForm();
       }}
       disabled={input.length === 0 || uploadQueue.length > 0}
     >
-      <ArrowUpIcon size={14} />
+      <ArrowUpIcon size={16} />
     </Button>
   );
 }

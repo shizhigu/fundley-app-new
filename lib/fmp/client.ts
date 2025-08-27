@@ -49,7 +49,7 @@ export class FMPClient {
     const cacheKey = `fmp:${endpoint}:${JSON.stringify(params)}`
     
     // Try to get from cache first
-    if (redisClient && redisClient.isReady) {
+    if (redisClient?.isReady) {
       try {
         const cached = await redisClient.get(cacheKey)
         if (cached) {
@@ -80,7 +80,7 @@ export class FMPClient {
     const data = await response.json()
 
     // Cache the result
-    if (redisClient && redisClient.isReady && data) {
+    if (redisClient?.isReady && data) {
       try {
         // Cache for 1 hour for most data, 5 minutes for real-time quotes
         const ttl = endpoint.includes('quote') ? 300 : 3600

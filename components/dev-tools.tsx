@@ -16,11 +16,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Wrench, Search, Database, Code } from 'lucide-react';
 
 export function DevTools() {
@@ -100,7 +98,7 @@ export function DevTools() {
           <DropdownMenuItem 
             onClick={() => {
               const url = process.env.NEXT_PUBLIC_QDRANT_URL || 'https://localhost:6333/dashboard';
-              window.open(url.replace(/\/$/, '') + '/dashboard', '_blank');
+              window.open(`${url.replace(/\/$/, '')}/dashboard`, '_blank');
             }}
           >
             <Database className="mr-2 h-4 w-4" />
@@ -134,7 +132,7 @@ export function DevTools() {
                   type="number"
                   placeholder="5"
                   value={resultsCount}
-                  onChange={(e) => setResultsCount(parseInt(e.target.value) || 5)}
+                  onChange={(e) => setResultsCount(Number.parseInt(e.target.value) || 5)}
                   className="w-20"
                   min={1}
                   max={10}

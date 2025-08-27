@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle2, Search, Database, TrendingUp, FileText } from 'lucide-react';
+import { Search, Database, TrendingUp, FileText } from 'lucide-react';
 
 export interface ToolStatusProps {
   name: string;

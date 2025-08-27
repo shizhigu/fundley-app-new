@@ -23,10 +23,16 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <DataStreamProvider>
-        <SidebarProvider defaultOpen={!isCollapsed}>
-          <AppSidebar user={session?.user} />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
+        <div className="professional-layout">
+          <SidebarProvider defaultOpen={!isCollapsed}>
+            <AppSidebar user={session?.user} />
+            <SidebarInset className="professional-main overflow-hidden">
+              <div className="glass-container h-full flex flex-col overflow-hidden">
+                {children}
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        </div>
       </DataStreamProvider>
     </>
   );

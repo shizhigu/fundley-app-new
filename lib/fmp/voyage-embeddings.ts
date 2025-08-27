@@ -9,7 +9,7 @@ export interface VoyageEmbeddingOptions {
 
 export class VoyageEmbeddings {
   private apiKey: string | undefined
-  private model: string = 'voyage-finance-2' // Financial domain-specific model
+  private model = 'voyage-finance-2' // Financial domain-specific model
 
   constructor(apiKey?: string, model?: string) {
     this.apiKey = apiKey

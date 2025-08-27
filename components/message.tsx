@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import { DocumentToolCall, DocumentToolResult } from './document';
-import { PencilEditIcon, SparklesIcon } from './icons';
+import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
@@ -216,7 +216,7 @@ const PurePreviewMessage = ({
                   }
 
                   // Also show DocumentMessage for regular createDocument
-                  if (output && output.id) {
+                  if (output?.id) {
                     return (
                       <div key={toolCallId}>
                         <DocumentMessage
@@ -283,11 +283,11 @@ const PurePreviewMessage = ({
                 }
               }
 
-              if (type === 'tool-createVisualization') {
-                const { toolCallId, state } = part;
+              if (type === 'tool-createVisualization' as any) {
+                const { toolCallId, state } = part as any;
 
                 if (state === 'input-available') {
-                  const { input } = part;
+                  const { input } = part as any;
                   return (
                     <div key={toolCallId} className="skeleton">
                       <div className="flex items-center gap-2 p-2 text-sm">
@@ -301,7 +301,7 @@ const PurePreviewMessage = ({
                 }
 
                 if (state === 'output-available') {
-                  const { output } = part;
+                  const { output } = part as any;
                   
                   if ('error' in output) {
                     return (
@@ -319,7 +319,7 @@ const PurePreviewMessage = ({
                         id={output.id}
                         messageId={message.id} // Pass message ID for caching
                         title={output.title}
-                        code={part.input?.code || ''}
+                        code={(part as any).input?.code || ''}
                         description={output.description}
                         cachedHtml={output.cachedHtml} // Pass cached HTML if available
                         cachedImage={output.cachedImage} // Pass cached image if available
@@ -372,13 +372,13 @@ const PurePreviewMessage = ({
               }
               
               // Handle createDocumentWithData tool
-              if (type === 'tool-createDocumentWithData') {
-                const { toolCallId, state } = part;
+              if (type === 'tool-createDocumentWithData' as any) {
+                const { toolCallId, state } = part as any;
                 
                 if (state === 'output-available') {
-                  const { output } = part;
+                  const { output } = part as any;
                   
-                  if (output && output.id && output.success) {
+                  if (output?.id && output.success) {
                     return (
                       <div key={toolCallId}>
                         <DocumentMessage
@@ -403,41 +403,41 @@ const PurePreviewMessage = ({
               }
               
               // Handle financial tools
-              if (type === 'tool-searchFinancialFields' || 
-                  type === 'tool-getIncomeStatement' ||
-                  type === 'tool-findIncomeStatementFields' ||
-                  type === 'tool-getKeyMetrics' ||
-                  type === 'tool-findKeyMetricsFields' ||
-                  type === 'tool-getFinancialRatios' ||
-                  type === 'tool-findFinancialRatioFields') {
-                const { toolCallId, state } = part;
-                const toolName = type.replace('tool-', '');
+              if ((type as any) === 'tool-searchFinancialFields' || 
+                  (type as any) === 'tool-getIncomeStatement' ||
+                  (type as any) === 'tool-findIncomeStatementFields' ||
+                  (type as any) === 'tool-getKeyMetrics' ||
+                  (type as any) === 'tool-findKeyMetricsFields' ||
+                  (type as any) === 'tool-getFinancialRatios' ||
+                  (type as any) === 'tool-findFinancialRatioFields') {
+                const { toolCallId, state } = part as any;
+                const toolName = (type as string).replace('tool-', '');
                 
                 if (state === 'input-available') {
-                  const { input } = part;
+                  const { input } = part as any;
                   // Generate displayAction based on tool and input
                   let displayAction = 'Processing request';
                   
-                  if (type === 'tool-searchFinancialFields' || 
-                      type === 'tool-findIncomeStatementFields' ||
-                      type === 'tool-findKeyMetricsFields' ||
-                      type === 'tool-findFinancialRatioFields') {
+                  if ((type as any) === 'tool-searchFinancialFields' || 
+                      (type as any) === 'tool-findIncomeStatementFields' ||
+                      (type as any) === 'tool-findKeyMetricsFields' ||
+                      (type as any) === 'tool-findFinancialRatioFields') {
                     displayAction = `Searching for "${input?.query || 'financial fields'}"`;
-                  } else if (type === 'tool-getIncomeStatement') {
+                  } else if ((type as any) === 'tool-getIncomeStatement') {
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       displayAction = `Fetching ${symbols.join(', ')} financials`;
                     } else {
                       displayAction = 'Fetching financial data';
                     }
-                  } else if (type === 'tool-getKeyMetrics') {
+                  } else if ((type as any) === 'tool-getKeyMetrics') {
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       displayAction = `Fetching ${symbols.join(', ')} key metrics`;
                     } else {
                       displayAction = 'Fetching key metrics';
                     }
-                  } else if (type === 'tool-getFinancialRatios') {
+                  } else if ((type as any) === 'tool-getFinancialRatios') {
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       displayAction = `Fetching ${symbols.join(', ')} financial ratios`;
@@ -458,33 +458,33 @@ const PurePreviewMessage = ({
                 }
                 
                 if (state === 'output-available') {
-                  const { output } = part;
+                  const { output } = part as any;
                   
                   // Generate past tense displayAction for completed state
                   let completedAction = 'Completed';
-                  if (type === 'tool-searchFinancialFields' || 
-                      type === 'tool-findIncomeStatementFields' ||
-                      type === 'tool-findKeyMetricsFields' ||
-                      type === 'tool-findFinancialRatioFields') {
+                  if ((type as any) === 'tool-searchFinancialFields' || 
+                      (type as any) === 'tool-findIncomeStatementFields' ||
+                      (type as any) === 'tool-findKeyMetricsFields' ||
+                      (type as any) === 'tool-findFinancialRatioFields') {
                     completedAction = 'Searched financial metrics';
-                  } else if (type === 'tool-getIncomeStatement') {
-                    const input = part.input;
+                  } else if ((type as any) === 'tool-getIncomeStatement') {
+                    const input = (part as any).input;
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       completedAction = `Fetched ${symbols.join(', ')} financials`;
                     } else {
                       completedAction = 'Fetched financial data';
                     }
-                  } else if (type === 'tool-getKeyMetrics') {
-                    const input = part.input;
+                  } else if ((type as any) === 'tool-getKeyMetrics') {
+                    const input = (part as any).input;
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       completedAction = `Fetched ${symbols.join(', ')} key metrics`;
                     } else {
                       completedAction = 'Fetched key metrics';
                     }
-                  } else if (type === 'tool-getFinancialRatios') {
-                    const input = part.input;
+                  } else if ((type as any) === 'tool-getFinancialRatios') {
+                    const input = (part as any).input;
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
                       completedAction = `Fetched ${symbols.join(', ')} financial ratios`;

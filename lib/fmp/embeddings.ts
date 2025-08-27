@@ -68,7 +68,7 @@ export class JinaEmbeddings {
   /**
    * Embed a search query (optimized for search)
    */
-  async embedQuery(query: string, dimensions: number = 256): Promise<number[]> {
+  async embedQuery(query: string, dimensions = 256): Promise<number[]> {
     const embeddings = await this.embed(query, { 
       task: 'retrieval.query', // Optimized for queries
       dimensions // Reduce dimensions for faster search
@@ -79,7 +79,7 @@ export class JinaEmbeddings {
   /**
    * Embed documents (optimized for being searched)
    */
-  async embedDocuments(documents: string[], dimensions: number = 256): Promise<number[][]> {
+  async embedDocuments(documents: string[], dimensions = 256): Promise<number[][]> {
     return this.embed(documents, { 
       task: 'retrieval.passage', // Optimized for documents
       dimensions // Reduce dimensions for faster indexing

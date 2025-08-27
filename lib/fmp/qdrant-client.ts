@@ -60,7 +60,7 @@ export async function initializeFieldCollection() {
     
   } catch (error: any) {
     // Ignore error if index already exists
-    if (error.message && error.message.includes('already exists')) {
+    if (error.message?.includes('already exists')) {
       console.log('Field index already exists')
     } else {
       console.error('Error initializing Qdrant collection:', error)
@@ -118,7 +118,7 @@ export async function indexFieldMetadata(fields: Array<{
         ]
         
         // Filter out null parts and join with period for semantic separation
-        return parts.filter(p => p !== null).join('. ') + '.'
+        return `${parts.filter(p => p !== null).join('. ')}.`
       })
       
       // Generate embeddings for the batch using Voyage Finance model
@@ -171,7 +171,7 @@ export async function indexFieldMetadata(fields: Array<{
  */
 export async function searchFields(
   query: string, 
-  limit: number = 5
+  limit = 5
 ): Promise<Array<{
   field: string
   name: string
@@ -253,7 +253,7 @@ export async function createFieldIndexes() {
     
     console.log('All indexes created successfully')
   } catch (error: any) {
-    if (error.message && error.message.includes('already exists')) {
+    if (error.message?.includes('already exists')) {
       console.log('Some indexes already exist, continuing...')
     } else {
       console.error('Error creating indexes:', error)

@@ -84,7 +84,7 @@ export const getKeyMetrics = tool({
         textLines.push(`Key Metrics for ${ticker.toUpperCase()}`)
         
         // Show data for each period
-        data.forEach((periodData, index) => {
+        data.forEach((periodData: any, index: number) => {
           if (index < 5) { // Limit to first 5 periods for text summary
             textLines.push(`\n${periodData.period} ${periodData.fiscalYear} (${periodData.date}):`)
             fieldsToShow.forEach(field => {
@@ -102,8 +102,8 @@ export const getKeyMetrics = tool({
         }
         
         // Also include raw data for LLM to analyze
-        const filteredData = data.map(item => {
-          const filtered = {
+        const filteredData = data.map((item: any) => {
+          const filtered: any = {
             symbol: item.symbol,
             date: item.date,
             period: item.period,
@@ -132,14 +132,14 @@ export const getKeyMetrics = tool({
       
       // Multiple symbols - format data for comparison
       const allFormattedData = []
-      const allRawData = {}
+      const allRawData: any = {}
       
       for (const { symbol: ticker, data } of successful) {
         allFormattedData.push(`**${ticker.toUpperCase()}**`)
         
         // Store raw data for each symbol
-        allRawData[ticker] = data.map(item => {
-          const filtered = {
+        allRawData[ticker] = data.map((item: any) => {
+          const filtered: any = {
             symbol: item.symbol,
             date: item.date,
             period: item.period,
@@ -189,12 +189,12 @@ export const getKeyMetrics = tool({
     } catch (error) {
       console.error('Key metrics fetch error:', error);
       
-      const symbolDisplay = symbol ? symbol.toUpperCase() : '[MISSING SYMBOL]';
+      const symbolDisplay = symbols?.length > 0 ? symbols.join(', ').toUpperCase() : '[MISSING SYMBOLS]';
       
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to fetch key metrics data',
-        symbol: symbol || 'UNKNOWN',
+        symbols: symbols || [],
         displayAction: 'error_key_metrics',
         displayResult: `Error fetching key metrics for ${symbolDisplay}: ${error instanceof Error ? error.message : 'Unknown error'}`
       };

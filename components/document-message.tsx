@@ -4,16 +4,13 @@ import { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { 
   FileTextIcon, 
-  TableIcon, 
   CodeIcon, 
   ImageIcon,
   ExternalLinkIcon,
-  ChevronRightIcon,
   FileSpreadsheetIcon
 } from 'lucide-react';
 import { useArtifact } from '@/hooks/use-artifact';
 import type { Document } from '@/lib/db/schema';
-import { Button } from './ui/button';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 
@@ -120,7 +117,7 @@ export const DocumentMessage = memo(function DocumentMessage({
     // For other types, show first line or truncated preview
     const firstLine = preview.split('\n')[0];
     if (firstLine.length > 50) {
-      return firstLine.substring(0, 47) + '...';
+      return `${firstLine.substring(0, 47)}...`;
     }
     return firstLine;
   };

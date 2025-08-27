@@ -12,7 +12,7 @@ import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { type VisibilityType, VisibilitySelector } from './visibility-selector';
 import { DevTools } from './dev-tools';
-import type { Session } from 'next-auth';
+import type { AuthSession } from '@/lib/auth/clerk';
 
 function PureChatHeader({
   chatId,
@@ -25,7 +25,7 @@ function PureChatHeader({
   selectedModelId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: Session;
+  session: AuthSession;
 }) {
   const router = useRouter();
   const { open } = useSidebar();

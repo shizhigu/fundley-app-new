@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from 'next-auth';
+import type { AuthSession } from '@/lib/auth/clerk';
 import { useRouter } from 'next/navigation';
 
 import { PlusIcon } from '@/components/icons';
@@ -18,15 +18,15 @@ import {
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
-export function AppSidebar({ user }: { user: User | undefined }) {
+export function AppSidebar({ user }: { user: AuthSession['user'] }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0">
-      <SidebarHeader>
+    <Sidebar className="glass-sidebar border-r-0">
+      <SidebarHeader className="glass-header">
         <SidebarMenu>
-          <div className="flex flex-row justify-between items-center">
+          <div className="flex flex-row justify-between items-center p-2">
             <Link
               href="/"
               onClick={() => {
@@ -34,16 +34,21 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               }}
               className="flex flex-row gap-3 items-center"
             >
-              <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
-                Fundley
-              </span>
+              <div className="brand-logo">
+                <span className="brand-text font-semibold">
+                  Fundley
+                </span>
+                <div className="brand-subtitle text-xs opacity-70">
+                  AI Financial Assistant
+                </div>
+              </div>
             </Link>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   type="button"
-                  className="p-2 h-fit"
+                  className="glass-button p-2 h-fit rounded-xl hover:bg-white/10"
                   onClick={() => {
                     setOpenMobile(false);
                     router.push('/');
@@ -58,10 +63,12 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </div>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="glass-content">
         <SidebarHistory user={user} />
       </SidebarContent>
-      <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
+      <SidebarFooter className="glass-footer">
+        {user && <SidebarUserNav user={user} />}
+      </SidebarFooter>
     </Sidebar>
   );
 }

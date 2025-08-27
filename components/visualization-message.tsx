@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@radix-ui/react-icons';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { generateUUID } from '@/lib/utils';
 
 interface VisualizationMessageProps {
   id: string;

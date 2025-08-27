@@ -1,6 +1,6 @@
 import { Toaster } from 'sonner';
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ClerkProvider } from '@clerk/nextjs';
 
@@ -9,44 +9,30 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://fundley.ai'),
   title: 'Fundley - Private Equity AI Assistant',
-  description: 'AI-powered assistant for private equity funds and family offices',
+  description: 'Professional AI-powered assistant for private equity, hedge funds, and family offices',
 };
 
 export const viewport = {
-  maximumScale: 1, // Disable auto-zoom on mobile Safari
+  maximumScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'hsl(210, 20%, 98%)' },
+    { media: '(prefers-color-scheme: dark)', color: 'hsl(210, 40%, 2%)' },
+  ],
 };
 
-const geist = Geist({
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-geist',
+  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700', '800'],
 });
 
-const geistMono = Geist_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-geist-mono',
+  variable: '--font-jetbrains-mono',
+  weight: ['300', '400', '500', '600', '700', '800'],
 });
-
-const LIGHT_THEME_COLOR = 'hsl(0 0% 100%)';
-const DARK_THEME_COLOR = 'hsl(240deg 10% 3.92%)';
-const THEME_COLOR_SCRIPT = `\
-(function() {
-  var html = document.documentElement;
-  var meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.setAttribute('name', 'theme-color');
-    document.head.appendChild(meta);
-  }
-  function updateThemeColor() {
-    var isDark = html.classList.contains('dark');
-    meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
-  }
-  var observer = new MutationObserver(updateThemeColor);
-  observer.observe(html, { attributes: true, attributeFilter: ['class'] });
-  updateThemeColor();
-})();`;
 
 export default async function RootLayout({
   children,
@@ -56,30 +42,29 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      // `next-themes` injects an extra classname to the body element to avoid
-      // visual flicker before hydration. Hence the `suppressHydrationWarning`
-      // prop is necessary to avoid the React hydration mismatch warning.
-      // https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
       suppressHydrationWarning
-      className={`${geist.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: THEME_COLOR_SCRIPT,
-          }}
-        />
-      </head>
       <body className="antialiased">
         <ClerkProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
-            disableTransitionOnChange
+            disableTransitionOnChange={false}
           >
-            <Toaster position="top-center" />
-            {children}
+            <div className="mesh-background min-h-screen">
+              {children}
+            </div>
+            <Toaster 
+              position="top-right"
+              theme="system"
+              richColors
+              closeButton
+              toastOptions={{
+                className: 'glass-card',
+              }}
+            />
           </ThemeProvider>
         </ClerkProvider>
       </body>

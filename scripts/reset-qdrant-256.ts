@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import dotenv from 'dotenv'
-import path from 'path'
+import path from 'node:path'
 
 // Load .env.local file
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
@@ -72,7 +72,7 @@ async function resetCollection() {
             ? `Used for: ${field.useCases.join('; ')}`
             : null
         ]
-        return parts.filter(p => p !== null).join('. ') + '.'
+        return `${parts.filter(p => p !== null).join('. ')}.`
       })
       
       // Generate 256-dimensional embeddings

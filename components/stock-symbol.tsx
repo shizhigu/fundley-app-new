@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, } from 'react';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Info, BarChart3 } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';

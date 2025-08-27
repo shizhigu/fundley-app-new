@@ -16,13 +16,15 @@ import { useArtifactPersistence } from '@/hooks/use-artifact-persistence';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
 import { toast } from './toast';
-import type { Session } from 'next-auth';
+import type { AuthSession } from '@/lib/auth/clerk';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { useArtifact } from '@/hooks/use-artifact';
+import { initialArtifactData } from '@/hooks/use-artifact';
 
 export function Chat({
   id,
@@ -38,7 +40,7 @@ export function Chat({
   initialChatModel: string;
   initialVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: Session;
+  session: AuthSession;
   autoResume: boolean;
 }) {
   const { visibilityType } = useChatVisibility({
@@ -119,9 +121,15 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const { setArtifact } = useArtifact();
   
-  // Enable artifact persistence
-  useArtifactPersistence();
+  // Enable artifact persistence per chat
+  useArtifactPersistence(id);
+  
+  // Reset artifact when switching chats
+  useEffect(() => {
+    setArtifact(initialArtifactData);
+  }, [id, setArtifact]);
 
   useAutoResume({
     autoResume,
@@ -132,43 +140,53 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background">
-        <ChatHeader
-          chatId={id}
-          selectedModelId={initialChatModel}
-          selectedVisibilityType={initialVisibilityType}
-          isReadonly={isReadonly}
-          session={session}
-        />
+      <div className="flex flex-col h-full w-full overflow-hidden relative">
+        <div className="flex-shrink-0 z-20">
+          <ChatHeader
+            chatId={id}
+            selectedModelId={initialChatModel}
+            selectedVisibilityType={initialVisibilityType}
+            isReadonly={isReadonly}
+            session={session}
+          />
+        </div>
 
-        <Messages
-          chatId={id}
-          status={status}
-          votes={votes}
-          messages={messages}
-          setMessages={setMessages}
-          regenerate={regenerate}
-          isReadonly={isReadonly}
-          isArtifactVisible={isArtifactVisible}
-        />
-
-        <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
-          {!isReadonly && (
-            <MultimodalInput
+        <div className="flex-1 overflow-hidden">
+          {!isArtifactVisible && (
+            <Messages
               chatId={id}
-              input={input}
-              setInput={setInput}
               status={status}
-              stop={stop}
-              attachments={attachments}
-              setAttachments={setAttachments}
+              votes={votes}
               messages={messages}
               setMessages={setMessages}
-              sendMessage={sendMessage}
-              selectedVisibilityType={visibilityType}
+              regenerate={regenerate}
+              isReadonly={isReadonly}
+              isArtifactVisible={isArtifactVisible}
             />
           )}
-        </form>
+        </div>
+
+        {!isReadonly && (
+          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-6 bg-gradient-to-t from-background via-background to-background/80">
+            <div className="mx-auto w-full md:max-w-3xl">
+              <div className="glass-input-wrapper">
+                <MultimodalInput
+                  chatId={id}
+                  input={input}
+                  setInput={setInput}
+                  status={status}
+                  stop={stop}
+                  attachments={attachments}
+                  setAttachments={setAttachments}
+                  messages={messages}
+                  setMessages={setMessages}
+                  sendMessage={sendMessage}
+                  selectedVisibilityType={visibilityType}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Artifact

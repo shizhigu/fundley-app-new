@@ -1,12 +1,12 @@
 import { generateUUID } from '@/lib/utils';
 import { tool, type UIMessageStreamWriter } from 'ai';
 import { z } from 'zod';
-import type { Session } from '@/lib/auth/clerk';
+import type { AuthSession } from '@/lib/auth/clerk';
 import { saveDocument } from '@/lib/db/queries';
 import type { ChatMessage } from '@/lib/types';
 
 interface CreateDocumentWithDataProps {
-  session: Session;
+  session: AuthSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
 }
 

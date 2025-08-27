@@ -40,7 +40,16 @@
       "Bash(PGPASSWORD=npg_bMyl0Qv4Egeu psql \"host=ep-super-art-afxo6ssm-pooler.c-2.us-west-2.aws.neon.tech user=neondb_owner dbname=neondb sslmode=require options=endpoint=ep-super-art-afxo6ssm\" -c \"\\d \"\"VisualizationCache\"\"\")",
       "Bash(PGPASSWORD=npg_bMyl0Qv4Egeu psql \"host=ep-super-art-afxo6ssm-pooler.c-2.us-west-2.aws.neon.tech user=neondb_owner dbname=neondb sslmode=require options=endpoint=ep-super-art-afxo6ssm\" -c \"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = ''VisualizationCache'';\")",
       "Bash(PGPASSWORD=npg_bMyl0Qv4Egeu psql \"host=ep-super-art-afxo6ssm-pooler.c-2.us-west-2.aws.neon.tech user=neondb_owner dbname=neondb sslmode=require options=endpoint=ep-super-art-afxo6ssm\" -c \"SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = ''VisualizationCache'' AND constraint_type = ''UNIQUE'';\")",
-      "Bash(PGPASSWORD=npg_bMyl0Qv4Egeu psql \"host=ep-super-art-afxo6ssm-pooler.c-2.us-west-2.aws.neon.tech user=neondb_owner dbname=neondb sslmode=require options=endpoint=ep-super-art-afxo6ssm\" -c \"ALTER TABLE \"\"VisualizationCache\"\" ADD CONSTRAINT \"\"viz_cache_message_id_unique\"\" UNIQUE (\"\"messageId\"\");\")"
+      "Bash(PGPASSWORD=npg_bMyl0Qv4Egeu psql \"host=ep-super-art-afxo6ssm-pooler.c-2.us-west-2.aws.neon.tech user=neondb_owner dbname=neondb sslmode=require options=endpoint=ep-super-art-afxo6ssm\" -c \"ALTER TABLE \"\"VisualizationCache\"\" ADD CONSTRAINT \"\"viz_cache_message_id_unique\"\" UNIQUE (\"\"messageId\"\");\")",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(find:*)",
+      "Bash(npx prettier:*)",
+      "Bash(pnpm install:*)",
+      "Bash(sudo rm:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(sed:*)",
+      "Bash(NEXT_DISABLE_SWC_WASM_FALLBACK=1 pnpm dev --port 3007)"
     ],
     "deny": [],
     "ask": [],

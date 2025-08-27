@@ -1,4 +1,4 @@
-import { ALL_FINANCIAL_FIELDS, FieldMetadata } from './field-metadata'
+import { ALL_FINANCIAL_FIELDS, type FieldMetadata } from './field-metadata'
 import { searchFields as qdrantSearchFields, indexFieldMetadata, initializeFieldCollection } from './qdrant-client'
 
 export class FieldSearch {
@@ -38,7 +38,7 @@ export class FieldSearch {
   /**
    * Search for fields matching a query using Qdrant vector search
    */
-  async searchFields(query: string, topK: number = 5): Promise<FieldMetadata[]> {
+  async searchFields(query: string, topK = 5): Promise<FieldMetadata[]> {
     try {
       // Use Qdrant for semantic search
       const searchResults = await qdrantSearchFields(query, topK)

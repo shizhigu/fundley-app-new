@@ -2,7 +2,6 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { fmpClient } from '@/lib/fmp/client'
 import { fieldSearch } from '@/lib/fmp/field-search'
-import { FieldMetadata } from '@/lib/fmp/field-metadata'
 
 // Financial Ratios tool - returns raw data without formatting for LLM interpretation
 
@@ -89,7 +88,7 @@ export const getFinancialRatios = tool({
         textLines.push(`Financial Ratios for ${ticker.toUpperCase()}`)
         
         // Show data for each period
-        data.forEach((periodData, index) => {
+        data.forEach((periodData: any, index: number) => {
           if (index < 5) { // Limit to first 5 periods for text summary
             textLines.push(`\n${periodData.period} ${periodData.fiscalYear} (${periodData.date}):`)
             fields.forEach(field => {

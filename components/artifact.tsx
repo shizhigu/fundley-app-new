@@ -100,7 +100,7 @@ function PureArtifact({
   const [document, setDocument] = useState<Document | null>(null);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
 
-  const { isSidebarOpen } = useSidebar();
+  const { open: isSidebarOpen } = useSidebar();
 
   useEffect(() => {
     if (documents && documents.length > 0) {
@@ -174,7 +174,7 @@ function PureArtifact({
   );
 
   const saveContent = useCallback(
-    (updatedContent: string, debounce: boolean = true) => {
+    (updatedContent: string, debounce = true) => {
       if (document && updatedContent !== document.content) {
         setIsContentDirty(true);
 
@@ -413,14 +413,7 @@ function PureArtifact({
           >
             <div className="p-2 flex flex-row justify-between items-start">
               <div className="flex flex-row gap-4 items-start">
-                <ArtifactCloseButton
-                  onClick={() => {
-                    setArtifact((artifact) => ({
-                      ...artifact,
-                      isVisible: false,
-                    }));
-                  }}
-                />
+                <ArtifactCloseButton />
 
                 <div className="flex flex-col">
                   <div className="font-medium">{artifact.title}</div>

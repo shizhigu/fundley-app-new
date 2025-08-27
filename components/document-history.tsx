@@ -2,13 +2,11 @@
 
 import { memo, useState } from 'react';
 import useSWR from 'swr';
-import { formatDistance } from 'date-fns';
 import type { Document } from '@/lib/db/schema';
-import { fetcher, cn } from '@/lib/utils';
+import { fetcher, } from '@/lib/utils';
 import { DocumentMessage } from './document-message';
 import { 
   FileTextIcon, 
-  TableIcon, 
   CodeIcon, 
   ImageIcon,
   FileSpreadsheetIcon,
@@ -138,7 +136,7 @@ export const DocumentHistory = memo(function DocumentHistory({
                   documentId={doc.id}
                   title={doc.title}
                   kind={doc.kind as any}
-                  preview={doc.content}
+                  preview={doc.content || undefined}
                   createdAt={doc.createdAt}
                 />
               ))}

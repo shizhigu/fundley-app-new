@@ -1,4 +1,4 @@
-import type { UserType } from '@/app/(auth)/auth';
+import type { UserType } from '@/lib/auth/clerk';
 import type { ChatModel } from './models';
 
 interface Entitlements {
