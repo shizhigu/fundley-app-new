@@ -22,6 +22,7 @@
     "field:search": "tsx scripts/test-field-search.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.22",
     "@ai-sdk/provider": "2.0.0-beta.1",
     "@ai-sdk/react": "2.0.0-beta.6",
     "@ai-sdk/xai": "2.0.0-beta.2",
@@ -33,6 +34,7 @@
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.35.3",
+    "@openrouter/ai-sdk-provider": "^1.1.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/api-logs": "^0.200.0",
     "@qdrant/js-client-rest": "^1.15.1",

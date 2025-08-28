@@ -105,7 +105,27 @@ export function convertToUIMessages(
     // Get the parts
     let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
     
-    // Cache handling removed since createVisualization tool no longer exists
+    // Inject cached data for createVisualization tool outputs
+    if (vizCacheMap?.has(message.id)) {
+      const cache = vizCacheMap.get(message.id);
+      
+      parts = parts.map(part => {
+        if (part.type === 'tool-createVisualization' && 
+            part.state === 'output-available' && 
+            part.output) {
+          // Inject cached HTML and image into the output
+          return {
+            ...part,
+            output: {
+              ...part.output,
+              cachedHtml: cache.htmlContent || undefined,
+              cachedImage: cache.imageUrl || undefined,
+            }
+          };
+        }
+        return part;
+      });
+    }
     
     return {
       id: message.id,

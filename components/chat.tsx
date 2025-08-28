@@ -2,7 +2,7 @@
 
 import { DefaultChatTransport } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
@@ -24,7 +24,6 @@ import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { useArtifact } from '@/hooks/use-artifact';
-import { initialArtifactData } from '@/hooks/use-artifact';
 
 export function Chat({
   id,
@@ -43,6 +42,9 @@ export function Chat({
   session: AuthSession;
   autoResume: boolean;
 }) {
+  // Simple state-based model selection - no cookies needed
+  const [selectedModel, setSelectedModel] = useState(initialChatModel);
+
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
@@ -52,6 +54,25 @@ export function Chat({
   const { setDataStream } = useDataStream();
 
   const [input, setInput] = useState<string>('');
+
+  // 简化transport - 模型参数现在直接通过sendMessage传递
+  const transport = useMemo(
+    () => new DefaultChatTransport({
+      api: '/api/chat',
+      fetch: fetchWithErrorHandlers,
+      prepareSendMessagesRequest({ messages, id, body }) {
+        return {
+          body: {
+            id,
+            message: messages.at(-1),
+            selectedVisibilityType: visibilityType,
+            ...body, // body中包含从sendMessage传递的selectedChatModel
+          },
+        };
+      },
+    }),
+    [visibilityType]
+  );
 
   const {
     messages,
@@ -66,23 +87,9 @@ export function Chat({
     messages: initialMessages,
     experimental_throttle: 100,
     generateId: generateUUID,
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      fetch: fetchWithErrorHandlers,
-      prepareSendMessagesRequest({ messages, id, body }) {
-        return {
-          body: {
-            id,
-            message: messages.at(-1),
-            selectedChatModel: initialChatModel,
-            selectedVisibilityType: visibilityType,
-            ...body,
-          },
-        };
-      },
-    }),
+    transport,
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      setDataStream((ds) => [...(ds || []), dataPart]);
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
@@ -123,13 +130,8 @@ export function Chat({
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
   
-  // Enable artifact persistence per chat
+  // Enable artifact persistence per chat (this handles initialization)
   useArtifactPersistence(id);
-  
-  // Reset artifact when switching chats
-  useEffect(() => {
-    setArtifact(initialArtifactData);
-  }, [id, setArtifact]);
 
   useAutoResume({
     autoResume,
@@ -140,51 +142,48 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col h-full w-full overflow-hidden relative">
+      <div className="flex flex-col h-full w-full overflow-hidden relative" style={{ background: 'transparent !important' }}>
         <div className="flex-shrink-0 z-20">
           <ChatHeader
             chatId={id}
-            selectedModelId={initialChatModel}
+            selectedModelId={selectedModel}
             selectedVisibilityType={initialVisibilityType}
             isReadonly={isReadonly}
             session={session}
           />
         </div>
 
-        <div className="flex-1 overflow-hidden">
-          {!isArtifactVisible && (
-            <Messages
-              chatId={id}
-              status={status}
-              votes={votes}
-              messages={messages}
-              setMessages={setMessages}
-              regenerate={regenerate}
-              isReadonly={isReadonly}
-              isArtifactVisible={isArtifactVisible}
-            />
-          )}
+        <div className="flex-1 overflow-hidden" style={{ background: 'transparent !important' }}>
+          <Messages
+            chatId={id}
+            status={status}
+            votes={votes}
+            messages={messages}
+            setMessages={setMessages}
+            regenerate={regenerate}
+            isReadonly={isReadonly}
+            isArtifactVisible={isArtifactVisible}
+          />
         </div>
 
         {!isReadonly && (
-          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-6 bg-gradient-to-t from-background via-background to-background/80">
-            <div className="mx-auto w-full md:max-w-3xl">
-              <div className="glass-input-wrapper">
-                <MultimodalInput
-                  chatId={id}
-                  input={input}
-                  setInput={setInput}
-                  status={status}
-                  stop={stop}
-                  attachments={attachments}
-                  setAttachments={setAttachments}
-                  messages={messages}
-                  setMessages={setMessages}
-                  sendMessage={sendMessage}
-                  selectedVisibilityType={visibilityType}
-                />
-              </div>
-            </div>
+          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4">
+            <MultimodalInput
+              chatId={id}
+              input={input}
+              setInput={setInput}
+              status={status}
+              stop={stop}
+              attachments={attachments}
+              setAttachments={setAttachments}
+              messages={messages}
+              setMessages={setMessages}
+              sendMessage={sendMessage}
+              selectedVisibilityType={visibilityType}
+              session={session}
+              selectedModelId={selectedModel}
+              setSelectedModelId={setSelectedModel}
+            />
           </div>
         )}
       </div>

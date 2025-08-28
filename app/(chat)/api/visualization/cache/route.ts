@@ -24,6 +24,14 @@ export async function POST(request: Request) {
       imageUrl,
     });
 
+    if (!cache) {
+      // Message doesn't exist, return a soft error
+      return NextResponse.json({ 
+        cached: false, 
+        message: 'Message not found, cache not saved' 
+      }, { status: 200 });
+    }
+
     return NextResponse.json(cache);
   } catch (error) {
     console.error('Error saving visualization cache:', error);

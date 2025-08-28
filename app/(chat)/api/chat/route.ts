@@ -20,17 +20,14 @@ import {
 import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
-import { createDocumentWithData } from '@/lib/ai/tools/create-document-with-data';
 import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
-import { getWeather } from '@/lib/ai/tools/get-weather';
 import { createVisualization } from '@/lib/ai/tools/create-visualization';
-import { getIncomeStatement, findIncomeStatementFields } from '@/lib/ai/tools/financial/income-statement';
-import { getFinancialRatios, findFinancialRatioFields } from '@/lib/ai/tools/financial/financial-ratios';
-import { getKeyMetrics, findKeyMetricsFields } from '@/lib/ai/tools/financial/key-metrics';
 import { searchFinancialFields } from '@/lib/ai/tools/financial/search-fields';
+import { getIncomeStatement } from '@/lib/ai/tools/financial/income-statement';
+import { getFinancialRatios } from '@/lib/ai/tools/financial/financial-ratios';
+import { getKeyMetrics } from '@/lib/ai/tools/financial/key-metrics';
 import { isProductionEnvironment } from '@/lib/constants';
-import { myProvider } from '@/lib/ai/providers';
+import { getLanguageModel, } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
@@ -41,7 +38,7 @@ import {
 import { after } from 'next/server';
 import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
-import type { ChatModel } from '@/lib/ai/models';
+import type { ModelId } from '@/lib/ai/models';
 import type { VisibilityType } from '@/components/visibility-selector';
 
 export const maxDuration = 60;
@@ -96,7 +93,7 @@ export async function POST(request: Request) {
     }: {
       id: string;
       message: ChatMessage;
-      selectedChatModel: ChatModel['id'];
+      selectedChatModel: ModelId;
       selectedVisibilityType: VisibilityType;
     } = requestBody;
 
@@ -163,50 +160,31 @@ export async function POST(request: Request) {
 
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
-
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          model: getLanguageModel(selectedChatModel),
+          system: systemPrompt({ requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'createDocumentWithData',
-                  'updateDocument',
-                  'createVisualization',
-                  'requestSuggestions',
-                  'searchFinancialFields', // Primary field search tool
-                  'getIncomeStatement',
-                  'findIncomeStatementFields',
-                  'getFinancialRatios',
-                  'findFinancialRatioFields',
-                  'getKeyMetrics',
-                  'findKeyMetricsFields',
-                ],
+          experimental_activeTools: [
+            'createDocument',
+            'updateDocument', 
+            'createVisualization',
+            'searchFinancialFields',
+            'getIncomeStatement',
+            'getFinancialRatios', 
+            'getKeyMetrics',
+          ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
-            getWeather,
             createDocument: createDocument({ session, dataStream }),
-            createDocumentWithData: createDocumentWithData({ session, dataStream }),
             updateDocument: updateDocument({ session, dataStream }),
             createVisualization: createVisualization({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-            searchFinancialFields, // Primary field search tool
+            searchFinancialFields,
             getIncomeStatement,
-            findIncomeStatementFields,
             getFinancialRatios,
-            findFinancialRatioFields,
             getKeyMetrics,
-            findKeyMetricsFields,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
@@ -255,6 +233,10 @@ export async function POST(request: Request) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+    
+    // Handle any other errors
+    console.error('Unexpected error in chat API:', error);
+    return new ChatSDKError('internal:chat').toResponse();
   }
 }
 

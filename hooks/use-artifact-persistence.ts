@@ -43,16 +43,60 @@ export function useArtifactPersistence(chatId?: string) {
               isVisible: false  // Never auto-open artifact
             });
           } else {
-            // Clear old artifact
+            // Clear old artifact and reset to initial state
             localStorage.removeItem(storageKey);
+            setArtifact({
+              documentId: 'init',
+              content: '',
+              kind: 'text',
+              title: '',
+              status: 'idle',
+              isVisible: false,
+              boundingBox: {
+                top: 0,
+                left: 0,
+                width: 0,
+                height: 0,
+              },
+            });
           }
         }
+      } else {
+        // No stored artifact, reset to initial state
+        setArtifact({
+          documentId: 'init',
+          content: '',
+          kind: 'text',
+          title: '',
+          status: 'idle',
+          isVisible: false,
+          boundingBox: {
+            top: 0,
+            left: 0,
+            width: 0,
+            height: 0,
+          },
+        });
       }
     } catch (error) {
       console.error('Error loading artifact from storage:', error);
       localStorage.removeItem(storageKey);
+      setArtifact({
+        documentId: 'init',
+        content: '',
+        kind: 'text',
+        title: '',
+        status: 'idle',
+        isVisible: false,
+        boundingBox: {
+          top: 0,
+          left: 0,
+          width: 0,
+          height: 0,
+        },
+      });
     }
-  }, [chatId, storageKey]);
+  }, [chatId, storageKey, setArtifact]);
 
   // Save artifact to localStorage whenever it changes
   useEffect(() => {

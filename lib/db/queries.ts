@@ -767,6 +767,18 @@ export async function saveVisualizationCache({
   imageUrl?: string;
 }) {
   try {
+    // First check if the message exists in Message_v2 table
+    const [existingMessage] = await db
+      .select({ id: message.id })
+      .from(message)
+      .where(eq(message.id, messageId))
+      .limit(1);
+    
+    if (!existingMessage) {
+      console.warn(`Message with id ${messageId} not found in Message_v2 table, skipping visualization cache save`);
+      return null;
+    }
+
     const [cache] = await db
       .insert(visualizationCache)
       .values({

@@ -48,7 +48,10 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {!isLoaded ? (
-              <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 justify-between">
+              <SidebarMenuButton 
+                variant="default"
+                className="data-[state=open]:bg-sidebar-accent !bg-white/90 dark:!bg-gray-800/90 !backdrop-blur-xl !shadow-lg !border-white/20 dark:!border-gray-700/50 !border !rounded-xl data-[state=open]:text-sidebar-accent-foreground h-10 justify-between"
+              >
                 <div className="flex flex-row gap-2">
                   <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
                   <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
@@ -62,7 +65,8 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             ) : (
               <SidebarMenuButton
                 data-testid="user-nav-button"
-                className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-auto py-2"
+                variant="default"
+                className="data-[state=open]:bg-sidebar-accent !bg-white/90 dark:!bg-gray-800/90 !backdrop-blur-xl !shadow-lg !border-white/20 dark:!border-gray-700/50 !border !rounded-xl data-[state=open]:text-sidebar-accent-foreground h-auto py-2"
               >
                 <div className="flex items-start gap-2 flex-1">
                   <Image

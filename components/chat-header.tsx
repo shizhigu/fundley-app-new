@@ -2,16 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useWindowSize } from 'usehooks-ts';
-
-import { ModelSelector } from '@/components/model-selector';
+import { memo } from 'react';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from './icons';
 import { useSidebar } from './ui/sidebar';
-import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { type VisibilityType, VisibilitySelector } from './visibility-selector';
+import type { VisibilityType, } from './visibility-selector';
 import { DevTools } from './dev-tools';
+import { cn } from '@/lib/utils';
 import type { AuthSession } from '@/lib/auth/clerk';
 
 function PureChatHeader({
@@ -40,36 +39,27 @@ function PureChatHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
-              className="order-2 md:order-1 md:px-2 px-2 md:h-fit ml-auto md:ml-0"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'order-2 md:order-1 ml-auto md:ml-0 h-8 px-3 transition-all duration-200',
+                'bg-white/10 backdrop-blur-md border border-white/20',
+                'hover:bg-white/20 hover:border-white/30',
+                'text-foreground/80 hover:text-foreground'
+              )}
               onClick={() => {
                 router.push('/');
                 router.refresh();
               }}
             >
-              <PlusIcon />
-              <span className="md:sr-only">New Chat</span>
+              <PlusIcon size={16} />
+              <span className="md:sr-only ml-1.5">New Chat</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>New Chat</TooltipContent>
         </Tooltip>
       )}
 
-      {!isReadonly && (
-        <ModelSelector
-          session={session}
-          selectedModelId={selectedModelId}
-          className="order-1 md:order-2"
-        />
-      )}
-
-      {!isReadonly && (
-        <VisibilitySelector
-          chatId={chatId}
-          selectedVisibilityType={selectedVisibilityType}
-          className="order-1 md:order-3"
-        />
-      )}
 
       {/* Development Tools - Only show in development mode */}
       {process.env.NODE_ENV === 'development' && (

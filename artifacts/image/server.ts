@@ -1,45 +1,30 @@
-import { myProvider } from '@/lib/ai/providers';
+// Disabled image functionality - placeholder implementation
 import { createDocumentHandler } from '@/lib/artifacts/server';
-import { experimental_generateImage } from 'ai';
 
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
   onCreateDocument: async ({ title, dataStream }) => {
-    let draftContent = '';
-
-    const { image } = await experimental_generateImage({
-      model: myProvider.imageModel('small-model'),
-      prompt: title,
-      n: 1,
-    });
-
-    draftContent = image.base64;
-
+    // Image generation disabled
+    const placeholderContent = 'Image generation is currently disabled';
+    
     dataStream.write({
       type: 'data-imageDelta',
-      data: image.base64,
+      data: placeholderContent,
       transient: true,
     });
 
-    return draftContent;
+    return placeholderContent;
   },
   onUpdateDocument: async ({ description, dataStream }) => {
-    let draftContent = '';
-
-    const { image } = await experimental_generateImage({
-      model: myProvider.imageModel('small-model'),
-      prompt: description,
-      n: 1,
-    });
-
-    draftContent = image.base64;
-
+    // Image generation disabled
+    const placeholderContent = 'Image generation is currently disabled';
+    
     dataStream.write({
       type: 'data-imageDelta',
-      data: image.base64,
+      data: placeholderContent,
       transient: true,
     });
 
-    return draftContent;
+    return placeholderContent;
   },
 });

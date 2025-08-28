@@ -16,6 +16,7 @@ import {
   type ConsoleOutputContent,
 } from '@/components/console';
 import { useState } from 'react';
+import { getPyodideManager } from '@/lib/pyodide-manager';
 
 const OUTPUT_HANDLERS = {
   matplotlib: `
@@ -113,12 +114,7 @@ export const codeArtifact = new Artifact<'code', Metadata>({
         return {
           ...draftArtifact,
           content: newContent,
-          isVisible:
-            draftArtifact.status === 'streaming' &&
-            draftArtifact.content.length > 300 &&
-            draftArtifact.content.length < 310
-              ? true
-              : draftArtifact.isVisible,
+          // Keep visibility as is - it's set by data-stream-handler
           status: 'streaming',
         };
       });
@@ -131,8 +127,8 @@ export const codeArtifact = new Artifact<'code', Metadata>({
     );
     
     return (
-      <>
-        <div className="px-1">
+      <div className="flex flex-col h-full w-full overflow-hidden" style={{ minWidth: 0 }}>
+        <div className="flex-1 w-full overflow-auto" style={{ minWidth: 0 }}>
           <CodeEditor {...props} content={content} />
         </div>
 
@@ -205,7 +201,7 @@ export const codeArtifact = new Artifact<'code', Metadata>({
             )}
           </div>
         )}
-      </>
+      </div>
     );
   },
   actions: [
@@ -231,10 +227,9 @@ export const codeArtifact = new Artifact<'code', Metadata>({
         }));
 
         try {
-          // @ts-expect-error - loadPyodide is not defined
-          const currentPyodideInstance = await globalThis.loadPyodide({
-            indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.4/full/',
-          });
+          // Get shared Pyodide instance
+          const pyodideManager = getPyodideManager();
+          const currentPyodideInstance = await pyodideManager.getPyodide();
 
           let plotlyHtmlBuffer = '';
           let collectingPlotly = false;

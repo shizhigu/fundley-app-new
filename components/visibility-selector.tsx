@@ -3,11 +3,10 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import {
   CheckCircleFillIcon,
@@ -22,20 +21,17 @@ export type VisibilityType = 'private' | 'public';
 const visibilities: Array<{
   id: VisibilityType;
   label: string;
-  description: string;
   icon: ReactNode;
 }> = [
   {
     id: 'private',
     label: 'Private',
-    description: 'Only you can access this chat',
-    icon: <LockIcon />,
+    icon: <LockIcon size={14} />,
   },
   {
     id: 'public',
     label: 'Public',
-    description: 'Anyone with the link can access this chat',
-    icon: <GlobeIcon />,
+    icon: <GlobeIcon size={14} />,
   },
 ];
 
@@ -60,51 +56,66 @@ export function VisibilitySelector({
   );
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        asChild
-        className={cn(
-          'w-fit data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
-          className,
-        )}
-      >
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button
           data-testid="visibility-selector"
-          variant="outline"
-          className="hidden md:flex md:px-2 md:h-[34px]"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'h-8 px-3 text-sm font-medium transition-all duration-200',
+            'bg-white/10 backdrop-blur-md border border-white/20',
+            'hover:bg-white/20 hover:border-white/30',
+            'text-foreground/80 hover:text-foreground',
+            'hidden md:flex items-center gap-1.5',
+            open && 'bg-white/20 border-white/30',
+            className,
+          )}
         >
           {selectedVisibility?.icon}
-          {selectedVisibility?.label}
-          <ChevronDownIcon />
+          <span>{selectedVisibility?.label}</span>
+          <div className={cn(
+            'ml-1 transition-transform duration-200',
+            open && 'rotate-180'
+          )}>
+            <ChevronDownIcon size={12} />
+          </div>
         </Button>
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px]">
-        {visibilities.map((visibility) => (
-          <DropdownMenuItem
-            data-testid={`visibility-selector-item-${visibility.id}`}
-            key={visibility.id}
-            onSelect={() => {
-              setVisibilityType(visibility.id);
-              setOpen(false);
-            }}
-            className="gap-4 group/item flex flex-row justify-between items-center"
-            data-active={visibility.id === visibilityType}
-          >
-            <div className="flex flex-col gap-1 items-start">
-              {visibility.label}
-              {visibility.description && (
-                <div className="text-xs text-muted-foreground">
-                  {visibility.description}
-                </div>
+      <PopoverContent 
+        align="start" 
+        className="w-40 p-1 bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl"
+        sideOffset={4}
+      >
+        <div className="space-y-1">
+          {visibilities.map((visibility) => (
+            <button
+              key={visibility.id}
+              data-testid={`visibility-selector-item-${visibility.id}`}
+              type="button"
+              onClick={() => {
+                setVisibilityType(visibility.id);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full px-3 py-2 text-sm font-medium transition-all duration-200',
+                'flex items-center justify-between rounded-md',
+                'hover:bg-white/20 text-foreground/80 hover:text-foreground',
+                visibility.id === visibilityType && 'bg-white/20 text-foreground'
               )}
-            </div>
-            <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
-              <CheckCircleFillIcon />
-            </div>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            >
+              <div className="flex items-center gap-2">
+                {visibility.icon}
+                <span>{visibility.label}</span>
+              </div>
+              {visibility.id === visibilityType && (
+                <CheckCircleFillIcon size={14} />
+              )}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

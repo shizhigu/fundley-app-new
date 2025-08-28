@@ -27,7 +27,7 @@ export default async function Layout({
           <SidebarProvider defaultOpen={!isCollapsed}>
             <AppSidebar user={session?.user} />
             <SidebarInset className="professional-main overflow-hidden">
-              <div className="glass-container h-full flex flex-col overflow-hidden">
+              <div className="h-full flex flex-col overflow-hidden">
                 {children}
               </div>
             </SidebarInset>

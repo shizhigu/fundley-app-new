@@ -1,6 +1,6 @@
 import { PreviewMessage, ThinkingMessage } from './message';
 import { Greeting } from './greeting';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import { useMessages } from '@/hooks/use-messages';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { ChatLoading } from './chat-loading';
+import { usePathname } from 'next/navigation';
 
 interface MessagesProps {
   chatId: string;
@@ -41,33 +43,74 @@ function PureMessages({
   });
 
   useDataStream();
+  
+  const pathname = usePathname();
+  const isNewChatLoading = pathname.includes('/chat/') && messages.length === 0 && status !== 'idle';
+
+  // Optimize message rendering to save memory
+  const MAX_VISIBLE_MESSAGES = 30; // Show last 30 messages (about 15 conversations)
+  
+  const { visibleMessages, hiddenCount } = useMemo(() => {
+    if (messages.length <= MAX_VISIBLE_MESSAGES) {
+      return { visibleMessages: messages, hiddenCount: 0 };
+    }
+    
+    const hidden = messages.length - MAX_VISIBLE_MESSAGES;
+    const visible = messages.slice(-MAX_VISIBLE_MESSAGES);
+    
+    return { visibleMessages: visible, hiddenCount: hidden };
+  }, [messages]);
+
+  // Show loading state when switching chats
+  if (isNewChatLoading) {
+    return (
+      <div
+        ref={messagesContainerRef}
+        className="professional-messages-container flex flex-col min-w-0 gap-6 h-full overflow-y-auto pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+        style={{ background: 'transparent !important' }}
+      >
+        <ChatLoading />
+      </div>
+    );
+  }
 
   return (
     <div
       ref={messagesContainerRef}
-      className="professional-messages-container flex flex-col min-w-0 gap-6 h-full overflow-y-auto pt-4 pb-32 px-4 md:px-6 scrollbar-thin relative"
+      className="professional-messages-container flex flex-col min-w-0 gap-6 h-full overflow-y-auto pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+      style={{ background: 'transparent !important' }}
     >
       {messages.length === 0 && <Greeting />}
+      
+      {hiddenCount > 0 && (
+        <div className="text-center py-3 px-4 mx-auto rounded-lg bg-muted/50 text-sm text-muted-foreground">
+          <div className="font-medium">{hiddenCount} earlier messages hidden</div>
+          <div className="text-xs mt-1">To save memory and improve performance</div>
+        </div>
+      )}
 
-      {messages.map((message, index) => (
-        <PreviewMessage
-          key={message.id}
-          chatId={chatId}
-          message={message}
-          isLoading={status === 'streaming' && messages.length - 1 === index}
-          vote={
-            votes
-              ? votes.find((vote) => vote.messageId === message.id)
-              : undefined
-          }
-          setMessages={setMessages}
-          regenerate={regenerate}
-          isReadonly={isReadonly}
-          requiresScrollPadding={
-            hasSentMessage && index === messages.length - 1
-          }
-        />
-      ))}
+      {visibleMessages.map((message, index) => {
+        const originalIndex = messages.indexOf(message);
+        return (
+          <PreviewMessage
+            key={message.id}
+            chatId={chatId}
+            message={message}
+            isLoading={status === 'streaming' && messages.length - 1 === originalIndex}
+            vote={
+              votes
+                ? votes.find((vote) => vote.messageId === message.id)
+                : undefined
+            }
+            setMessages={setMessages}
+            regenerate={regenerate}
+            isReadonly={isReadonly}
+            requiresScrollPadding={
+              hasSentMessage && originalIndex === messages.length - 1
+            }
+          />
+        );
+      })}
 
       {status === 'submitted' &&
         messages.length > 0 &&

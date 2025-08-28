@@ -1,20 +1,31 @@
-export const DEFAULT_CHAT_MODEL: string = 'chat-model';
+export const DEFAULT_MODEL = 'grok-3';
 
+// Simple model configuration
+export const AVAILABLE_MODELS = {
+  'grok-3': {
+    name: 'Grok',
+    description: 'xAI',
+  },
+  'gemini-2.5-pro': {
+    name: 'Gemini', 
+    description: 'Google',
+  },
+  'gpt-5': {
+    name: 'GPT',
+    description: 'OpenAI',
+  },
+} as const;
+
+export type ModelId = keyof typeof AVAILABLE_MODELS;
+
+// For backwards compatibility with existing ChatModel interface
 export interface ChatModel {
   id: string;
   name: string;
   description: string;
 }
 
-export const chatModels: Array<ChatModel> = [
-  {
-    id: 'chat-model',
-    name: 'Chat model',
-    description: 'Primary model for all-purpose chat',
-  },
-  {
-    id: 'chat-model-reasoning',
-    name: 'Reasoning model',
-    description: 'Uses advanced reasoning',
-  },
-];
+export const chatModels: ChatModel[] = Object.entries(AVAILABLE_MODELS).map(([id, config]) => ({
+  id,
+  ...config,
+}));

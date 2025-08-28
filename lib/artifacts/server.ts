@@ -1,5 +1,4 @@
 import { codeDocumentHandler } from '@/artifacts/code/server';
-import { imageDocumentHandler } from '@/artifacts/image/server';
 import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import type { ArtifactKind } from '@/components/artifact';
@@ -99,12 +98,15 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
 
 /*
  * Use this array to define the document handlers for each artifact kind.
+ * Image handler is commented out but kept for future use.
  */
 export const documentHandlersByArtifactKind: Array<DocumentHandler> = [
   textDocumentHandler,
   codeDocumentHandler,
-  imageDocumentHandler,
+  // imageDocumentHandler, // Disabled but kept for future
   sheetDocumentHandler,
 ];
 
-export const artifactKinds = ['text', 'code', 'image', 'sheet'] as const;
+// Available artifact kinds - image is disabled but implementation kept for future use
+export const artifactKinds = ['text', 'code', 'sheet'] as const;
+// export const allArtifactKinds = ['text', 'code', 'image', 'sheet'] as const; // Full list for future

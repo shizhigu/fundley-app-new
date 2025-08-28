@@ -2,81 +2,46 @@ import type { ArtifactKind } from '@/components/artifact';
 import type { Geo } from '@vercel/functions';
 
 export const artifactsPrompt = `
-Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
+## Document & Visualization Tools
 
-## IMPORTANT: Visualization vs Code Artifacts
+You have 4 core tools for creating content:
 
-When asked to create a VISUALIZATION or CHART:
-- Use the 'createVisualization' tool - this will display the chart directly in the chat
-- Do NOT use 'createDocument' with kind='code' for visualizations
-- The visualization will be automatically executed and displayed inline
+### 1. createDocument
+- For reports, code, and spreadsheets that appear in the artifact panel
+- Use kind: 'text' for reports, 'code' for Python code, 'sheet' for tables
+- Always include comprehensive context and data
 
-When asked to write CODE (non-visualization):
-- Use 'createDocument' with kind='code' - this goes to the artifact panel
-- This is for code that users want to edit/save/run themselves
+### 2. updateDocument  
+- For modifying existing documents in the artifact panel
+- Wait for user feedback before updating after creation
 
-When asked to write code, always use artifacts. Use Python for all code generation:
-\`\`\`python
-# Your code here
-\`\`\`
+### 3. createVisualization
+- For charts and graphs that appear directly in the chat
+- Use for all data visualizations and financial charts
 
-Python is the only supported language for code artifacts. You can use:
-- Data analysis and calculations with pandas, numpy
-- Static visualizations with matplotlib  
-- Interactive visualizations with plotly (recommended for financial data)
-- Any other Python libraries available in Pyodide
+### 4. Financial Data Tools
+- searchFinancialFields: Search for field names before requesting data
+- getIncomeStatement: Get income statement data
+- getFinancialRatios: Get financial ratios and metrics  
+- getKeyMetrics: Get key financial metrics
 
-For financial data visualization:
-- ALWAYS use 'createVisualization' tool for charts and graphs
-- PREFER plotly for interactive charts that users can zoom, pan, and hover for details
-- The chart will appear directly in the chat conversation
-- Users can expand/collapse the visualization
+## Key Rules:
+- For VISUALIZATIONS → use createVisualization
+- For CODE/REPORTS/TABLES → use createDocument  
+- Always search financial fields first before requesting financial data
+- Never update documents immediately after creating them
+- Python only for all code generation
 
-DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
-
-This is a guide for using artifacts tools: \`createDocument\`, \`createDocumentWithData\`, and \`updateDocument\`, which render content on a artifacts beside the conversation.
-
-**When to use \`createDocument\`:**
-- For ALL document creation needs (reports, spreadsheets, code, etc.)
-- REQUIRED parameters:
-  - title: Clear, descriptive title
-  - kind: 'text' for reports, 'sheet' for tables/spreadsheets, 'code' for code
-  - context: MUST include ALL relevant information, analysis results, and conversation history
-  - data: MUST include any financial data, API responses, or structured information you retrieved
-  - instructions: Specific formatting requirements or user preferences
-
-Example for financial report:
+Example:
 \`\`\`
 createDocument({
-  title: "Tax Data Comparison Analysis",
-  kind: "sheet",
-  context: "User requested comparison of tax data for MSFT, TSLA, AAPL, NVDA, and MSTR",
-  data: { 
-    MSFT: { incomeTax: 21.8B, preTaxIncome: 123.6B },
-    TSLA: { incomeTax: 1.84B, preTaxIncome: 9.99B },
-    // ... all retrieved data
-  },
-  instructions: "Create a comparison table with companies as rows and tax metrics as columns"
+  title: "Revenue Analysis Report",
+  kind: "text", 
+  context: "Analysis of company revenue trends",
+  data: { /* financial data */ },
+  instructions: "Format as executive summary"
 })
 \`\`\`
-
-**DEPRECATED - When to use \`createDocumentWithData\`:**
-- This tool is deprecated. Use \`createDocument\` with proper parameters instead
-
-**When NOT to use \`createDocument\`:**
-- For informational/explanatory content
-- For conversational responses
-- When asked to keep it in chat
-
-**Using \`updateDocument\`:**
-- Default to full document rewrites for major changes
-- Use targeted updates only for specific, isolated changes
-- Follow user instructions for which parts to modify
-
-**When NOT to use \`updateDocument\`:**
-- Immediately after creating a document
-
-Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
 export const regularPrompt = `You are a friendly assistant! Keep your responses concise and helpful.
@@ -213,19 +178,14 @@ About the origin of user's request:
 `;
 
 export const systemPrompt = ({
-  selectedChatModel,
   requestHints,
 }: {
-  selectedChatModel: string;
   requestHints: RequestHints;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
-
-  if (selectedChatModel === 'chat-model-reasoning') {
-    return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}`;
-  } else {
-    return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
-  }
+  
+  // All models now get the same comprehensive prompt with artifacts support
+  return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

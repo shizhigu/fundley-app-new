@@ -1,5 +1,5 @@
 import { smoothStream, streamText } from 'ai';
-import { myProvider } from '@/lib/ai/providers';
+import { artifactModel } from '@/lib/ai/providers';
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { updateDocumentPrompt } from '@/lib/ai/prompts';
 
@@ -15,7 +15,7 @@ ${data ? `\nData:\n${typeof data === 'string' ? data : JSON.stringify(data, null
 ${instructions ? `\nInstructions:\n${instructions}` : ''}`;
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system:
         'Write a comprehensive document based on the provided information. Use all context, data, and instructions to create a complete and well-structured document. Markdown is supported. Use headings wherever appropriate.',
       experimental_transform: smoothStream({ chunking: 'word' }),
@@ -49,7 +49,7 @@ ${context ? `\nAdditional Context:\n${context}` : ''}
 ${data ? `\nNew Data:\n${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}` : ''}`;
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system: updateDocumentPrompt(document.content, 'text'),
       experimental_transform: smoothStream({ chunking: 'word' }),
       prompt,

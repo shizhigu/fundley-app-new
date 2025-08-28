@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, QuantumIcon, } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -28,6 +28,16 @@ import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
+import type { AuthSession } from '@/lib/auth/clerk';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { chatModels } from '@/lib/ai/models';
+import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { startTransition, useOptimistic } from 'react';
+import { cn } from '@/lib/utils';
 
 function PureMultimodalInput({
   chatId,
@@ -42,6 +52,9 @@ function PureMultimodalInput({
   sendMessage,
   className,
   selectedVisibilityType,
+  session,
+  selectedModelId,
+  setSelectedModelId,
 }: {
   chatId: string;
   input: string;
@@ -55,6 +68,9 @@ function PureMultimodalInput({
   sendMessage: UseChatHelpers<ChatMessage>['sendMessage'];
   className?: string;
   selectedVisibilityType: VisibilityType;
+  session: AuthSession;
+  selectedModelId: string;
+  setSelectedModelId?: (modelId: string) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -68,7 +84,9 @@ function PureMultimodalInput({
   const adjustHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 2}px`;
+      const maxHeight = 200; // 与CSS max-h-[200px] 保持一致
+      const newHeight = Math.min(textareaRef.current.scrollHeight + 2, maxHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   };
 
@@ -125,6 +143,11 @@ function PureMultimodalInput({
           text: input,
         },
       ],
+    }, {
+      body: {
+        selectedChatModel: selectedModelId,
+        selectedVisibilityType: selectedVisibilityType,
+      },
     });
 
     setAttachments([]);
@@ -208,7 +231,7 @@ function PureMultimodalInput({
   }, [status, scrollToBottom]);
 
   return (
-    <div className="relative w-full flex flex-col gap-4">
+    <div className="relative w-[65%] max-w-3xl mx-auto flex flex-col gap-4">
       <AnimatePresence>
         {!isAtBottom && (
           <motion.div
@@ -279,11 +302,11 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder="Ask me anything about financial markets, portfolios, or investments..."
+        placeholder="Ask me anything about the market..."
         value={input}
         onChange={handleInput}
         className={cx(
-          'professional-input min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-transparent border-0 pb-12 pl-4 pr-20 placeholder:text-text-secondary/60 focus:ring-0 focus:border-0',
+          'professional-input min-h-[98px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-base bg-transparent border-0 pb-12 pl-4 pr-20 placeholder:text-text-secondary/60 focus:ring-0 focus:border-0',
           className,
         )}
         rows={2}
@@ -307,6 +330,7 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        <CompactModelSelector session={session} selectedModelId={selectedModelId} setSelectedModelId={setSelectedModelId} />
       </div>
 
       <div className="absolute bottom-0 right-0 p-3 flex flex-row items-center">
@@ -332,6 +356,7 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
+    if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
 
     return true;
   },
@@ -347,7 +372,7 @@ function PureAttachmentsButton({
   return (
     <Button
       data-testid="attachments-button"
-      className="glass-input-button rounded-lg p-2 h-fit hover:bg-white/10 transition-all duration-200"
+      className="glass-input-button rounded-lg p-2 h-fit hover:bg-white/10 transition-all duration-200 border border-gray-200 dark:border-white/20"
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
@@ -361,6 +386,95 @@ function PureAttachmentsButton({
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
+
+// Compact Model Selector for input area
+function PureCompactModelSelector({
+  session,
+  selectedModelId,
+  setSelectedModelId,
+}: {
+  session: AuthSession;
+  selectedModelId: string;
+  setSelectedModelId?: (modelId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [optimisticModelId, setOptimisticModelId] = useOptimistic(selectedModelId);
+
+  const userType = session.user?.type ?? 'guest';
+  const { availableChatModelIds } = entitlementsByUserType[userType];
+
+  const availableChatModels = chatModels.filter((chatModel) =>
+    availableChatModelIds.includes(chatModel.id),
+  );
+
+  // Get simple model name
+  const getSimpleModelName = (modelId: string) => {
+    const names = {
+      'grok-3': 'Grok',
+      'gemini-2.5-pro': 'Gemini', 
+      'gpt-5': 'GPT'
+    };
+    return names[modelId as keyof typeof names] || modelId;
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          className={cn(
+            'h-8 w-8 p-0 transition-all duration-200 rounded-xl',
+            'bg-white/10 backdrop-blur-md border',
+            'border-gray-200 dark:border-white/20',
+            'hover:bg-white/20 hover:border-gray-300 dark:hover:border-white/30',
+            'text-foreground/80 hover:text-foreground',
+            open && 'bg-white/20 border-gray-300 dark:border-white/30'
+          )}
+        >
+          <QuantumIcon size={16} />
+        </Button>
+      </PopoverTrigger>
+      
+      <PopoverContent 
+        align="start" 
+        className="w-fit p-1 bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl"
+        sideOffset={4}
+      >
+        <div className="space-y-1">
+          {availableChatModels.map((chatModel) => {
+            const { id } = chatModel;
+            const isSelected = id === optimisticModelId;
+            const simpleName = getSimpleModelName(id);
+
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  startTransition(() => {
+                    setOptimisticModelId(id);
+                    setSelectedModelId?.(id);
+                  });
+                }}
+                className={cn(
+                  'w-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
+                  'flex items-center justify-center rounded-md whitespace-nowrap',
+                  'text-foreground/70 hover:text-foreground hover:bg-white/15',
+                  isSelected && 'bg-gray-900 text-white shadow-md font-semibold border border-gray-700'
+                )}
+              >
+                {simpleName}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const CompactModelSelector = memo(PureCompactModelSelector);
 
 function PureStopButton({
   stop,
@@ -398,7 +512,7 @@ function PureSendButton({
   return (
     <Button
       data-testid="send-button"
-      className="glass-send-button rounded-full p-2 h-fit bg-brand-accent hover:bg-brand-accent/80 border-0 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+      className="glass-send-button rounded-full p-3 h-fit bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-white [&_svg]:fill-white"
       onClick={(event) => {
         event.preventDefault();
         submitForm();

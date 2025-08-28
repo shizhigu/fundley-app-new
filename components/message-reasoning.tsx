@@ -14,7 +14,7 @@ export function MessageReasoning({
   isLoading,
   reasoning,
 }: MessageReasoningProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const variants = {
     collapsed: {
@@ -26,8 +26,8 @@ export function MessageReasoning({
     expanded: {
       height: 'auto',
       opacity: 1,
-      marginTop: '1rem',
-      marginBottom: '0.5rem',
+      marginTop: '0.5rem',
+      marginBottom: '0.25rem',
     },
   };
 
@@ -35,25 +35,29 @@ export function MessageReasoning({
     <div className="flex flex-col">
       {isLoading ? (
         <div className="flex flex-row gap-2 items-center">
-          <div className="font-medium">Reasoning</div>
-          <div className="animate-spin">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoning</div>
+          <div className="animate-spin scale-75">
             <LoaderIcon />
           </div>
         </div>
       ) : (
-        <div className="flex flex-row gap-2 items-center">
-          <div className="font-medium">Reasoned for a few seconds</div>
-          <button
-            data-testid="message-reasoning-toggle"
-            type="button"
-            className="cursor-pointer"
-            onClick={() => {
-              setIsExpanded(!isExpanded);
-            }}
+        <button
+          data-testid="message-reasoning-toggle"
+          type="button"
+          className="flex flex-row gap-2 items-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-md px-2 py-1 -mx-2 -my-1 transition-colors duration-200"
+          onClick={() => {
+            setIsExpanded(!isExpanded);
+          }}
+        >
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoned for a few seconds</div>
+          <div
+            className={`scale-75 transition-transform duration-200 ${
+              isExpanded ? 'rotate-180' : 'rotate-0'
+            }`}
           >
             <ChevronDownIcon />
-          </button>
-        </div>
+          </div>
+        </button>
       )}
 
       <AnimatePresence initial={false}>
@@ -67,9 +71,11 @@ export function MessageReasoning({
             variants={variants}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             style={{ overflow: 'hidden' }}
-            className="pl-4 text-zinc-600 dark:text-zinc-400 border-l flex flex-col gap-4"
+            className="pl-3 text-xs leading-tight text-zinc-400 dark:text-zinc-500 border-l border-zinc-200 dark:border-zinc-700 flex flex-col gap-2"
           >
-            <Markdown>{reasoning}</Markdown>
+            <div className="reasoning-content">
+              <Markdown>{reasoning}</Markdown>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

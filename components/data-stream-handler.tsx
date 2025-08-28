@@ -41,6 +41,7 @@ export function DataStreamHandler() {
               ...draftArtifact,
               documentId: delta.data,
               status: 'streaming',
+              isVisible: true, // Make artifact visible when it starts
             };
 
           case 'data-title':
@@ -62,6 +63,7 @@ export function DataStreamHandler() {
               ...draftArtifact,
               content: '',
               status: 'streaming',
+              isVisible: true, // Ensure visibility is maintained
             };
 
           case 'data-finish':

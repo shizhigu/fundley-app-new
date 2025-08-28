@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@radix-ui/react-icons';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import { getPyodideManager } from '@/lib/pyodide-manager';
 
 interface VisualizationMessageProps {
   id: string;
@@ -29,7 +30,7 @@ export function VisualizationMessage({
   const [error, setError] = useState<string | null>(null);
   const [outputHtml, setOutputHtml] = useState<string | null>(cachedHtml || null);
   const [outputImage, setOutputImage] = useState<string | null>(cachedImage || null);
-  const pyodideRef = useRef<any>(null);
+  const executionAbortController = useRef<AbortController | null>(null);
 
   // Save cache to server
   const saveCache = async (html: string | null, image: string | null) => {
@@ -64,29 +65,33 @@ export function VisualizationMessage({
   };
 
   useEffect(() => {
+    // Skip on server side
+    if (typeof window === 'undefined') return;
+    
     // If we have cached content, skip execution
     if (cachedHtml || cachedImage) {
+      console.log('Using cached visualization content:', { 
+        hasCachedHtml: !!cachedHtml, 
+        hasCachedImage: !!cachedImage,
+        messageId 
+      });
       setIsLoading(false);
       return;
     }
+    
+    console.log('No cached content found, will execute code:', { messageId });
 
     const executeCode = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        // Load Pyodide if not already loaded
-        if (!pyodideRef.current) {
-          // @ts-expect-error - loadPyodide is global
-          pyodideRef.current = await globalThis.loadPyodide({
-            indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.4/full/',
-          });
-          
-          // Load micropip for package installation
-          await pyodideRef.current.loadPackage('micropip');
-        }
+        // Create abort controller for this execution
+        executionAbortController.current = new AbortController();
         
-        const pyodide = pyodideRef.current;
+        // Get shared Pyodide instance
+        const pyodideManager = getPyodideManager();
+        const pyodide = await pyodideManager.getPyodide();
         
         // Setup output capture
         let plotlyHtmlBuffer = '';
@@ -238,6 +243,15 @@ setup_matplotlib_output()
     };
     
     executeCode();
+    
+    // Cleanup function
+    return () => {
+      // Abort any ongoing execution
+      if (executionAbortController.current) {
+        executionAbortController.current.abort();
+        executionAbortController.current = null;
+      }
+    };
   }, [code, id]);
 
   return (

@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { Search, Database, TrendingUp, FileText } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface ToolStatusProps {
   name: string;
@@ -39,39 +40,61 @@ export function ToolStatus({ name, status, displayAction, displayResult }: ToolS
   const action = displayAction || config.label;
   
   return (
-    <div className={cn(
-      "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all w-fit",
-      "bg-gray-50/50 dark:bg-gray-900/20",
-      "border border-gray-200/30 dark:border-gray-800/30",
-      status === 'running' && "bg-gray-50/70 dark:bg-gray-900/30"
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95, y: 5 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -5 }}
+      transition={{ duration: 0.2 }}
+      className={cn(
+      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-300",
+      "backdrop-blur-sm",
+      status === 'running' && [
+        "bg-blue-50/50 dark:bg-blue-950/20",
+        "border border-blue-200/60 dark:border-blue-800/40",
+        "shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)]",
+        "dark:shadow-[0_2px_8px_-2px_rgba(59,130,246,0.1)]",
+        "animate-pulse-subtle"
+      ],
+      status === 'completed' && [
+        "bg-gray-50/50 dark:bg-gray-900/20", 
+        "border border-gray-200/40 dark:border-gray-700/30",
+        "opacity-75"
+      ],
+      status === 'pending' && [
+        "bg-gray-50/30 dark:bg-gray-900/10", 
+        "border border-gray-200/20 dark:border-gray-700/20",
+        "opacity-60"
+      ]
     )}>
       {/* Status Icon - vertically centered */}
-      <div className="flex-shrink-0 self-center">
+      <div className="flex-shrink-0">
         {status === 'running' ? (
-          <div className="relative w-3.5 h-3.5">
-            <div className="absolute inset-0 rounded-full border border-gray-300 dark:border-gray-600" />
-            <div className="absolute inset-0 rounded-full border-t border-gray-600 dark:border-gray-400 animate-spin" />
+          <div className="relative w-2.5 h-2.5">
+            <div className="absolute inset-0 rounded-full bg-blue-400/20 dark:bg-blue-400/10" />
+            <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 dark:border-blue-400 animate-spin" />
           </div>
         ) : status === 'completed' ? (
-          // Subtle green square for completed state
-          <div className="w-3.5 h-3.5 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-sm bg-green-400/40 dark:bg-green-500/30" />
-          </div>
+          <div className="w-2 h-2 rounded-full bg-green-400/40 dark:bg-green-400/20" />
         ) : (
-          <Icon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+          <div className="w-2 h-2 rounded-full bg-gray-300/40 dark:bg-gray-600/20" />
         )}
       </div>
       
       {/* Status Text */}
-      <div className="text-left">
-        <span className="text-xs text-gray-600 dark:text-gray-400">{action}</span>
-        {status === 'completed' && displayResult && (
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 italic">
-            {displayResult}
-          </p>
-        )}
-      </div>
-    </div>
+      <span className={cn(
+        "text-[10px] leading-tight tracking-wide",
+        status === 'running' && "text-blue-600 dark:text-blue-300 font-medium",
+        status === 'completed' && "text-gray-500 dark:text-gray-400",
+        status === 'pending' && "text-gray-400 dark:text-gray-500"
+      )}>
+        {action}
+      </span>
+      {status === 'completed' && displayResult && (
+        <span className="text-[9px] text-gray-400 dark:text-gray-500 ml-1 opacity-80">
+          • {displayResult}
+        </span>
+      )}
+    </motion.div>
   );
 }
 
@@ -80,10 +103,12 @@ export function ToolStatusList({ tools }: { tools: ToolStatusProps[] }) {
   if (tools.length === 0) return null;
   
   return (
-    <div className="flex flex-col gap-1 my-2">
-      {tools.map((tool, index) => (
-        <ToolStatus key={`${tool.name}-${index}`} {...tool} />
-      ))}
-    </div>
+    <AnimatePresence mode="popLayout">
+      <div className="inline-flex flex-wrap gap-1.5 my-2">
+        {tools.map((tool, index) => (
+          <ToolStatus key={`${tool.name}-${index}`} {...tool} />
+        ))}
+      </div>
+    </AnimatePresence>
   );
 }

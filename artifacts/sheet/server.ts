@@ -1,4 +1,4 @@
-import { myProvider } from '@/lib/ai/providers';
+import { artifactModel } from '@/lib/ai/providers';
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { streamObject } from 'ai';
 import { z } from 'zod';
@@ -17,7 +17,7 @@ ${instructions ? `\nSpecific Requirements:\n${instructions}` : ''}
 Create a well-structured CSV with appropriate headers and data rows. If financial data is provided, ensure all values are properly formatted and organized.`;
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system: 'You are a spreadsheet creation expert. Create well-structured CSV data based on the provided information. Include all relevant data, ensure proper formatting, and organize information logically. For financial data, include proper headers and format numbers appropriately.',
       prompt,
       schema: z.object({
@@ -64,7 +64,7 @@ Current spreadsheet content:
 ${document.content}`;
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system: 'Update the spreadsheet based on the request. Maintain data consistency and proper CSV formatting.',
       prompt,
       schema: z.object({

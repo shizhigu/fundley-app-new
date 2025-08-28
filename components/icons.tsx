@@ -1,3 +1,38 @@
+// Quantum/Neural Network icon for model selection
+export const QuantumIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      viewBox="0 0 16 16"
+      width={size}
+      style={{ color: 'currentcolor' }}
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="1.2">
+        {/* Neural network nodes */}
+        <circle cx="3" cy="4" r="1.2" fill="currentColor" />
+        <circle cx="8" cy="2" r="1.2" fill="currentColor" />
+        <circle cx="13" cy="4" r="1.2" fill="currentColor" />
+        <circle cx="3" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="8" cy="14" r="1.2" fill="currentColor" />
+        <circle cx="13" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+        
+        {/* Quantum connections */}
+        <path d="M4.2 4.8L6.8 7.2" strokeDasharray="0.5 0.8" opacity="0.7" />
+        <path d="M9.2 2.8L11.8 3.2" strokeDasharray="0.5 0.8" opacity="0.7" />
+        <path d="M4.2 11.2L6.8 8.8" strokeDasharray="0.5 0.8" opacity="0.7" />
+        <path d="M9.2 13.2L11.8 12.8" strokeDasharray="0.5 0.8" opacity="0.7" />
+        <path d="M8 6.5L8 3.5" strokeDasharray="0.5 0.8" opacity="0.7" />
+        <path d="M8 9.5L8 12.5" strokeDasharray="0.5 0.8" opacity="0.7" />
+        
+        {/* Quantum wave effect around center */}
+        <circle cx="8" cy="8" r="3" opacity="0.3" strokeDasharray="1 1" />
+      </g>
+    </svg>
+  );
+};
+
 export const BotIcon = () => {
   return (
     <svg

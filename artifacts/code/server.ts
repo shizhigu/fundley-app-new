@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { streamObject } from 'ai';
-import { myProvider } from '@/lib/ai/providers';
+import { artifactModel } from '@/lib/ai/providers';
 import { codePrompt, updateDocumentPrompt } from '@/lib/ai/prompts';
 import { createDocumentHandler } from '@/lib/artifacts/server';
 
@@ -16,7 +16,7 @@ ${data ? `\nData to process:\n${typeof data === 'string' ? data : JSON.stringify
 ${instructions ? `\nSpecific Requirements:\n${instructions}` : ''}`;
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system: codePrompt,
       prompt,
       schema: z.object({
@@ -49,7 +49,7 @@ ${instructions ? `\nSpecific Requirements:\n${instructions}` : ''}`;
     let draftContent = '';
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel('artifact-model'),
+      model: artifactModel,
       system: updateDocumentPrompt(document.content, 'code'),
       prompt: description,
       schema: z.object({
