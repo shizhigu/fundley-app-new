@@ -13,11 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
 import { LoaderIcon } from './icons';
 
 interface SidebarUserNavProps {
@@ -43,55 +39,54 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   };
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            {!isLoaded ? (
-              <SidebarMenuButton 
-                variant="default"
-                className="data-[state=open]:bg-sidebar-accent !bg-white/90 dark:!bg-gray-800/90 !backdrop-blur-xl !shadow-lg !border-white/20 dark:!border-gray-700/50 !border !rounded-xl data-[state=open]:text-sidebar-accent-foreground h-10 justify-between"
-              >
-                <div className="flex flex-row gap-2">
-                  <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
-                  <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
-                    Loading auth status
+    <div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {!isLoaded ? (
+            <Button 
+              variant="ghost"
+              className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-lg border-white/20 dark:border-gray-700/50 border rounded-xl h-10 justify-between"
+            >
+              <div className="flex flex-row gap-2">
+                <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
+                <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
+                  Loading auth status
+                </span>
+              </div>
+              <div className="animate-spin text-zinc-500">
+                <LoaderIcon />
+              </div>
+            </Button>
+          ) : (
+            <Button
+              data-testid="user-nav-button"
+              variant="ghost"
+              className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-lg border-white/20 dark:border-gray-700/50 border rounded-xl h-auto py-2"
+            >
+              <div className="flex items-start gap-2 flex-1">
+                <Image
+                  src={clerkUser?.imageUrl || `https://avatar.vercel.sh/${displayEmail}`}
+                  alt={displayEmail ?? 'User Avatar'}
+                  width={32}
+                  height={32}
+                  className="rounded-full mt-0.5"
+                />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span data-testid="user-email" className="text-sm font-medium truncate">
+                    {displayEmail}
                   </span>
-                </div>
-                <div className="animate-spin text-zinc-500">
-                  <LoaderIcon />
-                </div>
-              </SidebarMenuButton>
-            ) : (
-              <SidebarMenuButton
-                data-testid="user-nav-button"
-                variant="default"
-                className="data-[state=open]:bg-sidebar-accent !bg-white/90 dark:!bg-gray-800/90 !backdrop-blur-xl !shadow-lg !border-white/20 dark:!border-gray-700/50 !border !rounded-xl data-[state=open]:text-sidebar-accent-foreground h-auto py-2"
-              >
-                <div className="flex items-start gap-2 flex-1">
-                  <Image
-                    src={clerkUser?.imageUrl || `https://avatar.vercel.sh/${displayEmail}`}
-                    alt={displayEmail ?? 'User Avatar'}
-                    width={32}
-                    height={32}
-                    className="rounded-full mt-0.5"
-                  />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span data-testid="user-email" className="text-sm font-medium truncate">
-                      {displayEmail}
+                  {organization && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                      <Building2 className="size-3" />
+                      {organization.name}
                     </span>
-                    {organization && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                        <Building2 className="size-3" />
-                        {organization.name}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
-                <ChevronUp className="ml-auto size-4 shrink-0" />
-              </SidebarMenuButton>
-            )}
-          </DropdownMenuTrigger>
+              </div>
+              <ChevronUp className="ml-auto size-4 shrink-0" />
+            </Button>
+          )}
+        </DropdownMenuTrigger>
           <DropdownMenuContent
             data-testid="user-nav-menu"
             side="top"
@@ -116,7 +111,6 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    </div>
   );
 }

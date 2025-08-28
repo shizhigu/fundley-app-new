@@ -16,9 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  useSidebar,
-} from '@/components/ui/sidebar';
 import type { Chat } from '@/lib/db/schema';
 import { fetcher } from '@/lib/utils';
 import { ChatItem } from './sidebar-history-item';
@@ -90,8 +87,13 @@ export function getChatHistoryPaginationKey(
   return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
 }
 
-export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
-  const { setOpenMobile } = useSidebar();
+export function SidebarHistory({ 
+  user,
+  onChatSelect 
+}: { 
+  user: AuthSession['user'];
+  onChatSelect?: () => void;
+}) {
   const { id } = useParams();
 
   const {
@@ -218,7 +220,7 @@ export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
                           }}
-                          setOpenMobile={setOpenMobile}
+                          setOpenMobile={onChatSelect}
                         />
                       ))}
                     </div>
@@ -240,7 +242,7 @@ export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
                           }}
-                          setOpenMobile={setOpenMobile}
+                          setOpenMobile={onChatSelect}
                         />
                       ))}
                     </div>
@@ -262,7 +264,7 @@ export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
                           }}
-                          setOpenMobile={setOpenMobile}
+                          setOpenMobile={onChatSelect}
                         />
                       ))}
                     </div>
@@ -284,7 +286,7 @@ export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
                           }}
-                          setOpenMobile={setOpenMobile}
+                          setOpenMobile={onChatSelect}
                         />
                       ))}
                     </div>
@@ -306,7 +308,7 @@ export function SidebarHistory({ user }: { user: AuthSession['user'] }) {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
                           }}
-                          setOpenMobile={setOpenMobile}
+                          setOpenMobile={onChatSelect}
                         />
                       ))}
                     </div>

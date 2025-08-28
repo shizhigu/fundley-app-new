@@ -54,7 +54,8 @@
       "Bash(NEXT_DISABLE_SWC_WASM_FALLBACK=1 pnpm dev --port 3008)",
       "Bash(NEXT_DISABLE_SWC_WASM_FALLBACK=1 pnpm dev --port 3000)",
       "WebFetch(domain:openrouter.ai)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:docs.x.ai)"
     ],
     "deny": [],
     "ask": [],

@@ -25,5 +25,5 @@ export function getLanguageModel(modelId: ModelId) {
 }
 
 // Special purpose models
-export const titleModel = openrouter('x-ai/grok-3-fast'); // Lightweight for titles
-export const artifactModel = openrouter('x-ai/grok-3'); // Full model for artifacts
+export const titleModel = openrouter('google/gemini-2.5-flash-lite'); // Lightweight for titles
+export const artifactModel = openrouter('google/gemini-2.5-pro'); // Full model for artifacts

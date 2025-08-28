@@ -70,13 +70,13 @@ const PureChatItem = ({
 
   return (
     <>
-      <div className="mb-1">
+      <div className="mb-0.5">
         <a 
           href={`/chat/${chat.id}`}
           onClick={handleClick}
           onContextMenu={handleContextMenu}
           className={cn(
-            "block w-full px-3 py-2 text-sm rounded-lg transition-all duration-200 text-left truncate",
+            "block w-full px-2 py-1.5 text-xs rounded-lg transition-all duration-200 text-left truncate",
             isActive || isNavigating 
               ? "bg-blue-100/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
               : "text-gray-700 dark:text-gray-300 hover:bg-gray-100/40 dark:hover:bg-gray-800/30"

@@ -143,15 +143,14 @@ export function Chat({
   return (
     <>
       <div className="flex flex-col h-full w-full overflow-hidden relative" style={{ background: 'transparent !important' }}>
-        <div className="flex-shrink-0 z-20">
-          <ChatHeader
-            chatId={id}
-            selectedModelId={selectedModel}
-            selectedVisibilityType={initialVisibilityType}
-            isReadonly={isReadonly}
-            session={session}
-          />
-        </div>
+        {/* ChatHeader moved to floating DevTools only */}
+        <ChatHeader
+          chatId={id}
+          selectedModelId={selectedModel}
+          selectedVisibilityType={initialVisibilityType}
+          isReadonly={isReadonly}
+          session={session}
+        />
 
         <div className="flex-1 overflow-hidden" style={{ background: 'transparent !important' }}>
           <Messages

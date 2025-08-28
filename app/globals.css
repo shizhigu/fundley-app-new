@@ -103,12 +103,12 @@
         /* Responsive Text Sizes */
         --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
         /* 12-14px */
-        --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
-        /* 14-16px */
-        --text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+        --text-sm: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem);
+        /* 13-15px */
+        --text-base: clamp(0.875rem, 0.825rem + 0.4vw, 1rem);
         /* 16-18px */
-        --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
-        /* 18-20px */
+        --text-lg: clamp(1rem, 0.9375rem + 0.5vw, 1.125rem);
+        /* 16-18px */
         --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
         /* 20-24px */
         --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
