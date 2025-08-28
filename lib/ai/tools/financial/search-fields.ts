@@ -71,7 +71,8 @@ export const searchFinancialFields = tool({
       }))
       
       // Create user-friendly display summary
-      const topFields = matches.slice(0, 5).map(f => f.name).join(', ')
+      const topFields = matches.slice(0, 5).map(f => f.name).filter(Boolean).join(', ')
+      const displayCount = matches.length > 0 ? `${matches.length} metrics` : 'no matches'
       
       return {
         success: true,
@@ -85,7 +86,7 @@ export const searchFinancialFields = tool({
         The 'tool' indicates which FMP API endpoint to use (e.g., 'getIncomeStatement', 'getBalanceSheet', etc.).`,
         // User-friendly display fields
         displayAction: 'Searching financial metrics',
-        displayResult: `Found: ${topFields}`
+        displayResult: topFields ? `Found: ${topFields}` : `Found: ${displayCount}`
       }
     } catch (error) {
       console.error('Error searching financial fields:', error)

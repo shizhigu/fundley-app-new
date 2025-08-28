@@ -1,14 +1,16 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Search, Database, TrendingUp, FileText } from 'lucide-react';
+import { Search, Database, TrendingUp, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 
 export interface ToolStatusProps {
   name: string;
   status: 'pending' | 'running' | 'completed';
   displayAction?: string;
   displayResult?: string;
+  formattedData?: any; // Add this for the complete tool result data
 }
 
 // Map tool names to user-friendly descriptions and icons
@@ -32,12 +34,16 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   // Add more tools as needed
 };
 
-export function ToolStatus({ name, status, displayAction, displayResult }: ToolStatusProps) {
+export function ToolStatus({ name, status, displayAction, displayResult, formattedData }: ToolStatusProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const config = toolConfig[name] || { label: name, icon: Database };
   const Icon = config.icon;
   
   // Use displayAction if provided, otherwise use default label
   const action = displayAction || config.label;
+  
+  // Check if there's data to show when expanded
+  const hasExpandableData = formattedData && status === 'completed';
   
   return (
     <motion.div 
@@ -46,54 +52,99 @@ export function ToolStatus({ name, status, displayAction, displayResult }: ToolS
       exit={{ opacity: 0, scale: 0.95, y: -5 }}
       transition={{ duration: 0.2 }}
       className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-300",
-      "backdrop-blur-sm",
+      "inline-flex flex-col rounded-lg transition-all duration-300 min-w-0",
+      "backdrop-blur-sm border",
       status === 'running' && [
         "bg-blue-50/50 dark:bg-blue-950/20",
-        "border border-blue-200/60 dark:border-blue-800/40",
+        "border-blue-200/60 dark:border-blue-800/40",
         "shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)]",
         "dark:shadow-[0_2px_8px_-2px_rgba(59,130,246,0.1)]",
         "animate-pulse-subtle"
       ],
       status === 'completed' && [
         "bg-gray-50/50 dark:bg-gray-900/20", 
-        "border border-gray-200/40 dark:border-gray-700/30",
-        "opacity-75"
+        "border-gray-200/40 dark:border-gray-700/30",
+        hasExpandableData ? "opacity-100" : "opacity-75"
       ],
       status === 'pending' && [
         "bg-gray-50/30 dark:bg-gray-900/10", 
-        "border border-gray-200/20 dark:border-gray-700/20",
+        "border-gray-200/20 dark:border-gray-700/20",
         "opacity-60"
       ]
     )}>
-      {/* Status Icon - vertically centered */}
-      <div className="flex-shrink-0">
-        {status === 'running' ? (
-          <div className="relative w-2.5 h-2.5">
-            <div className="absolute inset-0 rounded-full bg-blue-400/20 dark:bg-blue-400/10" />
-            <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 dark:border-blue-400 animate-spin" />
+      {/* Main tool status header - clickable entire area */}
+      <div 
+        className={cn(
+          "flex items-center gap-3 px-3 py-2 min-h-[40px] w-full",
+          hasExpandableData && "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+        )}
+        onClick={hasExpandableData ? () => setIsExpanded(!isExpanded) : undefined}
+      >
+        {/* Tool Icon with status color and animation */}
+        <div className="relative flex-shrink-0">
+          <Icon className={cn(
+            "w-5 h-5",
+            status === 'running' && "text-blue-500 dark:text-blue-400",
+            status === 'completed' && "text-green-500 dark:text-green-400", 
+            status === 'pending' && "text-gray-400 dark:text-gray-500"
+          )} />
+          {status === 'running' && (
+            <div className="absolute -inset-1 border-2 border-blue-500/30 rounded-full animate-ping" />
+          )}
+        </div>
+        
+        {/* Status Text */}
+        <div className="flex-1 min-w-0">
+          <span className={cn(
+            "text-xs font-medium block truncate",
+            status === 'running' && "text-blue-600 dark:text-blue-300",
+            status === 'completed' && "text-gray-600 dark:text-gray-300",
+            status === 'pending' && "text-gray-400 dark:text-gray-500"
+          )}>
+            {action}
+          </span>
+          {status === 'completed' && displayResult && (
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 block truncate mt-0.5">
+              {displayResult}
+            </span>
+          )}
+        </div>
+        
+        {/* Expand/Collapse Icon */}
+        {hasExpandableData && (
+          <div className="flex-shrink-0 ml-1">
+            {isExpanded ? (
+              <ChevronUp className="w-3 h-3 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            )}
           </div>
-        ) : status === 'completed' ? (
-          <div className="w-2 h-2 rounded-full bg-green-400/40 dark:bg-green-400/20" />
-        ) : (
-          <div className="w-2 h-2 rounded-full bg-gray-300/40 dark:bg-gray-600/20" />
         )}
       </div>
       
-      {/* Status Text */}
-      <span className={cn(
-        "text-[10px] leading-tight tracking-wide",
-        status === 'running' && "text-blue-600 dark:text-blue-300 font-medium",
-        status === 'completed' && "text-gray-500 dark:text-gray-400",
-        status === 'pending' && "text-gray-400 dark:text-gray-500"
-      )}>
-        {action}
-      </span>
-      {status === 'completed' && displayResult && (
-        <span className="text-[9px] text-gray-400 dark:text-gray-500 ml-1 opacity-80">
-          • {displayResult}
-        </span>
-      )}
+      {/* Expandable Content */}
+      <AnimatePresence>
+        {isExpanded && hasExpandableData && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 border-t border-gray-200/40 dark:border-gray-700/30">
+              <div className="mt-2 max-h-32 overflow-y-auto">
+                <div className="whitespace-pre-wrap bg-gray-50/30 dark:bg-gray-800/30 rounded p-2 text-[8px] leading-tight text-gray-400 dark:text-gray-500 opacity-60 font-mono">
+                  {typeof formattedData === 'string' 
+                    ? formattedData 
+                    : JSON.stringify(formattedData, null, 2)
+                  }
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -104,7 +155,7 @@ export function ToolStatusList({ tools }: { tools: ToolStatusProps[] }) {
   
   return (
     <AnimatePresence mode="popLayout">
-      <div className="inline-flex flex-wrap gap-1.5 my-2">
+      <div className="flex flex-col gap-2 my-3 max-w-md">
         {tools.map((tool, index) => (
           <ToolStatus key={`${tool.name}-${index}`} {...tool} />
         ))}

@@ -1188,21 +1188,38 @@
 /* === PROSE STYLING FOR MARKDOWN === */
 .prose {
     @apply text-foreground;
+    font-size: var(--text-sm);
+    line-height: 1.6;
 }
 
-.prose h1,
-.prose h2,
-.prose h3,
+.prose h1 {
+    @apply text-foreground font-semibold;
+    font-size: var(--text-xl);
+}
+
+.prose h2 {
+    @apply text-foreground font-semibold;
+    font-size: var(--text-lg);
+}
+
+.prose h3 {
+    @apply text-foreground font-semibold;
+    font-size: var(--text-base);
+}
+
 .prose h4 {
     @apply text-foreground font-semibold;
+    font-size: var(--text-sm);
 }
 
 .prose code {
-    @apply text-mono bg-muted px-1.5 py-0.5 rounded text-sm;
+    @apply text-mono bg-muted px-1.5 py-0.5 rounded;
+    font-size: var(--text-xs);
 }
 
 .prose pre {
-    @apply glass-card text-mono text-sm overflow-x-auto;
+    @apply glass-card text-mono overflow-x-auto;
+    font-size: var(--text-xs);
 }
 
 .prose blockquote {
