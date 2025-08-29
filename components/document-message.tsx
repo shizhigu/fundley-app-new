@@ -89,8 +89,9 @@ export const DocumentMessage = memo(function DocumentMessage({
               height: 0,
             }
           });
-          setIsLoading(false);
         }
+        // Always stop loading regardless of data content
+        setIsLoading(false);
       },
       onError: () => {
         setIsLoading(false);
@@ -99,6 +100,8 @@ export const DocumentMessage = memo(function DocumentMessage({
   );
 
   const handleOpen = () => {
+    // Prevent multiple clicks while loading
+    if (isLoading) return;
     setIsLoading(true);
   };
 
@@ -217,8 +220,9 @@ export const DocumentMessageCompact = memo(function DocumentMessageCompact({
               height: 0,
             }
           });
-          setIsLoading(false);
         }
+        // Always stop loading regardless of data content
+        setIsLoading(false);
       },
       onError: () => {
         setIsLoading(false);

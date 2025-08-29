@@ -514,8 +514,119 @@ export const getFinancialData = tool({
 3. **Cost-effective**: Only cache API responses, minimal infrastructure
 4. **Scalable**: Add new endpoints without changing architecture
 
+## Adding New FMP API Endpoints
+
+### Standard Workflow (Developer Guide)
+
+When adding a new FMP endpoint to the system, follow this exact process:
+
+#### Step 1: API Exploration
+```bash
+# Test the endpoint with stable API format
+curl "https://financialmodelingprep.com/stable/{endpoint}?symbol=AAPL&period=annual&limit=1&apikey=YOUR_KEY"
+
+# Extract all field names
+curl "..." | jq '.[0] | keys'
+```
+
+#### Step 2: Create Field Definition File
+Create `/lib/fmp/{endpoint-name}-fields.ts`:
+
+```typescript
+import { FieldMetadata } from './field-metadata'
+
+export const endpointNameFields: FieldMetadata[] = [
+  {
+    field: "revenue",  // API field name
+    name: "Revenue",   // Human readable name
+    description: "Total sales or gross income",
+    category: "income", // Logical grouping
+    aliases: ["sales", "topline", "营收"], // Search terms
+    useCases: ["Growth analysis", "Revenue trends"],
+    dataSource: {
+      endpoint: "/endpoint-name",
+      dataType: "getEndpointName",
+      statement: "Statement Name"
+    },
+    dataFormat: {
+      unit: "USD",           // Currency, percentage, etc.
+      isPercentage: false,   // Whether value is 0-100%
+      isRatio: false        // Whether value is a ratio
+    }
+  },
+  // ... other business fields (NO metadata fields like date, symbol)
+]
+```
+
+#### Step 3: Update Unified Tool
+In `/lib/ai/tools/financial/unified-financial-data.ts`:
+```typescript
+const API_ENDPOINTS = {
+  'getIncomeStatement': '/income-statement',
+  'getNewEndpoint': '/new-endpoint'  // Add new mapping
+} as const
+```
+
+#### Step 4: Update Field Aggregation
+In `/lib/fmp/field-metadata.ts`:
+```typescript
+import { newEndpointFields } from './new-endpoint-fields'
+
+// Convert to unified format
+const NEW_ENDPOINT_FIELDS: FieldMetadata[] = newEndpointFields.map(field => ({
+  ...field,
+  dataSource: {
+    endpoint: '/new-endpoint',
+    dataType: 'getNewEndpoint',
+    statement: 'New Statement'
+  }
+}))
+
+// Add to main array
+export const ALL_FINANCIAL_FIELDS = [
+  ...EXISTING_FIELDS,
+  ...NEW_ENDPOINT_FIELDS  // Add here
+]
+```
+
+#### Step 5: Update Agent Schema
+In `/lib/ai/agents/financial-fields-agent.ts`:
+```typescript
+dataType: z.enum([
+  'getIncomeStatement', 'getBalanceSheet', 'getCashFlow', 
+  'getFinancialRatios', 'getKeyMetrics',
+  'getNewEndpoint'  // Add enum option
+])
+```
+
+### Field Selection Guidelines
+
+**✅ Include in field files:**
+- Business metrics: revenue, netIncome, totalAssets
+- Financial ratios: grossProfitRatio, debtToEquity
+- Performance indicators: eps, roce, cashFlow
+
+**❌ Exclude from field files:**
+- Metadata: date, symbol, reportedCurrency, cik
+- Administrative: filingDate, acceptedDate, period
+- Identifiers: All string values and fields containing "year"
+
+*Metadata is auto-extracted by unified tool processing logic.*
+
+### FMP API Format (2025)
+
+**Correct Stable API Format:**
+```
+https://financialmodelingprep.com/stable/income-statement?symbol=AAPL&period=annual&limit=5&apikey=KEY
+```
+
+**Important Notes:**
+- Use `/stable/` not `/api/v3/` (v3 retiring 2025/2026)
+- Parameters: symbol, period, limit are typically required
+- Always test with actual API key to verify data availability
+
 ### Implementation Path
 
-1. **Phase 1**: Direct API calls with field extraction
-2. **Phase 2**: Add vector search for field discovery
-3. **Phase 3**: Optimize based on actual usage patterns
+1. **Phase 1**: Complete core financial statements (income, balance, cash flow)
+2. **Phase 2**: Add specialized endpoints (ratios, metrics, profile)
+3. **Phase 3**: Monitor usage and optimize based on user queries

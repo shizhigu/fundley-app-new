@@ -40,6 +40,7 @@ function PureMessages({
   } = useMessages({
     chatId,
     status,
+    messages,
   });
 
   useDataStream();
@@ -66,7 +67,7 @@ function PureMessages({
     return (
       <div
         ref={messagesContainerRef}
-        className="professional-messages-container flex flex-col min-w-0 gap-6 h-full overflow-y-auto pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+        className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
         style={{ background: 'transparent !important' }}
       >
         <ChatLoading />
@@ -77,7 +78,7 @@ function PureMessages({
   return (
     <div
       ref={messagesContainerRef}
-      className="professional-messages-container flex flex-col min-w-0 gap-6 h-full overflow-y-auto pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+      className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
       style={{ background: 'transparent !important' }}
     >
       {messages.length === 0 && <Greeting />}

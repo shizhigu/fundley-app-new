@@ -1,12 +1,7 @@
-import React, { memo, useEffect, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
+import React, { memo } from 'react';
 import { Streamdown } from 'streamdown';
-import { StockSymbol } from './stock-symbol';
 
 const NonMemoizedMarkdown = ({ children }: { children: string }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rootsRef = useRef<Map<Element, any>>(new Map());
-  
   // Preprocess content to escape single dollar signs that are not part of math blocks
   const processedContent = React.useMemo(() => {
     // Don't process if no dollar signs
@@ -20,73 +15,45 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
     return children.replace(/(?<!\$)\$(?!\$)(\d)/g, '\\$$1');
   }, [children]);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    const processStockSymbols = () => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      // Find all text nodes that contain [[TICKER:
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-
-      const nodesToProcess: Text[] = [];
-      
-      while (walker.nextNode()) {
-        const textNode = walker.currentNode as Text;
-        const text = textNode.textContent || '';
-        if (text.includes('[[TICKER:')) {
-          nodesToProcess.push(textNode);
-        }
-      }
-
-      // Process each node
-      nodesToProcess.forEach((textNode) => {
-        const text = textNode.textContent || '';
-        const parts = text.split(/(\[\[TICKER:[A-Z]+\]\])/g);
-        
-        if (parts.length > 1) {
-          const fragment = document.createDocumentFragment();
-          
-          parts.forEach((part) => {
-            const tickerMatch = part.match(/\[\[TICKER:([A-Z]+)\]\]/);
-            if (tickerMatch) {
-              const span = document.createElement('span');
-              span.style.display = 'inline';
-              fragment.appendChild(span);
-              
-              const root = createRoot(span);
-              root.render(<StockSymbol symbol={tickerMatch[1]} />);
-              rootsRef.current.set(span, root);
-            } else if (part) {
-              fragment.appendChild(document.createTextNode(part));
-            }
-          });
-          
-          textNode.parentNode?.replaceChild(fragment, textNode);
-        }
-      });
-    };
-
-    // Wait a bit for Streamdown to render
-    const timer = setTimeout(processStockSymbols, 50);
-
-    return () => {
-      clearTimeout(timer);
-      rootsRef.current.forEach((root) => {
-        root.unmount();
-      });
-      rootsRef.current.clear();
-    };
-  }, [children]);
-
   return (
-    <div ref={containerRef}>
-      <Streamdown>{processedContent}</Streamdown>
+    <div className="prose prose-sm max-w-none dark:prose-invert">
+      <Streamdown 
+        parseIncompleteMarkdown={true}
+        className="streamdown-content"
+        shikiTheme="github-dark"
+        components={{
+          code: ({ children, className, ...props }) => {
+            const isInlineCode = !className;
+            if (isInlineCode) {
+              return (
+                <code 
+                  className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm font-mono border-0"
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
+            // For code blocks, just return the code element without extra styling
+            return <code {...props}>{children}</code>;
+          },
+          pre: ({ children, ...props }) => (
+            <pre 
+              className="!bg-gray-900 !text-gray-100 !p-4 !rounded-lg !border-0 !shadow-none overflow-x-auto font-mono text-sm leading-relaxed"
+              style={{
+                background: '#1a1a1a !important',
+                border: 'none !important',
+                boxShadow: 'none !important'
+              }}
+              {...props}
+            >
+              {children}
+            </pre>
+          )
+        }}
+      >
+        {processedContent}
+      </Streamdown>
     </div>
   );
 };

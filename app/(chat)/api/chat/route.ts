@@ -22,10 +22,8 @@ import { generateTitleFromUserMessage } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { createVisualization } from '@/lib/ai/tools/create-visualization';
-import { searchFinancialFields } from '@/lib/ai/tools/financial/search-fields';
-import { getIncomeStatement } from '@/lib/ai/tools/financial/income-statement';
-import { getFinancialRatios } from '@/lib/ai/tools/financial/financial-ratios';
-import { getKeyMetrics } from '@/lib/ai/tools/financial/key-metrics';
+import { financialFieldsAgent } from '@/lib/ai/agents/financial-fields-agent';
+import { getFinancialData } from '@/lib/ai/tools/financial/unified-financial-data';
 import { isProductionEnvironment } from '@/lib/constants';
 import { getLanguageModel, } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -171,20 +169,16 @@ export async function POST(request: Request) {
             'createDocument',
             'updateDocument', 
             'createVisualization',
-            'searchFinancialFields',
-            'getIncomeStatement',
-            'getFinancialRatios', 
-            'getKeyMetrics',
+            'financialFieldsAgent',
+            'getFinancialData',
           ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
             createDocument: createDocument({ session, dataStream }),
             updateDocument: updateDocument({ session, dataStream }),
             createVisualization: createVisualization({ session, dataStream }),
-            searchFinancialFields,
-            getIncomeStatement,
-            getFinancialRatios,
-            getKeyMetrics,
+            financialFieldsAgent,
+            getFinancialData,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

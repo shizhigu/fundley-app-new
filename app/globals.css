@@ -988,7 +988,7 @@
             0 1px 2px rgba(0, 0, 0, 0.06),
             inset 0 1px 0 rgba(255, 255, 255, 0.1),
             inset 0 -1px 0 rgba(0, 0, 0, 0.2);
-        color: rgba(255, 255, 255, 0.95);
+        color: rgba(255, 255, 255, 0.98) !important;
 
         /* Metallic sheen effect */
         background-size: 200% 200%;
@@ -1025,7 +1025,7 @@
             0 1px 3px rgba(0, 0, 0, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.05),
             inset 0 -1px 0 rgba(0, 0, 0, 0.3);
-        color: rgba(255, 255, 255, 0.9);
+        color: rgba(255, 255, 255, 0.98) !important;
     }
 
     /* Subtle metallic animation */
@@ -1044,6 +1044,7 @@
     /* Text inside user message */
     .user-message-gunmetal p,
     .user-message-gunmetal span {
+        color: rgba(255, 255, 255, 0.98) !important;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
@@ -1188,38 +1189,38 @@
 /* === PROSE STYLING FOR MARKDOWN === */
 .prose {
     @apply text-foreground;
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);  /* Reduced from text-sm to text-xs */
     line-height: 1.6;
 }
 
 .prose h1 {
     @apply text-foreground font-semibold;
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);  /* Reduced from text-xl to text-lg */
 }
 
 .prose h2 {
     @apply text-foreground font-semibold;
-    font-size: var(--text-lg);
+    font-size: var(--text-base);  /* Reduced from text-lg to text-base */
 }
 
 .prose h3 {
     @apply text-foreground font-semibold;
-    font-size: var(--text-base);
+    font-size: var(--text-sm);  /* Reduced from text-base to text-sm */
 }
 
 .prose h4 {
     @apply text-foreground font-semibold;
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);  /* Reduced from text-sm to text-xs */
 }
 
 .prose code {
     @apply text-mono bg-muted px-1.5 py-0.5 rounded;
-    font-size: var(--text-xs);
+    font-size: 0.6rem;  /* Reduced from text-xs to even smaller */
 }
 
 .prose pre {
     @apply glass-card text-mono overflow-x-auto;
-    font-size: var(--text-xs);
+    font-size: 0.6rem;  /* Reduced from text-xs to even smaller */
 }
 
 .prose blockquote {
@@ -1275,6 +1276,52 @@
 
 .cm-activeLine {
     background: hsl(var(--muted) / 0.5) !important;
+}
+
+/* === SIMPLE RESPONSIVE LAYOUT === */
+
+/* Messages container basic constraints */
+.professional-messages-container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Basic responsive code blocks */
+.professional-messages-container pre,
+.professional-messages-container code {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-sizing: border-box;
+}
+
+/* === STREAMDOWN CODE STYLING === */
+.streamdown-content pre {
+    background: #1a1a1a !important;
+    color: #e5e5e5 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 16px !important;
+    border-radius: 8px !important;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+
+.streamdown-content pre code {
+    background: transparent !important;
+    color: inherit !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+}
+
+.streamdown-content code:not(pre code) {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 13px !important;
 }
 
 /* === SKELETON LOADING === */

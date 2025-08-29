@@ -1,7 +1,7 @@
 'use client';
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
@@ -22,6 +22,10 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { ToolStatus } from './tool-status';
+import { hasMetadata } from '@/lib/message-metadata';
+import { TickerButtonGroup } from './ticker-button';
+import { SuggestionButtonGroup } from './suggestion-button';
+// Removed direct import - now using API route
 
 // Type narrowing is handled by TypeScript's control flow analysis
 // The AI SDK provides proper discriminated unions for tool calls
@@ -46,12 +50,62 @@ const PurePreviewMessage = ({
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [extractedMetadata, setExtractedMetadata] = useState<{ tickers?: string[], suggestions?: string[] } | null>(null);
+  const [processedMessageId, setProcessedMessageId] = useState<string | null>(null);
 
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === 'file',
   );
 
   useDataStream();
+
+  // Extract metadata when message is complete and it's an assistant message
+  useEffect(() => {
+    if (!isLoading && 
+        message.role === 'assistant' && 
+        message.id &&
+        processedMessageId !== message.id) {
+      
+      // Try both content.parts and direct parts structure
+      let allText = '';
+      
+      if ((message as any).content?.parts) {
+        allText = (message as any).content.parts
+          ?.filter((part: any) => part.type === 'text')
+          ?.map((part: any) => part.text)
+          ?.join('') || '';
+      } else if (message.parts) {
+        allText = message.parts
+          ?.filter((part: any) => part.type === 'text')
+          ?.map((part: any) => part.text)
+          ?.join('') || '';
+      }
+      
+      if (allText.trim()) {
+        setProcessedMessageId(message.id);
+        
+        // Extract metadata - completely independent from chat status
+        fetch('/api/metadata', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messageContent: allText }),
+        })
+        .then(response => response.json())
+        .then(result => {
+          if (result.success && result.metadata) {
+            if (result.metadata.tickers?.length > 0 || result.metadata.suggestions?.length > 0) {
+              setExtractedMetadata(result.metadata);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Metadata API error:', error);
+        });
+      }
+    }
+  }, [isLoading, message.id, message.role, (message as any).content, message.parts, processedMessageId]);
 
   return (
     <AnimatePresence>
@@ -118,6 +172,9 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // No metadata parsing - show clean text content
+                  const parsedMessage = { content: sanitizeText(part.text), metadata: {} };
+                  
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -144,7 +201,66 @@ const PurePreviewMessage = ({
                           'user-message-gunmetal': message.role === 'user',
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        <Markdown>{parsedMessage.content}</Markdown>
+                        
+                        {/* Render metadata components if available */}
+                        {hasMetadata(parsedMessage.metadata) && (
+                          <div className="flex flex-col gap-3 mt-2">
+                            {/* Ticker buttons */}
+                            {parsedMessage.metadata.tickers && (
+                              <TickerButtonGroup 
+                                tickers={parsedMessage.metadata.tickers}
+                                className="not-prose"
+                              />
+                            )}
+                            
+                            {/* Suggestion buttons */}
+                            {parsedMessage.metadata.suggestions && (
+                              <SuggestionButtonGroup 
+                                suggestions={parsedMessage.metadata.suggestions}
+                                onSuggestionClick={(suggestion) => {
+                                  // Find the textarea input element by multiple possible selectors
+                                  const selectors = [
+                                    'textarea[data-testid="multimodal-input"]',
+                                    'textarea[name="message"]',
+                                    'textarea[placeholder*="market"]',
+                                    'textarea[placeholder*="Ask"]',
+                                    '.professional-input',
+                                    'form textarea'
+                                  ];
+                                  
+                                  let input: HTMLTextAreaElement | null = null;
+                                  for (const selector of selectors) {
+                                    input = document.querySelector(selector) as HTMLTextAreaElement;
+                                    if (input) break;
+                                  }
+                                  
+                                  if (input) {
+                                    // Set the value and trigger React's change event
+                                    const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+                                    nativeTextAreaValueSetter?.call(input, suggestion);
+                                    
+                                    // Trigger input and change events for React
+                                    const inputEvent = new Event('input', { bubbles: true });
+                                    input.dispatchEvent(inputEvent);
+                                    
+                                    const changeEvent = new Event('change', { bubbles: true });
+                                    input.dispatchEvent(changeEvent);
+                                    
+                                    // Focus the input
+                                    input.focus();
+                                    
+                                    // Move cursor to end
+                                    input.selectionStart = input.selectionEnd = suggestion.length;
+                                  } else {
+                                    console.warn('Could not find textarea input element');
+                                  }
+                                }}
+                                className="not-prose"
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -402,26 +518,28 @@ const PurePreviewMessage = ({
               }
               
               // Handle financial tools
-              if ((type as any) === 'tool-searchFinancialFields' || 
+              if ((type as any) === 'tool-financialFieldsAgent' || 
                   (type as any) === 'tool-getIncomeStatement' ||
                   (type as any) === 'tool-findIncomeStatementFields' ||
                   (type as any) === 'tool-getKeyMetrics' ||
                   (type as any) === 'tool-findKeyMetricsFields' ||
                   (type as any) === 'tool-getFinancialRatios' ||
+                  (type as any) === 'tool-getFinancialData' ||
                   (type as any) === 'tool-findFinancialRatioFields') {
                 const { toolCallId, state } = part as any;
                 const toolName = (type as string).replace('tool-', '');
                 
                 if (state === 'input-available') {
                   const { input } = part as any;
+                  
                   // Generate displayAction based on tool and input
                   let displayAction = 'Processing request';
                   
-                  if ((type as any) === 'tool-searchFinancialFields' || 
+                  if ((type as any) === 'tool-financialFieldsAgent' || 
                       (type as any) === 'tool-findIncomeStatementFields' ||
                       (type as any) === 'tool-findKeyMetricsFields' ||
                       (type as any) === 'tool-findFinancialRatioFields') {
-                    displayAction = `Searching for "${input?.query || 'financial fields'}"`;
+                    displayAction = `Analyzing "${input?.query || 'financial query'}"`;
                   } else if ((type as any) === 'tool-getIncomeStatement') {
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
                     if (symbols.length > 0) {
@@ -443,6 +561,16 @@ const PurePreviewMessage = ({
                     } else {
                       displayAction = 'Fetching financial ratios';
                     }
+                  } else if ((type as any) === 'tool-getFinancialData') {
+                    const symbols = input?.symbols || [];
+                    const dataType = input?.dataType || 'financial data';
+                    if (symbols.length > 0) {
+                      // Better formatting for data type labels
+                      const typeLabel = dataType.replace('get', '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+                      displayAction = `Fetching ${symbols.join(', ')} ${typeLabel}`;
+                    } else {
+                      displayAction = 'Fetching financial data';
+                    }
                   }
                   
                   return (
@@ -461,11 +589,11 @@ const PurePreviewMessage = ({
                   
                   // Generate past tense displayAction for completed state
                   let completedAction = 'Completed';
-                  if ((type as any) === 'tool-searchFinancialFields' || 
+                  if ((type as any) === 'tool-financialFieldsAgent' || 
                       (type as any) === 'tool-findIncomeStatementFields' ||
                       (type as any) === 'tool-findKeyMetricsFields' ||
                       (type as any) === 'tool-findFinancialRatioFields') {
-                    completedAction = 'Searched financial metrics';
+                    completedAction = 'Analyzed financial fields';
                   } else if ((type as any) === 'tool-getIncomeStatement') {
                     const input = (part as any).input;
                     const symbols = input?.symbols || (input?.symbol ? [input.symbol] : []);
@@ -489,6 +617,17 @@ const PurePreviewMessage = ({
                       completedAction = `Fetched ${symbols.join(', ')} financial ratios`;
                     } else {
                       completedAction = 'Fetched financial ratios';
+                    }
+                  } else if ((type as any) === 'tool-getFinancialData') {
+                    const input = (part as any).input;
+                    const symbols = input?.symbols || [];
+                    const dataType = input?.dataType || 'financial data';
+                    if (symbols.length > 0) {
+                      // Better formatting for data type labels
+                      const typeLabel = dataType.replace('get', '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+                      completedAction = `Fetched ${symbols.join(', ')} ${typeLabel}`;
+                    } else {
+                      completedAction = 'Fetched financial data';
                     }
                   }
                   
@@ -515,12 +654,48 @@ const PurePreviewMessage = ({
                         status="completed"
                         displayAction={completedAction}
                         displayResult={output?.displayResult || 'Success'}
+                        formattedData={output?.formattedData}
                       />
                     </div>
                   );
                 }
               }
             })}
+
+            {/* Render extracted metadata at the end */}
+            {extractedMetadata && ((extractedMetadata as any).tickers || (extractedMetadata as any).suggestions) && (
+              <div className="flex flex-col gap-3 mt-4">
+                {/* Ticker buttons */}
+                {(extractedMetadata as any).tickers && (
+                  <TickerButtonGroup 
+                    tickers={(extractedMetadata as any).tickers}
+                    className="not-prose"
+                  />
+                )}
+                
+                {/* Suggestion buttons */}
+                {(extractedMetadata as any).suggestions && (
+                  <SuggestionButtonGroup 
+                    suggestions={(extractedMetadata as any).suggestions}
+                    onSuggestionClick={(suggestion) => {
+                      const input = document.querySelector('textarea[data-testid="multimodal-input"]') as HTMLTextAreaElement;
+                      if (input) {
+                        // React hack: 直接更新React的内部值
+                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+                        nativeInputValueSetter?.call(input, suggestion);
+                        
+                        // 触发input事件让React知道变化
+                        const inputEvent = new Event('input', { bubbles: true });
+                        input.dispatchEvent(inputEvent);
+                        
+                        input.focus();
+                      }
+                    }}
+                    className="not-prose"
+                  />
+                )}
+              </div>
+            )}
 
             {!isReadonly && (
               <MessageActions

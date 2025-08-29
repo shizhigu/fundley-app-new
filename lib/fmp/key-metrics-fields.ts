@@ -1,4 +1,4 @@
-export interface FieldMetadata {
+export interface KeyMetricField {
   field: string;
   displayName: string;
   description: string;
@@ -10,7 +10,7 @@ export interface FieldMetadata {
   isPercentage?: boolean;
 }
 
-export const keyMetricsFields: FieldMetadata[] = [
+export const keyMetricsFields: KeyMetricField[] = [
   // Valuation Metrics
   {
     field: 'marketCap',

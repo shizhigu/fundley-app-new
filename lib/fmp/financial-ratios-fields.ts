@@ -1,4 +1,4 @@
-export interface FieldMetadata {
+export interface FinancialRatioField {
   field: string;
   displayName: string;
   description: string;
@@ -10,7 +10,7 @@ export interface FieldMetadata {
   isPercentage?: boolean;
 }
 
-export const financialRatiosFields: FieldMetadata[] = [
+export const financialRatiosFields: FinancialRatioField[] = [
   // Profitability Ratios
   {
     field: 'grossProfitMargin',

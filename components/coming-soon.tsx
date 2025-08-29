@@ -71,7 +71,7 @@ export function ComingSoon({ feature }: ComingSoonProps) {
           <div className="grid grid-cols-1 gap-2">
             {features.map((feature, index) => (
               <div key={index} className="flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full" />
                 <span className="text-xs text-gray-700 dark:text-gray-300">{feature}</span>
               </div>
             ))}

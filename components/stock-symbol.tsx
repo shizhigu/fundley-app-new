@@ -8,9 +8,10 @@ import * as Popover from '@radix-ui/react-popover';
 interface StockSymbolProps {
   symbol: string;
   className?: string;
+  onClose?: () => void;
 }
 
-export function StockSymbol({ symbol, className }: StockSymbolProps) {
+export function StockSymbol({ symbol, className, onClose }: StockSymbolProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'fundamentals'>('info');
   const [dateRange, setDateRange] = useState('12M');
@@ -21,7 +22,12 @@ export function StockSymbol({ symbol, className }: StockSymbolProps) {
   const cleanSymbol = symbol.trim().toUpperCase();
 
   return (
-    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+    <Popover.Root open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open && onClose) {
+        onClose();
+      }
+    }}>
       <Popover.Trigger asChild>
         <button
           ref={triggerRef}

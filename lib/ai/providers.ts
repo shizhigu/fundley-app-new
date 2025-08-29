@@ -27,3 +27,7 @@ export function getLanguageModel(modelId: ModelId) {
 // Special purpose models
 export const titleModel = openrouter('google/gemini-2.5-flash-lite'); // Lightweight for titles
 export const artifactModel = openrouter('google/gemini-2.5-pro'); // Full model for artifacts
+
+// Sub-agent models - optimized for specific tasks
+export const financialFieldsModel = openrouter('google/gemini-2.5-flash'); // Fast and cost-effective for field matching
+export const subAgentModel = openrouter('google/gemini-2.5-flash'); // General purpose sub-agent model

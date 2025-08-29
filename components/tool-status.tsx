@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Search, Database, TrendingUp, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Database, TrendingUp, FileText, ChevronDown, } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
@@ -15,12 +15,17 @@ export interface ToolStatusProps {
 
 // Map tool names to user-friendly descriptions and icons
 const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
-  searchFinancialFields: { 
-    label: 'Searching financial metrics', 
+  financialFieldsAgent: { 
+    label: 'Analyzing financial fields', 
     icon: Search 
   },
+  getFinancialData: { 
+    label: 'Retrieving financial data', 
+    icon: TrendingUp 
+  },
+  // Legacy tools (for backwards compatibility)
   getIncomeStatement: { 
-    label: 'Retrieving financial statements', 
+    label: 'Retrieving income statement', 
     icon: FileText 
   },
   getBalanceSheet: { 
@@ -31,7 +36,14 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
     label: 'Analyzing cash flow', 
     icon: TrendingUp 
   },
-  // Add more tools as needed
+  getFinancialRatios: { 
+    label: 'Computing financial ratios', 
+    icon: Database 
+  },
+  getKeyMetrics: { 
+    label: 'Fetching key metrics', 
+    icon: TrendingUp 
+  },
 };
 
 export function ToolStatus({ name, status, displayAction, displayResult, formattedData }: ToolStatusProps) {
@@ -43,7 +55,9 @@ export function ToolStatus({ name, status, displayAction, displayResult, formatt
   const action = displayAction || config.label;
   
   // Check if there's data to show when expanded
-  const hasExpandableData = formattedData && status === 'completed';
+  const hasExpandableData = formattedData && status === 'completed' && 
+    typeof formattedData === 'string' && formattedData.trim().length > 0;
+  
   
   return (
     <motion.div 
@@ -54,6 +68,8 @@ export function ToolStatus({ name, status, displayAction, displayResult, formatt
       className={cn(
       "inline-flex flex-col rounded-lg transition-all duration-300 min-w-0",
       "backdrop-blur-sm border",
+      // Add cursor-pointer and hover states for expandable items
+      hasExpandableData && "cursor-pointer hover:shadow-md",
       status === 'running' && [
         "bg-blue-50/50 dark:bg-blue-950/20",
         "border-blue-200/60 dark:border-blue-800/40",
@@ -64,22 +80,17 @@ export function ToolStatus({ name, status, displayAction, displayResult, formatt
       status === 'completed' && [
         "bg-gray-50/50 dark:bg-gray-900/20", 
         "border-gray-200/40 dark:border-gray-700/30",
-        hasExpandableData ? "opacity-100" : "opacity-75"
+        hasExpandableData ? "opacity-100 hover:bg-gray-100/50 dark:hover:bg-gray-800/30" : "opacity-75"
       ],
       status === 'pending' && [
         "bg-gray-50/30 dark:bg-gray-900/10", 
         "border-gray-200/20 dark:border-gray-700/20",
         "opacity-60"
       ]
-    )}>
-      {/* Main tool status header - clickable entire area */}
-      <div 
-        className={cn(
-          "flex items-center gap-3 px-3 py-2 min-h-[40px] w-full",
-          hasExpandableData && "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
-        )}
-        onClick={hasExpandableData ? () => setIsExpanded(!isExpanded) : undefined}
-      >
+    )}
+    onClick={hasExpandableData ? () => setIsExpanded(!isExpanded) : undefined}>
+      {/* Main tool status header */}
+      <div className="flex items-center gap-3 px-3 py-2 min-h-[40px] w-full">
         {/* Tool Icon with status color and animation */}
         <div className="relative flex-shrink-0">
           <Icon className={cn(
@@ -112,12 +123,11 @@ export function ToolStatus({ name, status, displayAction, displayResult, formatt
         
         {/* Expand/Collapse Icon */}
         {hasExpandableData && (
-          <div className="flex-shrink-0 ml-1">
-            {isExpanded ? (
-              <ChevronUp className="w-3 h-3 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-3 h-3 text-gray-400" />
-            )}
+          <div className="flex-shrink-0 ml-1 transition-transform duration-200">
+            <ChevronDown className={cn(
+              "w-4 h-4 text-gray-400 transition-transform duration-200", 
+              isExpanded && "rotate-180"
+            )} />
           </div>
         )}
       </div>
@@ -133,8 +143,8 @@ export function ToolStatus({ name, status, displayAction, displayResult, formatt
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 border-t border-gray-200/40 dark:border-gray-700/30">
-              <div className="mt-2 max-h-32 overflow-y-auto">
-                <div className="whitespace-pre-wrap bg-gray-50/30 dark:bg-gray-800/30 rounded p-2 text-[8px] leading-tight text-gray-400 dark:text-gray-500 opacity-60 font-mono">
+              <div className="mt-2 max-h-40 overflow-y-auto">
+                <div className="whitespace-pre-wrap bg-gray-50/40 dark:bg-gray-800/40 rounded p-3 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400 opacity-75 font-mono font-medium italic">
                   {typeof formattedData === 'string' 
                     ? formattedData 
                     : JSON.stringify(formattedData, null, 2)

@@ -19,9 +19,9 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <DataStreamProvider>
-        <div className="professional-layout flex">
+        <div className="professional-layout flex max-w-full">
           <NavigationSidebar user={session?.user} />
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden max-w-full min-w-0">
             {children}
           </div>
         </div>

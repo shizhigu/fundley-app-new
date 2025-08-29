@@ -93,54 +93,34 @@ export class FMPClient {
     return data
   }
 
-  // Specific method for income statement
+  // Generic method for all financial data endpoints
+  async getFinancialData(endpoint: string, symbol: string, period?: string, limit?: number) {
+    const params: Record<string, any> = { symbol }
+    if (period) params.period = period
+    if (limit) params.limit = limit
+    
+    return this.get(endpoint, params)
+  }
+
+  // Legacy methods for backward compatibility (simplified)
   async getIncomeStatement(symbol: string, period?: string, limit?: number) {
-    const params: Record<string, any> = { symbol }
-    if (period) params.period = period
-    if (limit) params.limit = limit
-    
-    return this.get('/income-statement', params)
+    return this.getFinancialData('/income-statement', symbol, period, limit)
   }
 
-  // Specific method for balance sheet
   async getBalanceSheet(symbol: string, period?: string, limit?: number) {
-    const params: Record<string, any> = { symbol }
-    if (period) params.period = period
-    if (limit) params.limit = limit
-    
-    return this.get('/balance-sheet', params)
+    return this.getFinancialData('/balance-sheet', symbol, period, limit)
   }
 
-  // Specific method for cash flow
   async getCashFlow(symbol: string, period?: string, limit?: number) {
-    const params: Record<string, any> = { symbol }
-    if (period) params.period = period
-    if (limit) params.limit = limit
-    
-    return this.get('/cash-flow-statement', params)
+    return this.getFinancialData('/cash-flow-statement', symbol, period, limit)
   }
 
-  // Specific method for ratios
-  async getRatios(symbol: string, period?: string, limit?: number) {
-    const params: Record<string, any> = { symbol }
-    if (period) params.period = period
-    if (limit) params.limit = limit
-    
-    return this.get('/ratios', params)
-  }
-
-  // Alias for financial ratios (same as getRatios but with consistent naming)
   async getFinancialRatios(symbol: string, period?: string, limit?: number) {
-    return this.getRatios(symbol, period, limit)
+    return this.getFinancialData('/ratios', symbol, period, limit)
   }
 
-  // Specific method for key metrics
   async getKeyMetrics(symbol: string, period?: string, limit?: number) {
-    const params: Record<string, any> = { symbol }
-    if (period) params.period = period
-    if (limit) params.limit = limit
-    
-    return this.get('/key-metrics', params)
+    return this.getFinancialData('/key-metrics', symbol, period, limit)
   }
 }
 
