@@ -165,13 +165,7 @@ export async function POST(request: Request) {
           system: systemPrompt({ requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: [
-            'createDocument',
-            'updateDocument', 
-            'createVisualization',
-            'financialFieldsAgent',
-            'getFinancialData',
-          ],
+          // 统一使用tools配置，不需要experimental_activeTools
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
             createDocument: createDocument({ session, dataStream }),

@@ -437,6 +437,148 @@ export abstract class FinancialTool {
 
 This approach prevents over-engineering and ensures our infrastructure investments directly address proven needs rather than anticipated ones.
 
+## AI Native Board Architecture (Next-Gen Workspace)
+
+### Overview
+
+Fundley implements a revolutionary **AI Native Board** system that transforms traditional chat-based AI interaction into a persistent, intelligent workspace. Unlike conventional chatbots where conversations are linear and artifacts are isolated, our Board system creates a living workspace where AI components understand and interact with shared data.
+
+### Core Concepts
+
+#### **Board as Intelligent Workspace**
+- **Persistent Context**: Each Board maintains a Master Document containing all relevant data and analysis
+- **Cross-Component Intelligence**: Components can reference and build upon each other's data
+- **User-Centric**: Boards belong to users, not conversations - multiple chats can contribute to the same Board
+
+#### **AI Native Data Management**
+```
+Chat Input → AI Analysis → Master Document Update → Component Re-rendering
+```
+
+**Revolutionary Approach**: Instead of traditional database schemas, we use a text-based Master Document that LLMs can understand and manipulate. Each component extracts its needed data by querying this document through specialized AI models.
+
+### Technical Architecture
+
+#### **Data Flow**
+1. **User Input**: Chat message or component interaction
+2. **AI Intent Recognition**: Main agent decides what components to create/update
+3. **Master Document Update**: Unified document stores all Board data in natural language
+4. **Component Parsing**: Small AI models (Gemini Flash) extract structured data for each component
+5. **Rendering**: Components display AI-parsed data with consistent styling
+
+#### **Database Schema**
+
+```sql
+-- Board represents a persistent workspace
+CREATE TABLE boards (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  user_id TEXT NOT NULL,
+  master_document TEXT NOT NULL, -- The AI-readable data source
+  layout JSONB NOT NULL DEFAULT '{}', -- Component positioning
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Widget represents individual components on a Board
+CREATE TABLE widgets (
+  id TEXT PRIMARY KEY,
+  board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  type TEXT NOT NULL, -- 'metric_card', 'time_series', 'data_table'
+  title TEXT NOT NULL,
+  config JSONB NOT NULL DEFAULT '{}', -- Component-specific configuration
+  position JSONB NOT NULL, -- {x, y, width, height}
+  data JSONB NOT NULL DEFAULT '{}', -- Parsed component data
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### **Component Types**
+
+**1. MetricCard**
+- Single KPI display with trend indication
+- Config: `{metric: string, period: string, comparison?: string}`
+- Data: `{value: string, trend: 'up'|'down'|'stable', change: string, color: string}`
+
+**2. TimeSeriesChart**
+- Multi-line charts for temporal data
+- Config: `{metrics: string[], timeRange: string, chartType: 'line'|'area'}`
+- Data: `{series: [{name: string, data: {date: string, value: number}[]}]}`
+
+**3. DataTable**
+- Flexible tabular data display
+- Config: `{columns: string[], sortable: boolean, filterable: boolean}`
+- Data: `{headers: string[], rows: string[][]}`
+
+### AI Agent Architecture
+
+#### **Main Agent (Chat Interface)**
+- Analyzes user intent and context
+- Decides component creation/updates
+- Calls unified `manageWidgets` tool
+- Updates Master Document
+
+#### **Component Parser Agents (Gemini Flash)**
+Each component type has a specialized parser:
+
+```typescript
+const componentParsers = {
+  metric_card: `Extract single KPI from Master Document. Return formatted value (e.g. "$2.5B"), trend direction, and percentage change.`,
+  time_series: `Extract time-based data series. Return numeric values for charting.`,
+  data_table: `Extract tabular data. Return formatted strings for display.`
+}
+```
+
+### UI Architecture Changes
+
+#### **Layout Transformation**
+```
+Before: Full-width chat with occasional artifacts
+After:  [Chat Panel 30%] | [Board Panel 70%]
+```
+
+#### **Component System**
+- **Shared Widget Shell**: Common container, actions, and styling
+- **Drag & Drop**: Components can be repositioned within Board
+- **Board Selector**: Dropdown to switch between user's Boards
+- **Responsive Design**: Graceful mobile adaptation
+
+### Implementation Strategy
+
+#### **Phase 1: Core Foundation** ✅
+- Database migration for Board + Widget tables
+- Basic Board UI with drag-and-drop grid
+- Three core component types
+- Master Document management system
+
+#### **Phase 2: AI Integration** 
+- Unified widget management tool
+- Gemini Flash component parsers
+- Master Document update logic
+- Component data synchronization
+
+#### **Phase 3: UX Polish**
+- Advanced component interactions
+- Board templates and sharing
+- Performance optimizations
+- Mobile experience
+
+### Key Advantages
+
+1. **Persistent Intelligence**: Unlike ChatGPT artifacts, Boards maintain context across sessions
+2. **Cross-Component Relationships**: Components understand and build upon shared data
+3. **Flexible Data Model**: No rigid schemas - AI adapts to any financial data structure
+4. **Revolutionary UX**: Users work with living, intelligent dashboards rather than static reports
+
+### Development Guidelines
+
+- **Component Consistency**: All widgets share common shell styling and interactions
+- **AI-First Design**: Optimize for LLM understanding rather than database efficiency  
+- **String-Based Data**: Display values as formatted strings ("$2.5B") rather than raw numbers
+- **Extensible Architecture**: Easy to add new component types and AI parsers
+
 ## AI Native Architecture (Simplified)
 
 ### Core Principle

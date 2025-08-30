@@ -162,33 +162,6 @@ export const document = pgTable(
 
 export type Document = InferSelectModel<typeof document>;
 
-/**
- * Suggestion table - Document collaboration feature
- * Preserved for future collaborative features
- */
-export const suggestion = pgTable(
-  'Suggestion',
-  {
-    id: uuid('id').primaryKey().notNull().defaultRandom(),
-    documentId: uuid('documentId')
-      .notNull()
-      .references(() => document.id),
-    originalText: text('originalText').notNull(),
-    suggestedText: text('suggestedText').notNull(),
-    description: text('description'),
-    isResolved: boolean('isResolved').notNull().default(false),
-    userId: uuid('userId')
-      .notNull()
-      .references(() => user.id),
-    createdAt: timestamp('createdAt').notNull().defaultNow(),
-  },
-  (table) => ({
-    documentIdIdx: index('suggestion_document_id_idx').on(table.documentId),
-    userIdIdx: index('suggestion_user_id_idx').on(table.userId),
-  }),
-);
-
-export type Suggestion = InferSelectModel<typeof suggestion>;
 
 /**
  * Stream table - Real-time streaming management
@@ -235,141 +208,16 @@ export const organization = pgTable('Organization', {
 
 export type Organization = InferSelectModel<typeof organization>;
 
-/**
- * Organization Members table
- * For future many-to-many relationships and role management
- * Currently not used (User.organizationId is used instead)
- * Preserved for future expansion
- */
-export const organizationMember = pgTable(
-  'OrganizationMember',
-  {
-    userId: uuid('userId')
-      .notNull()
-      .references(() => user.id),
-    organizationId: uuid('organizationId')
-      .notNull()
-      .references(() => organization.id),
-    role: varchar('role', { length: 50 }).notNull().default('member'),
-    joinedAt: timestamp('joinedAt').notNull().defaultNow(),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.userId, table.organizationId] }),
-    userIdIdx: index('org_member_user_idx').on(table.userId),
-    orgIdIdx: index('org_member_org_idx').on(table.organizationId),
-  }),
-);
-
-export type OrganizationMember = InferSelectModel<typeof organizationMember>;
 
 // ============================================================================
 // FINANCIAL DOMAIN TABLES (Fundley-specific)
 // ============================================================================
+// Tables for portfolio management and financial data storage
+// Currently empty - will be added when needed for investment features
 
-/**
- * Position table - Portfolio positions
- * JSONB for maximum flexibility during MVP
- * Can store stocks, bonds, derivatives, alternatives, etc.
- */
-export const position = pgTable('Position', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  organizationId: uuid('organizationId')
-    .notNull()
-    .references(() => organization.id),
-  /**
-   * Example data structure:
-   * {
-   *   ticker: "AAPL",
-   *   cusip: "037833100",
-   *   shares: 10000,
-   *   cost_basis: 1500000,
-   *   current_value: 1800000,
-   *   portfolio: "Growth Fund",
-   *   asset_class: "Equity",
-   *   custom_fields: {...}
-   * }
-   */
-  data: json('data').notNull(),
-  metadata: json('metadata').notNull().default({}), // Tags, permissions, etc.
-  createdBy: uuid('createdBy')
-    .notNull()
-    .references(() => user.id),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (table) => ({
-  orgIdIdx: index('position_org_id_idx').on(table.organizationId),
-  createdByIdx: index('position_created_by_idx').on(table.createdBy),
-  // GIN index for JSONB queries - add in migration
-}));
 
-export type Position = InferSelectModel<typeof position>;
-
-/**
- * OrgData table - Generic organizational data storage
- * Ultimate flexibility for MVP - can store anything
- * Types: portfolio, report, metric, benchmark, etc.
- */
-export const orgData = pgTable('OrgData', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  organizationId: uuid('organizationId')
-    .notNull()
-    .references(() => organization.id),
-  type: varchar('type', { length: 50 }).notNull(), // Data type identifier
-  /**
-   * Example types and data:
-   * - type: "portfolio" -> { name: "Growth Fund", aum: 100000000, ... }
-   * - type: "report" -> { title: "Monthly Report", content: "...", ... }
-   * - type: "metric" -> { name: "Sharpe Ratio", value: 1.5, ... }
-   */
-  data: json('data').notNull(),
-  metadata: json('metadata').notNull().default({}),
-  createdBy: uuid('createdBy')
-    .notNull()
-    .references(() => user.id),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (table) => ({
-  orgTypeIdx: index('org_data_org_type_idx').on(table.organizationId, table.type),
-  createdByIdx: index('org_data_created_by_idx').on(table.createdBy),
-  // GIN index for JSONB queries - add in migration
-}));
-
-export type OrgData = InferSelectModel<typeof orgData>;
 
 // ============================================================================
-// DEPRECATED TABLES (Keep for reference, will be removed)
+// REMOVED FEATURES 
 // ============================================================================
-
-// Message v1 - deprecated
-export const messageDeprecated = pgTable('Message', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  chatId: uuid('chatId')
-    .notNull()
-    .references(() => chat.id),
-  role: varchar('role').notNull(),
-  content: json('content').notNull(),
-  createdAt: timestamp('createdAt').notNull(),
-});
-
-export type MessageDeprecated = InferSelectModel<typeof messageDeprecated>;
-
-// Vote v1 - deprecated
-export const voteDeprecated = pgTable(
-  'Vote',
-  {
-    chatId: uuid('chatId')
-      .notNull()
-      .references(() => chat.id),
-    messageId: uuid('messageId')
-      .notNull()
-      .references(() => messageDeprecated.id),
-    isUpvoted: boolean('isUpvoted').notNull(),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  },
-);
-
-export type VoteDeprecated = InferSelectModel<typeof voteDeprecated>;
+// Board system has been removed to focus on core investment research functionality
