@@ -2,9 +2,9 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const create = mutation({
-  args: { 
-    title: v.string(),
-    visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
+  args: {
+    chatId: v.id("chats"),
+    data: v.any(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -13,31 +13,41 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Verify user has access to this chat
+    const chat = await ctx.db.get(args.chatId);
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user) {
-      throw new Error("User not found");
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+      throw new Error("Unauthorized");
     }
 
-    return await ctx.db.insert("chats", {
-      title: args.title,
-      userId: user._id,
-      visibility: args.visibility || "private",
+    return await ctx.db.insert("streams", {
+      chatId: args.chatId,
+      data: args.data,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
     });
   },
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { chatId: v.id("chats") },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
+      return [];
+    }
+
+    // Verify user has access to this chat
+    const chat = await ctx.db.get(args.chatId);
+    if (!chat) {
       return [];
     }
 
@@ -46,20 +56,20 @@ export const list = query({
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       return [];
     }
 
     return await ctx.db
-      .query("chats")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .order("desc")
+      .query("streams")
+      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .order("asc")
       .collect();
   },
 });
 
 export const get = query({
-  args: { id: v.id("chats") },
+  args: { id: v.id("streams") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
 
@@ -67,7 +77,13 @@ export const get = query({
       return null;
     }
 
-    const chat = await ctx.db.get(args.id);
+    const stream = await ctx.db.get(args.id);
+    if (!stream) {
+      return null;
+    }
+
+    // Verify user has access to the chat this stream belongs to
+    const chat = await ctx.db.get(stream.chatId);
     if (!chat) {
       return null;
     }
@@ -77,25 +93,16 @@ export const get = query({
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       return null;
     }
 
-    // Check if user owns this chat or if it's public
-    if (chat.userId !== user._id && chat.visibility !== "public") {
-      return null;
-    }
-
-    return chat;
+    return stream;
   },
 });
 
-export const update = mutation({
-  args: {
-    id: v.id("chats"),
-    title: v.optional(v.string()),
-    visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
-  },
+export const removeForChat = mutation({
+  args: { chatId: v.id("chats") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
 
@@ -103,7 +110,8 @@ export const update = mutation({
       throw new Error("Not authenticated");
     }
 
-    const chat = await ctx.db.get(args.id);
+    // Verify user owns this chat
+    const chat = await ctx.db.get(args.chatId);
     if (!chat) {
       throw new Error("Chat not found");
     }
@@ -117,16 +125,22 @@ export const update = mutation({
       throw new Error("Unauthorized");
     }
 
-    const updates: any = { updatedAt: Date.now() };
-    if (args.title !== undefined) updates.title = args.title;
-    if (args.visibility !== undefined) updates.visibility = args.visibility;
+    // Delete all streams for this chat
+    const streams = await ctx.db
+      .query("streams")
+      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .collect();
 
-    await ctx.db.patch(args.id, updates);
+    for (const stream of streams) {
+      await ctx.db.delete(stream._id);
+    }
+
+    return streams.length;
   },
 });
 
 export const remove = mutation({
-  args: { id: v.id("chats") },
+  args: { id: v.id("streams") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
 
@@ -134,7 +148,13 @@ export const remove = mutation({
       throw new Error("Not authenticated");
     }
 
-    const chat = await ctx.db.get(args.id);
+    const stream = await ctx.db.get(args.id);
+    if (!stream) {
+      throw new Error("Stream not found");
+    }
+
+    // Verify user owns the chat this stream belongs to
+    const chat = await ctx.db.get(stream.chatId);
     if (!chat) {
       throw new Error("Chat not found");
     }
@@ -148,27 +168,6 @@ export const remove = mutation({
       throw new Error("Unauthorized");
     }
 
-    // Delete all messages in this chat
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.id))
-      .collect();
-
-    for (const message of messages) {
-      await ctx.db.delete(message._id);
-    }
-
-    // Delete all votes for this chat
-    const votes = await ctx.db
-      .query("votes")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.id))
-      .collect();
-
-    for (const vote of votes) {
-      await ctx.db.delete(vote._id);
-    }
-
-    // Delete the chat
     await ctx.db.delete(args.id);
   },
 });

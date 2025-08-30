@@ -24,8 +24,8 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 ### Core Stack
 - **Framework**: Next.js 15 with App Router, React Server Components, and Server Actions
 - **AI Integration**: Vercel AI SDK with xAI (grok models) as default provider
-- **Database**: PostgreSQL via Drizzle ORM (Neon serverless for production)
-- **Authentication**: NextAuth.js with credentials provider and guest user support
+- **Database**: Convex with TypeScript-native queries and real-time subscriptions
+- **Authentication**: Clerk with Convex integration for user management
 - **UI Components**: shadcn/ui with Radix UI primitives and Tailwind CSS
 - **File Storage**: Vercel Blob for attachments
 
@@ -48,12 +48,20 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 - `/ai` - AI configuration
   - `providers.ts` - Model provider configuration (xAI/test models)
   - `tools/` - AI tool implementations (create/update documents, weather, suggestions)
-- `/db` - Database layer
-  - `schema.ts` - Drizzle schema definitions
-  - `queries.ts` - Database query functions
-  - `migrations/` - SQL migration files
 - `/artifacts` - Document artifact handlers (code, text, image, sheet)
 - `/editor` - ProseMirror and CodeMirror configurations
+
+#### `/convex` - Convex Backend Functions
+- `schema.ts` - Database schema definitions with indexes
+- `users.ts` - User management with Clerk integration
+- `chats.ts` - Chat CRUD operations
+- `messages.ts` - Message management
+- `documents.ts` - Document operations
+- `organizations.ts` - Organization management  
+- `streams.ts` - Data streaming
+- `votes.ts` - Voting system
+- `visualizationCache.ts` - Visualization caching
+- `auth.config.ts` - Clerk authentication configuration
 
 #### `/artifacts` - Artifact System
 Each artifact type (code, text, image, sheet) has:
@@ -436,6 +444,181 @@ export abstract class FinancialTool {
 4. Iterate based on performance metrics and user feedback
 
 This approach prevents over-engineering and ensures our infrastructure investments directly address proven needs rather than anticipated ones.
+
+## Convex Database Schema
+
+### Core Tables (8 Tables)
+
+#### Users Table
+```typescript
+users: defineTable({
+  email: v.string(),
+  clerkUserId: v.string(),
+  clerkOrganizationId: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_clerk_user_id", ["clerkUserId"])
+  .index("by_email", ["email"])
+```
+**Purpose**: User management with Clerk authentication integration
+**Key Features**: 
+- Clerk user ID mapping for authentication
+- Optional organization support
+- Timestamp tracking
+
+#### Chats Table  
+```typescript
+chats: defineTable({
+  title: v.string(),
+  userId: v.id("users"),
+  visibility: v.union(v.literal("private"), v.literal("public")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_user_id", ["userId"])
+  .index("by_created_at", ["createdAt"])
+```
+**Purpose**: Chat session management
+**Key Features**:
+- User ownership with foreign key
+- Public/private visibility control
+- Chronological indexing
+
+#### Messages Table
+```typescript
+messages: defineTable({
+  chatId: v.id("chats"),
+  role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+  parts: v.any(), // Multimodal content parts
+  attachments: v.array(v.any()),
+  createdAt: v.number(),
+}).index("by_chat_id", ["chatId"])
+  .index("by_created_at", ["createdAt"])
+```
+**Purpose**: Store conversation messages with multimodal support
+**Key Features**:
+- Chat association with foreign key
+- Role-based message types (user/assistant/system)
+- Flexible parts structure for multimodal content
+- Attachment support
+
+#### Documents Table
+```typescript
+documents: defineTable({
+  title: v.string(),
+  kind: v.union(v.literal("text"), v.literal("code")),
+  content: v.optional(v.string()),
+  userId: v.id("users"),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_user_id", ["userId"])
+  .index("by_kind", ["kind"])
+```
+**Purpose**: Document artifact management
+**Key Features**:
+- Document type classification (text/code)
+- User ownership
+- Content storage with optional field
+
+#### Organizations Table
+```typescript
+organizations: defineTable({
+  name: v.string(),
+  slug: v.string(),
+  clerkOrganizationId: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_clerk_org_id", ["clerkOrganizationId"])
+  .index("by_slug", ["slug"])
+```
+**Purpose**: Organization management
+**Key Features**:
+- Unique slug for URL routing
+- Clerk organization integration
+- Name and slug indexing
+
+#### Streams Table
+```typescript
+streams: defineTable({
+  chatId: v.id("chats"),
+  data: v.any(), // Flexible streaming data
+  createdAt: v.number(),
+}).index("by_chat_id", ["chatId"])
+```
+**Purpose**: Real-time data streaming for chat sessions
+**Key Features**:
+- Chat association
+- Flexible data structure
+- Timestamp indexing
+
+#### Votes Table
+```typescript
+votes: defineTable({
+  messageId: v.id("messages"),
+  chatId: v.id("chats"),
+  isUpvote: v.boolean(),
+  createdAt: v.number(),
+}).index("by_message_id", ["messageId"])
+  .index("by_chat_id", ["chatId"])
+```
+**Purpose**: Message voting/rating system
+**Key Features**:
+- Message and chat association
+- Boolean upvote/downvote
+- Dual indexing for queries
+
+#### Visualization Cache Table
+```typescript
+visualizationCache: defineTable({
+  messageId: v.id("messages"),
+  dataHash: v.string(),
+  result: v.any(),
+  createdAt: v.number(),
+}).index("by_message_id", ["messageId"])
+  .index("by_data_hash", ["dataHash"])
+```
+**Purpose**: Cache expensive visualization computations
+**Key Features**:
+- Message association for context
+- Hash-based cache key
+- Flexible result storage
+
+### Schema Features
+
+#### Automatic Indexes
+Convex automatically creates the following indexes:
+- Primary ID indexes for all tables
+- Custom indexes as defined in schema
+- Compound indexes for efficient querying
+
+#### Type Safety
+- Full TypeScript integration
+- Runtime validation with Convex values
+- End-to-end type safety from database to frontend
+
+#### Real-time Subscriptions
+- Automatic reactivity for all queries
+- WebSocket-based updates
+- No polling required
+
+#### Authentication Integration
+- Seamless Clerk integration
+- User context in all functions  
+- Row-level security through function logic
+
+### Migration Benefits
+
+**From PostgreSQL to Convex**:
+1. **Simplified Architecture**: No ORM configuration needed
+2. **Real-time by Default**: Built-in subscriptions
+3. **Type Safety**: Native TypeScript support
+4. **Automatic Scaling**: Managed infrastructure
+5. **Developer Experience**: Hot reloading and introspection
+
+**Removed Complexity**:
+- No SQL migrations
+- No connection pooling
+- No query optimization
+- No manual index management
 
 ## AI Native Board Architecture (Next-Gen Workspace)
 

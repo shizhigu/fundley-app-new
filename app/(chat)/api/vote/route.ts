@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth/clerk';
-import { getChatById, getVotesByChatId, voteMessage } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return new ChatSDKError('unauthorized:vote').toResponse();
   }
 
-  const chat = await getChatById({ id: chatId });
+  const chat = await convexQueries.getChatById({ id: chatId });
 
   if (!chat) {
     return new ChatSDKError('not_found:chat').toResponse();
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     return new ChatSDKError('forbidden:vote').toResponse();
   }
 
-  const votes = await getVotesByChatId({ id: chatId });
+  const votes = await convexQueries.getVotesByChatId({ chatId });
 
   return Response.json(votes, { status: 200 });
 }
@@ -55,7 +55,7 @@ export async function PATCH(request: Request) {
     return new ChatSDKError('unauthorized:vote').toResponse();
   }
 
-  const chat = await getChatById({ id: chatId });
+  const chat = await convexQueries.getChatById({ id: chatId });
 
   if (!chat) {
     return new ChatSDKError('not_found:vote').toResponse();
@@ -65,10 +65,10 @@ export async function PATCH(request: Request) {
     return new ChatSDKError('forbidden:vote').toResponse();
   }
 
-  await voteMessage({
+  await convexQueries.voteMessage({
     chatId,
     messageId,
-    type: type,
+    isUpvote: type === 'up',
   });
 
   return new Response('Message voted', { status: 200 });

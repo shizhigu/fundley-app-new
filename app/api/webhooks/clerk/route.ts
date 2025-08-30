@@ -1,13 +1,7 @@
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import type { WebhookEvent } from '@clerk/nextjs/server';
-import { 
-  createUser, 
-  getUser,
-  createOrganization,
-  updateUserOrganization,
-  removeUserFromOrganization 
-} from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 
 /**
  * Clerk Webhook Handler
@@ -79,21 +73,17 @@ export async function POST(req: Request) {
 
     if (email) {
       // Check if user exists
-      const existingUsers = await getUser(email);
+      const existingUsers = await convexQueries.getUser(email);
       
       if (existingUsers.length === 0) {
         // Create user in database
         // NOTE: organizationId is null initially, will be updated when user joins org
-        await createUser(email, id);
+        await convexQueries.createUser({
+          email,
+          clerkUserId: id,
+          clerkOrganizationId: organization_memberships?.[0]?.organization?.id,
+        });
         console.log(`User created: ${email} (${id})`);
-      }
-
-      // Update organization if user has one
-      // This handles the case where user is created with an org already
-      if (organization_memberships && organization_memberships.length > 0) {
-        const primaryOrgId = organization_memberships[0].organization.id;
-        await updateUserOrganization(id, primaryOrgId);
-        console.log(`User ${email} associated with org ${primaryOrgId}`);
       }
     }
   }
@@ -108,7 +98,7 @@ export async function POST(req: Request) {
   // Organization events
   if (eventType === 'organization.created') {
     const { id, name, slug } = evt.data;
-    await createOrganization({
+    await convexQueries.createOrganization({
       clerkOrganizationId: id,
       name,
       slug,
@@ -145,7 +135,7 @@ export async function POST(req: Request) {
      * Future: Many-to-many relationship (organization_members table)
      */
     
-    await updateUserOrganization(userId, orgId);
+    await convexQueries.updateUserOrganization(userId, orgId);
     console.log(`User ${userId} joined organization ${orgId}`);
   }
 
@@ -169,7 +159,7 @@ export async function POST(req: Request) {
      */
     
     if (!ENFORCE_ORGANIZATION_MODE) {
-      await removeUserFromOrganization(userId);
+      await convexQueries.removeUserFromOrganization(userId);
       console.log(`User ${userId} removed from organization ${organization.id}`);
     } else {
       console.warn(`User ${userId} removed from org but ENFORCE_ORGANIZATION_MODE is true`);

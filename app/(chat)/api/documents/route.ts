@@ -1,7 +1,5 @@
 import { auth } from '@/lib/auth/clerk';
-import { db } from '@/lib/db/drizzle';
-import { document } from '@/lib/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
@@ -17,20 +15,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const conditions = [eq(document.userId, session.user.id)];
-
-    // Add additional filters if provided
-    if (chatId) {
-      // Note: We'd need to add a chatId column to the document table
-      // For now, we'll just return user's documents
-    }
-
-    const documents = await db
-      .select()
-      .from(document)
-      .where(and(...conditions))
-      .orderBy(desc(document.createdAt))
-      .limit(limit);
+    const documents = await convexQueries.getDocumentsByUserId({ 
+      userId: session.user.id 
+    });
 
     return Response.json(documents, { status: 200 });
   } catch (error) {

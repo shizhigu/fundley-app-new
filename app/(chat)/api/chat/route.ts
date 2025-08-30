@@ -8,15 +8,7 @@ import {
 } from 'ai';
 import { auth, type UserType } from '@/lib/auth/clerk';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
-import {
-  createStreamId,
-  deleteChatById,
-  getChatById,
-  getMessageCountByUserId,
-  getMessagesByChatId,
-  saveChat,
-  saveMessages,
-} from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
@@ -103,7 +95,7 @@ export async function POST(request: Request) {
 
     const userType: UserType = session.user.type;
 
-    const messageCount = await getMessageCountByUserId({
+    const messageCount = await convexQueries.getMessageCountByUserId({
       id: session.user.id,
       differenceInHours: 24,
     });
@@ -112,14 +104,14 @@ export async function POST(request: Request) {
       return new ChatSDKError('rate_limit:chat').toResponse();
     }
 
-    const chat = await getChatById({ id });
+    const chat = await convexQueries.getChatById({ id });
 
     if (!chat) {
       const title = await generateTitleFromUserMessage({
         message,
       });
 
-      await saveChat({
+      await convexQueries.saveChat({
         id,
         userId: session.user.id,
         title,
@@ -131,7 +123,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const messagesFromDb = await getMessagesByChatId({ id });
+    const messagesFromDb = await convexQueries.getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
     const { longitude, latitude, city, country } = geolocation(request);
@@ -143,7 +135,7 @@ export async function POST(request: Request) {
       country,
     };
 
-    await saveMessages({
+    await convexQueries.saveMessages({
       messages: [
         {
           chatId: id,
@@ -157,7 +149,7 @@ export async function POST(request: Request) {
     });
 
     const streamId = generateUUID();
-    await createStreamId({ streamId, chatId: id });
+    await convexQueries.createStreamId({ streamId, chatId: id });
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
@@ -190,7 +182,7 @@ export async function POST(request: Request) {
       },
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
-        await saveMessages({
+        await convexQueries.saveMessages({
           messages: messages.map((message) => ({
             id: message.id,
             role: message.role,
@@ -242,13 +234,13 @@ export async function DELETE(request: Request) {
     return new ChatSDKError('unauthorized:chat').toResponse();
   }
 
-  const chat = await getChatById({ id });
+  const chat = await convexQueries.getChatById({ id });
 
   if (chat.userId !== session.user.id) {
     return new ChatSDKError('forbidden:chat').toResponse();
   }
 
-  const deletedChat = await deleteChatById({ id });
+  const deletedChat = await convexQueries.deleteChatById({ id });
 
   return Response.json(deletedChat, { status: 200 });
 }

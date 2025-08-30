@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth/clerk';
 import type { NextRequest } from 'next/server';
-import { getChatsByUserId } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
@@ -23,11 +23,8 @@ export async function GET(request: NextRequest) {
     return new ChatSDKError('unauthorized:chat').toResponse();
   }
 
-  const chats = await getChatsByUserId({
+  const chats = await convexQueries.getChatsByUserId({
     id: session.user.id,
-    limit,
-    startingAfter,
-    endingBefore,
   });
 
   return Response.json(chats);
