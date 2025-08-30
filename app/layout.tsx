@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ClerkProvider } from '@clerk/nextjs';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import ConvexClientProvider from '@/components/convex-client-provider';
 
 import './globals.css';
 
@@ -48,27 +49,29 @@ export default async function RootLayout({
     >
       <body className="antialiased">
         <ClerkProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange={false}
-          >
-            <TooltipProvider>
-              <div className="mesh-background min-h-screen">
-                {children}
-              </div>
-              <Toaster 
-                position="top-right"
-                theme="system"
-                richColors
-                closeButton
-                toastOptions={{
-                  className: 'glass-card',
-                }}
-              />
-            </TooltipProvider>
-          </ThemeProvider>
+          <ConvexClientProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange={false}
+            >
+              <TooltipProvider>
+                <div className="mesh-background min-h-screen">
+                  {children}
+                </div>
+                <Toaster 
+                  position="top-right"
+                  theme="system"
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    className: 'glass-card',
+                  }}
+                />
+              </TooltipProvider>
+            </ThemeProvider>
+          </ConvexClientProvider>
         </ClerkProvider>
       </body>
     </html>

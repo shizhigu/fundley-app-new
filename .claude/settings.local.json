@@ -3,7 +3,12 @@
     "allow": [
       "Bash(rm:*)",
       "Bash(pnpm build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm list:*)",
+      "Bash(npx convex dev:*)"
     ],
     "deny": [],
     "ask": [],
