@@ -33,6 +33,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     parts: v.any(), // JSONB array of message parts
     attachments: v.any(), // JSONB array of attachments
+    extractedMetadata: v.optional(v.any()), // Cached metadata (tickers, suggestions, verification)
     createdAt: v.number(),
   })
     .index("by_user_id", ["userId"])

@@ -17,6 +17,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { createVisualization } from '@/lib/ai/tools/create-visualization';
 import { financialFieldsAgent } from '@/lib/ai/agents/financial-fields-agent';
+import { dataOrchestratorAgent } from '@/lib/ai/agents/data-orchestrator-agent';
 import { getFinancialData } from '@/lib/ai/tools/financial/unified-financial-data';
 import { 
   extractMDA, 
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
       role: 'user',
       parts: message.parts,
       attachments: [],
+      extractedMetadata: undefined, // User messages don't need metadata
     });
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
@@ -174,6 +176,7 @@ export async function POST(request: Request) {
             updateDocument: updateDocument({ session, dataStream }),
             createVisualization: createVisualization({ session, dataStream }),
             financialFieldsAgent,
+            dataOrchestratorAgent,
             getFinancialData,
             extractMDA,
             extractRiskFactors,
@@ -202,6 +205,7 @@ export async function POST(request: Request) {
               role: msg.role,
               parts: msg.parts,
               attachments: [],
+              extractedMetadata: undefined, // Will be extracted and updated later
             });
           }
         }

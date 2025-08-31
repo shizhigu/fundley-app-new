@@ -24,7 +24,12 @@
       "Bash(pkill:*)",
       "Bash(pnpm tsc:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebSearch",
+      "WebFetch(domain:localhost)",
+      "Bash(echo:*)",
+      "Bash(npx convex query:*)",
+      "Bash(npx convex run:*)"
     ],
     "deny": [],
     "ask": [],

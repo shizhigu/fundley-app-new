@@ -36,6 +36,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   parts: any;
   attachments: any;
+  extractedMetadata?: any; // Cached metadata (tickers, suggestions, verification)
   createdAt: number;
 }
 

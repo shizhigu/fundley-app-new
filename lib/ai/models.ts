@@ -1,5 +1,8 @@
 export const DEFAULT_MODEL = 'grok-3';
 
+// Specialized model for suggestion generation and data verification
+export const SUGGESTION_MODEL = 'qwen/qwen2.5-vl-32b-instruct';
+
 // Simple model configuration
 export const AVAILABLE_MODELS = {
   'grok-3': {

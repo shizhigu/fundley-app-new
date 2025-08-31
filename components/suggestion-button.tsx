@@ -1,6 +1,6 @@
 'use client';
 
-import { Lightbulb, ArrowRight } from 'lucide-react';
+import { Lightbulb, ArrowRight, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SuggestionButtonProps {
@@ -8,6 +8,8 @@ export interface SuggestionButtonProps {
   onClick: () => void;
   className?: string;
   variant?: 'default' | 'subtle';
+  containsRealData?: boolean;
+  verificationMessage?: string;
 }
 
 /**
@@ -17,7 +19,9 @@ export function SuggestionButton({
   text, 
   onClick, 
   className,
-  variant = 'default'
+  variant = 'default',
+  containsRealData = false,
+  verificationMessage
 }: SuggestionButtonProps) {
   return (
     <button
@@ -33,9 +37,11 @@ export function SuggestionButton({
         "focus:ring-gray-400/20",
         className
       )}
+      title={containsRealData && verificationMessage ? verificationMessage : undefined}
     >
       <Lightbulb className="w-3 h-3 flex-shrink-0 text-amber-500/70" />
       <span className="truncate font-medium">{text}</span>
+      
       <ArrowRight className={cn(
         "w-3 h-3 flex-shrink-0 opacity-0 -translate-x-0.5",
         "group-hover:opacity-60 group-hover:translate-x-0",
@@ -53,7 +59,7 @@ export function SuggestionButtonGroup({
   onSuggestionClick,
   className 
 }: { 
-  suggestions: string[];
+  suggestions: string[] | { text: string, containsRealData: boolean, verificationMessage?: string }[];
   onSuggestionClick: (suggestion: string) => void;
   className?: string;
 }) {
@@ -66,14 +72,23 @@ export function SuggestionButtonGroup({
         <span>Suggested next steps</span>
       </div>
       <div className="flex flex-wrap gap-2">
-        {suggestions.map((suggestion, index) => (
-          <SuggestionButton
-            key={index}
-            text={suggestion}
-            onClick={() => onSuggestionClick(suggestion)}
-            variant="default"
-          />
-        ))}
+        {suggestions.map((suggestion, index) => {
+          // Handle both string array (legacy) and object array (new format)
+          const suggestionObj = typeof suggestion === 'string' 
+            ? { text: suggestion, containsRealData: false, verificationMessage: undefined }
+            : suggestion;
+            
+          return (
+            <SuggestionButton
+              key={index}
+              text={suggestionObj.text}
+              onClick={() => onSuggestionClick(suggestionObj.text)}
+              variant="default"
+              containsRealData={suggestionObj.containsRealData}
+              verificationMessage={suggestionObj.verificationMessage}
+            />
+          );
+        })}
       </div>
     </div>
   );

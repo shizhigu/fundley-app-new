@@ -134,14 +134,22 @@ export function convertToUIMessages(
       });
     }
     
-    return {
+    const convertedMessage = {
       id: messageId,
       role: message.role as 'user' | 'assistant' | 'system',
       parts,
+      extractedMetadata: message.extractedMetadata, // Include cached metadata
       metadata: {
-        createdAt: formatISO(message.createdAt),
+        createdAt: formatISO(message.createdAt || new Date(message._createdTime)),
       },
     };
+    
+    // Debug log for metadata
+    if (message.role === 'assistant' && message.extractedMetadata) {
+      console.log('🎯 ConvertToUIMessages: Found cached metadata for message', messageId, message.extractedMetadata);
+    }
+    
+    return convertedMessage;
   });
 }
 

@@ -6,6 +6,7 @@ export const create = mutation({
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     parts: v.any(),
     attachments: v.optional(v.any()),
+    extractedMetadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -28,6 +29,7 @@ export const create = mutation({
       role: args.role,
       parts: args.parts,
       attachments: args.attachments || [],
+      extractedMetadata: args.extractedMetadata,
       createdAt: Date.now(),
     });
   },
@@ -128,6 +130,7 @@ export const createBatch = mutation({
       role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
       parts: v.any(),
       attachments: v.optional(v.any()),
+      extractedMetadata: v.optional(v.any()),
     }))
   },
   handler: async (ctx, args) => {
@@ -153,6 +156,7 @@ export const createBatch = mutation({
         role: message.role,
         parts: message.parts,
         attachments: message.attachments || [],
+        extractedMetadata: message.extractedMetadata,
         createdAt: Date.now(),
       });
       results.push(result);
@@ -192,6 +196,42 @@ export const updateParts = mutation({
 
     await ctx.db.patch(args.messageId, {
       parts: args.parts
+    });
+    
+    return { success: true };
+  },
+});
+
+export const updateMetadata = mutation({
+  args: { 
+    messageId: v.id("messages"),
+    extractedMetadata: v.any()
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the message to verify ownership
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Get user to verify ownership
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || message.userId !== user._id) {
+      throw new Error("Not authorized to update this message");
+    }
+
+    await ctx.db.patch(args.messageId, {
+      extractedMetadata: args.extractedMetadata
     });
     
     return { success: true };

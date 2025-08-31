@@ -5,6 +5,7 @@ import { memo, useState, useEffect } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
+import { Shield } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
@@ -50,8 +51,14 @@ const PurePreviewMessage = ({
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [extractedMetadata, setExtractedMetadata] = useState<{ tickers?: string[], suggestions?: string[] } | null>(null);
+  const [extractedMetadata, setExtractedMetadata] = useState<{ 
+    tickers?: string[], 
+    suggestions?: { text: string, containsRealData: boolean, verificationMessage?: string }[],
+    containsRealData?: boolean,
+    verificationMessage?: string
+  } | null>(null);
   const [processedMessageId, setProcessedMessageId] = useState<string | null>(null);
+  const [showFullVerification, setShowFullVerification] = useState(false);
 
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === 'file',
@@ -65,6 +72,17 @@ const PurePreviewMessage = ({
         message.role === 'assistant' && 
         message.id &&
         processedMessageId !== message.id) {
+      
+      setProcessedMessageId(message.id);
+      
+      // Check if message already has cached metadata
+      if ((message as any).extractedMetadata) {
+        console.log('📋 Using cached metadata from database for message', message.id, (message as any).extractedMetadata);
+        setExtractedMetadata((message as any).extractedMetadata);
+        return;
+      } else {
+        console.log('⚠️ No cached metadata found for message', message.id, 'extractedMetadata field:', typeof (message as any).extractedMetadata);
+      }
       
       // Try both content.parts and direct parts structure
       let allText = '';
@@ -82,22 +100,25 @@ const PurePreviewMessage = ({
       }
       
       if (allText.trim()) {
-        setProcessedMessageId(message.id);
-        
-        // Extract metadata - completely independent from chat status
+        // Extract metadata using complete message parts for data verification
+        const messageParts = (message as any).content?.parts || message.parts || [];
         fetch('/api/metadata', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ messageContent: allText }),
+          body: JSON.stringify({ 
+            messageParts: messageParts,
+            userQuestion: undefined, // TODO: Add user question context from messages array
+            messageId: message.id // Pass messageId to save metadata directly
+          }),
         })
         .then(response => response.json())
         .then(result => {
+          console.log('🎯 Metadata API response:', result);
           if (result.success && result.metadata) {
-            if (result.metadata.tickers?.length > 0 || result.metadata.suggestions?.length > 0) {
-              setExtractedMetadata(result.metadata);
-            }
+            console.log('📊 Setting metadata:', result.metadata);
+            setExtractedMetadata(result.metadata);
           }
         })
         .catch(error => {
@@ -258,6 +279,16 @@ const PurePreviewMessage = ({
                                 }}
                                 className="not-prose"
                               />
+                            )}
+                            
+                            {/* Data verification badge */}
+                            {message.role === 'assistant' && extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50/80 dark:bg-green-900/20 border border-green-200/50 dark:border-green-700/30 w-fit text-xs">
+                                <Shield className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                <span className="text-green-700 dark:text-green-300 font-medium">
+                                  {extractedMetadata.verificationMessage}
+                                </span>
+                              </div>
                             )}
                           </div>
                         )}
@@ -665,6 +696,20 @@ const PurePreviewMessage = ({
             {/* Render extracted metadata at the end */}
             {extractedMetadata && ((extractedMetadata as any).tickers || (extractedMetadata as any).suggestions) && (
               <div className="flex flex-col gap-3 mt-4">
+                {/* Data verification badge */}
+                {extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
+                  <div 
+                    onClick={() => setShowFullVerification(!showFullVerification)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50/30 dark:bg-gray-800/30 border border-gray-200/30 dark:border-gray-700/30 w-fit text-xs opacity-50 hover:opacity-70 transition-all duration-200 cursor-pointer select-none"
+                    title="点击展开验证详情"
+                  >
+                    <Shield className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-400 font-medium transition-all duration-200">
+                      {showFullVerification ? extractedMetadata.verificationMessage : 'Verified'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Ticker buttons */}
                 {(extractedMetadata as any).tickers && (
                   <TickerButtonGroup 
@@ -694,6 +739,7 @@ const PurePreviewMessage = ({
                     className="not-prose"
                   />
                 )}
+                
               </div>
             )}
 

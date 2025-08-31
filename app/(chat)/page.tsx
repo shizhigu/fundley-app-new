@@ -1,4 +1,4 @@
-import { PermanentChat } from '@/components/permanent-chat';
+import { PersistentChat } from '@/components/persistent-chat';
 import { auth } from '@/lib/auth/clerk';
 import { redirect } from 'next/navigation';
 import { DEFAULT_MODEL } from '@/lib/ai/models';
@@ -11,9 +11,9 @@ export default async function Page() {
   }
 
   return (
-    <PermanentChat 
+    <PersistentChat 
       initialChatModel={DEFAULT_MODEL}
-      session={session} 
+      session={session}
     />
   );
 }
