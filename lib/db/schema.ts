@@ -1,223 +1,87 @@
-import type { InferSelectModel } from 'drizzle-orm';
-import {
-  pgTable,
-  varchar,
-  timestamp,
-  json,
-  uuid,
-  text,
-  primaryKey,
-  foreignKey,
-  boolean,
-  index,
-} from 'drizzle-orm/pg-core';
+// Type compatibility layer for Convex migration
+// This file provides TypeScript types that match the old Drizzle schema for existing components
 
-/**
- * FUNDLEY DATABASE SCHEMA
- * =======================
- * This schema combines the powerful Vercel Chatbot template features
- * with multi-tenant support for financial organizations.
- * 
- * ORGANIZATION MODE FLEXIBILITY:
- * ==============================
- * - User.organizationId is NULLABLE for flexibility
- * - Currently enforced at business logic level (not DB constraint)
- * - To switch modes: Change ENFORCE_ORGANIZATION_MODE in webhook handler
- * - No database migrations needed to support personal users later
- */
+export interface User {
+  _id: string;
+  email: string;
+  clerkUserId: string;
+  clerkOrganizationId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
-// ============================================================================
-// CORE CHATBOT TABLES (Preserved from Vercel template)
-// ============================================================================
+export interface Organization {
+  _id: string;
+  name: string;
+  slug: string;
+  clerkOrganizationId: string;
+  settings: any;
+  createdAt: number;
+  updatedAt: number;
+}
 
-/**
- * User table
- * IMPORTANT: organizationId is NULLABLE for future flexibility
- * - In ENFORCED mode: Business logic ensures all users have an org
- * - In OPTIONAL mode: Personal users have organizationId = null
- */
-export const user = pgTable('User', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  clerkUserId: varchar('clerkUserId', { length: 255 }).notNull().unique(), // Clerk user ID (e.g., user_xxx)
-  email: varchar('email', { length: 255 }).notNull(),
-  clerkOrganizationId: varchar('clerkOrganizationId', { length: 255 }), // NULLABLE - Clerk org ID (e.g., org_xxx)
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (table) => ({
-  clerkUserIdIdx: index('user_clerk_user_id_idx').on(table.clerkUserId),
-  clerkOrgIdIdx: index('user_clerk_org_id_idx').on(table.clerkOrganizationId),
-}));
+export interface Chat {
+  _id: string;
+  title: string;
+  userId: string;
+  visibility: 'private' | 'public';
+  createdAt: number;
+  updatedAt: number;
+}
 
-export type User = InferSelectModel<typeof user>;
+export interface Message {
+  _id: string;
+  id?: string; // For backward compatibility
+  userId: string; // Changed from chatId to userId for Convex
+  role: 'user' | 'assistant' | 'system';
+  parts: any;
+  attachments: any;
+  createdAt: number;
+}
 
-/**
- * Chat table - Personal research space
- * NOTE: No organizationId - chats are always personal
- * This ensures research privacy and independence
- */
-export const chat = pgTable('Chat', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  createdAt: timestamp('createdAt').notNull(),
-  title: text('title').notNull(),
-  userId: uuid('userId')
-    .notNull()
-    .references(() => user.id),
-  visibility: varchar('visibility', { enum: ['public', 'private'] })
-    .notNull()
-    .default('private'),
-}, (table) => ({
-  userIdIdx: index('chat_user_id_idx').on(table.userId),
-}));
+export interface Document {
+  _id: string;
+  title: string;
+  content: string;
+  kind: 'text' | 'code' | 'sheet';
+  userId: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
-export type Chat = InferSelectModel<typeof chat>;
+export interface Vote {
+  _id: string;
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+}
 
-/**
- * Message table (v2) - Supports multimodal content
- * Powerful feature from template - fully preserved
- */
-export const message = pgTable('Message_v2', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  chatId: uuid('chatId')
-    .notNull()
-    .references(() => chat.id),
-  role: varchar('role').notNull(),
-  parts: json('parts').notNull(), // Multipart messages
-  attachments: json('attachments').notNull(), // File attachments
-  createdAt: timestamp('createdAt').notNull(),
-}, (table) => ({
-  chatIdIdx: index('message_chat_id_idx').on(table.chatId),
-}));
+export interface Stream {
+  _id: string;
+  chatId: string;
+  createdAt: number;
+}
 
-export type DBMessage = InferSelectModel<typeof message>;
+export interface VisualizationCache {
+  _id: string;
+  messageId: string;
+  visualizationType: string;
+  visualizationData: any;
+  visualizationSpec?: any;
+  dataHash: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
-/**
- * Visualization Cache table - Stores rendered visualization output
- * Avoids re-executing Python code on every page load
- */
-export const visualizationCache = pgTable('VisualizationCache', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  messageId: uuid('messageId')
-    .notNull()
-    .references(() => message.id, { onDelete: 'cascade' }),
-  title: text('title'),
-  code: text('code').notNull(),
-  htmlContent: text('htmlContent'), // Plotly HTML output
-  imageUrl: text('imageUrl'),       // Matplotlib image URL or base64
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (table) => ({
-  messageIdIdx: index('viz_cache_message_id_idx').on(table.messageId),
-}));
-
-export type VisualizationCache = InferSelectModel<typeof visualizationCache>;
-
-/**
- * Vote table (v2) - Message feedback system
- * Preserved for future ML training data
- */
-export const vote = pgTable(
-  'Vote_v2',
-  {
-    chatId: uuid('chatId')
-      .notNull()
-      .references(() => chat.id),
-    messageId: uuid('messageId')
-      .notNull()
-      .references(() => message.id),
-    isUpvoted: boolean('isUpvoted').notNull(),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  },
-);
-
-export type Vote = InferSelectModel<typeof vote>;
-
-/**
- * Document table - Artifact system for code/text/image/sheet
- * One of the most powerful features - fully preserved
- * Future: Can add organizationId for sharing
- */
-export const document = pgTable(
-  'Document',
-  {
-    id: uuid('id').primaryKey().notNull().defaultRandom(),
-    createdAt: timestamp('createdAt').notNull().defaultNow(),
-    title: text('title').notNull(),
-    content: text('content'),
-    kind: varchar('kind', { enum: ['text', 'code', 'image', 'sheet'] })
-      .notNull()
-      .default('text'),
-    userId: uuid('userId')
-      .notNull()
-      .references(() => user.id),
-    // Future: organizationId for shared documents
-  },
-  (table) => ({
-    userIdIdx: index('document_user_id_idx').on(table.userId),
-  }),
-);
-
-export type Document = InferSelectModel<typeof document>;
-
-
-/**
- * Stream table - Real-time streaming management
- * Critical for AI response streaming - preserved
- */
-export const stream = pgTable(
-  'Stream',
-  {
-    id: uuid('id').notNull().defaultRandom(),
-    chatId: uuid('chatId').notNull(),
-    createdAt: timestamp('createdAt').notNull(),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.id] }),
-    chatRef: foreignKey({
-      columns: [table.chatId],
-      foreignColumns: [chat.id],
-    }),
-  }),
-);
-
-export type Stream = InferSelectModel<typeof stream>;
-
-// ============================================================================
-// MULTI-TENANT ORGANIZATION TABLES (New for Fundley)
-// ============================================================================
-
-/**
- * Organization table - Core tenant entity
- * Settings stored as JSONB for maximum flexibility
- */
-export const organization = pgTable('Organization', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(), // Internal UUID
-  clerkOrganizationId: varchar('clerkOrganizationId', { length: 255 }).notNull().unique(), // Clerk org ID (e.g., org_xxx)
-  name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).unique(),
-  settings: json('settings').notNull().default({}), // Flexible settings
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (table) => ({
-  clerkOrgIdIdx: index('org_clerk_org_id_idx').on(table.clerkOrganizationId),
-  slugIdx: index('org_slug_idx').on(table.slug),
-}));
-
-export type Organization = InferSelectModel<typeof organization>;
-
-
-// ============================================================================
-// FINANCIAL DOMAIN TABLES (Fundley-specific)
-// ============================================================================
-// Tables for portfolio management and financial data storage
-// Currently empty - will be added when needed for investment features
-
-
-
-// ============================================================================
-// REMOVED FEATURES 
-// ============================================================================
-// Board system has been removed to focus on core investment research functionality
+// Legacy types for backward compatibility
+export interface Suggestion {
+  id: string;
+  documentId: string;
+  originalText: string;
+  suggestedText: string;
+  description: string;
+  isResolved: boolean;
+  userId?: string;
+  createdAt?: Date;
+  documentCreatedAt?: Date;
+}

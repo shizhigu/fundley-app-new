@@ -32,32 +32,33 @@ export function VisualizationMessage({
   const [outputImage, setOutputImage] = useState<string | null>(cachedImage || null);
   const executionAbortController = useRef<AbortController | null>(null);
 
-  // Save cache to server
+  // Save cache to message parts
   const saveCache = async (html: string | null, image: string | null) => {
     if (!messageId) {
       console.log('No messageId provided, skipping cache save');
       return;
     }
     
-    console.log('Saving visualization cache for message:', messageId);
+    console.log('Saving visualization cache to message parts:', messageId);
     
     try {
-      const response = await fetch('/api/visualization/cache', {
+      // Get current message from useDataStream context or via API
+      const response = await fetch('/api/message/update-cache', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messageId,
-          title,
-          code,
-          htmlContent: html,
-          imageUrl: image,
+          toolCallId: id, // Use the visualization ID as tool call identifier
+          cachedHtml: html,
+          cachedImage: image,
         }),
       });
       
       if (!response.ok) {
-        console.error('Cache save failed:', await response.text());
+        const errorText = await response.text();
+        console.error('Cache save failed:', response.status, errorText);
       } else {
-        console.log('Cache saved successfully');
+        console.log('Cache saved successfully to message parts');
       }
     } catch (err) {
       console.error('Failed to save cache:', err);
@@ -91,49 +92,52 @@ export function VisualizationMessage({
         
         // Get shared Pyodide instance
         const pyodideManager = getPyodideManager();
-        const pyodide = await pyodideManager.getPyodide();
         
-        // Setup output capture
-        let plotlyHtmlBuffer = '';
-        let collectingPlotly = false;
-        let matplotlibImage = null;
-        
-        pyodide.setStdout({
-          batched: (output: string) => {
-            // Check for Plotly HTML output
-            if (output.includes('PLOTLY_HTML_START')) {
-              collectingPlotly = true;
-              plotlyHtmlBuffer = '';
-              return;
-            }
-            
-            if (collectingPlotly) {
-              if (output.includes('PLOTLY_HTML_END')) {
-                setOutputHtml(plotlyHtmlBuffer);
-                // Save to cache
-                saveCache(plotlyHtmlBuffer, null);
-                collectingPlotly = false;
+        // Execute in queue to prevent stdout conflicts
+        await pyodideManager.executeWithQueue(async () => {
+          const pyodide = await pyodideManager.getPyodide();
+          
+          // Setup output capture
+          let plotlyHtmlBuffer = '';
+          let collectingPlotly = false;
+          let matplotlibImage = null;
+          
+          pyodide.setStdout({
+            batched: (output: string) => {
+              // Check for Plotly HTML output
+              if (output.includes('PLOTLY_HTML_START')) {
+                collectingPlotly = true;
                 plotlyHtmlBuffer = '';
-              } else {
-                plotlyHtmlBuffer += output;
+                return;
               }
-              return;
-            }
-            
-            // Check for matplotlib image
-            if (output.startsWith('data:image/png;base64')) {
-              matplotlibImage = output;
-              setOutputImage(output);
-              // Save to cache
-              saveCache(null, output);
-            }
-          },
-        });
-        
-        // Install and setup visualization libraries
-        if (code.includes('plotly') || code.includes('px.') || code.includes('go.')) {
-          // Install dependencies for plotly
-          await pyodide.runPythonAsync(`
+              
+              if (collectingPlotly) {
+                if (output.includes('PLOTLY_HTML_END')) {
+                  setOutputHtml(plotlyHtmlBuffer);
+                  // Save to cache
+                  saveCache(plotlyHtmlBuffer, null);
+                  collectingPlotly = false;
+                  plotlyHtmlBuffer = '';
+                } else {
+                  plotlyHtmlBuffer += output;
+                }
+                return;
+              }
+              
+              // Check for matplotlib image
+              if (output.startsWith('data:image/png;base64')) {
+                matplotlibImage = output;
+                setOutputImage(output);
+                // Save to cache
+                saveCache(null, output);
+              }
+            },
+          });
+          
+          // Install and setup visualization libraries
+          if (code.includes('plotly') || code.includes('px.') || code.includes('go.')) {
+            // Install dependencies for plotly
+            await pyodide.runPythonAsync(`
 import micropip
 
 # Install numpy (required by pandas and plotly)
@@ -150,9 +154,9 @@ except ImportError:
     print("Installing pandas...")
     await micropip.install('pandas')
 `);
-          
-          // Install plotly and setup handler
-          await pyodide.runPythonAsync(`
+            
+            // Install plotly and setup handler
+            await pyodide.runPythonAsync(`
 import micropip
 
 # Install plotly
@@ -177,10 +181,10 @@ def custom_plotly_show(self, *args, **kwargs):
 plotly.graph_objects.Figure.show = custom_plotly_show
 print("Plotly handler configured")
 `);
-        }
-        
-        if (code.includes('matplotlib') || code.includes('plt.')) {
-          await pyodide.runPythonAsync(`
+          }
+          
+          if (code.includes('matplotlib') || code.includes('plt.')) {
+            await pyodide.runPythonAsync(`
 import micropip
 
 # Install numpy if needed (matplotlib dependency)
@@ -222,17 +226,18 @@ def setup_matplotlib_output():
 
 setup_matplotlib_output()
 `);
-        }
-        
-        // Load packages from imports (this handles standard library imports)
-        try {
-          await pyodide.loadPackagesFromImports(code);
-        } catch (e) {
-          console.log('Some packages may need manual installation:', e);
-        }
-        
-        // Execute the code
-        await pyodide.runPythonAsync(code);
+          }
+          
+          // Load packages from imports (this handles standard library imports)
+          try {
+            await pyodide.loadPackagesFromImports(code);
+          } catch (e) {
+            console.log('Some packages may need manual installation:', e);
+          }
+          
+          // Execute the code
+          await pyodide.runPythonAsync(code);
+        });
         
         setIsLoading(false);
       } catch (err: any) {
@@ -280,7 +285,7 @@ setup_matplotlib_output()
       <div
         className={cn(
           'overflow-hidden transition-all duration-200',
-          isExpanded ? 'max-h-[600px]' : 'max-h-0'
+          isExpanded ? 'max-h-[800px]' : 'max-h-0'
         )}
       >
         {isLoading ? (
@@ -294,12 +299,13 @@ setup_matplotlib_output()
             <pre className="mt-1 whitespace-pre-wrap">{error}</pre>
           </div>
         ) : outputHtml ? (
-          <div className="w-full h-[500px] bg-white">
+          <div className="w-full min-h-[500px] max-h-[700px] bg-white overflow-auto">
             <iframe
               srcDoc={outputHtml}
-              className="w-full h-full border-0"
+              className="w-full min-h-[500px] border-0"
               title={`Interactive Chart - ${title}`}
               sandbox="allow-scripts"
+              style={{ height: '100%' }}
             />
           </div>
         ) : outputImage ? (

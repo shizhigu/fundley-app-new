@@ -13,8 +13,7 @@ import { Messages } from './messages';
 import type { VisibilityType } from './visibility-selector';
 import { useArtifactSelector } from '@/hooks/use-artifact';
 import { useArtifactPersistence } from '@/hooks/use-artifact-persistence';
-import { unstable_serialize } from 'swr/infinite';
-import { getChatHistoryPaginationKey } from './sidebar-history';
+// import { getChatHistoryPaginationKey } from './sidebar-history'; // Removed as not needed with Convex
 import { toast } from './toast';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { useSearchParams } from 'next/navigation';
@@ -92,7 +91,7 @@ export function Chat({
       setDataStream((ds) => [...(ds || []), dataPart]);
     },
     onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      // mutate(unstable_serialize(getChatHistoryPaginationKey)); // Removed with Convex migration
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {

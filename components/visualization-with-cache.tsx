@@ -1,4 +1,4 @@
-import { getVisualizationCacheByMessageId } from '@/lib/db/queries';
+
 import { VisualizationMessage } from './visualization-message';
 
 interface VisualizationWithCacheProps {
@@ -17,7 +17,8 @@ export async function VisualizationWithCache({
   description,
 }: VisualizationWithCacheProps) {
   // Server-side: fetch cache from database
-  const cache = await getVisualizationCacheByMessageId(messageId);
+  // TODO: Re-implement visualization cache with Convex
+  const cache = null; // await convexQueries.getVisualizationCacheByMessageId(messageId);
   
   return (
     <VisualizationMessage

@@ -4,7 +4,7 @@ import { v } from "convex/values";
 export const create = mutation({
   args: {
     title: v.string(),
-    kind: v.union(v.literal("text"), v.literal("code")),
+    kind: v.union(v.literal("text"), v.literal("code"), v.literal("sheet")),
     content: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -92,7 +92,7 @@ export const update = mutation({
     id: v.id("documents"),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
-    kind: v.optional(v.union(v.literal("text"), v.literal("code"))),
+    kind: v.optional(v.union(v.literal("text"), v.literal("code"), v.literal("sheet"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

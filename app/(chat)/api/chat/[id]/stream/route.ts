@@ -1,10 +1,5 @@
 import { auth } from '@/lib/auth/clerk';
-import {
-  getChatById,
-  getMessagesByChatId,
-  getStreamIdsByChatId,
-} from '@/lib/db/queries';
-import type { Chat } from '@/lib/db/schema';
+import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import { createUIMessageStream, JsonToSseTransformStream } from 'ai';
@@ -34,10 +29,10 @@ export async function GET(
     return new ChatSDKError('unauthorized:chat').toResponse();
   }
 
-  let chat: Chat;
+  let chat;
 
   try {
-    chat = await getChatById({ id: chatId });
+    chat = await convexQueries.getChatById({ id: chatId });
   } catch {
     return new ChatSDKError('not_found:chat').toResponse();
   }
@@ -50,7 +45,8 @@ export async function GET(
     return new ChatSDKError('forbidden:chat').toResponse();
   }
 
-  const streamIds = await getStreamIdsByChatId({ chatId });
+  // For now, return empty stream as we need to implement stream handling in Convex
+  const streamIds: any[] = [];
 
   if (!streamIds.length) {
     return new ChatSDKError('not_found:stream').toResponse();
@@ -75,7 +71,7 @@ export async function GET(
    * but the resumable stream has concluded at this point.
    */
   if (!stream) {
-    const messages = await getMessagesByChatId({ id: chatId });
+    const messages = await convexQueries.getMessagesByChatId({ id: chatId });
     const mostRecentMessage = messages.at(-1);
 
     if (!mostRecentMessage) {

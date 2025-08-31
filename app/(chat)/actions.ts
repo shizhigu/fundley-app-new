@@ -1,12 +1,7 @@
 'use server';
 
 import { generateText, type UIMessage } from 'ai';
-import {
-  deleteMessagesByChatIdAfterTimestamp,
-  getMessageById,
-  updateChatVisiblityById,
-} from '@/lib/db/queries';
-import type { VisibilityType } from '@/components/visibility-selector';
+import { convexQueries } from '@/lib/convex/client';
 import { titleModel } from '@/lib/ai/providers';
 
 export async function generateTitleFromUserMessage({
@@ -28,20 +23,18 @@ export async function generateTitleFromUserMessage({
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
-  const [message] = await getMessageById({ id });
+  const message = await convexQueries.getMessageById({ id });
+  if (!message) return;
 
-  await deleteMessagesByChatIdAfterTimestamp({
-    chatId: message.chatId,
+  await convexQueries.deleteMessagesAfterTimestamp({
     timestamp: message.createdAt,
   });
 }
 
-export async function updateChatVisibility({
-  chatId,
-  visibility,
+export async function updatePermanentChatTitle({
+  title,
 }: {
-  chatId: string;
-  visibility: VisibilityType;
+  title: string;
 }) {
-  await updateChatVisiblityById({ chatId, visibility });
+  await convexQueries.updatePermanentChatTitle(title);
 }

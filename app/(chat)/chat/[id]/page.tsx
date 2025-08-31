@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/lib/auth/clerk';
-import { ChatWrapper } from '@/components/chat-wrapper';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -13,10 +12,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     redirect('/api/auth/guest');
   }
 
-  return (
-    <ChatWrapper 
-      id={id}
-      session={session}
-    />
-  );
+  // Redirect old chat URLs to the permanent workspace
+  redirect('/permanent');
 }

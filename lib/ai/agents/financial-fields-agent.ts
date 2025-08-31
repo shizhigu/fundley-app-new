@@ -89,60 +89,18 @@ export const financialFieldsAgent = tool({
       
       const result = await generateObject({
         model: financialFieldsModel,
-        system: `You are a specialized financial data expert with deep knowledge of all available financial fields and metrics.
+        system: `You are a financial data expert. Map user queries to specific financial fields from the database.
 
-## Your Expertise
-You understand the complete landscape of financial analysis including:
-- Income statement metrics (revenue, profits, expenses)
-- Balance sheet items (assets, liabilities, equity) 
-- Cash flow components (operating, investing, financing)
-- Financial ratios (profitability, liquidity, leverage, efficiency)
-- Key performance metrics (market cap, P/E, ROE, etc.)
-
-## Complete Financial Fields Database
+Available fields:
 ${JSON.stringify(FIELD_DATABASE, null, 2)}
 
-## TTM vs Historical Data
-**TTM (Trailing Twelve Months)**: Rolling 12-month aggregated data, most current available
-- Use for: current analysis, latest performance, recent trends
-- Keywords: "latest", "current", "recent", "TTM", "trailing", "most recent", "now", "今年", "最近", "当前"
+Task: Analyze the query and return the 5 most relevant fields with clear reasoning.
 
-**Historical**: Quarterly/annual data across specific periods
-- Use for: trend analysis, historical comparisons, multi-period growth
-- Keywords: "historical", "trend", "over time", "growth", "比较", "历史", "趋势"
+Timeframe guide:
+- TTM: Use for current/recent analysis (keywords: latest, current, recent, 最近, 当前)  
+- Historical: Use for trends/comparisons (keywords: trend, growth, over time, 趋势, 历史)
 
-## Your Task
-Given a user query, you must:
-
-1. **Understand Intent**: Analyze what the user is trying to learn or analyze
-2. **Choose Timeframe**: Decide between TTM (current) vs Historical (trend analysis) data
-3. **Map to Fields**: Select the most relevant financial fields from the database
-4. **Provide Guidance**: Give clear instructions on data interpretation
-5. **Route Correctly**: Specify which unified tool data type to use
-
-## Key Capabilities
-- **Multi-language Support**: Understand queries in Chinese, English, Japanese, etc.
-- **Timeframe Intelligence**: Automatically detect when users want current (TTM) vs historical (trend) data
-- **Semantic Understanding**: Match intent beyond keywords (e.g., "盈利能力" → profitability ratios)
-- **Data Format Awareness**: Understand how values are formatted (0.15 = 15% for percentages)
-- **Context-Aware Selection**: Choose fields based on analysis goals
-
-## Response Requirements
-- Return exactly 5 fields ranked by relevance
-- Include clear reasoning for your selections
-- Recommend appropriate timeframe (TTM vs historical)
-- Provide data interpretation guidance for the main agent
-- Specify the primary data type for unified tool calling
-
-## Example Mappings
-- "营收增长" → revenue, revenueGrowth (Income Statement, historical for growth analysis)
-- "Apple最近的盈利能力" → netIncome, returnOnEquity, netProfitMargin (Mixed sources, TTM for current performance)
-- "debt analysis" → totalDebt, debtToEquityRatio, currentRatio (Balance Sheet + Ratios, TTM for current position)
-- "Apple股价估值" → peRatio, marketCap, bookValuePerShare (Key Metrics, TTM for current valuation)
-- "current cash position" → cashAndShortTermInvestments, freeCashFlow (Balance Sheet + Cash Flow, TTM)
-- "historical profitability trends" → netIncome, grossProfit (Income Statement, historical for trends)
-
-Remember: Your goal is to bridge user intent with precise financial data requirements and optimal timeframe selection.`,
+Return 5 fields ranked by relevance with dataType and timeframe recommendation.`,
         
         prompt: `Analyze this financial query and select the most relevant fields:
 

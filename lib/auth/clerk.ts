@@ -1,5 +1,4 @@
 import { auth as clerkAuth, currentUser } from '@clerk/nextjs/server';
-import { getUserByClerkId, createUser } from '@/lib/db/queries';
 
 export type UserType = 'guest' | 'regular';
 
@@ -29,15 +28,13 @@ export async function auth(): Promise<AuthSession> {
     return { user: null };
   }
 
-  // Get or create user in our database
-  let dbUser = await getUserByClerkId(clerkUserId);
-  
-  if (!dbUser) {
-    // Create user in our database if they don't exist
-    const email = clerkUser.emailAddresses[0]?.emailAddress || '';
-    const [newUser] = await createUser(email, clerkUserId);
-    dbUser = newUser;
-  }
+  // For now, create a mock user object based on Clerk data
+  // This will be replaced with proper Convex user lookup later
+  const email = clerkUser.emailAddresses[0]?.emailAddress || '';
+  const dbUser = {
+    id: clerkUserId,
+    email: email,
+  };
 
   return {
     user: {

@@ -5,9 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/../convex/_generated/api';
+// Removed Convex imports - not needed in permanent chat architecture
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +17,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ChatItem } from './sidebar-history-item';
-import { LoaderIcon } from './icons';
 
 // Define Chat type to match Convex schema
 type Chat = {
@@ -84,10 +81,10 @@ export function SidebarHistory({
 }) {
   const { id } = useParams();
 
-  // Use Convex hooks instead of SWR
-  const chats = useQuery(api.chats.list) || [];
-  const deleteChat = useMutation(api.chats.remove);
-  const isLoading = chats === undefined;
+  // In permanent chat architecture, there's only one workspace
+  const chats = [];
+  const deleteChat = () => Promise.resolve(); // No-op since we can't delete permanent chat
+  const isLoading = false;
 
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);

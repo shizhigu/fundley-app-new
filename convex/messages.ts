@@ -3,7 +3,6 @@ import { v } from "convex/values";
 
 export const create = mutation({
   args: {
-    chatId: v.id("chats"),
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     parts: v.any(),
     attachments: v.optional(v.any()),
@@ -15,23 +14,17 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify user has access to this chat
-    const chat = await ctx.db.get(args.chatId);
-    if (!chat) {
-      throw new Error("Chat not found");
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
     return await ctx.db.insert("messages", {
-      chatId: args.chatId,
+      userId: user._id,
       role: args.role,
       parts: args.parts,
       attachments: args.attachments || [],
@@ -41,17 +34,11 @@ export const create = mutation({
 });
 
 export const list = query({
-  args: { chatId: v.id("chats") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
-      return [];
-    }
-
-    // Verify user has access to this chat
-    const chat = await ctx.db.get(args.chatId);
-    if (!chat) {
       return [];
     }
 
@@ -60,13 +47,13 @@ export const list = query({
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+    if (!user) {
       return [];
     }
 
     return await ctx.db
       .query("messages")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .order("asc")
       .collect();
   },
@@ -86,18 +73,12 @@ export const get = query({
       return null;
     }
 
-    // Verify user has access to the chat this message belongs to
-    const chat = await ctx.db.get(message.chatId);
-    if (!chat) {
-      return null;
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+    if (!user || message.userId !== user._id) {
       return null;
     }
 
@@ -107,7 +88,6 @@ export const get = query({
 
 export const removeAfterTimestamp = mutation({
   args: {
-    chatId: v.id("chats"),
     timestamp: v.number(),
   },
   handler: async (ctx, args) => {
@@ -117,25 +97,19 @@ export const removeAfterTimestamp = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify user owns this chat
-    const chat = await ctx.db.get(args.chatId);
-    if (!chat) {
-      throw new Error("Chat not found");
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || chat.userId !== user._id) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    // Find and delete messages after timestamp
+    // Find and delete messages after timestamp for this user
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .filter((q) => q.gte(q.field("createdAt"), args.timestamp))
       .collect();
 
@@ -144,5 +118,112 @@ export const removeAfterTimestamp = mutation({
     }
 
     return messages.length;
+  },
+});
+
+// Add batch create for efficiency
+export const createBatch = mutation({
+  args: {
+    messages: v.array(v.object({
+      role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+      parts: v.any(),
+      attachments: v.optional(v.any()),
+    }))
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const results = [];
+    for (const message of args.messages) {
+      const result = await ctx.db.insert("messages", {
+        userId: user._id,
+        role: message.role,
+        parts: message.parts,
+        attachments: message.attachments || [],
+        createdAt: Date.now(),
+      });
+      results.push(result);
+    }
+
+    return results;
+  },
+});
+
+export const updateParts = mutation({
+  args: { 
+    messageId: v.id("messages"),
+    parts: v.any()
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the message to verify ownership
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Get user to verify ownership
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || message.userId !== user._id) {
+      throw new Error("Not authorized to update this message");
+    }
+
+    await ctx.db.patch(args.messageId, {
+      parts: args.parts
+    });
+    
+    return { success: true };
+  },
+});
+
+export const deleteMessage = mutation({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the message to verify ownership
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Get user to verify ownership
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || message.userId !== user._id) {
+      throw new Error("Not authorized to delete this message");
+    }
+
+    await ctx.db.delete(args.messageId);
+    return { success: true };
   },
 });

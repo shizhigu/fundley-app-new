@@ -1,5 +1,4 @@
 import { auth } from '@/lib/auth/clerk';
-import { getSuggestionsByDocumentId } from '@/lib/db/queries';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
@@ -19,9 +18,8 @@ export async function GET(request: Request) {
     return new ChatSDKError('unauthorized:suggestions').toResponse();
   }
 
-  const suggestions = await getSuggestionsByDocumentId({
-    documentId,
-  });
+  // For now, return empty suggestions as we need to implement suggestions in Convex
+  const suggestions: any[] = [];
 
   const [suggestion] = suggestions;
 

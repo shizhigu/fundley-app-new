@@ -21,6 +21,7 @@ import type * as streams from "../streams.js";
 import type * as users from "../users.js";
 import type * as visualizationCache from "../visualizationCache.js";
 import type * as votes from "../votes.js";
+import type * as votes_old from "../votes_old.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   visualizationCache: typeof visualizationCache;
   votes: typeof votes;
+  votes_old: typeof votes_old;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

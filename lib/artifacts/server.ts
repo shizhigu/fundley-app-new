@@ -3,7 +3,7 @@ import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import type { ArtifactKind } from '@/components/artifact';
 import type { Document } from '../db/schema';
-import { saveDocument } from '../db/queries';
+import { convexQueries } from '../convex/client';
 import type { AuthSession } from '@/lib/auth/clerk';
 import type { UIMessageStreamWriter } from 'ai';
 import type { ChatMessage } from '../types';
@@ -60,8 +60,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       });
 
       if (args.session?.user?.id) {
-        await saveDocument({
-          id: args.id,
+        await convexQueries.saveDocument({
           title: args.title,
           content: draftContent,
           kind: config.kind,
@@ -82,13 +81,13 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       });
 
       if (args.session?.user?.id) {
-        await saveDocument({
-          id: args.document.id,
-          title: args.document.title,
-          content: draftContent,
-          kind: config.kind,
-          userId: args.session.user.id,
-        });
+        await convexQueries.updateDocumentById(
+          { id: args.document.id },
+          {
+            title: args.document.title,
+            content: draftContent,
+          }
+        );
       }
 
       return;

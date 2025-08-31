@@ -46,7 +46,7 @@ function PureMessages({
   useDataStream();
   
   const pathname = usePathname();
-  const isNewChatLoading = pathname.includes('/chat/') && messages.length === 0 && status !== 'idle';
+  const isNewChatLoading = pathname.includes('/chat/') && !pathname.includes('/permanent') && messages.length === 0 && status !== 'idle';
 
   // Optimize message rendering to save memory
   const MAX_VISIBLE_MESSAGES = 30; // Show last 30 messages (about 15 conversations)

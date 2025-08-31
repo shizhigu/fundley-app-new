@@ -25,26 +25,17 @@ export default defineSchema({
     .index("by_clerk_org_id", ["clerkOrganizationId"])
     .index("by_slug", ["slug"]),
 
-  // Chat conversations
-  chats: defineTable({
-    title: v.string(),
-    userId: v.id("users"),
-    visibility: v.union(v.literal("private"), v.literal("public")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user_id", ["userId"])
-    .index("by_created_at", ["createdAt"]),
+  // Permanent chat removed - using direct user-message architecture
 
-  // Messages (v2 format with parts and attachments)
+  // Messages (v2 format with parts and attachments) - all messages go to permanent chat
   messages: defineTable({
-    chatId: v.id("chats"),
+    userId: v.id("users"), // Direct reference to user instead of chatId
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     parts: v.any(), // JSONB array of message parts
     attachments: v.any(), // JSONB array of attachments
     createdAt: v.number(),
   })
-    .index("by_chat_id", ["chatId"])
+    .index("by_user_id", ["userId"])
     .index("by_created_at", ["createdAt"]),
 
   // Document artifacts
@@ -59,20 +50,23 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_kind", ["kind"]),
 
-  // Message voting
+  // Message voting (simplified for permanent chat)
   votes: defineTable({
-    chatId: v.id("chats"),
+    userId: v.id("users"),
     messageId: v.id("messages"),
     isUpvoted: v.boolean(),
   })
-    .index("by_chat_id", ["chatId"])
+    .index("by_user_id", ["userId"])
     .index("by_message_id", ["messageId"]),
 
-  // Stream tracking for real-time updates
+  // Stream tracking for real-time updates (simplified for permanent chat)
   streams: defineTable({
-    chatId: v.id("chats"),
+    userId: v.id("users"),
+    streamId: v.string(),
     createdAt: v.number(),
-  }).index("by_chat_id", ["chatId"]),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_stream_id", ["streamId"]),
 
   // Visualization cache for charts and graphs
   visualizationCache: defineTable({

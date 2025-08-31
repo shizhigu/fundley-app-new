@@ -7,6 +7,8 @@ class PyodideManager {
   private loadingPromise: Promise<any> | null = null;
   private lastUsed: number = Date.now();
   private cleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+  private executionQueue: Array<() => Promise<void>> = [];
+  private isExecuting = false;
   
   // Memory cleanup after 5 minutes of inactivity
   private readonly CLEANUP_DELAY = 5 * 60 * 1000;
@@ -82,6 +84,43 @@ class PyodideManager {
     }, this.CLEANUP_DELAY);
   }
   
+  // Queue execution to prevent stdout conflicts
+  async executeWithQueue(executor: () => Promise<void>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.executionQueue.push(async () => {
+        try {
+          await executor();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      this.processQueue();
+    });
+  }
+  
+  private async processQueue() {
+    if (this.isExecuting || this.executionQueue.length === 0) {
+      return;
+    }
+    
+    this.isExecuting = true;
+    
+    while (this.executionQueue.length > 0) {
+      const task = this.executionQueue.pop(); // 从后往前执行 (LIFO)
+      if (task) {
+        try {
+          await task();
+        } catch (error) {
+          console.error('Error executing queued task:', error);
+        }
+      }
+    }
+    
+    this.isExecuting = false;
+  }
+  
   cleanup() {
     console.log('Cleaning up Pyodide instance to free memory...');
     
@@ -137,6 +176,7 @@ export const getPyodideManager = () => {
     // Return a dummy object on server side
     return {
       getPyodide: () => Promise.reject(new Error('Pyodide not available on server')),
+      executeWithQueue: () => Promise.reject(new Error('Pyodide not available on server')),
       cleanup: () => {},
       isLoaded: () => false,
       getMemoryEstimate: () => '0 MB'

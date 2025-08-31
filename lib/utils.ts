@@ -6,7 +6,7 @@ import type {
 } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { DBMessage, Document } from '@/lib/db/schema';
+import type { Message, Document } from '@/lib/db/schema';
 import { ChatSDKError, type ErrorCode } from './errors';
 import type { ChatMessage, ChatTools, CustomUIDataTypes } from './types';
 import { formatISO } from 'date-fns';
@@ -16,14 +16,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const fetcher = async (url: string) => {
+  console.log('📡 Fetcher called with URL:', url);
   const response = await fetch(url);
 
   if (!response.ok) {
+    console.log('❌ Fetch failed:', response.status, response.statusText);
     const { code, cause } = await response.json();
     throw new ChatSDKError(code as ErrorCode, cause);
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log('✅ Fetch successful:', data);
+  return data;
 };
 
 export async function fetchWithErrorHandlers(
@@ -98,16 +102,19 @@ export function sanitizeText(text: string) {
 }
 
 export function convertToUIMessages(
-  messages: DBMessage[], 
+  messages: Message[], 
   vizCacheMap?: Map<string, any>
 ): ChatMessage[] {
   return messages.map((message) => {
+    // Handle both Convex format (_id) and regular format (id)
+    const messageId = message._id || message.id;
+    
     // Get the parts
     let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
     
     // Inject cached data for createVisualization tool outputs
-    if (vizCacheMap?.has(message.id)) {
-      const cache = vizCacheMap.get(message.id);
+    if (vizCacheMap?.has(messageId)) {
+      const cache = vizCacheMap.get(messageId);
       
       parts = parts.map(part => {
         if (part.type === 'tool-createVisualization' && 
@@ -128,7 +135,7 @@ export function convertToUIMessages(
     }
     
     return {
-      id: message.id,
+      id: messageId,
       role: message.role as 'user' | 'assistant' | 'system',
       parts,
       metadata: {

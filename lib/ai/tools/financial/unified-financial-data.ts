@@ -59,41 +59,16 @@ const extractFields = (data: any[], fields: string[], timeframe: 'historical' | 
 }
 
 export const getFinancialData = tool({
-  description: `Get financial data for companies with cross-dataset support and combined timeframes.
+  description: `Get financial data for companies. ALWAYS call financialFieldsAgent first to get field mapping.
+
+  Required: symbols + fieldsByDataType (from financialFieldsAgent)
   
-  🚨 CRITICAL USAGE REQUIREMENTS:
-  1. ALWAYS call financialFieldsAgent FIRST to get field mapping
-  2. MUST pass either fieldsByDataType OR both (fields + dataType) parameters
-  3. NEVER call this tool with only symbols/timeframe - it WILL FAIL with 404/no data
-  4. If you get errors, check your parameters - don't retry with same wrong parameters!
+  Examples:
+  • Revenue analysis: { symbols: ["AAPL"], fieldsByDataType: {"getIncomeStatement": ["revenue"]} }
+  • Profitability: { symbols: ["AAPL"], fieldsByDataType: {"getKeyMetrics": ["returnOnEquity", "netProfitMargin"]} }
+  • Multi-statement: { symbols: ["AAPL"], fieldsByDataType: {"getIncomeStatement": ["revenue"], "getKeyMetrics": ["returnOnEquity"]} }
   
-  💡 CORRECT USAGE EXAMPLES:
-  ✅ GOOD: { symbols: ["AAPL"], fieldsByDataType: {"getKeyMetrics": ["returnOnEquity"]}, timeframe: "ttm" }
-  ✅ GOOD: { symbols: ["AAPL"], fields: ["revenue"], dataType: "getIncomeStatement", timeframe: "historical" }
-  ❌ BAD:  { symbols: ["AAPL"], timeframe: "ttm" } // Missing field specification!
-  ❌ BAD:  { symbols: ["AAPL"], limit: 5 } // Missing field specification!
-  
-  Key Features:
-  - Cross-dataset support: Get income + ratios + metrics in single call
-  - Combined timeframes: Get both historical trends AND current TTM data
-  - Multi-symbol support: Analyze multiple companies simultaneously
-  - Global parallel execution: All API calls execute simultaneously for maximum speed
-  
-  Timeframes:
-  - historical: quarterly/annual historical data for trend analysis
-  - ttm: trailing twelve months (current rolling 12-month data)  
-  - both: get both historical AND ttm data for comprehensive analysis
-  
-  Historical Period Options (when timeframe='historical' or 'both'):
-  - Q1, Q2, Q3, Q4: Specific quarters across years (e.g., all Q3s: 2024-Q3, 2023-Q3...)
-  - FY, annual: Annual/fiscal year data
-  - quarter: All quarterly data mixed (Q1,Q2,Q3,Q4)
-  
-  WORKFLOW:
-  Step 1: Call financialFieldsAgent with user query
-  Step 2: Extract fieldsByDataType from agent result  
-  Step 3: Call getFinancialData with fieldsByDataType parameter
-  Step 4: If error occurs, check parameters and fix - don't repeat same call!`,
+  Timeframes: "historical" (trends), "ttm" (current), "both" (comprehensive)`,
   
   inputSchema: z.object({
     symbols: z.array(z.string()).min(1).describe('Stock symbols: ["AAPL"] or ["AAPL","MSFT"]'),

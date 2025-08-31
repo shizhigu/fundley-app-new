@@ -48,7 +48,7 @@ const ResizableHandle = ({
             fill="currentColor"
             fillRule="evenodd"
             clipRule="evenodd"
-          ></path>
+          />
         </svg>
       </div>
     )}

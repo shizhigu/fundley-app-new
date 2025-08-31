@@ -39,27 +39,105 @@ if (process.env.REDIS_URL) {
 
 export class FMPClient {
   private apiKey: string
+  private cacheHits = 0
+  private cacheMisses = 0
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || getFmpApiKey()
   }
 
+  /**
+   * Get intelligent TTL based on endpoint and data type
+   */
+  private getTTL(endpoint: string): number {
+    // Real-time data - short TTL
+    if (endpoint.includes('quote') || endpoint.includes('price')) {
+      return 300 // 5 minutes
+    }
+    
+    // TTM data - medium TTL (more stable)
+    if (endpoint.includes('-ttm')) {
+      return 7200 // 2 hours
+    }
+    
+    // Historical statements - long TTL (rarely change)
+    if (endpoint.includes('statement') || endpoint.includes('balance-sheet')) {
+      return 86400 // 24 hours
+    }
+    
+    // Ratios and metrics - medium TTL
+    if (endpoint.includes('ratios') || endpoint.includes('metrics')) {
+      return 14400 // 4 hours
+    }
+    
+    // Default TTL
+    return 3600 // 1 hour
+  }
+
+  /**
+   * Build deterministic cache key that's independent of parameter order
+   */
+  private buildCacheKey(endpoint: string, params: Record<string, any>): string {
+    // Sort keys to ensure consistent ordering
+    const sortedKeys = Object.keys(params).sort()
+    const normalizedParams: Record<string, any> = {}
+    
+    sortedKeys.forEach(key => {
+      const value = params[key]
+      // Normalize values for consistency
+      if (typeof value === 'string') {
+        normalizedParams[key] = value.toUpperCase() // AAPL vs aapl
+      } else {
+        normalizedParams[key] = value
+      }
+    })
+    
+    return `fmp:${endpoint}:${JSON.stringify(normalizedParams)}`
+  }
+
+  /**
+   * Get cache statistics
+   */
+  private getCacheStats(): string {
+    const total = this.cacheHits + this.cacheMisses
+    if (total === 0) return 'No stats yet'
+    const hitRate = (this.cacheHits / total * 100).toFixed(1)
+    return `${this.cacheHits}/${total} hits, ${hitRate}% rate`
+  }
+
+  /**
+   * Get cache statistics (public method)
+   */
+  public getStats() {
+    const total = this.cacheHits + this.cacheMisses
+    return {
+      hits: this.cacheHits,
+      misses: this.cacheMisses,
+      total,
+      hitRate: total > 0 ? (this.cacheHits / total * 100).toFixed(1) : '0.0'
+    }
+  }
+
   async get(endpoint: string, params: Record<string, any> = {}) {
-    // Build cache key
-    const cacheKey = `fmp:${endpoint}:${JSON.stringify(params)}`
+    // Build deterministic cache key (order-independent)
+    const cacheKey = this.buildCacheKey(endpoint, params)
     
     // Try to get from cache first
     if (redisClient?.isReady) {
       try {
         const cached = await redisClient.get(cacheKey)
         if (cached) {
-          console.log(`Cache hit for ${cacheKey}`)
+          this.cacheHits++
+          console.log(`✅ Cache hit for ${endpoint} (${this.getCacheStats()})`)
           return JSON.parse(cached)
         }
       } catch (error) {
         console.error('Redis cache error:', error)
       }
     }
+    
+    // Cache miss - increment counter
+    this.cacheMisses++
 
     // Build URL with parameters
     const url = new URL(`${FMP_BASE_URL}${endpoint}`)
@@ -69,8 +147,7 @@ export class FMPClient {
     url.searchParams.append('apikey', this.apiKey)
 
     // Fetch from API
-    console.log(`Fetching from FMP: ${url.pathname}`)
-    console.log(`Full URL: ${url.toString()}`)
+    console.log(`🔄 Cache miss - Fetching from FMP: ${endpoint} (${this.getCacheStats()})`)
     const response = await fetch(url.toString())
     
     if (!response.ok) {
@@ -79,12 +156,12 @@ export class FMPClient {
 
     const data = await response.json()
 
-    // Cache the result
+    // Cache the result with intelligent TTL
     if (redisClient?.isReady && data) {
       try {
-        // Cache for 1 hour for most data, 5 minutes for real-time quotes
-        const ttl = endpoint.includes('quote') ? 300 : 3600
+        const ttl = this.getTTL(endpoint)
         await redisClient.setEx(cacheKey, ttl, JSON.stringify(data))
+        console.log(`💾 Cached ${endpoint} for ${ttl}s`)
       } catch (error) {
         console.error('Redis cache write error:', error)
       }

@@ -1,40 +1,32 @@
 import { auth } from '@/lib/auth/clerk';
-import { getChatById, getMessagesByChatId, getVisualizationCachesByChat } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import { NextResponse } from 'next/server';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  
-  const chat = await getChatById({ id });
-  if (!chat) {
-    return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
-  }
-
+// Permanent chat - always return user's permanent chat data
+export async function GET() {
   const session = await auth();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check visibility permissions
-  if (chat.visibility === 'private') {
-    if (!session.user || session.user.id !== chat.userId) {
-      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
-    }
+  try {
+    // Get or create permanent chat for user
+    const permanentChat = await convexQueries.getOrCreatePermanentChat();
+    
+    // Get all user's messages
+    const messages = await convexQueries.getMessagesByUserId();
+    
+    return NextResponse.json({
+      chat: {
+        id: permanentChat._id,
+        title: permanentChat.title,
+        userId: permanentChat.userId,
+        visibility: 'private', // Always private in permanent chat
+      },
+      messages,
+    });
+  } catch (error) {
+    console.error('Error fetching permanent chat data:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const messages = await getMessagesByChatId({ id });
-  const vizCaches = await getVisualizationCachesByChat(id);
-
-  return NextResponse.json({
-    chat: {
-      id: chat.id,
-      visibility: chat.visibility,
-      userId: chat.userId,
-    },
-    messages,
-    vizCaches,
-  });
 }

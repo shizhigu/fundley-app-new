@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { streamObject, tool, type UIMessageStreamWriter } from 'ai';
-import { getDocumentById, saveSuggestions } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import type { Suggestion } from '@/lib/db/schema';
 import { generateUUID } from '@/lib/utils';
 import { artifactModel } from '../providers';
@@ -24,7 +24,7 @@ export const requestSuggestions = ({
         .describe('The ID of the document to request edits'),
     }),
     execute: async ({ documentId }) => {
-      const document = await getDocumentById({ id: documentId });
+      const document = await convexQueries.getDocumentsById({ id: documentId });
 
       if (!document || !document.content) {
         return {
@@ -72,14 +72,15 @@ export const requestSuggestions = ({
       if (session.user?.id) {
         const userId = session.user.id;
 
-        await saveSuggestions({
-          suggestions: suggestions.map((suggestion) => ({
-            ...suggestion,
-            userId,
-            createdAt: new Date(),
-            documentCreatedAt: document.createdAt,
-          })),
-        });
+        // TODO: Re-implement suggestions with Convex
+        // await convexQueries.saveSuggestions({
+        //   suggestions: suggestions.map((suggestion) => ({
+        //     ...suggestion,
+        //     userId,
+        //     createdAt: new Date(),
+        //     documentCreatedAt: document.createdAt,
+        //   })),
+        // });
       }
 
       return {

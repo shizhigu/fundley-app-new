@@ -1,7 +1,7 @@
 import { tool, type UIMessageStreamWriter } from 'ai';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { z } from 'zod';
-import { getDocumentById } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import { documentHandlersByArtifactKind } from '@/lib/artifacts/server';
 import type { ChatMessage } from '@/lib/types';
 
@@ -22,7 +22,7 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
       data: z.any().optional().describe('New structured data to incorporate'),
     }),
     execute: async ({ id, description, context, data }) => {
-      const document = await getDocumentById({ id });
+      const document = await convexQueries.getDocumentsById({ id });
 
       if (!document) {
         return {

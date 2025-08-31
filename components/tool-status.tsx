@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Search, Database, TrendingUp, FileText, ChevronDown, } from 'lucide-react';
+import { Search, Database, TrendingUp, FileText, ChevronDown, AlertTriangle, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
@@ -43,6 +43,19 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   getKeyMetrics: { 
     label: 'Fetching key metrics', 
     icon: TrendingUp 
+  },
+  // SEC Filing tools
+  extractMDA: {
+    label: 'Extracting MD&A from SEC filings',
+    icon: FileText
+  },
+  extractRiskFactors: {
+    label: 'Extracting risk factors from 10-K',
+    icon: AlertTriangle
+  },
+  extractBusinessOverview: {
+    label: 'Extracting business overview',
+    icon: Briefcase
   },
 };
 

@@ -3,8 +3,7 @@ import { v } from "convex/values";
 
 export const create = mutation({
   args: {
-    chatId: v.id("chats"),
-    data: v.any(),
+    streamId: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -13,24 +12,18 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify user has access to this chat
-    const chat = await ctx.db.get(args.chatId);
-    if (!chat) {
-      throw new Error("Chat not found");
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
     return await ctx.db.insert("streams", {
-      chatId: args.chatId,
-      data: args.data,
+      userId: user._id,
+      streamId: args.streamId,
       createdAt: Date.now(),
     });
   },

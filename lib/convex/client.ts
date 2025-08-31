@@ -1,5 +1,5 @@
 import { ConvexHttpClient } from 'convex/browser';
-import { api } from '@/../convex/_generated/api';
+import { api } from '../../convex/_generated/api';
 
 // Server-side Convex HTTP client for API routes
 const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -20,57 +20,36 @@ export const convexQueries = {
     return await convexClient.mutation(api.users.store);
   },
 
-  // Chat queries
-  async getChatById({ id }: { id: string }) {
-    return await convexClient.query(api.chats.get, { id: id as any });
-  },
+  // Permanent Chat queries (removed - using direct message-based architecture)
 
-  async saveChat(data: {
-    id: string;
-    userId: string;
-    title: string;
-    visibility: 'private' | 'public';
-  }) {
-    return await convexClient.mutation(api.chats.create, {
-      title: data.title,
-      visibility: data.visibility,
-    });
-  },
-
-  async deleteChatById({ id }: { id: string }) {
-    return await convexClient.mutation(api.chats.remove, { id: id as any });
-  },
-
-  async getChatsByUserId({ id }: { id: string }) {
-    return await convexClient.query(api.chats.list);
-  },
-
-  // Message queries  
-  async getMessagesByChatId({ id }: { id: string }) {
-    return await convexClient.query(api.messages.list, { chatId: id as any });
+  // Message queries for permanent chat
+  async getMessagesByUserId() {
+    return await convexClient.query(api.messages.list);
   },
 
   async saveMessages({ messages }: { 
     messages: Array<{
       id: string;
-      chatId: string;
       role: 'user' | 'assistant' | 'system';
       parts: any;
       attachments: any[];
       createdAt: Date;
     }>;
   }) {
-    const results = [];
-    for (const message of messages) {
-      const result = await convexClient.mutation(api.messages.create, {
-        chatId: message.chatId as any,
-        role: message.role,
-        parts: message.parts,
-        attachments: message.attachments,
-      });
-      results.push(result);
-    }
-    return results;
+    return await convexClient.mutation(api.messages.createBatch, {
+      messages: messages.map(msg => ({
+        role: msg.role,
+        parts: msg.parts,
+        attachments: msg.attachments,
+      })),
+    });
+  },
+
+  async deleteAllMessagesForUser() {
+    // For now, delete messages after a specific timestamp (0 to delete all)
+    return await convexClient.mutation(api.messages.removeAfterTimestamp, {
+      timestamp: 0,
+    });
   },
 
   async getMessageCountByUserId({ 
@@ -89,7 +68,7 @@ export const convexQueries = {
   async saveDocument(data: {
     title: string;
     content?: string;
-    kind: 'text' | 'code';
+    kind: 'text' | 'code' | 'sheet';
     userId: string;
   }) {
     return await convexClient.mutation(api.documents.create, {
@@ -124,33 +103,29 @@ export const convexQueries = {
     return await convexClient.mutation(api.documents.remove, { id: id as any });
   },
 
-  // Stream queries
-  async createStreamId({ streamId, chatId }: { streamId: string; chatId: string }) {
+  // Stream queries for permanent chat
+  async createStreamId({ streamId }: { streamId: string }) {
     return await convexClient.mutation(api.streams.create, {
-      chatId: chatId as any,
-      data: { streamId },
+      streamId,
     });
   },
 
-  // Vote queries
+  // Vote queries for permanent chat
   async voteMessage({ 
     messageId, 
-    chatId, 
     isUpvote 
   }: { 
     messageId: string; 
-    chatId: string; 
     isUpvote: boolean; 
   }) {
     return await convexClient.mutation(api.votes.create, {
       messageId: messageId as any,
-      chatId: chatId as any,
       isUpvote,
     });
   },
 
-  async getVotesByChatId({ chatId }: { chatId: string }) {
-    return await convexClient.query(api.votes.listByChat, { chatId: chatId as any });
+  async getVotesByUserId() {
+    return await convexClient.query(api.votes.listByUser);
   },
 
   // Organization queries
@@ -212,6 +187,21 @@ export const convexQueries = {
       messageId: messageId as any 
     });
     return cacheEntries.length > 0 ? cacheEntries[0] : null;
+  },
+
+  // Additional methods needed by actions.ts
+  async getMessageById({ id }: { id: string }) {
+    return await convexClient.query(api.messages.get, { id: id as any });
+  },
+
+  async deleteMessagesAfterTimestamp({
+    timestamp,
+  }: {
+    timestamp: number;
+  }) {
+    return await convexClient.mutation(api.messages.removeAfterTimestamp, {
+      timestamp,
+    });
   },
 };
 

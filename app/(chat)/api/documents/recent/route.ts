@@ -1,7 +1,5 @@
 import { auth } from '@/lib/auth/clerk';
-import { db } from '@/lib/db/drizzle';
-import { document } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
@@ -12,14 +10,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const documents = await db
-      .select()
-      .from(document)
-      .where(eq(document.userId, session.user.id))
-      .orderBy(desc(document.createdAt))
-      .limit(5);
+    const documents = await convexQueries.getDocumentsByUserId({ 
+      userId: session.user.id 
+    });
 
-    return Response.json(documents, { status: 200 });
+    // Return only the 5 most recent documents
+    const recentDocuments = documents.slice(0, 5);
+
+    return Response.json(recentDocuments, { status: 200 });
   } catch (error) {
     console.error('Error fetching recent documents:', error);
     return new ChatSDKError('internal:documents').toResponse();

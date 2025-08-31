@@ -20,7 +20,6 @@ import { ArrowUpIcon, PaperclipIcon, StopIcon, QuantumIcon, } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -93,7 +92,7 @@ function PureMultimodalInput({
   const resetHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = '98px';
+      textareaRef.current.style.height = '60px';
     }
   };
 
@@ -231,7 +230,7 @@ function PureMultimodalInput({
   }, [status, scrollToBottom]);
 
   return (
-    <div className="relative w-[65%] max-w-3xl mx-auto flex flex-col gap-4">
+    <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4 bg-transparent">
       <AnimatePresence>
         {!isAtBottom && (
           <motion.div
@@ -257,15 +256,6 @@ function PureMultimodalInput({
         )}
       </AnimatePresence>
 
-      {messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <SuggestedActions
-            sendMessage={sendMessage}
-            chatId={chatId}
-            selectedVisibilityType={selectedVisibilityType}
-          />
-        )}
 
       <input
         type="file"
@@ -306,12 +296,12 @@ function PureMultimodalInput({
         value={input}
         onChange={handleInput}
         className={cx(
-          'professional-input min-h-[98px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-black/5 dark:bg-white/5 pb-12 pl-4 pr-20 placeholder:text-text-secondary/60',
+          'professional-input min-h-[60px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
           'border-2 border-gray-400/80 dark:border-gray-500/80',
           'shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)]',
           'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
           'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
-          'backdrop-blur-sm transition-all duration-200',
+          'transition-all duration-200',
           className,
         )}
         rows={2}
@@ -522,7 +512,7 @@ function PureSendButton({
         event.preventDefault();
         submitForm();
       }}
-      disabled={input.length === 0 || uploadQueue.length > 0}
+      disabled={(input?.length || 0) === 0 || (uploadQueue?.length || 0) > 0}
     >
       <ArrowUpIcon size={16} />
     </Button>
@@ -530,7 +520,7 @@ function PureSendButton({
 }
 
 const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
-  if (prevProps.uploadQueue.length !== nextProps.uploadQueue.length)
+  if ((prevProps.uploadQueue?.length || 0) !== (nextProps.uploadQueue?.length || 0))
     return false;
   if (prevProps.input !== nextProps.input) return false;
   return true;

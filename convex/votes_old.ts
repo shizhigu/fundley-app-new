@@ -4,7 +4,8 @@ import { v } from "convex/values";
 export const create = mutation({
   args: {
     messageId: v.id("messages"),
-    isUpvoted: v.boolean(),
+    chatId: v.id("chats"),
+    isUpvote: v.boolean(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -13,52 +14,33 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Verify user has access to this chat
+    const chat = await ctx.db.get(args.chatId);
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
+    // Verify message belongs to this chat
+    const message = await ctx.db.get(args.messageId);
+    if (!message || message.chatId !== args.chatId) {
+      throw new Error("Message not found or doesn't belong to this chat");
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Verify message belongs to user
-    const message = await ctx.db.get(args.messageId);
-    if (!message || message.userId !== user._id) {
-      throw new Error("Message not found or unauthorized");
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+      throw new Error("Unauthorized");
     }
 
     return await ctx.db.insert("votes", {
       messageId: args.messageId,
-      userId: user._id,
-      isUpvoted: args.isUpvoted,
+      chatId: args.chatId,
+      isUpvote: args.isUpvote,
+      createdAt: Date.now(),
     });
-  },
-});
-
-export const listByUser = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
-      .unique();
-
-    if (!user) {
-      return [];
-    }
-
-    return await ctx.db
-      .query("votes")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .collect();
   },
 });
 
@@ -71,24 +53,62 @@ export const listByMessage = query({
       return [];
     }
 
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      return [];
+    }
+
+    // Verify user has access to the chat this message belongs to
+    const chat = await ctx.db.get(message.chatId);
+    if (!chat) {
+      return [];
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user) {
-      return [];
-    }
-
-    const message = await ctx.db.get(args.messageId);
-    if (!message || message.userId !== user._id) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       return [];
     }
 
     return await ctx.db
       .query("votes")
       .withIndex("by_message_id", (q) => q.eq("messageId", args.messageId))
-      .order("desc")
+      .order("asc")
+      .collect();
+  },
+});
+
+export const listByChat = query({
+  args: { chatId: v.id("chats") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      return [];
+    }
+
+    // Verify user has access to this chat
+    const chat = await ctx.db.get(args.chatId);
+    if (!chat) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("votes")
+      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .order("asc")
       .collect();
   },
 });
@@ -107,12 +127,18 @@ export const get = query({
       return null;
     }
 
+    // Verify user has access to the chat this vote belongs to
+    const chat = await ctx.db.get(vote.chatId);
+    if (!chat) {
+      return null;
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || vote.userId !== user._id) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       return null;
     }
 
@@ -123,7 +149,7 @@ export const get = query({
 export const update = mutation({
   args: {
     id: v.id("votes"),
-    isUpvoted: v.boolean(),
+    isUpvote: v.boolean(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -137,17 +163,23 @@ export const update = mutation({
       throw new Error("Vote not found");
     }
 
+    // Verify user has access to the chat this vote belongs to
+    const chat = await ctx.db.get(vote.chatId);
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || vote.userId !== user._id) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       throw new Error("Unauthorized");
     }
 
     await ctx.db.patch(args.id, {
-      isUpvoted: args.isUpvoted,
+      isUpvote: args.isUpvote,
     });
   },
 });
@@ -166,12 +198,18 @@ export const remove = mutation({
       throw new Error("Vote not found");
     }
 
+    // Verify user has access to the chat this vote belongs to
+    const chat = await ctx.db.get(vote.chatId);
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || vote.userId !== user._id) {
+    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
       throw new Error("Unauthorized");
     }
 

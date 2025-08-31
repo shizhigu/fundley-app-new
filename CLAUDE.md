@@ -6,16 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Core Commands
 - **Development**: `pnpm dev` - Runs Next.js with Turbo in development mode
-- **Build**: `pnpm build` - Runs database migrations then builds the Next.js app
+- **Build**: `pnpm build` - Builds the Next.js application
 - **Linting**: `pnpm lint` - Runs Next.js lint and Biome lint with auto-fix
 - **Formatting**: `pnpm format` - Formats code using Biome
 - **Testing**: `pnpm test` - Runs Playwright E2E tests (sets PLAYWRIGHT=True environment variable)
 
-### Database Commands
-- **Generate migrations**: `pnpm db:generate` - Generates Drizzle migrations
-- **Run migrations**: `pnpm db:migrate` - Applies migrations to database
-- **Open Drizzle Studio**: `pnpm db:studio` - Opens database UI
-- **Push schema**: `pnpm db:push` - Pushes schema changes directly to database
+### Convex Database Commands
+- **Deploy**: `npx convex deploy` - Deploys Convex functions and schema to production
+- **Dev mode**: `npx convex dev` - Runs Convex development server with hot reload
 
 ## Architecture Overview
 
@@ -48,8 +46,9 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 - `/ai` - AI configuration
   - `providers.ts` - Model provider configuration (xAI/test models)
   - `tools/` - AI tool implementations (create/update documents, weather, suggestions)
-- `/artifacts` - Document artifact handlers (code, text, image, sheet)
+- `/artifacts` - Document artifact handlers (code, text, sheet)
 - `/editor` - ProseMirror and CodeMirror configurations
+- `/convex` - Convex client adapter for API compatibility
 
 #### `/convex` - Convex Backend Functions
 - `schema.ts` - Database schema definitions with indexes
@@ -64,7 +63,7 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 - `auth.config.ts` - Clerk authentication configuration
 
 #### `/artifacts` - Artifact System
-Each artifact type (code, text, image, sheet) has:
+Each artifact type (code, text, sheet) has:
 - `client.tsx` - Client-side React component
 - `server.ts` - Server-side document handler with streaming
 
@@ -72,11 +71,11 @@ Each artifact type (code, text, image, sheet) has:
 
 1. **Streaming Architecture**: Uses Vercel AI SDK's streaming capabilities for real-time chat responses and document updates via `streamObject` and custom data streams
 
-2. **Authentication Flow**: Dual authentication system supporting both registered users and guest sessions, with session data stored in JWT tokens
+2. **Authentication Flow**: Clerk authentication with Convex integration, supporting both registered users and guest sessions
 
 3. **Message Storage**: Messages use a parts-based structure (v2 schema) supporting multimodal content and attachments
 
-4. **Artifact System**: Specialized document types (code, text, image, spreadsheet) with dedicated editors and real-time streaming updates
+4. **Artifact System**: Specialized document types (code, text, spreadsheet) with dedicated editors and real-time streaming updates
 
 5. **Model Configuration**: Centralized AI model configuration in `providers.ts` with test models for development and xAI models for production
 
@@ -88,16 +87,190 @@ Each artifact type (code, text, image, sheet) has:
 - **File Naming**: kebab-case for files, PascalCase for components
 - **Imports**: Absolute imports via `@/` alias for project files
 
+## Convex Database Schema
+
+### Core Tables (8 Tables)
+
+#### Users Table
+```typescript
+users: defineTable({
+  email: v.string(),
+  clerkUserId: v.string(),
+  clerkOrganizationId: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_clerk_user_id", ["clerkUserId"])
+  .index("by_email", ["email"])
+```
+**Purpose**: User management with Clerk authentication integration
+**Key Features**: 
+- Clerk user ID mapping for authentication
+- Optional organization support
+- Timestamp tracking
+
+#### Chats Table  
+```typescript
+chats: defineTable({
+  title: v.string(),
+  userId: v.id("users"),
+  visibility: v.union(v.literal("private"), v.literal("public")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_user_id", ["userId"])
+  .index("by_created_at", ["createdAt"])
+```
+**Purpose**: Chat session management
+**Key Features**:
+- User ownership with foreign key
+- Public/private visibility control
+- Chronological indexing
+
+#### Messages Table
+```typescript
+messages: defineTable({
+  chatId: v.id("chats"),
+  role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+  parts: v.any(), // Multimodal content parts
+  attachments: v.array(v.any()),
+  createdAt: v.number(),
+}).index("by_chat_id", ["chatId"])
+  .index("by_created_at", ["createdAt"])
+```
+**Purpose**: Store conversation messages with multimodal support
+**Key Features**:
+- Chat association with foreign key
+- Role-based message types (user/assistant/system)
+- Flexible parts structure for multimodal content
+- Attachment support
+
+#### Documents Table
+```typescript
+documents: defineTable({
+  title: v.string(),
+  kind: v.union(v.literal("text"), v.literal("code"), v.literal("sheet")),
+  content: v.optional(v.string()),
+  userId: v.id("users"),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_user_id", ["userId"])
+  .index("by_kind", ["kind"])
+```
+**Purpose**: Document artifact management
+**Key Features**:
+- Document type classification (text/code/sheet)
+- User ownership
+- Content storage with optional field
+
+#### Organizations Table
+```typescript
+organizations: defineTable({
+  name: v.string(),
+  slug: v.string(),
+  clerkOrganizationId: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_clerk_org_id", ["clerkOrganizationId"])
+  .index("by_slug", ["slug"])
+```
+**Purpose**: Organization management
+**Key Features**:
+- Unique slug for URL routing
+- Clerk organization integration
+- Name and slug indexing
+
+#### Streams Table
+```typescript
+streams: defineTable({
+  chatId: v.id("chats"),
+  data: v.any(), // Flexible streaming data
+  createdAt: v.number(),
+}).index("by_chat_id", ["chatId"])
+```
+**Purpose**: Real-time data streaming for chat sessions
+**Key Features**:
+- Chat association
+- Flexible data structure
+- Timestamp indexing
+
+#### Votes Table
+```typescript
+votes: defineTable({
+  messageId: v.id("messages"),
+  chatId: v.id("chats"),
+  isUpvoted: v.boolean(),
+  createdAt: v.number(),
+}).index("by_message_id", ["messageId"])
+  .index("by_chat_id", ["chatId"])
+```
+**Purpose**: Message voting/rating system
+**Key Features**:
+- Message and chat association
+- Boolean upvote/downvote
+- Dual indexing for queries
+
+#### Visualization Cache Table
+```typescript
+visualizationCache: defineTable({
+  messageId: v.id("messages"),
+  dataHash: v.string(),
+  result: v.any(),
+  createdAt: v.number(),
+}).index("by_message_id", ["messageId"])
+  .index("by_data_hash", ["dataHash"])
+```
+**Purpose**: Cache expensive visualization computations
+**Key Features**:
+- Message association for context
+- Hash-based cache key
+- Flexible result storage
+
+### Schema Features
+
+#### Automatic Indexes
+Convex automatically creates the following indexes:
+- Primary ID indexes for all tables
+- Custom indexes as defined in schema
+- Compound indexes for efficient querying
+
+#### Type Safety
+- Full TypeScript integration
+- Runtime validation with Convex values
+- End-to-end type safety from database to frontend
+
+#### Real-time Subscriptions
+- Automatic reactivity for all queries
+- WebSocket-based updates
+- No polling required
+
+#### Authentication Integration
+- Seamless Clerk integration
+- User context in all functions  
+- Row-level security through function logic
+
+### Migration Benefits
+
+**From PostgreSQL to Convex**:
+1. **Simplified Architecture**: No ORM configuration needed
+2. **Real-time by Default**: Built-in subscriptions
+3. **Type Safety**: Native TypeScript support
+4. **Automatic Scaling**: Managed infrastructure
+5. **Developer Experience**: Hot reloading and introspection
+
+**Removed Complexity**:
+- No SQL migrations
+- No connection pooling
+- No query optimization
+- No manual index management
 
 ## AI Agent Architecture (Financial Data Integration)
 
 ### Overview
 
-Fundley's core value proposition is providing intelligent financial analysis through integration with Financial Modeling Prep (FMP) API. The AI Agent must efficiently retrieve, process, and analyze financial data to answer complex queries about private equity portfolios, market trends, and investment opportunities.
+Fundley's core value proposition is providing intelligent financial analysis through integration with Financial Modeling Prep (FMP) API. The AI Agent efficiently retrieves, processes, and analyzes financial data to answer complex queries about private equity portfolios, market trends, and investment opportunities.
 
 ### Architecture Design
 
-#### 1. Core Components
+#### Core Components
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -121,7 +294,7 @@ Fundley's core value proposition is providing intelligent financial analysis thr
 └───────────────────┘              └────────────────────┘
 ```
 
-#### 2. FMP API Integration Strategy
+#### FMP API Integration Strategy
 
 ##### Phase 1: Core Financial Tools (MVP)
 
@@ -163,7 +336,7 @@ export const getCompanyFinancials = tool({
 })
 ```
 
-#### 3. Parallel Execution Architecture
+#### Parallel Execution Architecture
 
 **Problem**: Sequential API calls create unacceptable latency
 **Solution**: Intelligent parallel execution with dependency management
@@ -198,13 +371,13 @@ export class ToolOrchestrator {
 }
 ```
 
-#### 4. Data Management Strategy
+#### Data Management Strategy
 
 ##### Caching Tiers
 
 1. **Hot Cache** (Redis): 1-hour TTL for frequently accessed data
-2. **Warm Cache** (PostgreSQL): Daily snapshots of key metrics
-3. **Cold Storage**: Historical data in PostgreSQL with JSONB
+2. **Warm Cache** (Convex): Daily snapshots of key metrics
+3. **Cold Storage**: Historical data in Convex with flexible schema
 
 ##### Cache Invalidation Rules
 
@@ -213,7 +386,7 @@ export class ToolOrchestrator {
 - **Fundamentals**: 24-hour TTL (updates after market close)
 - **Historical data**: Permanent cache
 
-#### 5. Context Engineering Strategy
+#### Context Engineering Strategy
 
 ##### The Challenge
 
@@ -289,24 +462,26 @@ class InMemoryVectorStore {
 }
 ```
 
-**Option 2: PostgreSQL pgvector (Production)**
+**Option 2: Convex Vector Search (Production)**
 
-```sql
--- Enable pgvector extension
-CREATE EXTENSION vector;
+```typescript
+// Store field embeddings in Convex
+const fieldEmbeddings = defineTable({
+  fieldName: v.string(),
+  embedding: v.array(v.float64()),
+  metadata: v.any(),
+}).index("by_field", ["fieldName"])
 
--- Store field embeddings
-CREATE TABLE field_embeddings (
-  field_name TEXT PRIMARY KEY,
-  embedding vector(1536),
-  metadata JSONB
-);
-
--- Semantic search
-SELECT field_name, metadata 
-FROM field_embeddings 
-ORDER BY embedding <-> $1 
-LIMIT 10;
+// Semantic search function
+export const searchFields = query({
+  args: { queryEmbedding: v.array(v.float64()), limit: v.number() },
+  handler: async (ctx, { queryEmbedding, limit }) => {
+    // Implement vector similarity search
+    const allEmbeddings = await ctx.db.query("fieldEmbeddings").collect()
+    // ... cosine similarity calculation
+    return topKResults
+  },
+})
 ```
 
 **Option 3: Dedicated Vector DB (Scale)**
@@ -444,323 +619,6 @@ export abstract class FinancialTool {
 4. Iterate based on performance metrics and user feedback
 
 This approach prevents over-engineering and ensures our infrastructure investments directly address proven needs rather than anticipated ones.
-
-## Convex Database Schema
-
-### Core Tables (8 Tables)
-
-#### Users Table
-```typescript
-users: defineTable({
-  email: v.string(),
-  clerkUserId: v.string(),
-  clerkOrganizationId: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_clerk_user_id", ["clerkUserId"])
-  .index("by_email", ["email"])
-```
-**Purpose**: User management with Clerk authentication integration
-**Key Features**: 
-- Clerk user ID mapping for authentication
-- Optional organization support
-- Timestamp tracking
-
-#### Chats Table  
-```typescript
-chats: defineTable({
-  title: v.string(),
-  userId: v.id("users"),
-  visibility: v.union(v.literal("private"), v.literal("public")),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_user_id", ["userId"])
-  .index("by_created_at", ["createdAt"])
-```
-**Purpose**: Chat session management
-**Key Features**:
-- User ownership with foreign key
-- Public/private visibility control
-- Chronological indexing
-
-#### Messages Table
-```typescript
-messages: defineTable({
-  chatId: v.id("chats"),
-  role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
-  parts: v.any(), // Multimodal content parts
-  attachments: v.array(v.any()),
-  createdAt: v.number(),
-}).index("by_chat_id", ["chatId"])
-  .index("by_created_at", ["createdAt"])
-```
-**Purpose**: Store conversation messages with multimodal support
-**Key Features**:
-- Chat association with foreign key
-- Role-based message types (user/assistant/system)
-- Flexible parts structure for multimodal content
-- Attachment support
-
-#### Documents Table
-```typescript
-documents: defineTable({
-  title: v.string(),
-  kind: v.union(v.literal("text"), v.literal("code")),
-  content: v.optional(v.string()),
-  userId: v.id("users"),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_user_id", ["userId"])
-  .index("by_kind", ["kind"])
-```
-**Purpose**: Document artifact management
-**Key Features**:
-- Document type classification (text/code)
-- User ownership
-- Content storage with optional field
-
-#### Organizations Table
-```typescript
-organizations: defineTable({
-  name: v.string(),
-  slug: v.string(),
-  clerkOrganizationId: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_clerk_org_id", ["clerkOrganizationId"])
-  .index("by_slug", ["slug"])
-```
-**Purpose**: Organization management
-**Key Features**:
-- Unique slug for URL routing
-- Clerk organization integration
-- Name and slug indexing
-
-#### Streams Table
-```typescript
-streams: defineTable({
-  chatId: v.id("chats"),
-  data: v.any(), // Flexible streaming data
-  createdAt: v.number(),
-}).index("by_chat_id", ["chatId"])
-```
-**Purpose**: Real-time data streaming for chat sessions
-**Key Features**:
-- Chat association
-- Flexible data structure
-- Timestamp indexing
-
-#### Votes Table
-```typescript
-votes: defineTable({
-  messageId: v.id("messages"),
-  chatId: v.id("chats"),
-  isUpvote: v.boolean(),
-  createdAt: v.number(),
-}).index("by_message_id", ["messageId"])
-  .index("by_chat_id", ["chatId"])
-```
-**Purpose**: Message voting/rating system
-**Key Features**:
-- Message and chat association
-- Boolean upvote/downvote
-- Dual indexing for queries
-
-#### Visualization Cache Table
-```typescript
-visualizationCache: defineTable({
-  messageId: v.id("messages"),
-  dataHash: v.string(),
-  result: v.any(),
-  createdAt: v.number(),
-}).index("by_message_id", ["messageId"])
-  .index("by_data_hash", ["dataHash"])
-```
-**Purpose**: Cache expensive visualization computations
-**Key Features**:
-- Message association for context
-- Hash-based cache key
-- Flexible result storage
-
-### Schema Features
-
-#### Automatic Indexes
-Convex automatically creates the following indexes:
-- Primary ID indexes for all tables
-- Custom indexes as defined in schema
-- Compound indexes for efficient querying
-
-#### Type Safety
-- Full TypeScript integration
-- Runtime validation with Convex values
-- End-to-end type safety from database to frontend
-
-#### Real-time Subscriptions
-- Automatic reactivity for all queries
-- WebSocket-based updates
-- No polling required
-
-#### Authentication Integration
-- Seamless Clerk integration
-- User context in all functions  
-- Row-level security through function logic
-
-### Migration Benefits
-
-**From PostgreSQL to Convex**:
-1. **Simplified Architecture**: No ORM configuration needed
-2. **Real-time by Default**: Built-in subscriptions
-3. **Type Safety**: Native TypeScript support
-4. **Automatic Scaling**: Managed infrastructure
-5. **Developer Experience**: Hot reloading and introspection
-
-**Removed Complexity**:
-- No SQL migrations
-- No connection pooling
-- No query optimization
-- No manual index management
-
-## AI Native Board Architecture (Next-Gen Workspace)
-
-### Overview
-
-Fundley implements a revolutionary **AI Native Board** system that transforms traditional chat-based AI interaction into a persistent, intelligent workspace. Unlike conventional chatbots where conversations are linear and artifacts are isolated, our Board system creates a living workspace where AI components understand and interact with shared data.
-
-### Core Concepts
-
-#### **Board as Intelligent Workspace**
-- **Persistent Context**: Each Board maintains a Master Document containing all relevant data and analysis
-- **Cross-Component Intelligence**: Components can reference and build upon each other's data
-- **User-Centric**: Boards belong to users, not conversations - multiple chats can contribute to the same Board
-
-#### **AI Native Data Management**
-```
-Chat Input → AI Analysis → Master Document Update → Component Re-rendering
-```
-
-**Revolutionary Approach**: Instead of traditional database schemas, we use a text-based Master Document that LLMs can understand and manipulate. Each component extracts its needed data by querying this document through specialized AI models.
-
-### Technical Architecture
-
-#### **Data Flow**
-1. **User Input**: Chat message or component interaction
-2. **AI Intent Recognition**: Main agent decides what components to create/update
-3. **Master Document Update**: Unified document stores all Board data in natural language
-4. **Component Parsing**: Small AI models (Gemini Flash) extract structured data for each component
-5. **Rendering**: Components display AI-parsed data with consistent styling
-
-#### **Database Schema**
-
-```sql
--- Board represents a persistent workspace
-CREATE TABLE boards (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  user_id TEXT NOT NULL,
-  master_document TEXT NOT NULL, -- The AI-readable data source
-  layout JSONB NOT NULL DEFAULT '{}', -- Component positioning
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Widget represents individual components on a Board
-CREATE TABLE widgets (
-  id TEXT PRIMARY KEY,
-  board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
-  type TEXT NOT NULL, -- 'metric_card', 'time_series', 'data_table'
-  title TEXT NOT NULL,
-  config JSONB NOT NULL DEFAULT '{}', -- Component-specific configuration
-  position JSONB NOT NULL, -- {x, y, width, height}
-  data JSONB NOT NULL DEFAULT '{}', -- Parsed component data
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### **Component Types**
-
-**1. MetricCard**
-- Single KPI display with trend indication
-- Config: `{metric: string, period: string, comparison?: string}`
-- Data: `{value: string, trend: 'up'|'down'|'stable', change: string, color: string}`
-
-**2. TimeSeriesChart**
-- Multi-line charts for temporal data
-- Config: `{metrics: string[], timeRange: string, chartType: 'line'|'area'}`
-- Data: `{series: [{name: string, data: {date: string, value: number}[]}]}`
-
-**3. DataTable**
-- Flexible tabular data display
-- Config: `{columns: string[], sortable: boolean, filterable: boolean}`
-- Data: `{headers: string[], rows: string[][]}`
-
-### AI Agent Architecture
-
-#### **Main Agent (Chat Interface)**
-- Analyzes user intent and context
-- Decides component creation/updates
-- Calls unified `manageWidgets` tool
-- Updates Master Document
-
-#### **Component Parser Agents (Gemini Flash)**
-Each component type has a specialized parser:
-
-```typescript
-const componentParsers = {
-  metric_card: `Extract single KPI from Master Document. Return formatted value (e.g. "$2.5B"), trend direction, and percentage change.`,
-  time_series: `Extract time-based data series. Return numeric values for charting.`,
-  data_table: `Extract tabular data. Return formatted strings for display.`
-}
-```
-
-### UI Architecture Changes
-
-#### **Layout Transformation**
-```
-Before: Full-width chat with occasional artifacts
-After:  [Chat Panel 30%] | [Board Panel 70%]
-```
-
-#### **Component System**
-- **Shared Widget Shell**: Common container, actions, and styling
-- **Drag & Drop**: Components can be repositioned within Board
-- **Board Selector**: Dropdown to switch between user's Boards
-- **Responsive Design**: Graceful mobile adaptation
-
-### Implementation Strategy
-
-#### **Phase 1: Core Foundation** ✅
-- Database migration for Board + Widget tables
-- Basic Board UI with drag-and-drop grid
-- Three core component types
-- Master Document management system
-
-#### **Phase 2: AI Integration** 
-- Unified widget management tool
-- Gemini Flash component parsers
-- Master Document update logic
-- Component data synchronization
-
-#### **Phase 3: UX Polish**
-- Advanced component interactions
-- Board templates and sharing
-- Performance optimizations
-- Mobile experience
-
-### Key Advantages
-
-1. **Persistent Intelligence**: Unlike ChatGPT artifacts, Boards maintain context across sessions
-2. **Cross-Component Relationships**: Components understand and build upon shared data
-3. **Flexible Data Model**: No rigid schemas - AI adapts to any financial data structure
-4. **Revolutionary UX**: Users work with living, intelligent dashboards rather than static reports
-
-### Development Guidelines
-
-- **Component Consistency**: All widgets share common shell styling and interactions
-- **AI-First Design**: Optimize for LLM understanding rather than database efficiency  
-- **String-Based Data**: Display values as formatted strings ("$2.5B") rather than raw numbers
-- **Extensible Architecture**: Easy to add new component types and AI parsers
 
 ## AI Native Architecture (Simplified)
 
@@ -955,3 +813,140 @@ https://financialmodelingprep.com/stable/income-statement?symbol=AAPL&period=ann
 1. **Phase 1**: Complete core financial statements (income, balance, cash flow)
 2. **Phase 2**: Add specialized endpoints (ratios, metrics, profile)
 3. **Phase 3**: Monitor usage and optimize based on user queries
+
+## SEC Filing Analysis Tools
+
+### Overview
+
+The SEC filing tools provide intelligent extraction of key sections from SEC filings through SEC-API.io integration. These tools are designed for pilot customers who specifically need Management Discussion & Analysis (MD&A) and other regulatory filing data.
+
+### Available Tools
+
+#### 1. `extractMDA` - Management Discussion & Analysis
+Extracts MD&A sections from 10-K (Section 7) and 10-Q (Part 1 Item 2) filings.
+
+```typescript
+// Example usage
+const mdaData = await extractMDA({
+  symbol: 'AAPL',
+  formType: '10-K',
+  filingYear: 2024 // Optional
+});
+```
+
+**Returns LLM-optimized structure:**
+- Company information (symbol, name, CIK)
+- Filing metadata (date, period, accession number)
+- MD&A content with word count and key topics analysis
+- Auto-generated summary for quick understanding
+
+#### 2. `extractRiskFactors` - Risk Factors Analysis
+Extracts Section 1A (Risk Factors) from 10-K filings with intelligent categorization.
+
+```typescript
+const riskData = await extractRiskFactors({
+  symbol: 'TSLA',
+  filingYear: 2024
+});
+```
+
+**Features:**
+- Automatic risk categorization (Market, Operational, Regulatory, etc.)
+- Key risk extraction from paragraphs
+- Structured data for LLM analysis
+
+#### 3. `extractBusinessOverview` - Business Description
+Extracts Section 1 (Business) from 10-K filings with key point identification.
+
+```typescript
+const businessData = await extractBusinessOverview({
+  symbol: 'MSFT',
+  filingYear: 2024
+});
+```
+
+**Features:**
+- Business segment identification
+- Key business activity extraction
+- Structured overview for competitive analysis
+
+### Technical Architecture
+
+#### LLM-Optimized Data Format
+All SEC tools return data optimized for language model consumption:
+
+```typescript
+interface SecFilingResponse {
+  success: boolean;
+  company: {
+    symbol: string;
+    name: string;
+    cik: string;
+  };
+  filing: {
+    type: '10-K' | '10-Q';
+    date: string;
+    period: string;
+    url: string;
+  };
+  // Tool-specific content (mdaContent, riskFactors, businessOverview)
+  metadata: {
+    extractedAt: string;
+    dataSource: 'SEC-API.io';
+  };
+}
+```
+
+#### Error Handling
+- Graceful fallbacks for missing filings
+- Clear error messages for debugging
+- Rate limiting compliance with SEC-API.io
+
+### Environment Setup
+
+Add SEC-API.io credentials to your environment:
+
+```bash
+# .env.local
+SEC_API_KEY=your-sec-api-key-here
+```
+
+Get your API key at: https://sec-api.io/
+
+### Integration Pattern
+
+SEC tools are integrated as specialized, non-unified tools for better management:
+
+```typescript
+// app/(chat)/api/chat/route.ts
+import { 
+  extractMDA, 
+  extractRiskFactors, 
+  extractBusinessOverview 
+} from '@/lib/ai/tools/financial/sec-filings';
+
+// In streamText tools configuration
+tools: {
+  // ... other tools
+  extractMDA,
+  extractRiskFactors,  
+  extractBusinessOverview,
+}
+```
+
+### Usage Guidelines
+
+1. **Performance**: SEC filings can be large; extraction may take 5-15 seconds
+2. **Caching**: Consider implementing result caching for frequently accessed filings
+3. **Rate Limits**: SEC-API.io has rate limits; implement appropriate throttling
+4. **Data Freshness**: Most recent filings are prioritized; specify year for historical data
+
+### Pilot Customer Features
+
+Based on pilot customer feedback, these tools prioritize:
+
+1. **MD&A Analysis**: Primary customer requirement for strategic decision making
+2. **Risk Assessment**: Automated risk categorization for due diligence
+3. **Business Understanding**: Structured business overview for competitive analysis
+
+The tools provide executive-level summaries while maintaining access to full text for detailed analysis.

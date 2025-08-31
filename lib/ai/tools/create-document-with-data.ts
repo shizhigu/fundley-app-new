@@ -2,7 +2,7 @@ import { generateUUID } from '@/lib/utils';
 import { tool, type UIMessageStreamWriter } from 'ai';
 import { z } from 'zod';
 import type { AuthSession } from '@/lib/auth/clerk';
-import { saveDocument } from '@/lib/db/queries';
+import { convexQueries } from '@/lib/convex/client';
 import type { ChatMessage } from '@/lib/types';
 
 interface CreateDocumentWithDataProps {
@@ -31,8 +31,7 @@ export const createDocumentWithData = ({ session, dataStream }: CreateDocumentWi
         // Save the document to database FIRST before streaming
         // This ensures the document is persisted even if the UI is closed
         if (session?.user?.id) {
-          await saveDocument({
-            id,
+          await convexQueries.saveDocument({
             title,
             content: csvData,
             kind,
