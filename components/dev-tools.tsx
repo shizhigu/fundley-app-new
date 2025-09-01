@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wrench, Search, Database, Code } from 'lucide-react';
+import { Wrench, Search, Database, Code, Calculator } from 'lucide-react';
 
 export function DevTools() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -88,6 +88,11 @@ export function DevTools() {
           <DropdownMenuItem onClick={() => setIsSearchOpen(true)}>
             <Search className="mr-2 h-4 w-4" />
             Field Search Test
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={() => window.location.href = '/formula-builder'}>
+            <Calculator className="mr-2 h-4 w-4" />
+            Formula Builder
           </DropdownMenuItem>
           
           <DropdownMenuItem onClick={() => window.open('/api/chat', '_blank')}>

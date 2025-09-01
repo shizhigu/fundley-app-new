@@ -116,7 +116,6 @@ export function Chat({
       });
 
       setHasAppendedQuery(true);
-      window.history.replaceState({}, '', `/chat/${id}`);
     }
   }, [query, sendMessage, hasAppendedQuery, id]);
 
@@ -151,7 +150,6 @@ export function Chat({
 
         <div className="flex-1 overflow-hidden max-w-full" style={{ background: 'transparent !important' }}>
           <Messages
-            chatId={id}
             status={status}
             votes={votes}
             messages={messages}
@@ -165,7 +163,6 @@ export function Chat({
         {!isReadonly && (
           <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4">
             <MultimodalInput
-              chatId={id}
               input={input}
               setInput={setInput}
               status={status}

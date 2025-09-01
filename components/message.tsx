@@ -32,7 +32,6 @@ import { SuggestionButtonGroup } from './suggestion-button';
 // The AI SDK provides proper discriminated unions for tool calls
 
 const PurePreviewMessage = ({
-  chatId,
   message,
   vote,
   isLoading,
@@ -41,7 +40,6 @@ const PurePreviewMessage = ({
   isReadonly,
   requiresScrollPadding,
 }: {
-  chatId: string;
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
@@ -746,7 +744,6 @@ const PurePreviewMessage = ({
             {!isReadonly && (
               <MessageActions
                 key={`action-${message.id}`}
-                chatId={chatId}
                 message={message}
                 vote={vote}
                 isLoading={isLoading}

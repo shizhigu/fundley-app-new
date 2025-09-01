@@ -278,7 +278,6 @@ function PureArtifact({
               <div className="flex flex-col h-full justify-between w-full">
                 <div className="flex-1 overflow-y-auto overflow-x-hidden">
                   <ArtifactMessages
-                    chatId={chatId}
                     status={status}
                     votes={votes}
                     messages={messages}
@@ -291,7 +290,6 @@ function PureArtifact({
 
                 <form className="flex-shrink-0 flex flex-row gap-2 relative items-end w-full px-4 pb-4">
                   <MultimodalInput
-                    chatId={chatId}
                     input={input}
                     setInput={setInput}
                     status={status}

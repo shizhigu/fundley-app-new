@@ -13,8 +13,10 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as auth from "../auth.js";
 import type * as chats from "../chats.js";
 import type * as cleanup from "../cleanup.js";
+import type * as customMetrics from "../customMetrics.js";
 import type * as documents from "../documents.js";
 import type * as messages from "../messages.js";
 import type * as organizations from "../organizations.js";
@@ -33,8 +35,10 @@ import type * as votes_old from "../votes_old.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   chats: typeof chats;
   cleanup: typeof cleanup;
+  customMetrics: typeof customMetrics;
   documents: typeof documents;
   messages: typeof messages;
   organizations: typeof organizations;

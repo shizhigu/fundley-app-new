@@ -81,4 +81,33 @@ export default defineSchema({
   })
     .index("by_message_id", ["messageId"])
     .index("by_data_hash", ["dataHash"]),
+
+  // Custom Formula Builder - Financial Metrics
+  customMetrics: defineTable({
+    name: v.string(),
+    description: v.string(),
+    category: v.string(),
+    formula: v.any(), // FormulaAST JSON structure
+    prompt: v.string(), // Generated LLM prompt/instruction
+    userId: v.id("users"), // Creator of the metric
+    organizationId: v.optional(v.string()), // Clerk organization ID for sharing
+    isPublic: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_organization", ["organizationId"])
+    .index("by_category", ["category"])
+    .index("by_public", ["isPublic"]),
+
+  // Formula usage tracking for analytics and optimization
+  formulaUsage: defineTable({
+    metricId: v.id("customMetrics"),
+    userId: v.id("users"),
+    usedAt: v.number(),
+    calculationTime: v.optional(v.number()), // Calculation performance tracking
+    success: v.boolean(),
+  })
+    .index("by_metric", ["metricId"])
+    .index("by_user", ["userId"]),
 });

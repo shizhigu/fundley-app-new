@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/api/webhooks(.*)',  // For Clerk webhooks
   '/api/metadata',  // For metadata extraction
+  '/api/formula-builder/test',  // For formula builder testing
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

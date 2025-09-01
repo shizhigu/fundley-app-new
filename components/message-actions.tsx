@@ -17,12 +17,10 @@ import { toast } from 'sonner';
 import type { ChatMessage } from '@/lib/types';
 
 export function PureMessageActions({
-  chatId,
   message,
   vote,
   isLoading,
 }: {
-  chatId: string;
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
@@ -74,7 +72,6 @@ export function PureMessageActions({
                 const upvote = fetch('/api/vote', {
                   method: 'PATCH',
                   body: JSON.stringify({
-                    chatId,
                     messageId: message.id,
                     type: 'up',
                   }),
@@ -84,7 +81,7 @@ export function PureMessageActions({
                   loading: 'Upvoting Response...',
                   success: () => {
                     mutate<Array<Vote>>(
-                      `/api/vote?chatId=${chatId}`,
+                      `/api/vote`,
                       (currentVotes) => {
                         if (!currentVotes) return [];
 
@@ -95,7 +92,6 @@ export function PureMessageActions({
                         return [
                           ...votesWithoutCurrent,
                           {
-                            chatId,
                             messageId: message.id,
                             isUpvoted: true,
                           },
@@ -127,7 +123,6 @@ export function PureMessageActions({
                 const downvote = fetch('/api/vote', {
                   method: 'PATCH',
                   body: JSON.stringify({
-                    chatId,
                     messageId: message.id,
                     type: 'down',
                   }),
@@ -137,7 +132,7 @@ export function PureMessageActions({
                   loading: 'Downvoting Response...',
                   success: () => {
                     mutate<Array<Vote>>(
-                      `/api/vote?chatId=${chatId}`,
+                      `/api/vote`,
                       (currentVotes) => {
                         if (!currentVotes) return [];
 
@@ -148,7 +143,6 @@ export function PureMessageActions({
                         return [
                           ...votesWithoutCurrent,
                           {
-                            chatId,
                             messageId: message.id,
                             isUpvoted: false,
                           },

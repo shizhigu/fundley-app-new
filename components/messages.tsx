@@ -12,7 +12,6 @@ import { ChatLoading } from './chat-loading';
 import { usePathname } from 'next/navigation';
 
 interface MessagesProps {
-  chatId: string;
   status: UseChatHelpers<ChatMessage>['status'];
   votes: Array<Vote> | undefined;
   messages: ChatMessage[];
@@ -23,7 +22,6 @@ interface MessagesProps {
 }
 
 function PureMessages({
-  chatId,
   status,
   votes,
   messages,
@@ -38,7 +36,6 @@ function PureMessages({
     onViewportLeave,
     hasSentMessage,
   } = useMessages({
-    chatId,
     status,
     messages,
   });
@@ -95,7 +92,6 @@ function PureMessages({
         return (
           <PreviewMessage
             key={message.id}
-            chatId={chatId}
             message={message}
             isLoading={status === 'streaming' && messages.length - 1 === originalIndex}
             vote={

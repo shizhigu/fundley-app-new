@@ -9,7 +9,6 @@ import { useMessages } from '@/hooks/use-messages';
 import type { ChatMessage } from '@/lib/types';
 
 interface ArtifactMessagesProps {
-  chatId: string;
   status: UseChatHelpers<ChatMessage>['status'];
   votes: Array<Vote> | undefined;
   messages: ChatMessage[];
@@ -20,7 +19,6 @@ interface ArtifactMessagesProps {
 }
 
 function PureArtifactMessages({
-  chatId,
   status,
   votes,
   messages,
@@ -35,7 +33,6 @@ function PureArtifactMessages({
     onViewportLeave,
     hasSentMessage,
   } = useMessages({
-    chatId,
     status,
     messages,
   });
@@ -48,7 +45,6 @@ function PureArtifactMessages({
       {messages.map((message, index) => (
         <PreviewMessage
           key={message.id}
-          chatId={chatId}
           message={message}
           isLoading={status === 'streaming' && index === messages.length - 1}
           vote={

@@ -4,11 +4,9 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 
 export function useMessages({
-  chatId,
   status,
   messages,
 }: {
-  chatId: string;
   status: UseChatHelpers<ChatMessage>['status'];
   messages: ChatMessage[];
 }) {
@@ -37,15 +35,13 @@ export function useMessages({
     return typeof lastMessage.content === 'string' ? lastMessage.content : '';
   }, [messages]);
 
-  // Auto-scroll on chat switch
+  // Auto-scroll on messages load
   useEffect(() => {
-    if (chatId) {
-      scrollToBottom('instant');
-      setHasSentMessage(false);
-      previousMessagesLength.current = messages?.length || 0;
-      previousLastMessageContent.current = getLastMessageContent();
-    }
-  }, [chatId, scrollToBottom, messages?.length, getLastMessageContent]);
+    scrollToBottom('instant');
+    setHasSentMessage(false);
+    previousMessagesLength.current = messages?.length || 0;
+    previousLastMessageContent.current = getLastMessageContent();
+  }, [scrollToBottom, messages?.length, getLastMessageContent]);
 
   // Auto-scroll on user message submission
   useEffect(() => {

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { MessageCircle, Briefcase, Layout } from 'lucide-react';
 import { PlusIcon } from './icons';
 import { Button } from './ui/button';
-import { SidebarHistory } from './sidebar-history';
 import { SidebarUserNav } from './sidebar-user-nav';
 import type { AuthSession } from '@/lib/auth/clerk';
 import Link from 'next/link';
@@ -116,16 +115,12 @@ export function NavigationSidebar({ user }: NavigationSidebarProps) {
               </Button>
             </div>
 
-            {/* Chat History */}
+            {/* Permanent Chat Info */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-4 py-2 border-b border-gray-300 dark:border-gray-600">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-500">
-                  Your conversations
-                </h3>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto px-2 py-1 pb-20 custom-scrollbar">
-                <SidebarHistory user={user} onChatSelect={() => setHoveredItem(null)} />
+              <div className="px-4 py-3 text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  All your conversations are in one continuous chat
+                </div>
               </div>
             </div>
 

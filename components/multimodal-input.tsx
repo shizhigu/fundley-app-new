@@ -39,7 +39,6 @@ import { startTransition, useOptimistic } from 'react';
 import { cn } from '@/lib/utils';
 
 function PureMultimodalInput({
-  chatId,
   input,
   setInput,
   status,
@@ -55,7 +54,6 @@ function PureMultimodalInput({
   selectedModelId,
   setSelectedModelId,
 }: {
-  chatId: string;
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>['status'];
@@ -126,8 +124,6 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, '', `/chat/${chatId}`);
-
     sendMessage({
       role: 'user',
       parts: [
@@ -165,7 +161,6 @@ function PureMultimodalInput({
     setAttachments,
     setLocalStorageInput,
     width,
-    chatId,
   ]);
 
   const uploadFile = async (file: File) => {

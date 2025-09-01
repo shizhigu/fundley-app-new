@@ -1,51 +1,40 @@
 import { auth } from '@/lib/auth/clerk';
-import { convexQueries } from '@/lib/convex/client';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
 import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const chatId = searchParams.get('chatId');
-
-  if (!chatId) {
-    return new ChatSDKError(
-      'bad_request:api',
-      'Parameter chatId is required.',
-    ).toResponse();
-  }
-
   const session = await auth();
 
   if (!session?.user) {
     return new ChatSDKError('unauthorized:vote').toResponse();
   }
 
-  const chat = await convexQueries.getChatById({ id: chatId });
+  try {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(await session.getToken());
 
-  if (!chat) {
-    return new ChatSDKError('not_found:chat').toResponse();
+    // Get all user votes (no chatId needed)
+    const votes = await convex.query(api.votes.listByUser);
+
+    return Response.json(votes, { status: 200 });
+  } catch (error) {
+    console.error('Error fetching user votes:', error);
+    return new ChatSDKError('internal:vote').toResponse();
   }
-
-  if (chat.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:vote').toResponse();
-  }
-
-  const votes = await convexQueries.getVotesByChatId({ chatId });
-
-  return Response.json(votes, { status: 200 });
 }
 
 export async function PATCH(request: Request) {
   const {
-    chatId,
     messageId,
     type,
-  }: { chatId: string; messageId: string; type: 'up' | 'down' } =
+  }: { messageId: string; type: 'up' | 'down' } =
     await request.json();
 
-  if (!chatId || !messageId || !type) {
+  if (!messageId || !type) {
     return new ChatSDKError(
       'bad_request:api',
-      'Parameters chatId, messageId, and type are required.',
+      'Parameters messageId and type are required.',
     ).toResponse();
   }
 
@@ -55,21 +44,19 @@ export async function PATCH(request: Request) {
     return new ChatSDKError('unauthorized:vote').toResponse();
   }
 
-  const chat = await convexQueries.getChatById({ id: chatId });
+  try {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(await session.getToken());
 
-  if (!chat) {
-    return new ChatSDKError('not_found:vote').toResponse();
+    // Create or update vote (user-based, no chatId needed)
+    await convex.mutation(api.votes.create, {
+      messageId,
+      isUpvoted: type === 'up',
+    });
+
+    return new Response('Message voted', { status: 200 });
+  } catch (error) {
+    console.error('Error voting message:', error);
+    return new ChatSDKError('internal:vote').toResponse();
   }
-
-  if (chat.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:vote').toResponse();
-  }
-
-  await convexQueries.voteMessage({
-    chatId,
-    messageId,
-    isUpvote: type === 'up',
-  });
-
-  return new Response('Message voted', { status: 200 });
 }
