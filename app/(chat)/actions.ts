@@ -31,10 +31,11 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
   });
 }
 
-export async function updatePermanentChatTitle({
-  title,
-}: {
-  title: string;
-}) {
-  await convexQueries.updatePermanentChatTitle(title);
-}
+// Permanent chat doesn't need title updates
+// export async function updatePermanentChatTitle({
+//   title,
+// }: {
+//   title: string;
+// }) {
+//   await convexQueries.updatePermanentChatTitle(title);
+// }

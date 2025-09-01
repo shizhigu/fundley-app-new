@@ -13,7 +13,10 @@ export async function POST() {
   try {
     // Create authenticated Convex client
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    convex.setAuth(await getToken({ template: 'convex' }));
+    const token = await getToken({ template: 'convex' });
+    if (token) {
+      convex.setAuth(token);
+    }
     
     // Get all messages
     const messages = await convex.query(api.messages.list);

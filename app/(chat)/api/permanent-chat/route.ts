@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     // Create authenticated Convex client
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    convex.setAuth(await getToken({ template: 'convex' }));
+    const token = await getToken({ template: 'convex' }); if (token) { convex.setAuth(token); }
     
     // Ensure user exists
     await convex.mutation(api.users.store);

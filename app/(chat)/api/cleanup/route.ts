@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
     
     // Set authentication token
-    convex.setAuth(await getToken({ template: 'convex' }));
+    const token = await getToken({ template: 'convex' }); if (token) { convex.setAuth(token); }
     
     // 执行清理操作
     const result = await convex.mutation(api.cleanup.cleanupReasoningParts, { dryRun });
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   try {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    convex.setAuth(await getToken({ template: 'convex' }));
+    const token = await getToken({ template: 'convex' }); if (token) { convex.setAuth(token); }
     
     // 执行实际清理
     const result = await convex.mutation(api.cleanup.cleanupReasoningParts, { dryRun: false });

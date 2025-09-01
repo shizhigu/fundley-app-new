@@ -1,25 +1,21 @@
-import { auth } from '@clerk/nextjs/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 import { NextResponse } from 'next/server';
+import { createAuthenticatedConvexClient } from '@/lib/api/auth-utils';
 
 export async function GET() {
   console.log('🔍 Optimized user messages API called');
   
-  const { getToken, userId } = await auth();
-  console.log('👤 User ID:', userId);
+  const authResult = await createAuthenticatedConvexClient();
   
-  if (!userId) {
-    console.log('❌ No user ID, returning 401');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ('error' in authResult) {
+    console.log('❌ Authentication failed');
+    return authResult.error;
   }
+  
+  const { convex, userId } = authResult;
+  console.log('👤 User ID:', userId);
 
   try {
-    // Create authenticated Convex client
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    
-    // Set authentication token
-    convex.setAuth(await getToken({ template: 'convex' }));
     
     // Ensure user exists in Convex database (only if needed)
     await convex.mutation(api.users.store);

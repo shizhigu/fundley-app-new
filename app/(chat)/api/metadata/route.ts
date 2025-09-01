@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { extractMetadata } from '@/lib/ai/agents/metadata-extraction-agent'
-import { auth } from '@/lib/auth/clerk'
-import { ConvexHttpClient } from 'convex/browser'
+import { createAuthenticatedConvexClient } from '@/lib/api/auth-utils'
 import { api } from '@/convex/_generated/api'
 
 export async function POST(request: NextRequest) {
@@ -20,17 +19,22 @@ export async function POST(request: NextRequest) {
     // If messageId is provided and extraction was successful, save to database
     if (messageId && result.success && result.metadata) {
       try {
-        const session = await auth()
-        if (session) {
-          const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-          convex.setAuth(await session.getToken())
+        const convexResult = await createAuthenticatedConvexClient()
+        if ('error' in convexResult) {
+          console.warn('⚠️ Authentication failed for metadata save')
+        } else {
+          const { convex } = convexResult
           
-          await convex.mutation(api.messages.updateMetadata, {
-            messageId,
-            extractedMetadata: result.metadata
-          })
-          
-          console.log('✅ Saved metadata to database for message:', messageId)
+          // 硬性验证：确保 messageId 是有效的 Convex ID 格式
+          if (typeof messageId === 'string' && messageId.match(/^[a-z0-9]{28}$/)) {
+            await convex.mutation(api.messages.updateMetadata, {
+              messageId,
+              extractedMetadata: result.metadata
+            })
+            console.log('✅ Saved metadata to database for message:', messageId)
+          } else {
+            console.warn('⚠️ Invalid Convex ID format, skipping metadata save:', messageId)
+          }
         }
       } catch (dbError) {
         console.warn('⚠️ Failed to save metadata to database:', dbError)

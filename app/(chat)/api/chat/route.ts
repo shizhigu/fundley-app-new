@@ -24,6 +24,11 @@ import {
   extractRiskFactors, 
   extractBusinessOverview 
 } from '@/lib/ai/tools/financial/sec-filings';
+import {
+  createCustomMetric,
+  executeCustomMetric, 
+  findCustomMetric
+} from '@/lib/ai/tools/financial/custom-metrics';
 import { 
   getRelevantMemories, 
   isMem0Configured 
@@ -32,47 +37,14 @@ import { isProductionEnvironment } from '@/lib/constants';
 import { getLanguageModel, } from '@/lib/ai/providers';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
-import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from 'resumable-stream';
-import { after } from 'next/server';
+import { getStreamContext } from '@/lib/ai/utils/stream-context';
 import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import type { ModelId } from '@/lib/ai/models';
 
 export const maxDuration = 60;
 
-let globalStreamContext: ResumableStreamContext | null = null;
-
-export function getStreamContext() {
-  if (!globalStreamContext) {
-    try {
-      // The resumable-stream library uses Redis pub/sub which requires persistent connections
-      if (!process.env.REDIS_URL && !process.env.KV_URL) {
-        // If no Redis URL is set, disable resumable streams gracefully
-        console.log(' > Resumable streams disabled - no Redis URL configured');
-        console.log(' > To enable, set REDIS_URL with standard Redis connection string');
-        console.log(' > Format: redis://[username]:PASSWORD@HOST:PORT');
-        return null;
-      }
-      
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: any) {
-      if (error.message.includes('REDIS_URL')) {
-        console.log(
-          ' > Resumable streams are disabled. Set REDIS_URL with Redis connection string',
-        );
-      } else {
-        console.error('Error creating stream context:', error);
-      }
-    }
-  }
-
-  return globalStreamContext;
-}
+// Stream context is now imported from utils
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -120,7 +92,12 @@ export async function POST(request: Request) {
     
     // Create authenticated Convex client
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    convex.setAuth(await getToken({ template: 'convex' }));
+    const token = await getToken({ template: 'convex' });
+    if (token) {
+      convex.setAuth(token);
+    } else {
+      console.warn('No Convex auth token available');
+    }
     
     // Ensure user exists in Convex database
     await convex.mutation(api.users.store);
@@ -181,6 +158,10 @@ export async function POST(request: Request) {
             extractMDA,
             extractRiskFactors,
             extractBusinessOverview,
+            // 自定义指标工具
+            createCustomMetric,
+            executeCustomMetric,
+            findCustomMetric,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
@@ -199,16 +180,25 @@ export async function POST(request: Request) {
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
         // Save assistant messages to database using authenticated client
+        const messageIdMappings = new Map(); // Frontend UUID -> Convex ID
+        
         for (const msg of messages) {
           if (msg.role === 'assistant') {
-            await convex.mutation(api.messages.create, {
+            const convexMessageId = await convex.mutation(api.messages.create, {
               role: msg.role,
               parts: msg.parts,
               attachments: [],
               extractedMetadata: undefined, // Will be extracted and updated later
             });
+            
+            // Store mapping for metadata extraction
+            if (msg.id) {
+              messageIdMappings.set(msg.id, convexMessageId);
+            }
           }
         }
+        
+        // TODO: Pass messageIdMappings to metadata extraction if needed
 
         // Add conversation to memory if configured
         if (isMem0Configured() && messages.length > 0) {

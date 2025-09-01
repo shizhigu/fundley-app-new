@@ -29,7 +29,9 @@
       "WebFetch(domain:localhost)",
       "Bash(echo:*)",
       "Bash(npx convex query:*)",
-      "Bash(npx convex run:*)"
+      "Bash(npx convex run:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": [],
