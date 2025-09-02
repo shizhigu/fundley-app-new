@@ -25,18 +25,27 @@ export default defineSchema({
     .index("by_clerk_org_id", ["clerkOrganizationId"])
     .index("by_slug", ["slug"]),
 
-  // Permanent chat removed - using direct user-message architecture
+  // Chat sessions - each user can have multiple chats
+  chats: defineTable({
+    title: v.string(),
+    userId: v.id("users"),
+    visibility: v.union(v.literal("private"), v.literal("public")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_created_at", ["createdAt"]),
 
-  // Messages (v2 format with parts and attachments) - all messages go to permanent chat
+  // Messages (v2 format with parts and attachments) - belong to specific chats
   messages: defineTable({
-    userId: v.id("users"), // Direct reference to user instead of chatId
+    chatId: v.id("chats"), // Messages belong to specific chats
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     parts: v.any(), // JSONB array of message parts
     attachments: v.any(), // JSONB array of attachments
     extractedMetadata: v.optional(v.any()), // Cached metadata (tickers, suggestions, verification)
     createdAt: v.number(),
   })
-    .index("by_user_id", ["userId"])
+    .index("by_chat_id", ["chatId"])
     .index("by_created_at", ["createdAt"]),
 
   // Document artifacts
@@ -51,14 +60,17 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_kind", ["kind"]),
 
-  // Message voting (simplified for permanent chat)
+  // Message voting (supports chat-based messages)
   votes: defineTable({
-    userId: v.id("users"),
     messageId: v.id("messages"),
+    chatId: v.id("chats"), // Required after migration
+    userId: v.id("users"),
     isUpvoted: v.boolean(),
+    createdAt: v.number(),
   })
-    .index("by_user_id", ["userId"])
-    .index("by_message_id", ["messageId"]),
+    .index("by_message_id", ["messageId"])
+    .index("by_chat_id", ["chatId"])
+    .index("by_user_id", ["userId"]),
 
   // Stream tracking for real-time updates (simplified for permanent chat)
   streams: defineTable({

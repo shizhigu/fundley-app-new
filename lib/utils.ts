@@ -105,12 +105,13 @@ export function convertToUIMessages(
   messages: Message[], 
   vizCacheMap?: Map<string, any>
 ): ChatMessage[] {
-  return messages.map((message) => {
-    // Handle both Convex format (_id) and regular format (id)
-    const messageId = message._id || message.id;
-    
-    // Get the parts
-    let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
+  return messages.map((message, index) => {
+    try {
+      // Handle both Convex format (_id) and regular format (id)
+      const messageId = message._id || message.id;
+      
+      // Get the parts
+      let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
     
     // Inject cached data for createVisualization tool outputs
     if (vizCacheMap?.has(messageId)) {
@@ -150,6 +151,17 @@ export function convertToUIMessages(
     }
     
     return convertedMessage;
+    } catch (error) {
+      console.error(`❌ Error converting message ${index} (${messageId}):`, error);
+      console.error(`❌ Message data:`, message);
+      // Return a fallback message to prevent complete failure
+      return {
+        id: messageId,
+        role: message.role,
+        parts: [{ type: 'text', text: '[Error loading message]' }],
+        createdAt: new Date(message.createdAt || Date.now()),
+      };
+    }
   });
 }
 

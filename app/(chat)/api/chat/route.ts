@@ -59,7 +59,8 @@ export async function POST(request: Request) {
       const lastMessage = json.messages[json.messages.length - 1];
       requestBody = {
         message: lastMessage,
-        selectedChatModel: json.selectedChatModel || 'grok-3' // Use selected model or default
+        selectedChatModel: json.selectedChatModel || 'grok-3', // Use selected model or default
+        chatId: json.id // Pass chatId from useChat
       };
       console.log('📨 Converted useChat format to:', JSON.stringify(requestBody, null, 2));
     } else {
@@ -75,9 +76,11 @@ export async function POST(request: Request) {
     const {
       message,
       selectedChatModel,
+      chatId: requestChatId,
     }: {
       message: ChatMessage;
       selectedChatModel: ModelId;
+      chatId?: string;
     } = requestBody;
 
     // Get auth info and create authenticated Convex client
@@ -104,8 +107,24 @@ export async function POST(request: Request) {
 
     // Skip rate limiting for now (we can add it back later if needed)
 
-    // Get messages from user directly (no chat concept needed)
-    const messagesFromDb = await convex.query(api.messages.list);
+    // Get or create specific chat - support dynamic chatId from useChat
+    let chatId: string;
+    if (requestChatId && requestChatId !== "main") {
+      // Validate that the chatId exists and user has access
+      const existingChat = await convex.query(api.chats.get, { id: requestChatId as any });
+      if (existingChat) {
+        chatId = requestChatId;
+      } else {
+        // Chat doesn't exist or no access, create default
+        chatId = await convex.mutation(api.chats.getOrCreateDefault);
+      }
+    } else {
+      // No specific chatId, use default
+      chatId = await convex.mutation(api.chats.getOrCreateDefault);
+    }
+    
+    // Get messages from specific chat - ensures complete isolation
+    const messagesFromDb = await convex.query(api.messages.list, { chatId: chatId as any });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
     
     // Retrieve relevant memories for enhanced context (if configured)
@@ -123,8 +142,9 @@ export async function POST(request: Request) {
       country,
     };
 
-    // Save user message
+    // Save user message to specific chat
     await convex.mutation(api.messages.create, {
+      chatId: chatId as any,
       role: 'user',
       parts: message.parts,
       attachments: [],
@@ -185,6 +205,7 @@ export async function POST(request: Request) {
         for (const msg of messages) {
           if (msg.role === 'assistant') {
             const convexMessageId = await convex.mutation(api.messages.create, {
+              chatId: chatId as any, // Save to the same chat as user message
               role: msg.role,
               parts: msg.parts,
               attachments: [],

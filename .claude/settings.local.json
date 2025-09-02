@@ -31,7 +31,8 @@
       "Bash(npx convex query:*)",
       "Bash(npx convex run:*)",
       "Bash(sed:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npx convex deploy)"
     ],
     "deny": [],
     "ask": [],

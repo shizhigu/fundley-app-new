@@ -11,17 +11,26 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { GlassmorphismPanel } from './glassmorphism-panel';
 import { ComingSoon } from './coming-soon';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 
 interface NavigationSidebarProps {
   user: AuthSession['user'];
+  selectedChatId?: string;
+  onChatSelect?: (chatId: string) => void;
 }
 
 type NavigationItem = 'chats' | 'portfolio' | 'spaces';
 
-export function NavigationSidebar({ user }: NavigationSidebarProps) {
+export function NavigationSidebar({ user, selectedChatId, onChatSelect }: NavigationSidebarProps) {
   const router = useRouter();
   const [hoveredItem, setHoveredItem] = useState<NavigationItem | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 获取用户的所有chats
+  const chats = useQuery(user ? api.chats.list : "skip", user ? {} : "skip");
+  const createChat = useMutation(api.chats.create);
 
   const clearHideTimeout = () => {
     if (hideTimeoutRef.current) {
@@ -105,9 +114,12 @@ export function NavigationSidebar({ user }: NavigationSidebarProps) {
               <Button
                 variant="ghost"
                 className="w-full bg-gradient-to-r from-orange-500/50 to-amber-500/50 hover:from-orange-500/60 hover:to-amber-500/60 !text-white hover:!text-white rounded-xl py-2 px-3 flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg backdrop-blur-sm border border-orange-400/30 hover:border-orange-400/40 [&>*]:!text-white [&:hover>*]:!text-white text-sm"
-                onClick={() => {
-                  router.push('/');
-                  router.refresh();
+                onClick={async () => {
+                  const newChatId = await createChat({
+                    title: 'New Chat',
+                    visibility: 'private'
+                  });
+                  onChatSelect?.(newChatId);
                 }}
               >
                 <PlusIcon size={16} />
@@ -115,13 +127,46 @@ export function NavigationSidebar({ user }: NavigationSidebarProps) {
               </Button>
             </div>
 
-            {/* Permanent Chat Info */}
+            {/* Chat List */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-4 py-3 text-center">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  All your conversations are in one continuous chat
+              {chats && chats.length > 0 ? (
+                <div className="flex-1 overflow-y-auto px-2 py-2">
+                  {chats
+                    .sort((a, b) => b.updatedAt - a.updatedAt)
+                    .map((chat) => (
+                      <Button
+                        key={chat._id}
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start text-left h-auto p-2 mb-1 rounded-lg text-sm transition-colors",
+                          selectedChatId === chat._id
+                            ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                            : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        )}
+                        onClick={() => onChatSelect?.(chat._id)}
+                      >
+                        <div className="flex flex-col items-start w-full min-w-0">
+                          <span className="font-medium truncate w-full">
+                            {chat.title}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(chat.updatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </Button>
+                    ))}
                 </div>
-              </div>
+              ) : (
+                <div className="px-4 py-6 text-center">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    No chats yet
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Create your first chat above
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}

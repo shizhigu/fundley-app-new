@@ -1,4 +1,4 @@
-import { NavigationSidebar } from '@/components/navigation-sidebar';
+import { ChatLayoutProvider } from '@/components/chat-layout-provider';
 import { auth } from '@/lib/auth/clerk';
 import Script from 'next/script';
 import { DataStreamProvider } from '@/components/data-stream-provider';
@@ -19,12 +19,11 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <DataStreamProvider>
-        <div className="professional-layout flex max-w-full">
-          <NavigationSidebar user={session?.user} />
+        <ChatLayoutProvider session={session}>
           <div className="flex-1 overflow-hidden max-w-full min-w-0">
             {children}
           </div>
-        </div>
+        </ChatLayoutProvider>
       </DataStreamProvider>
     </>
   );

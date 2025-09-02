@@ -138,7 +138,7 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col h-full w-full max-w-full overflow-hidden relative" style={{ background: 'transparent !important' }}>
+      <div className="flex flex-col h-screen w-full max-w-full relative" style={{ background: 'transparent !important' }}>
         {/* ChatHeader moved to floating DevTools only */}
         <ChatHeader
           chatId={id}
@@ -148,7 +148,8 @@ export function Chat({
           session={session}
         />
 
-        <div className="flex-1 overflow-hidden max-w-full" style={{ background: 'transparent !important' }}>
+        {/* Messages area with full height and internal scrolling */}
+        <div className="flex-1 min-h-0 max-w-full" style={{ background: 'transparent !important' }}>
           <Messages
             status={status}
             votes={votes}
@@ -160,8 +161,9 @@ export function Chat({
           />
         </div>
 
+        {/* Fixed input at bottom with transparent background */}
         {!isReadonly && (
-          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4">
+          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4" style={{ background: 'transparent !important' }}>
             <MultimodalInput
               input={input}
               setInput={setInput}

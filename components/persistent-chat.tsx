@@ -6,6 +6,7 @@ import { Chat } from '@/components/chat';
 import { convertToUIMessages } from '@/lib/utils';
 import { api } from '@/convex/_generated/api';
 import type { AuthSession } from '@/lib/auth/clerk';
+import { useChatContext } from '@/components/chat-layout-provider';
 
 interface PersistentChatProps {
   initialChatModel: string;
@@ -18,16 +19,25 @@ export function PersistentChat({
   session,
   preloadedMessages,
 }: PersistentChatProps) {
-  // 🔄 实时更新（认证后） - 这是主要的数据源
+  // 使用Context获取选中的chatId
+  const { selectedChatId } = useChatContext();
+  // 获取选中chat的消息（如果提供了selectedChatId）
+  const selectedChatMessages = useQuery(
+    selectedChatId ? api.messages.list : "skip",
+    selectedChatId ? { chatId: selectedChatId as any } : "skip"
+  );
+  
+  // 🔄 实时更新（认证后） - 这是主要的数据源（默认chat）
   const realtimeMessages = useQuery(
-    session?.user ? api.messages.list : "skip"
+    session?.user && !selectedChatId ? api.messages.listForPersistentChat : "skip",
+    session?.user && !selectedChatId ? {} : "skip"
   );
   
   // 🔒 使用预加载数据作为初始状态（如果可用）
   const preloadedData = preloadedMessages ? usePreloadedQuery(preloadedMessages) : null;
   
-  // 优先使用实时数据，回退到预加载数据
-  const messages = realtimeMessages ?? preloadedData;
+  // 优先使用选中chat的消息，回退到实时数据，最后回退到预加载数据
+  const messages = selectedChatMessages ?? realtimeMessages ?? preloadedData;
   
   // 只在用户已认证但没有数据时显示加载状态
   const isLoading = session?.user && !messages;
@@ -56,7 +66,7 @@ export function PersistentChat({
 
   return (
     <Chat 
-      id="main"
+      id={selectedChatId || "main"}
       initialMessages={initialMessages}
       initialChatModel={initialChatModel}
       initialVisibilityType="private"

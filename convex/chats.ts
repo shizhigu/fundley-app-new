@@ -172,3 +172,46 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Get or create default chat for user (for migration compatibility)
+export const getOrCreateDefault = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Check if user has any chats
+    const existingChats = await ctx.db
+      .query("chats")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+
+    if (existingChats.length > 0) {
+      // Return the most recent chat
+      return existingChats.sort((a, b) => b.createdAt - a.createdAt)[0]._id;
+    }
+
+    // Create default chat
+    const chatId = await ctx.db.insert("chats", {
+      title: "Chat History",
+      userId: user._id,
+      visibility: "private",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return chatId;
+  },
+});

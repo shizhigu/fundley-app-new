@@ -100,6 +100,28 @@ const PurePreviewMessage = ({
       if (allText.trim()) {
         // Extract metadata using complete message parts for data verification
         const messageParts = (message as any).content?.parts || message.parts || [];
+        
+        // 🔍 Find the correct Convex ID - priority: message._id, fallback: message.id
+        const actualConvexId = (message as any)._id || message.id;
+        const isValidConvexId = /^[a-z0-9]{32}$/.test(actualConvexId || ''); // Convex IDs are 32 chars
+        
+        console.log('🔍 DEBUG: Message ID analysis:', {
+          message_id: message.id,
+          message_id_length: message.id?.length,
+          message_id_format: /^[a-z0-9]{32}$/.test(message.id || '') ? 'Convex' : 'UUID',
+          message_internal_id: (message as any)._id,
+          actualConvexId,
+          isValidConvexId,
+          full_message_keys: Object.keys(message),
+          willSendToAPI: isValidConvexId
+        });
+
+        // Only send to API if we have a valid Convex ID
+        if (!isValidConvexId) {
+          console.warn('⚠️ Skipping metadata API call - no valid Convex ID found for message');
+          return;
+        }
+        
         fetch('/api/metadata', {
           method: 'POST',
           headers: {
@@ -108,7 +130,7 @@ const PurePreviewMessage = ({
           body: JSON.stringify({ 
             messageParts: messageParts,
             userQuestion: undefined, // TODO: Add user question context from messages array
-            messageId: message.id // Pass messageId to save metadata directly
+            messageId: actualConvexId // Use the actual Convex ID
           }),
         })
         .then(response => response.json())

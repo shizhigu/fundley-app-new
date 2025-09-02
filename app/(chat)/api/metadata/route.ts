@@ -25,8 +25,17 @@ export async function POST(request: NextRequest) {
         } else {
           const { convex } = convexResult
           
-          // 硬性验证：确保 messageId 是有效的 Convex ID 格式
-          if (typeof messageId === 'string' && messageId.match(/^[a-z0-9]{28}$/)) {
+          // 硬性验证：确保 messageId 是有效的 Convex ID 格式 (32 characters)
+          console.log('🔍 REGEX DEBUG:', {
+            messageId,
+            messageIdType: typeof messageId,
+            messageIdLength: messageId?.length,
+            regexTest_28: /^[a-z0-9]{28}$/.test(messageId || ''),
+            regexTest_32: /^[a-z0-9]{32}$/.test(messageId || ''),
+            regexMatch_32: messageId?.match(/^[a-z0-9]{32}$/),
+          });
+          
+          if (typeof messageId === 'string' && messageId.match(/^[a-z0-9]{32}$/)) {
             await convex.mutation(api.messages.updateMetadata, {
               messageId,
               extractedMetadata: result.metadata
