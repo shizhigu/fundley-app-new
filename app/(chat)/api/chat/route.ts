@@ -16,19 +16,13 @@ import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { createVisualization } from '@/lib/ai/tools/create-visualization';
-import { financialFieldsAgent } from '@/lib/ai/agents/financial-fields-agent';
-import { dataOrchestratorAgent } from '@/lib/ai/agents/data-orchestrator-agent';
 import { getFinancialData } from '@/lib/ai/tools/financial/unified-financial-data';
 import { 
   extractMDA, 
   extractRiskFactors, 
   extractBusinessOverview 
 } from '@/lib/ai/tools/financial/sec-filings';
-import {
-  createCustomMetric,
-  executeCustomMetric, 
-  findCustomMetric
-} from '@/lib/ai/tools/financial/custom-metrics';
+// Removed old tool imports - using inline implementations with Convex access
 import { 
   getRelevantMemories, 
   isMem0Configured 
@@ -41,8 +35,10 @@ import { getStreamContext } from '@/lib/ai/utils/stream-context';
 import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import type { ModelId } from '@/lib/ai/models';
+import { z } from 'zod';
 
 export const maxDuration = 60;
+
 
 // Stream context is now imported from utils
 
@@ -142,14 +138,19 @@ export async function POST(request: Request) {
       country,
     };
 
-    // Save user message to specific chat
-    await convex.mutation(api.messages.create, {
-      chatId: chatId as any,
-      role: 'user',
-      parts: message.parts,
-      attachments: [],
-      extractedMetadata: undefined, // User messages don't need metadata
-    });
+    // Save message to specific chat (could be user or assistant)
+    if (message.role === 'user') {
+      await convex.mutation(api.messages.create, {
+        chatId: chatId as any,
+        role: message.role,
+        parts: message.parts,
+        attachments: [],
+        extractedMetadata: undefined, // User messages don't need metadata
+      });
+    }
+    // Assistant messages with tool results should not be saved here as they're handled in onFinish
+    const processedMessages = uiMessages;
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         // Temporarily disable mem0 to test basic functionality
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
         const result = streamText({
           model,
           system: enhancedSystemPrompt,
-          messages: convertToModelMessages(uiMessages),
+          messages: convertToModelMessages(processedMessages),
           stopWhen: stepCountIs(5),
           // 统一使用tools配置，不需要experimental_activeTools
           experimental_transform: smoothStream({ chunking: 'word' }),
@@ -172,16 +173,199 @@ export async function POST(request: Request) {
             createDocument: createDocument({ session, dataStream }),
             updateDocument: updateDocument({ session, dataStream }),
             createVisualization: createVisualization({ session, dataStream }),
-            financialFieldsAgent,
-            dataOrchestratorAgent,
+            // 财务数据工具
             getFinancialData,
+            // SEC文件分析工具 
             extractMDA,
             extractRiskFactors,
             extractBusinessOverview,
-            // 自定义指标工具
-            createCustomMetric,
-            executeCustomMetric,
-            findCustomMetric,
+            // 新的安全指标工具架构 - 内联实现以访问 Convex
+            searchMetrics: {
+              description: 'Search for available financial metrics (both built-in and custom)',
+              inputSchema: z.object({
+                query: z.string().optional().describe('Search keywords for metric name or description'),
+                category: z.string().optional().describe('Filter by metric category (profitability, liquidity, efficiency, etc.)'),
+                includeCustom: z.boolean().default(true).describe('Whether to include user-created custom metrics'),
+                includeBuiltIn: z.boolean().default(true).describe('Whether to include built-in metrics')
+              }),
+              execute: async (params) => {
+                try {
+                  const results = await convex.query(api.metrics.search, {
+                    query: params.query,
+                    category: params.category,
+                    includeCustom: params.includeCustom,
+                    includeBuiltIn: params.includeBuiltIn
+                  });
+
+                  const { metrics, totalCount } = results;
+                  
+                  if (metrics.length === 0) {
+                    return `🔍 No metrics found${params.query ? ` for "${params.query}"` : ''}${params.category ? ` in category "${params.category}"` : ''}.`;
+                  }
+
+                  const metricsList = metrics.map(m => 
+                    `- **${m.name}** (${m.isBuiltIn ? 'Built-in' : 'Custom'}): ${m.description}`
+                  ).join('\n');
+
+                  return `🔍 Found ${totalCount} metric${totalCount > 1 ? 's' : ''}:\n\n${metricsList}\n\n💡 Use the metric ID or name with calculateMetric to compute values.`;
+                } catch (error) {
+                  return `❌ Error searching metrics: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                }
+              }
+            },
+            calculateMetric: {
+              description: 'Calculate financial metrics using Python code execution',
+              inputSchema: z.object({
+                metricId: z.string().describe('ID or name of the metric to calculate'),
+                symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT"])'),
+                periods: z.number().optional().default(8).describe('Number of periods to retrieve'),
+              }),
+              execute: async (params) => {
+                try {
+                  // First, find the metric
+                  const searchResults = await convex.query(api.metrics.search, {
+                    query: params.metricId,
+                    includeCustom: true,
+                    includeBuiltIn: true
+                  });
+
+                  const metric = searchResults.metrics.find(m => 
+                    m.id === params.metricId || 
+                    m.name.toLowerCase() === params.metricId.toLowerCase()
+                  );
+
+                  if (!metric) {
+                    return `❌ Metric "${params.metricId}" not found. Use searchMetrics to find available metrics.`;
+                  }
+
+                  // Record usage
+                  const startTime = Date.now();
+                  
+                  try {
+                    // Get the full metric details with Python code
+                    const fullMetric = await convex.query(api.metrics.getById, { 
+                      metricId: metric.id as any 
+                    });
+
+                    // Execute the Python calculation using our Python service
+                    console.log('🐍 Executing Python code for metric:', fullMetric.name);
+                    
+                    const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+                    const pythonResponse = await fetch(`${pythonServiceUrl}/execute-metric`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        python_code: fullMetric.pythonCode,
+                        symbols: params.symbols,
+                        metric_name: fullMetric.name,
+                        timeout: fullMetric.executionConfig?.timeout || 30
+                      }),
+                    });
+
+                    const executionTime = Date.now() - startTime;
+                    let calculationResult;
+                    let success = false;
+
+                    if (pythonResponse.ok) {
+                      calculationResult = await pythonResponse.json();
+                      success = calculationResult.success;
+                    } else {
+                      calculationResult = {
+                        success: false,
+                        error: `Python service request failed: ${pythonResponse.status} ${pythonResponse.statusText}`
+                      };
+                    }
+                    
+                    await convex.mutation(api.metrics.recordUsage, {
+                      metricId: metric.id as any,
+                      calculationTime: executionTime,
+                      success: success
+                    });
+
+                    if (!success) {
+                      return `❌ Python execution failed: ${calculationResult.error}`;
+                    }
+
+                    // Format results for LLM consumption
+                    let formattedOutput = `📊 **${fullMetric.name} Calculation Results**\n\n`;
+                    
+                    if (calculationResult.result && Array.isArray(calculationResult.result)) {
+                      calculationResult.result.forEach(item => {
+                        if (typeof item === 'object' && item.symbol) {
+                          formattedOutput += `**${item.symbol}:**\n`;
+                          
+                          // Handle different result structures
+                          Object.entries(item).forEach(([key, value]) => {
+                            if (key !== 'symbol' && value !== null && value !== undefined) {
+                              if (typeof value === 'number') {
+                                formattedOutput += `  • ${key}: ${value.toFixed(4)}\n`;
+                              } else {
+                                formattedOutput += `  • ${key}: ${value}\n`;
+                              }
+                            }
+                          });
+                          formattedOutput += '\n';
+                        }
+                      });
+                    } else {
+                      formattedOutput += `Result: ${JSON.stringify(calculationResult.result, null, 2)}\n`;
+                    }
+
+                    if (calculationResult.logs) {
+                      formattedOutput += `\n📋 **Execution Logs:**\n${calculationResult.logs}`;
+                    }
+
+                    formattedOutput += `\n\n⏱️ Execution Time: ${calculationResult.execution_time?.toFixed(2) || (executionTime/1000).toFixed(2)}s`;
+
+                    return formattedOutput;
+                  } catch (error) {
+                    await convex.mutation(api.metrics.recordUsage, {
+                      metricId: metric.id as any,
+                      calculationTime: Date.now() - startTime,
+                      success: false
+                    });
+                    throw error;
+                  }
+                } catch (error) {
+                  return `❌ Error calculating metric: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                }
+              }
+            },
+            createCustomMetric: {
+              description: 'Create a new custom financial metric with Python code',
+              inputSchema: z.object({
+                name: z.string().describe('Display name of the metric'),
+                description: z.string().describe('What this metric measures'),
+                category: z.string().describe('Metric category (profitability, liquidity, efficiency, etc.)'),
+                formula: z.string().describe('Human-readable formula description'),
+                pythonCode: z.string().describe('Python function code that implements calculate_metric(symbols)'),
+                timeout: z.number().optional().default(30).describe('Execution timeout in seconds'),
+                isPublic: z.boolean().default(false).describe('Whether other users can see this metric')
+              }),
+              execute: async (params) => {
+                try {
+                  const metricId = await convex.mutation(api.metrics.create, {
+                    name: params.name,
+                    description: params.description,
+                    category: params.category,
+                    formula: params.formula,
+                    pythonCode: params.pythonCode,
+                    executionConfig: {
+                      timeout: params.timeout,
+                      allowedLibraries: ['pandas', 'numpy', 'math'],
+                      description: 'Standard financial calculation environment'
+                    },
+                    isPublic: params.isPublic
+                  });
+
+                  return `✅ Custom metric "${params.name}" created successfully!\n\n📊 Metric Details:\n- ID: ${metricId}\n- Category: ${params.category}\n- Formula: ${params.formula}\n- Timeout: ${params.timeout}s\n- ${params.isPublic ? 'Public' : 'Private'} metric\n\n🎯 You can now use this metric with calculateMetric.\n\n🐍 Python code preview:\n\`\`\`python\n${params.pythonCode.substring(0, 200)}${params.pythonCode.length > 200 ? '...' : ''}\n\`\`\``;
+                } catch (error) {
+                  return `❌ Failed to create metric: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                }
+              }
+            },
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

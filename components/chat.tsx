@@ -64,13 +64,14 @@ export function Chat({
           body: {
             id,
             message: messages.at(-1),
+            selectedChatModel: selectedModel, // 添加当前选择的模型
             selectedVisibilityType: visibilityType,
-            ...body, // body中包含从sendMessage传递的selectedChatModel
+            ...body, // body中可能包含其他参数
           },
         };
       },
     }),
-    [visibilityType]
+    [visibilityType, selectedModel]
   );
 
   const {
@@ -81,12 +82,14 @@ export function Chat({
     stop,
     regenerate,
     resumeStream,
+    addToolResult,
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
     experimental_throttle: 100,
     generateId: generateUUID,
     transport,
+    
     onData: (dataPart) => {
       setDataStream((ds) => [...(ds || []), dataPart]);
     },
@@ -158,6 +161,7 @@ export function Chat({
             regenerate={regenerate}
             isReadonly={isReadonly}
             isArtifactVisible={isArtifactVisible}
+            addToolResult={addToolResult}
           />
         </div>
 

@@ -1,108 +1,106 @@
-import { mutation } from "./_generated/server";
+import { mutation } from './_generated/server';
 
-export const migrateMessagesToChats = mutation({
+/**
+ * Migration: Move data from customMetrics table to unified metrics table
+ */
+export const migrateCustomMetricsToMetrics = mutation({
   args: {},
   handler: async (ctx) => {
-    // This migration creates default chats for users and assigns messages to them
-    const users = await ctx.db.query("users").collect();
+    console.log('🔄 Starting migration from customMetrics to metrics table...');
     
-    console.log(`Starting migration for ${users.length} users...`);
+    // Get all custom metrics from old table
+    const customMetrics = await ctx.db.query('customMetrics').collect();
+    console.log(`📊 Found ${customMetrics.length} custom metrics to migrate`);
     
-    let migratedMessages = 0;
-    let createdChats = 0;
+    let migratedCount = 0;
+    let skippedCount = 0;
     
-    for (const user of users) {
+    for (const oldMetric of customMetrics) {
       try {
-        // Get all messages for this user that don't have a chatId
-        const userMessages = await ctx.db
-          .query("messages")
-          .filter((q) => q.eq(q.field("userId"), user._id))
-          .filter((q) => q.eq(q.field("chatId"), undefined))
-          .collect();
-        
-        if (userMessages.length === 0) {
-          console.log(`No messages to migrate for user ${user.clerkUserId}`);
+        // Check if metric already exists in new table (by name and userId)
+        const existingMetric = await ctx.db
+          .query('metrics')
+          .withIndex('by_name', (q) => q.eq('name', oldMetric.name))
+          .filter((q) => q.eq(q.field('userId'), oldMetric.userId))
+          .first();
+          
+        if (existingMetric) {
+          console.log(`⏭️  Skipping "${oldMetric.name}" - already exists in metrics table`);
+          skippedCount++;
           continue;
         }
         
-        // Create a default chat for this user
-        const chatId = await ctx.db.insert("chats", {
-          title: "Chat History",
-          userId: user._id,
-          visibility: "private",
-          createdAt: userMessages[0]?.createdAt || Date.now(),
-          updatedAt: Date.now(),
-        });
+        // Extract SQL template from formula object
+        let sqlTemplate = '';
+        let calculationType = 'ttm';
+        let actualFormula = oldMetric.name;
         
-        createdChats++;
-        console.log(`Created default chat ${chatId} for user ${user.clerkUserId}`);
-        
-        // Assign all user messages to this chat
-        for (const message of userMessages) {
-          await ctx.db.patch(message._id, {
-            chatId: chatId,
-          });
-          migratedMessages++;
+        if (typeof oldMetric.formula === 'object' && oldMetric.formula !== null) {
+          const formulaObj = oldMetric.formula as any;
+          sqlTemplate = formulaObj.sqlTemplate || '';
+          calculationType = formulaObj.calculationType || 'ttm';
+          actualFormula = formulaObj.formula || formulaObj.userRequirement || oldMetric.name;
+        } else if (typeof oldMetric.formula === 'string') {
+          actualFormula = oldMetric.formula;
         }
         
-        console.log(`Migrated ${userMessages.length} messages for user ${user.clerkUserId}`);
+        // Insert into new metrics table
+        await ctx.db.insert('metrics', {
+          name: oldMetric.name,
+          description: oldMetric.description,
+          category: oldMetric.category === 'custom' ? 'profitability' : oldMetric.category, // Default category
+          formula: actualFormula,
+          sqlTemplate: sqlTemplate,
+          calculationType: calculationType,
+          userId: oldMetric.userId,
+          organizationId: undefined, // Will be set based on user's org
+          isBuiltIn: false,
+          isPublic: oldMetric.isPublic || false,
+          createdAt: oldMetric.createdAt,
+          updatedAt: oldMetric.updatedAt,
+        });
+        
+        console.log(`✅ Migrated "${oldMetric.name}"`);
+        migratedCount++;
+        
       } catch (error) {
-        console.error(`Error migrating user ${user.clerkUserId}:`, error);
+        console.error(`❌ Failed to migrate "${oldMetric.name}":`, error);
       }
     }
     
-    console.log(`Migration completed: ${createdChats} chats created, ${migratedMessages} messages migrated`);
+    console.log(`🎉 Migration completed: ${migratedCount} migrated, ${skippedCount} skipped`);
     
     return {
       success: true,
-      createdChats,
-      migratedMessages,
-      totalUsers: users.length
+      migrated: migratedCount,
+      skipped: skippedCount,
+      total: customMetrics.length
     };
   },
 });
 
-export const cleanupLegacyFields = mutation({
+/**
+ * Clean up old customMetrics table after successful migration
+ * WARNING: This will delete all data in customMetrics table!
+ */
+export const cleanupOldCustomMetrics = mutation({
   args: {},
   handler: async (ctx) => {
-    // This removes the legacy userId field from messages after migration
-    const messages = await ctx.db
-      .query("messages")
-      .filter((q) => q.neq(q.field("userId"), undefined))
-      .collect();
-      
-    console.log(`Cleaning up legacy fields from ${messages.length} messages...`);
+    console.log('🧹 Starting cleanup of old customMetrics table...');
     
-    for (const message of messages) {
-      // Remove the legacy userId field
-      await ctx.db.patch(message._id, {
-        userId: undefined,
-      });
+    const customMetrics = await ctx.db.query('customMetrics').collect();
+    let deletedCount = 0;
+    
+    for (const metric of customMetrics) {
+      await ctx.db.delete(metric._id);
+      deletedCount++;
     }
     
+    console.log(`🗑️  Deleted ${deletedCount} records from customMetrics table`);
+    
     return {
       success: true,
-      cleanedMessages: messages.length
-    };
-  },
-});
-
-export const validateMigration = mutation({
-  args: {},
-  handler: async (ctx) => {
-    // Check migration status
-    const totalMessages = await ctx.db.query("messages").collect();
-    const messagesWithoutChat = totalMessages.filter(m => !m.chatId);
-    const messagesWithLegacyUserId = totalMessages.filter(m => m.userId);
-    
-    const totalChats = await ctx.db.query("chats").collect();
-    
-    return {
-      totalMessages: totalMessages.length,
-      messagesWithoutChat: messagesWithoutChat.length,
-      messagesWithLegacyUserId: messagesWithLegacyUserId.length,
-      totalChats: totalChats.length,
-      migrationComplete: messagesWithoutChat.length === 0 && messagesWithLegacyUserId.length === 0
+      deleted: deletedCount
     };
   },
 });

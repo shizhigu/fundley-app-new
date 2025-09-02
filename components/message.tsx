@@ -38,6 +38,7 @@ const PurePreviewMessage = ({
   setMessages,
   regenerate,
   isReadonly,
+  addToolResult,
   requiresScrollPadding,
 }: {
   message: ChatMessage;
@@ -46,6 +47,7 @@ const PurePreviewMessage = ({
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
   regenerate: UseChatHelpers<ChatMessage>['regenerate'];
   isReadonly: boolean;
+  addToolResult?: UseChatHelpers<ChatMessage>['addToolResult'];
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
@@ -711,6 +713,8 @@ const PurePreviewMessage = ({
                   );
                 }
               }
+              
+              // saveCustomMetric is now handled as a regular server-side tool
             })}
 
             {/* Render extracted metadata at the end */}

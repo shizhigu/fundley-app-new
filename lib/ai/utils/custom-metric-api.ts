@@ -9,10 +9,12 @@ interface CustomMetricData {
   category: string
   formula: {
     name: string
-    code: string
-    dependencies: string[]
-    userRequirement: string
-    imageUrl?: string
+    sqlTemplate: string          // SQL query template
+    description: string          // Description of the SQL query
+    dataFields: string[]         // Database fields used (auto-extracted from SQL)
+    calculationType: string      // Calculation type ('single_period', 'ttm', 'multi_period')
+    userRequirement: string      // User's original requirement
+    formula: string              // Natural language formula description
   }
   prompt: string
   isPublic: boolean

@@ -19,6 +19,7 @@ interface MessagesProps {
   regenerate: UseChatHelpers<ChatMessage>['regenerate'];
   isReadonly: boolean;
   isArtifactVisible: boolean;
+  addToolResult?: UseChatHelpers<ChatMessage>['addToolResult'];
 }
 
 function PureMessages({
@@ -28,6 +29,7 @@ function PureMessages({
   setMessages,
   regenerate,
   isReadonly,
+  addToolResult,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -102,6 +104,7 @@ function PureMessages({
             setMessages={setMessages}
             regenerate={regenerate}
             isReadonly={isReadonly}
+            addToolResult={addToolResult}
             requiresScrollPadding={
               hasSentMessage && originalIndex === messages.length - 1
             }

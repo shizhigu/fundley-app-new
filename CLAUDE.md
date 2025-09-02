@@ -87,6 +87,50 @@ Each artifact type (code, text, sheet) has:
 - **File Naming**: kebab-case for files, PascalCase for components
 - **Imports**: Absolute imports via `@/` alias for project files
 
+## AI Tool Development
+
+### CRITICAL: Vercel AI SDK Tool Schema
+
+**❌ COMMON ERROR - DO NOT USE `parameters`:**
+```typescript
+export const myTool = tool({
+  description: "My tool description",
+  parameters: z.object({  // ❌ WRONG - This will cause tools to not receive parameters
+    name: z.string().describe('Name parameter')
+  })
+})
+```
+
+**✅ CORRECT - ALWAYS USE `inputSchema`:**
+```typescript
+export const myTool = tool({
+  description: "My tool description", 
+  inputSchema: z.object({  // ✅ CORRECT - This is the proper Vercel AI SDK syntax
+    name: z.string().describe('Name parameter')
+  })
+})
+```
+
+### Why This Matters
+- **Symptom**: LLM calls tool but tool receives empty parameters `{}`
+- **Error**: Tool validation fails with "parameter is required" even when LLM passes parameters
+- **Root Cause**: Vercel AI SDK expects `inputSchema`, not `parameters`
+- **Fix**: Always use `inputSchema` for tool parameter definitions
+
+### Model Configuration
+- **Use OpenRouter**: All models must use the unified OpenRouter configuration from `lib/ai/providers.ts`
+- **Never use direct provider SDKs**: Don't call OpenAI, Anthropic, etc. directly
+- **Model Selection**: Use `financialFieldsModel`, `subAgentModel`, or other predefined models
+- **Example**: `const { text } = await generateText({ model: financialFieldsModel, ... })`
+
+### Tool Development Checklist
+1. ✅ Use `inputSchema` (not `parameters`)
+2. ✅ Import models from `lib/ai/providers.ts` 
+3. ✅ Use OpenRouter configuration
+4. ✅ Add comprehensive parameter descriptions
+5. ✅ Include error handling and validation
+6. ✅ Test tools manually before integration
+
 ## Convex Database Schema
 
 ### Core Tables (8 Tables)

@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
     const { name, description, category, formula, prompt, isPublic } = body
 
     // 验证必需字段
-    if (!name || !description || !formula?.code) {
+    if (!name || !description || !formula?.sqlTemplate) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, description, formula.code' },
+        { error: 'Missing required fields: name, description, formula.sqlTemplate' },
         { status: 400 }
       )
     }

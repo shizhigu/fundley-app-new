@@ -94,27 +94,45 @@ export default defineSchema({
     .index("by_message_id", ["messageId"])
     .index("by_data_hash", ["dataHash"]),
 
-  // Custom Formula Builder - Financial Metrics
-  customMetrics: defineTable({
-    name: v.string(),
-    description: v.string(),
-    category: v.string(),
-    formula: v.any(), // FormulaAST JSON structure
-    prompt: v.string(), // Generated LLM prompt/instruction
-    userId: v.id("users"), // Creator of the metric
-    organizationId: v.optional(v.string()), // Clerk organization ID for sharing
-    isPublic: v.boolean(),
+  // Financial Metrics - Both built-in and custom (Python-based)
+  metrics: defineTable({
+    // Basic metric info
+    name: v.string(),                    // Display name (e.g., "Alpha-1", "ROE")
+    description: v.string(),             // What this metric measures
+    category: v.string(),                // profitability, liquidity, efficiency, etc.
+    
+    // Python calculation logic
+    pythonCode: v.string(),              // User's Python calculation code
+    formula: v.string(),                 // Human-readable formula description
+    
+    // Execution configuration
+    executionConfig: v.object({
+      timeout: v.number(),               // Execution timeout in seconds
+      allowedLibraries: v.array(v.string()), // ['pandas', 'numpy', 'math']
+      maxMemoryMB: v.optional(v.number()), // Memory limit
+      description: v.optional(v.string()) // Execution notes
+    }),
+    
+    // Ownership & visibility
+    userId: v.optional(v.id("users")),   // Creator (null for built-in metrics)
+    organizationId: v.optional(v.string()), // Clerk org ID for sharing
+    isBuiltIn: v.boolean(),              // true for system metrics, false for custom
+    isPublic: v.boolean(),               // Whether other users can see/use it
+    
+    // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_organization", ["organizationId"])
     .index("by_category", ["category"])
-    .index("by_public", ["isPublic"]),
+    .index("by_public", ["isPublic"])
+    .index("by_built_in", ["isBuiltIn"])
+    .index("by_name", ["name"]),
 
-  // Formula usage tracking for analytics and optimization
-  formulaUsage: defineTable({
-    metricId: v.id("customMetrics"),
+  // Metric usage tracking for analytics and optimization
+  metricUsage: defineTable({
+    metricId: v.id("metrics"),
     userId: v.id("users"),
     usedAt: v.number(),
     calculationTime: v.optional(v.number()), // Calculation performance tracking

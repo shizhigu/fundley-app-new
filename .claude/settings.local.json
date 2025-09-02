@@ -32,7 +32,14 @@
       "Bash(npx convex run:*)",
       "Bash(sed:*)",
       "Bash(git checkout:*)",
-      "Bash(npx convex deploy)"
+      "Bash(npx convex deploy)",
+      "Bash(biome lint:*)",
+      "Bash(pnpm biome lint:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx convex data:*)",
+      "WebFetch(domain:ai-sdk.dev)",
+      "Bash(pnpm run build:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

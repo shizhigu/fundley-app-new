@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { CustomMetricCodeGenerator } from '@/lib/ai/agents/custom-metric-code-generator'
-import { CustomMetricExecutor } from '@/lib/ai/executors/custom-metric-executor'
+import { generateSQLQuery } from '@/lib/ai/agents/sql-generator-agent'
+import { executeSQLQuery } from '@/lib/ai/tools/financial/sql-query-tool'
 import { 
   createCustomMetricInDB,
   getCustomMetricFromDB,
@@ -10,211 +10,256 @@ import {
 } from '@/lib/ai/utils/custom-metric-api'
 
 /**
- * 工具1: 创建自定义财务指标
- * 将用户需求转换为可执行的TypeScript代码并保存
+ * Custom Financial Metric Creation Tool (SQL-based)
+ * Creates custom financial metrics by converting user requirements into SQL query templates
  */
 export const createCustomMetric = tool({
-  description: `创建自定义财务指标计算代码。
+  description: `Create custom financial metrics. Use this when users want to create a new financial calculation or metric.`,
 
-  🚨 重要：只有在用户提供了完整、具体的参数时才能使用此工具！
-  
-  必须先向用户询问以下信息，直到获得具体答案：
-  1. 指标的英文名称（如 "ROIIC", "QuickRatio"）
-  2. 指标的中文显示名称（如 "投资资本回报率", "速动比率"）
-  3. 指标的详细计算公式（具体数学表达式，不能含糊）
-  4. 需要哪些具体的财务数据字段（如 revenue, totalAssets）
-  5. 指标的业务用途和意义
-  
-  ❌ 禁止行为：
-  - 不要根据用户的模糊描述自己推测具体参数
-  - 不要使用"一般来说"、"通常"等模糊表述
-  - 不要自己决定计算公式
-  
-  ✅ 正确做法：
-  - 主动询问缺失的具体参数
-  - 要求用户提供精确的计算公式
-  - 确认每个数据字段的准确名称`,
-
-  parameters: z.object({
-    name: z.string().describe('指标英文名称，如 "ROIIC", "CashConversionCycle"'),
-    displayName: z.string().describe('指标中文显示名称，如 "投资资本回报率", "现金转换周期"'),
-    description: z.string().describe('指标的详细说明，包括计算逻辑和用途'),
-    userRequirement: z.string().describe('用户的原始需求描述'),
-    imageContent: z.any().optional().describe('公式图片内容（multimodal支持）'),
-    category: z.string().default('custom').describe('指标分类，如 profitability, liquidity, efficiency')
+  inputSchema: z.object({
+    displayName: z.string().describe('Name of the metric'),
+    description: z.string().describe('What this metric measures'),
+    formula: z.string().describe('How to calculate this metric'),
+    calculationType: z.enum(['single_period', 'ttm', 'multi_period']).default('ttm').describe('Type of calculation'),
+    category: z.string().default('custom').describe('Category of metric')
   }),
 
-  execute: async ({ name, displayName, description, userRequirement, imageContent, category }) => {
-    try {
-      console.log(`Creating custom metric: ${name}`)
-      
-      // Step 1: 生成计算代码
-      const codeGenerator = new CustomMetricCodeGenerator()
-      const codeResult = await codeGenerator.generateCode({
-        name,
-        description,
-        userRequirement,
-        imageContent
-      })
+  execute: async (params) => {
+    const { 
+      displayName,
+      description, 
+      formula,
+      calculationType,
+      category 
+    } = params
 
-      // Step 2: 验证代码安全性
-      const validation = codeGenerator.validateCodeSafety(codeResult.code)
-      if (!validation.safe) {
+    try {
+      console.log('Creating SQL-based custom metric:', displayName)
+      console.log('All parameters received:', JSON.stringify(params, null, 2))
+      
+      // Validate required parameters
+      if (!displayName) {
         return {
           success: false,
-          error: `代码安全验证失败: ${validation.errors.join(', ')}`,
+          error: 'displayName parameter is required',
           displayAction: 'Create custom metric',
-          displayResult: '❌ 代码安全验证失败'
+          displayResult: 'Display name is required for the metric'
         }
       }
 
-      // Step 3: 保存到数据库
+      if (!description) {
+        return {
+          success: false,
+          error: 'description parameter is required',
+          displayAction: 'Create custom metric',
+          displayResult: 'Description is required to understand the metric purpose'
+        }
+      }
+
+      if (!formula) {
+        return {
+          success: false,
+          error: 'formula parameter is required',
+          displayAction: 'Create custom metric',
+          displayResult: 'Formula description is required to generate SQL query'
+        }
+      }
+
+      // Generate a system name from displayName
+      const systemName = displayName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50)
+      
+      // Step 1: Generate SQL query template from natural language description
+      const sqlGenerationResult = await generateSQLQuery({
+        userRequest: `Create a SQL query template for calculating "${displayName}". Formula: ${formula}. Description: ${description}. Please automatically determine the required database fields from the financial database schema.`,
+        analysisType: calculationType === 'ttm' ? 'ttm' : 'custom',
+        metricName: systemName,
+        description: description
+      });
+
+      if (!sqlGenerationResult.success || !sqlGenerationResult.query) {
+        return {
+          success: false,
+          error: `SQL generation failed: ${sqlGenerationResult.error}`,
+          displayAction: 'Create custom metric',
+          displayResult: '❌ Failed to generate SQL template'
+        }
+      }
+
+      // Step 2: Save to database with SQL structure
       const dbResult = await createCustomMetricInDB({
         name: displayName,
         description,
         category,
         formula: {
-          name,
-          code: codeResult.code,
-          dependencies: codeResult.dependencies,
-          userRequirement,
-          imageUrl: imageContent // 兼容数据库字段名
+          name: systemName,
+          sqlTemplate: sqlGenerationResult.query,
+          description: sqlGenerationResult.description || `SQL query for ${displayName}`,
+          dataFields: [], // Will be extracted from SQL query automatically
+          calculationType,
+          userRequirement: `${formula} - ${description}`,
+          formula: formula
         },
-        prompt: codeResult.explanation,
+        prompt: `Custom financial metric: ${description}\nCalculation: ${formula}\nSQL Template: ${sqlGenerationResult.query}`,
         isPublic: false
       })
 
       if (!dbResult.success) {
         return {
           success: false,
-          error: `保存到数据库失败: ${dbResult.error}`,
+          error: `Database save failed: ${dbResult.error}`,
           displayAction: 'Create custom metric',
-          displayResult: '❌ 数据库保存失败'
+          displayResult: '❌ Failed to save to database'
         }
       }
 
-      console.log(`Custom metric created with ID: ${dbResult.metricId}`)
+      console.log(`SQL-based custom metric created with ID: ${dbResult.metricId}`)
 
       return {
         success: true,
-        metricId: dbResult.metricId!,
+        metricId: dbResult.metricId,
         name: displayName,
-        code: codeResult.code,
-        dependencies: codeResult.dependencies,
-        explanation: codeResult.explanation,
+        sqlTemplate: sqlGenerationResult.query,
+        description: sqlGenerationResult.description,
+        formula,
+        calculationType,
         displayAction: 'Create custom metric',
-        displayResult: `✅ 创建了自定义指标: ${displayName}`
+        displayResult: `✅ Created SQL-based custom metric: ${displayName}`
       }
 
     } catch (error) {
-      console.error('Create custom metric failed:', error)
+      console.error('Create SQL custom metric failed:', error)
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : '创建自定义指标失败',
+        error: error instanceof Error ? error.message : 'Failed to create custom metric',
         displayAction: 'Create custom metric',
-        displayResult: `❌ 创建失败: ${error instanceof Error ? error.message : '未知错误'}`
+        displayResult: `❌ Creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
   }
 })
 
 /**
- * 工具2: 执行自定义财务指标计算
- * 根据已保存的指标代码执行计算并返回结果
+ * Tool 2: Execute Custom Financial Metric Calculation (SQL Version)
+ * Execute queries based on saved SQL templates and return results
  */
 export const executeCustomMetric = tool({
-  description: `执行自定义财务指标计算。
+  description: `Execute SQL-based custom financial metric calculations.
 
-  使用已创建的自定义指标对指定公司进行计算分析。
-  支持单个或多个公司的批量计算。
+  Use pre-created SQL custom metrics to calculate and analyze specific companies.
+  Supports batch calculations for single or multiple companies, including TTM and historical data analysis.
   
-  示例使用场景:
-  - 计算苹果公司的ROIIC
-  - 对比多家科技公司的投资回报率
-  - 分析历史趋势数据`,
+  Example use cases:
+  - Calculate Apple's cash conversion cycle
+  - Compare investment returns across tech companies
+  - Analyze historical trend data`,
 
-  parameters: z.object({
-    metricId: z.string().describe('自定义指标的ID'),
-    symbols: z.array(z.string()).min(1).describe('股票代码列表，如 ["AAPL"] 或 ["AAPL", "MSFT"]'),
-    timeframe: z.enum(['ttm', 'historical', 'both']).default('ttm').describe('数据时间范围: ttm=最新12个月, historical=历史趋势, both=综合分析'),
-    limit: z.number().optional().default(5).describe('历史数据期数限制(1-10)')
+  inputSchema: z.object({
+    metricId: z.string().describe('ID of the custom metric'),
+    symbols: z.array(z.string()).min(1).describe('List of stock symbols, e.g. ["AAPL"] or ["AAPL", "MSFT"]'),
+    timeframe: z.enum(['ttm', 'latest', 'historical']).default('latest').describe('Data timeframe: ttm=trailing 12 months, latest=most recent period, historical=historical trends'),
+    periods: z.number().optional().default(5).describe('Number of historical periods to limit (1-20)')
   }),
 
-  execute: async ({ metricId, symbols, timeframe, limit = 5 }) => {
+  execute: async ({ metricId, symbols, timeframe, periods = 5 }) => {
     try {
-      console.log(`Executing custom metric ${metricId} for symbols:`, symbols)
+      console.log(`Executing SQL custom metric ${metricId} for symbols:`, symbols)
 
-      // Step 1: 获取指标定义
+      // Step 1: Get metric definition
       const metricResult = await getCustomMetricFromDB(metricId)
 
       if (!metricResult.success || !metricResult.metric) {
         return {
           success: false,
-          error: metricResult.error || '指标不存在或无访问权限',
+          error: metricResult.error || 'Metric not found or access denied',
           displayAction: 'Execute custom metric',
-          displayResult: '❌ 指标不存在'
+          displayResult: '❌ Metric not found'
         }
       }
 
       const metric = metricResult.metric
+      const startTime = Date.now()
 
-      // Step 2: 执行计算
-      const executor = new CustomMetricExecutor()
-      const executionResult = await executor.execute({
-        code: metric.formula.code,
-        symbols,
-        dependencies: metric.formula.dependencies,
-        timeframe
-      })
+      // Step 2: Generate and execute SQL queries for each symbol
+      const allResults: any[] = []
+      
+      for (const symbol of symbols) {
+        // Generate specific query based on metric SQL template and parameters
+        const sqlResult = await generateSQLQuery({
+          userRequest: `Calculate ${metric.name} for ${symbol} with timeframe ${timeframe}`,
+          symbols: [symbol],
+          timeRange: timeframe === 'historical' ? { periods } : undefined,
+          analysisType: timeframe as any,
+          metricName: metric.name,
+          description: metric.description
+        });
 
-      if (!executionResult.success) {
-        return {
-          success: false,
-          error: executionResult.error,
-          displayAction: 'Execute custom metric',
-          displayResult: `❌ 执行失败: ${executionResult.error}`
+        if (!sqlResult.success || !sqlResult.query) {
+          console.error(`Failed to generate SQL for ${symbol}:`, sqlResult.error);
+          continue;
+        }
+
+        // Execute SQL query
+        const queryResult = await executeSQLQuery({
+          query: sqlResult.query,
+          description: `Calculate ${metric.name} for ${symbol}`,
+          expectedResultType: sqlResult.expectedResultType || 'multiple_rows'
+        });
+
+        if (queryResult.success) {
+          allResults.push({
+            symbol,
+            data: queryResult.data,
+            metricName: metric.name,
+            timeframe,
+            query: sqlResult.query
+          });
+        } else {
+          console.error(`SQL execution failed for ${symbol}:`, queryResult.error);
         }
       }
 
-      // Step 3: 验证和格式化结果
-      const validation = executor.validateResult(executionResult.results)
-      if (!validation.valid) {
+      const executionTime = Date.now() - startTime;
+
+      if (allResults.length === 0) {
         return {
           success: false,
-          error: validation.error,
+          error: 'All queries failed',
           displayAction: 'Execute custom metric',
-          displayResult: `❌ 结果验证失败: ${validation.error}`
+          displayResult: '❌ All queries failed'
         }
       }
 
-      // Step 4: 记录使用情况
+      // Step 3: Record usage statistics
       await recordMetricUsage({
         metricId,
-        calculationTime: executionResult.executionTime,
+        calculationTime: executionTime,
         success: true
       })
 
-      // Step 5: 格式化返回结果
-      const results = executionResult.results
-      const formattedResult = formatResults(metric.name, results, symbols, timeframe)
+      // Step 4: Format return results
+      const formattedResult = formatSQLResults(metric.name, allResults, symbols, timeframe)
 
       return {
         success: true,
         metricName: metric.name,
         symbols,
         timeframe,
-        executionTime: executionResult.executionTime,
-        results: results,
+        executionTime,
+        results: allResults,
         formattedResults: formattedResult,
         displayAction: 'Execute custom metric',
-        displayResult: `✅ ${metric.name} 计算完成 (${executionResult.executionTime}ms)`
+        displayResult: `✅ ${metric.name} calculation completed (${executionTime}ms)`
       }
 
     } catch (error) {
-      console.error('Execute custom metric failed:', error)
+      console.error('Execute SQL custom metric failed:', error)
 
-      // 记录失败的使用情况
+      // Record failed usage statistics
       await recordMetricUsage({
         metricId,
         calculationTime: 0,
@@ -223,44 +268,86 @@ export const executeCustomMetric = tool({
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : '执行自定义指标失败',
+        error: error instanceof Error ? error.message : 'Failed to execute custom metric',
         displayAction: 'Execute custom metric',
-        displayResult: `❌ 执行失败: ${error instanceof Error ? error.message : '未知错误'}`
+        displayResult: `❌ Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
   }
 })
 
 /**
- * 格式化计算结果为用户友好的显示格式
+ * 格式化SQL计算结果为用户友好的显示格式
+ */
+function formatSQLResults(metricName: string, allResults: any[], symbols: string[], timeframe: string): string {
+  const lines: string[] = []
+  
+  lines.push(`=== ${metricName} Calculation Results ===`)
+  lines.push(`Analysis Scope: ${symbols.join(', ')} | Timeframe: ${timeframe}`)
+  lines.push('')
+
+  if (allResults.length === 0) {
+    lines.push(`❌ No calculation results available`)
+    return lines.join('\n')
+  }
+
+  // Display results for each symbol
+  allResults.forEach((result, index) => {
+    lines.push(`📊 ${result.symbol}:`)
+    
+    if (Array.isArray(result.data)) {
+      // Multi-row results (historical data)
+      result.data.forEach((row: any, rowIndex: number) => {
+        if (rowIndex < 5) { // Only show first 5 rows
+          lines.push(`   Period ${rowIndex + 1}: ${JSON.stringify(row)}`)
+        }
+      })
+      if (result.data.length > 5) {
+        lines.push(`   ... ${result.data.length - 5} more rows of data`)
+      }
+    } else {
+      // Single row result
+      lines.push(`   Result: ${JSON.stringify(result.data)}`)
+    }
+    
+    if (index < allResults.length - 1) {
+      lines.push('') // Empty line to separate results for different symbols
+    }
+  })
+
+  return lines.join('\n')
+}
+
+/**
+ * Format calculation results into user-friendly display format (legacy version for compatibility)
  */
 function formatResults(metricName: string, results: any, symbols: string[], timeframe: string): string {
   const lines: string[] = []
   
-  lines.push(`=== ${metricName} 计算结果 ===`)
-  lines.push(`分析范围: ${symbols.join(', ')} | 时间框架: ${timeframe}`)
+  lines.push(`=== ${metricName} Calculation Results ===`)
+  lines.push(`Analysis Scope: ${symbols.join(', ')} | Timeframe: ${timeframe}`)
   lines.push('')
 
   if (results.error) {
-    lines.push(`❌ 计算失败: ${results.message}`)
+    lines.push(`❌ Calculation failed: ${results.message}`)
     return lines.join('\n')
   }
 
-  // 主要结果
+  // Main results
   lines.push(`📊 ${results.symbol || symbols[0]}:`)
   
   if (results.metricValue !== null && results.metricValue !== undefined) {
     lines.push(`   ${metricName}: ${results.metricValue}`)
     
     if (results.metricPercentage) {
-      lines.push(`   百分比形式: ${results.metricPercentage}`)
+      lines.push(`   Percentage format: ${results.metricPercentage}`)
     }
   }
 
-  // 组成部分分析
+  // Component analysis
   if (results.components) {
     lines.push('')
-    lines.push('📋 计算组成:')
+    lines.push('📋 Calculation Components:')
     
     Object.entries(results.components).forEach(([key, value]) => {
       if (typeof value === 'number') {
@@ -271,28 +358,28 @@ function formatResults(metricName: string, results: any, symbols: string[], time
     })
   }
 
-  // 时间信息
+  // Time information
   if (results.period) {
     lines.push('')
-    lines.push(`📅 数据期间: ${results.period}`)
+    lines.push(`📅 Data Period: ${results.period}`)
   }
 
   return lines.join('\n')
 }
 
 /**
- * 工具3: 查找现有自定义指标
- * 帮助主Agent判断是否需要创建新指标
+ * Tool 3: Find Existing Custom Metrics
+ * Help main Agent determine if new metric creation is needed
  */
 export const findCustomMetric = tool({
-  description: `查找现有的自定义财务指标。
+  description: `Find existing custom financial metrics.
 
-  在创建新指标之前，先检查是否已有相似的指标存在。
-  支持按名称、描述内容进行模糊匹配。`,
+  Before creating new metrics, check if similar metrics already exist.
+  Supports fuzzy matching by name and description content.`,
 
-  parameters: z.object({
-    query: z.string().describe('搜索关键词，如指标名称或描述'),
-    includePublic: z.boolean().default(true).describe('是否包含公开指标')
+  inputSchema: z.object({
+    query: z.string().describe('Search keywords, such as metric name or description'),
+    includePublic: z.boolean().default(true).describe('Whether to include public metrics')
   }),
 
   execute: async ({ query, includePublic }) => {
@@ -307,7 +394,7 @@ export const findCustomMetric = tool({
           success: false,
           error: searchResult.error,
           displayAction: 'Search custom metrics',
-          displayResult: `❌ 搜索失败: ${searchResult.error}`
+          displayResult: `❌ Search failed: ${searchResult.error}`
         }
       }
 
@@ -319,11 +406,11 @@ export const findCustomMetric = tool({
           found: false,
           metrics: [],
           displayAction: 'Search custom metrics',
-          displayResult: '未找到匹配的自定义指标'
+          displayResult: 'No matching custom metrics found'
         }
       }
 
-      // 格式化搜索结果
+      // Format search results
       const formattedMetrics = results.map((metric: any) => ({
         id: metric._id,
         name: metric.name,
@@ -339,7 +426,7 @@ export const findCustomMetric = tool({
         metrics: formattedMetrics,
         count: results.length,
         displayAction: 'Search custom metrics',
-        displayResult: `找到 ${results.length} 个匹配的指标`
+        displayResult: `Found ${results.length} matching metrics`
       }
 
     } catch (error) {
@@ -347,9 +434,9 @@ export const findCustomMetric = tool({
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : '搜索失败',
+        error: error instanceof Error ? error.message : 'Search failed',
         displayAction: 'Search custom metrics',
-        displayResult: `❌ 搜索失败: ${error instanceof Error ? error.message : '未知错误'}`
+        displayResult: `❌ Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
   }
