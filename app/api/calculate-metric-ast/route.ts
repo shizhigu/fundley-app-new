@@ -357,7 +357,9 @@ export class FinancialASTEngine {
   async calculateMetric(
     metric: MetricDefinition,
     symbols: string[],
-    asOf?: string
+    asOf?: string,
+    periods?: number,
+    periodType?: 'quarter' | 'annual'
   ): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
 
@@ -370,21 +372,70 @@ export class FinancialASTEngine {
           throw new Error('Metric AST is null or undefined');
         }
         
-        // Set the asOf context for this calculation
-        this.asOfDate = asOf ? this.parseAsOfDate(asOf) : null;
-        console.log(`🕒 AsOf context:`, this.asOfDate);
+        // Validate and fix AST integrity before calculation
+        const validatedAST = this.validateAndFixAST(metric.ast);
+        console.log(`🔍 Validated AST:`, JSON.stringify(validatedAST, null, 2));
         
-        const value = await this.evaluateNode(metric.ast, symbol);
-        
-        results[symbol] = {
-          value: value,
-          formula: metric.formula_display,
-          calculation_method: 'JSON_AST_v1.0',
-          timestamp: new Date().toISOString(),
-          success: true
-        };
-        
-        console.log(`✅ ${symbol} ${metric.name} = ${value}`);
+        if (periods && periods > 1) {
+          // Multi-period calculation
+          console.log(`🕒 Multi-period calculation: ${periods} ${periodType}s`);
+          
+          // Get the latest available periods from database
+          const latestPeriods = await this.getLatestPeriods(symbol, periods, periodType || 'quarter');
+          console.log(`🕒 Latest periods for ${symbol}:`, latestPeriods);
+          
+          const periodResults: any[] = [];
+          for (const period of latestPeriods) {
+            try {
+              // Set asOf context for this specific period
+              this.asOfDate = this.parseAsOfDate(period);
+              console.log(`🕒 Calculating for period: ${period}`);
+              
+              const value = await this.evaluateNode(validatedAST, symbol);
+              periodResults.push({
+                period: period,
+                value: value,
+                success: true,
+                timestamp: new Date().toISOString()
+              });
+              
+              console.log(`✅ ${symbol} ${period} = ${value}`);
+            } catch (error) {
+              console.error(`❌ Error calculating ${symbol} for ${period}:`, error);
+              periodResults.push({
+                period: period,
+                value: null,
+                success: false,
+                error: error.message
+              });
+            }
+          }
+          
+          results[symbol] = {
+            periods: periodResults,
+            formula: metric.formula_display,
+            calculation_method: 'JSON_AST_TimeSeries_v1.0',
+            timestamp: new Date().toISOString(),
+            success: periodResults.some(p => p.success)
+          };
+          
+        } else {
+          // Single period calculation (original behavior)
+          this.asOfDate = asOf ? this.parseAsOfDate(asOf) : null;
+          console.log(`🕒 AsOf context:`, this.asOfDate);
+          
+          const value = await this.evaluateNode(validatedAST, symbol);
+          
+          results[symbol] = {
+            value: value,
+            formula: metric.formula_display,
+            calculation_method: 'JSON_AST_v1.0',
+            timestamp: new Date().toISOString(),
+            success: true
+          };
+          
+          console.log(`✅ ${symbol} ${metric.name} = ${value}`);
+        }
         
       } catch (error) {
         console.error(`❌ Error calculating ${metric.name} for ${symbol}:`, error);
@@ -590,6 +641,144 @@ export class FinancialASTEngine {
     return result;
   }
   
+  /**
+   * Validate and fix AST integrity issues
+   * Handles common problems like missing type properties in nested structures
+   */
+  private validateAndFixAST(node: any): ASTNode {
+    if (!node) {
+      console.error('❌ AST node is null or undefined:', node);
+      throw new Error(`Invalid AST node: node is ${node === null ? 'null' : 'undefined'}`);
+    }
+    
+    // Handle case where AST was saved as string instead of object
+    if (typeof node === 'string') {
+      console.log('🔧 AST was saved as string, parsing JSON...');
+      try {
+        const parsed = JSON.parse(node);
+        console.log('✅ Successfully parsed AST from string');
+        return this.fixASTNode(parsed);
+      } catch (parseError) {
+        console.error('❌ Failed to parse AST string:', parseError);
+        throw new Error(`Invalid AST: string contains invalid JSON: ${parseError.message}`);
+      }
+    }
+    
+    if (typeof node !== 'object') {
+      console.error('❌ AST node is not an object:', typeof node, node);
+      throw new Error(`Invalid AST node: expected object, got ${typeof node}: ${JSON.stringify(node)}`);
+    }
+    
+    // Deep clone to avoid modifying original
+    const cloned = JSON.parse(JSON.stringify(node));
+    
+    return this.fixASTNode(cloned);
+  }
+  
+  private fixASTNode(node: any, path: string = 'root'): ASTNode {
+    if (!node || typeof node !== 'object') {
+      console.error(`❌ Invalid node at path "${path}":`, typeof node, node);
+      throw new Error(`Invalid AST node structure at "${path}": expected object, got ${typeof node}`);
+    }
+    
+    // Ensure node has type property
+    if (!node.type) {
+      // Try to infer type from other properties
+      if (node.source && node.field && node.selector) {
+        node.type = 'field';
+      } else if (node.operator && (node.left || node.right)) {
+        node.type = 'arithmetic';  
+      } else if (node.function && node.values) {
+        node.type = 'aggregation';
+      } else if (typeof node.value === 'number') {
+        node.type = 'constant';
+      } else {
+        console.error('❌ Cannot infer node type:', JSON.stringify(node, null, 2));
+        throw new Error(`Cannot determine AST node type for: ${JSON.stringify(node)}`);
+      }
+      
+      console.log(`🔧 Fixed missing type: ${node.type}`);
+    }
+    
+    // Recursively fix child nodes
+    if (node.left) {
+      node.left = this.fixASTNode(node.left, `${path}.left`);
+    }
+    if (node.right) {
+      node.right = this.fixASTNode(node.right, `${path}.right`);
+    }
+    if (node.values && Array.isArray(node.values)) {
+      node.values = node.values.map((v: any, i: number) => this.fixASTNode(v, `${path}.values[${i}]`));
+    }
+    
+    return node as ASTNode;
+  }
+  
+  /**
+   * Get the latest available periods from the database
+   * Uses actual data availability instead of hardcoded dates
+   */
+  private async getLatestPeriods(symbol: string, count: number, periodType: 'quarter' | 'annual'): Promise<string[]> {
+    try {
+      // Query the database for the latest available periods
+      const periodPattern = periodType === 'quarter' ? ['Q1', 'Q2', 'Q3', 'Q4'] : ['FY'];
+      
+      const sql = `
+        SELECT DISTINCT fiscalyear, period
+        FROM cash_flow_statement 
+        WHERE symbol = $1 AND period IN (${periodPattern.map((_, i) => `$${i + 2}`).join(', ')})
+        ORDER BY fiscalyear DESC, 
+                 CASE period 
+                   WHEN 'Q4' THEN 4 
+                   WHEN 'Q3' THEN 3 
+                   WHEN 'Q2' THEN 2 
+                   WHEN 'Q1' THEN 1 
+                   WHEN 'FY' THEN 5 
+                 END DESC
+        LIMIT $${periodPattern.length + 2}
+      `;
+      
+      const params = [symbol, ...periodPattern, count];
+      const result = await this.dataAccess.pool.query(sql, params);
+      
+      const periods = result.rows.map((row: any) => {
+        const year = row.fiscalyear;
+        const period = row.period;
+        return period === 'FY' ? `${year}-FY` : `${year}-${period}`;
+      });
+      
+      console.log(`🔍 Found ${periods.length} available periods for ${symbol}:`, periods);
+      return periods.slice(0, count);
+      
+    } catch (error) {
+      console.error(`❌ Error getting latest periods for ${symbol}:`, error);
+      
+      // Fallback: generate periods based on current date (original logic)
+      const periods: string[] = [];
+      const currentYear = new Date().getFullYear();
+      const currentQuarter = Math.floor((new Date().getMonth() + 3) / 3);
+      
+      for (let i = 0; i < count; i++) {
+        if (periodType === 'quarter') {
+          let year = currentYear;
+          let quarter = currentQuarter - i;
+          
+          while (quarter <= 0) {
+            quarter += 4;
+            year -= 1;
+          }
+          
+          periods.push(`${year}-Q${quarter}`);
+        } else {
+          periods.push(`${currentYear - i}-FY`);
+        }
+      }
+      
+      console.log(`🔄 Using fallback periods:`, periods);
+      return periods;
+    }
+  }
+
   private addOffsetToNode(node: ASTNode, offset: number): ASTNode {
     if (node.type === 'field') {
       return {

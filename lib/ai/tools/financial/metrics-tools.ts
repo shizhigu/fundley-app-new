@@ -1,5 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { safeExecute } from '../tool-wrapper';
 
 /**
  * Financial metrics tools - fully integrated with Convex database
@@ -16,9 +17,11 @@ export const searchMetrics = tool({
     includeBuiltIn: z.boolean().default(true).describe('Whether to include built-in metrics')
   }),
   execute: async (params) => {
-    // This will be handled by inline implementation in the API route with Convex client access
-    // Return a placeholder indicating the tool was called correctly
-    return `🔍 Searching metrics with parameters: ${JSON.stringify(params, null, 2)}`;
+    return safeExecute(async () => {
+      // This will be handled by inline implementation in the API route with Convex client access
+      // Return a placeholder indicating the tool was called correctly
+      return `🔍 Searching metrics with parameters: ${JSON.stringify(params, null, 2)}`;
+    });
   }
 });
 
@@ -28,14 +31,17 @@ export const calculateMetric = tool({
   inputSchema: z.object({
     metricId: z.string().describe('ID of the metric to calculate (from searchMetrics results)'),
     symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT", "GOOGL"])'),
-    periods: z.number().optional().default(4).describe('Number of periods to retrieve (quarters or years)'),
+    periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-12). Default 4 gets last 4 quarters'),
     periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
-    asOf: z.string().optional().describe('Calculate metrics as of a specific historical time point. Format: "YYYY-QN" (e.g., "2019-Q3", "2020-Q1") or "YYYY-FY" (e.g., "2020-FY"). If omitted, uses latest available data. For TTM metrics, this calculates trailing periods from the specified date.')
+    asOf: z.string().optional().describe('Latest time point for historical analysis. Format: "YYYY-QN" (e.g., "2024-Q3"). If omitted, uses most recent data available'),
+    analysisType: z.enum(['single', 'historical', 'trend']).optional().default('single').describe('single: latest value only, historical: multiple time points, trend: time series analysis')
   }),
   execute: async (params) => {
-    // This will be handled by inline implementation in the API route
-    const timePoint = params.asOf ? ` as of ${params.asOf}` : ' (latest)';
-    return `📊 Calculating metric ${params.metricId} for ${params.symbols.join(', ')}${timePoint}`;
+    return safeExecute(async () => {
+      // This will be handled by inline implementation in the API route
+      const timePoint = params.asOf ? ` as of ${params.asOf}` : ' (latest)';
+      return `📊 Calculating metric ${params.metricId} for ${params.symbols.join(', ')}${timePoint}`;
+    });
   }
 });
 
@@ -52,7 +58,9 @@ export const createCustomMetric = tool({
     isPublic: z.boolean().default(false).describe('Whether other users can see and use this metric')
   }),
   execute: async (params) => {
-    // This will be handled by inline implementation in the API route
-    return `✅ Creating custom metric "${params.name}" with category ${params.category}`;
+    return safeExecute(async () => {
+      // This will be handled by inline implementation in the API route
+      return `✅ Creating custom metric "${params.name}" with category ${params.category}`;
+    });
   }
 });

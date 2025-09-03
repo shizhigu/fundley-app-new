@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { fmpClient } from '@/lib/fmp/client'
+import { safeExecute } from '../tool-wrapper'
 
 // API endpoint mapping with TTM support
 const API_ENDPOINTS = {
@@ -86,7 +87,7 @@ export const getFinancialData = tool({
   }),
   
   execute: async ({ symbols, fieldsByDataType, fields, dataType, timeframe = 'both', period = 'annual', limit = 5 }) => {
-    try {
+    return safeExecute(async () => {
       // Input validation and normalization
       let dataStructure: Record<string, string[]>
       
@@ -271,17 +272,6 @@ export const getFinancialData = tool({
         displayAction: `Cross-dataset ${timeframe} analysis`,
         displayResult: `Retrieved data from ${successful.length}/${apiCalls.length} API calls${failed.length ? ` (${failed.length} failed)` : ''}`
       }
-      
-    } catch (error: any) {
-      console.error('Cross-dataset financial fetch error:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        symbols: symbols,
-        timeframe: timeframe,
-        displayAction: 'Cross-dataset fetch error',
-        displayResult: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }
-    }
+    });
   }
 })

@@ -231,12 +231,14 @@ export async function POST(request: Request) {
               }
             },
             calculateMetric: {
-              description: 'Calculate financial metrics using high-performance JSON AST engine',
+              description: 'Calculate financial metrics using high-performance JSON AST engine with support for historical time series analysis',
               inputSchema: z.object({
                 metricId: z.string().describe('ID or name of the metric to calculate'),
                 symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT"])'),
-                periods: z.number().optional().default(8).describe('Number of periods to retrieve'),
-                asOf: z.string().optional().describe('Calculate metrics as of a specific historical time point. Format: "YYYY-QN" (e.g., "2019-Q3", "2020-Q1") or "YYYY-FY" (e.g., "2020-FY"). If omitted, uses latest available data. For TTM metrics, this calculates trailing periods from the specified date.'),
+                periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-12). Default 4 gets last 4 quarters'),
+                periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
+                asOf: z.string().optional().describe('Latest time point for analysis. Format: "YYYY-QN" (e.g., "2024-Q3"). If omitted, uses most recent data'),
+                includeHistorical: z.boolean().optional().default(false).describe('Whether to include historical data for trend analysis (calculates metric for multiple time points)')
               }),
               execute: async (params) => {
                 try {
@@ -278,19 +280,95 @@ export async function POST(request: Request) {
                     console.log('🧮 Executing AST calculation for metric:', fullMetric.name);
                     console.log('🔍 Full Metric Object:', JSON.stringify(fullMetric, null, 2));
                     console.log('🔍 AST Definition:', JSON.stringify(fullMetric.astDefinition, null, 2));
+                    console.log('🔍 Include Historical:', params.includeHistorical, 'Periods:', params.periods);
                     
                     // Import and use AST engine directly to avoid URL resolution issues
                     const { FinancialASTEngine } = await import('@/app/api/calculate-metric-ast/route');
-                    
                     const astEngine = new FinancialASTEngine();
-                    const calculationResult = await astEngine.calculateMetric({
-                      name: fullMetric.name,
-                      description: fullMetric.description,
-                      formula_display: fullMetric.formula,
-                      category: fullMetric.category,
-                      ast: fullMetric.astDefinition,
-                      data_requirements: fullMetric.dataRequirements || {}
-                    }, params.symbols, params.asOf);
+                    
+                    if (!params.includeHistorical) {
+                      // Simple case: single time point (current behavior)
+                      calculationResults = await astEngine.calculateMetric({
+                        name: fullMetric.name,
+                        description: fullMetric.description,
+                        formula_display: fullMetric.formula,
+                        category: fullMetric.category,
+                        ast: fullMetric.astDefinition,
+                        data_requirements: fullMetric.dataRequirements || {}
+                      }, params.symbols, params.asOf);
+                    } else {
+                      // Historical analysis: calculate for multiple time points
+                      const periodsToCalculate = params.periods || 2;
+                      const isQuarterly = params.periodType === 'quarter';
+                      
+                      // Generate time points (working backwards from asOf or latest)
+                      const timePoints: string[] = [];
+                      let baseYear = 2024;
+                      let baseQuarter = 3; // Default to Q3 2024
+                      
+                      if (params.asOf) {
+                        const parts = params.asOf.split('-');
+                        baseYear = parseInt(parts[0]);
+                        if (parts[1].startsWith('Q')) {
+                          baseQuarter = parseInt(parts[1].substring(1));
+                        }
+                      }
+                      
+                      for (let i = 0; i < periodsToCalculate; i++) {
+                        if (isQuarterly) {
+                          let year = baseYear;
+                          let quarter = baseQuarter - i;
+                          
+                          // Handle quarter underflow
+                          while (quarter <= 0) {
+                            quarter += 4;
+                            year -= 1;
+                          }
+                          
+                          timePoints.push(`${year}-Q${quarter}`);
+                        } else {
+                          timePoints.push(`${baseYear - i}-FY`);
+                        }
+                      }
+                      
+                      console.log('🕒 Historical time points:', timePoints);
+                      
+                      // Calculate for each time point using the SAME engine
+                      const allResults: any[] = [];
+                      for (const timePoint of timePoints) {
+                        try {
+                          const result = await astEngine.calculateMetric({
+                            name: fullMetric.name,
+                            description: fullMetric.description,
+                            formula_display: fullMetric.formula,
+                            category: fullMetric.category,
+                            ast: fullMetric.astDefinition,
+                            data_requirements: fullMetric.dataRequirements || {}
+                          }, params.symbols, timePoint);
+                          
+                          allResults.push({
+                            timePoint,
+                            ...result
+                          });
+                        } catch (error) {
+                          console.warn(`⚠️ Failed to calculate for ${timePoint}:`, error);
+                          allResults.push({
+                            timePoint,
+                            error: error.message,
+                            results: {}
+                          });
+                        }
+                      }
+                      
+                      // Format as historical results but keep same engine identifier
+                      calculationResults = {
+                        metric_name: fullMetric.name,
+                        historical_periods: allResults,
+                        calculation_engine: 'Financial_AST_SQL_v1.0' // Same engine, just called multiple times
+                      };
+                    }
+                    
+                    const calculationResult = calculationResults;
 
                     console.log('🔍 Calculation Result:', JSON.stringify(calculationResult, null, 2));
                     const success = calculationResult.calculation_engine === 'Financial_AST_SQL_v1.0';
@@ -312,13 +390,41 @@ export async function POST(request: Request) {
                     // Format results for LLM consumption
                     let formattedOutput = `📊 **${fullMetric.name} Calculation Results**\n\n`;
                     formattedOutput += `⚡ *High-Performance JSON AST Engine*\n`;
+                    if (params.includeHistorical) {
+                      formattedOutput += `📈 *Historical Analysis: ${params.periods} ${params.periodType}s*\n`;
+                    }
                     if (params.asOf) {
-                      formattedOutput += `🕒 *As of: ${params.asOf}*\n`;
+                      formattedOutput += `🕒 *${params.includeHistorical ? 'Latest period' : 'As of'}: ${params.asOf}*\n`;
                     }
                     formattedOutput += `\n`;
                     
-                    // Handle AST engine results format
-                    if (calculationResult.results) {
+                    // Handle different result formats
+                    if (calculationResult.historical_periods) {
+                      // Historical analysis results - simple table
+                      formattedOutput += `| Period | ${params.symbols.join(' | ')} |\n`;
+                      formattedOutput += `|--------|${params.symbols.map(() => '--------').join('|')}|\n`;
+                      
+                      calculationResult.historical_periods.forEach((periodResult: any) => {
+                        formattedOutput += `| ${periodResult.timePoint} |`;
+                        params.symbols.forEach((symbol: string) => {
+                          const symbolResult = periodResult.results?.[symbol];
+                          if (symbolResult?.success && symbolResult.value !== null) {
+                            const value = symbolResult.value;
+                            if (typeof value === 'number') {
+                              // Simple formatting: always show as decimal with 'x' suffix
+                              formattedOutput += ` ${value.toFixed(2)}x |`;
+                            } else {
+                              formattedOutput += ` ${value} |`;
+                            }
+                          } else {
+                            formattedOutput += ` N/A |`;
+                          }
+                        });
+                        formattedOutput += `\n`;
+                      });
+                      
+                    } else if (calculationResult.results) {
+                      // Single point analysis results (original format)
                       Object.entries(calculationResult.results).forEach(([symbol, result]: [string, any]) => {
                         formattedOutput += `**${symbol}:**\n`;
                         if (result.success && result.value !== null) {
