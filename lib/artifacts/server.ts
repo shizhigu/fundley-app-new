@@ -3,7 +3,8 @@ import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import type { ArtifactKind } from '@/components/artifact';
 import type { Document } from '../db/schema';
-import { convexQueries } from '../convex/client';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../convex/_generated/api';
 import type { AuthSession } from '@/lib/auth/clerk';
 import type { UIMessageStreamWriter } from 'ai';
 import type { ChatMessage } from '../types';
@@ -24,6 +25,7 @@ export interface CreateDocumentCallbackProps {
   instructions?: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: AuthSession;
+  convex: ConvexHttpClient;
 }
 
 export interface UpdateDocumentCallbackProps {
@@ -33,11 +35,12 @@ export interface UpdateDocumentCallbackProps {
   data?: any;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: AuthSession;
+  convex: ConvexHttpClient;
 }
 
 export interface DocumentHandler<T = ArtifactKind> {
   kind: T;
-  onCreateDocument: (args: CreateDocumentCallbackProps) => Promise<void>;
+  onCreateDocument: (args: CreateDocumentCallbackProps) => Promise<string>;
   onUpdateDocument: (args: UpdateDocumentCallbackProps) => Promise<void>;
 }
 
@@ -57,18 +60,22 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         instructions: args.instructions,
         dataStream: args.dataStream,
         session: args.session,
+        convex: args.convex,
       });
 
+      let actualDocumentId = args.id; // Default to the UUID
+      
       if (args.session?.user?.id) {
-        await convexQueries.saveDocument({
+        // Create document in Convex and get the actual Convex ID
+        actualDocumentId = await args.convex.mutation(api.documents.create, {
           title: args.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
         });
       }
 
-      return;
+      // Return the actual document ID (either Convex ID or UUID fallback)
+      return actualDocumentId;
     },
     onUpdateDocument: async (args: UpdateDocumentCallbackProps) => {
       const draftContent = await config.onUpdateDocument({
@@ -78,16 +85,15 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         data: args.data,
         dataStream: args.dataStream,
         session: args.session,
+        convex: args.convex,
       });
 
       if (args.session?.user?.id) {
-        await convexQueries.updateDocumentById(
-          { id: args.document.id },
-          {
-            title: args.document.title,
-            content: draftContent,
-          }
-        );
+        await args.convex.mutation(api.documents.update, {
+          id: args.document.id as any,
+          title: args.document.title,
+          content: draftContent,
+        });
       }
 
       return;

@@ -1,34 +1,41 @@
-import { auth } from '@/lib/auth/clerk';
+import { auth } from '@clerk/nextjs/server';
 import type { ArtifactKind } from '@/components/artifact';
 import { convexQueries } from '@/lib/convex/client';
 import { ChatSDKError } from '@/lib/errors';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
-  if (!id) {
+  if (!id || id === 'undefined') {
     return new ChatSDKError(
       'bad_request:api',
-      'Parameter id is missing',
+      'Parameter id is missing or invalid',
     ).toResponse();
   }
 
-  const session = await auth();
+  const { getToken, userId } = await auth();
 
-  if (!session?.user) {
+  if (!userId) {
     return new ChatSDKError('unauthorized:document').toResponse();
   }
 
-  const document = await convexQueries.getDocumentsById({ id });
+  // Create authenticated Convex client
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
+  const token = await getToken({ template: 'convex' }); 
+  if (token) { convex.setAuth(token); }
+
+  const document = await convex.query(api.documents.get, { id: id as Id<"documents"> });
 
   if (!document) {
     return new ChatSDKError('not_found:document').toResponse();
   }
 
-  if (document.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:document').toResponse();
-  }
+  // Note: Permission checking is now handled by Convex documents.get function
+  // which already verifies the user has access to this document
 
   return Response.json([document], { status: 200 });
 }
@@ -57,10 +64,26 @@ export async function POST(request: Request) {
   }: { content: string; title: string; kind: ArtifactKind } =
     await request.json();
 
-  const existingDocument = await convexQueries.getDocumentsById({ id });
+  let existingDocument = null;
+  
+  try {
+    existingDocument = await convexQueries.getDocumentsById({ id });
+  } catch (error: any) {
+    // If the error is due to invalid ID format, we'll create a new document instead
+    if (!error?.message?.includes('Value does not match validator')) {
+      throw error; // Re-throw non-validation errors
+    }
+    console.log('Document ID format error during POST, will create new document:', { id });
+  }
 
-  if (existingDocument && existingDocument.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:document').toResponse();
+  if (existingDocument) {
+    // Get the Convex user ID corresponding to the Clerk user ID
+    const convexUser = await convexQueries.getUserByClerkId(session.user.id);
+    const convexUserId = convexUser?._id;
+    
+    if (!convexUserId || existingDocument.userId !== convexUserId) {
+      return new ChatSDKError('forbidden:document').toResponse();
+    }
   }
 
   const document = await convexQueries.saveDocument({
@@ -98,9 +121,31 @@ export async function DELETE(request: Request) {
     return new ChatSDKError('unauthorized:document').toResponse();
   }
 
-  const document = await convexQueries.getDocumentsById({ id });
+  let document = null;
+  
+  try {
+    document = await convexQueries.getDocumentsById({ id });
+  } catch (error: any) {
+    // If the error is due to invalid ID format (UUID vs Convex ID), provide helpful message
+    if (error?.message?.includes('Value does not match validator')) {
+      console.log('Document ID format error during DELETE:', { id, error: error.message });
+      return new ChatSDKError(
+        'bad_request:api', 
+        `Invalid document ID format. Expected Convex ID but received: ${id}`
+      ).toResponse();
+    }
+    throw error; // Re-throw other errors
+  }
 
-  if (!document || document.userId !== session.user.id) {
+  if (!document) {
+    return new ChatSDKError('not_found:document').toResponse();
+  }
+
+  // Get the Convex user ID corresponding to the Clerk user ID  
+  const convexUser = await convexQueries.getUserByClerkId(session.user.id);
+  const convexUserId = convexUser?._id;
+  
+  if (!convexUserId || document.userId !== convexUserId) {
     return new ChatSDKError('forbidden:document').toResponse();
   }
 

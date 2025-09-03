@@ -1,0 +1,200 @@
+/* Memo系统专用样式 */
+
+/* 代码高亮样式 */
+@import 'highlight.js/styles/github.css';
+
+/* Memo内容区域样式 */
+.memo-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1.6;
+  color: #374151;
+}
+
+/* 标题样式 */
+.memo-content h1 {
+  @apply text-xl font-bold text-gray-900 mt-6 mb-4 pb-2 border-b border-orange-200;
+}
+
+.memo-content h2 {
+  @apply text-lg font-semibold text-gray-800 mt-5 mb-3;
+}
+
+.memo-content h3 {
+  @apply text-base font-medium text-gray-700 mt-4 mb-2;
+}
+
+/* 段落样式 */
+.memo-content p {
+  @apply mb-4;
+}
+
+/* 链接样式 */
+.memo-content a {
+  @apply text-orange-600 hover:text-orange-700 underline decoration-orange-300 hover:decoration-orange-500;
+}
+
+/* 列表样式 */
+.memo-content ul {
+  @apply ml-4 mb-4 list-disc list-outside;
+}
+
+.memo-content ol {
+  @apply ml-4 mb-4 list-decimal list-outside;
+}
+
+.memo-content li {
+  @apply mb-1;
+}
+
+/* 任务列表样式 */
+.memo-content .task-list-item {
+  @apply list-none ml-0;
+}
+
+.memo-content .task-list-item-checkbox {
+  @apply mr-2;
+}
+
+/* 引用块样式 */
+.memo-content blockquote {
+  @apply border-l-4 border-orange-400 bg-orange-50/50 pl-4 py-2 my-4 italic;
+}
+
+.memo-content blockquote p {
+  @apply mb-2 last:mb-0;
+}
+
+/* 代码相关样式 */
+.memo-content .code-block-wrapper {
+  @apply my-4 rounded-lg overflow-hidden border border-gray-200;
+}
+
+.memo-content .code-block-header {
+  @apply bg-gray-100 px-4 py-2 text-xs font-mono text-gray-600 border-b border-gray-200;
+}
+
+.memo-content .code-block-lang {
+  @apply font-semibold;
+}
+
+.memo-content pre {
+  @apply bg-gray-50 p-4 text-sm font-mono overflow-x-auto !important;
+  margin: 0 !important;
+}
+
+.memo-content code {
+  @apply bg-gray-100 text-orange-600 px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.memo-content pre code {
+  @apply bg-transparent text-gray-800 p-0;
+}
+
+/* 表格样式 */
+.memo-content table {
+  @apply w-full border-collapse border border-gray-300 text-sm my-4;
+}
+
+.memo-content th {
+  @apply border border-gray-300 bg-gray-50 px-3 py-2 text-left font-semibold;
+}
+
+.memo-content td {
+  @apply border border-gray-300 px-3 py-2;
+}
+
+/* 数学公式样式调整 */
+.memo-content .katex {
+  font-size: 1em !important;
+}
+
+.memo-content .katex-display {
+  @apply my-4;
+  margin: 1rem 0 !important;
+}
+
+/* 确保数学公式正确显示 */
+.memo-content .katex-display > .katex {
+  display: block !important;
+  text-align: center !important;
+}
+
+.memo-content .katex .mord, 
+.memo-content .katex .mbin,
+.memo-content .katex .mrel {
+  color: inherit !important;
+}
+
+/* 分隔线样式 */
+.memo-content hr {
+  @apply my-6 border-0 border-t border-gray-300;
+}
+
+/* 强调样式 */
+.memo-content strong {
+  @apply font-semibold text-gray-900;
+}
+
+.memo-content em {
+  @apply italic text-gray-700;
+}
+
+/* 删除线 */
+.memo-content del {
+  @apply line-through text-gray-500;
+}
+
+/* 高亮文本 */
+.memo-content mark {
+  @apply bg-yellow-200 px-1 rounded;
+}
+
+/* Mermaid图表样式 - 自适应窗口大小 */
+.memo-content .mermaid-wrapper {
+  @apply my-4 flex justify-center;
+  width: 100%;
+}
+
+.memo-content .mermaid {
+  @apply w-full overflow-visible;
+  min-height: 200px;
+}
+
+.memo-content .mermaid svg {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .memo-content {
+    font-size: 14px;
+  }
+  
+  .memo-content h1 {
+    @apply text-lg;
+  }
+  
+  .memo-content h2 {
+    @apply text-base;
+  }
+}
+
+/* 自定义滚动条（针对代码块） */
+.memo-content pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.memo-content pre::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.memo-content pre::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.memo-content pre::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

@@ -134,8 +134,8 @@ export const getById = query({
       description: metric.description,
       category: metric.category,
       formula: metric.formula,
-      pythonCode: metric.pythonCode,
-      executionConfig: metric.executionConfig,
+      astDefinition: metric.astDefinition,
+      dataRequirements: metric.dataRequirements,
       isBuiltIn: metric.isBuiltIn,
       isPublic: metric.isPublic,
       createdAt: metric.createdAt,
@@ -152,12 +152,12 @@ export const create = mutation({
     description: v.string(),
     category: v.string(),
     formula: v.string(),
-    pythonCode: v.string(), // Required for new metrics
-    executionConfig: v.object({
-      timeout: v.number(),
-      allowedLibraries: v.array(v.string()),
-      maxMemoryMB: v.optional(v.number()),
-      description: v.optional(v.string())
+    astDefinition: v.any(),              // JSON AST structure - REQUIRED
+    dataRequirements: v.object({
+      income_statement: v.optional(v.array(v.string())),
+      balance_sheet: v.optional(v.array(v.string())),
+      cash_flow_statement: v.optional(v.array(v.string())),
+      periods_needed: v.array(v.string())
     }),
     isPublic: v.optional(v.boolean()),
   },
@@ -194,8 +194,8 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       formula: args.formula,
-      pythonCode: args.pythonCode,
-      executionConfig: args.executionConfig,
+      astDefinition: args.astDefinition,
+      dataRequirements: args.dataRequirements,
       userId: user._id,
       organizationId: user.clerkOrganizationId,
       isBuiltIn: false,

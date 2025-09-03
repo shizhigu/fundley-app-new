@@ -1,16 +1,18 @@
 import { tool, type UIMessageStreamWriter } from 'ai';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { z } from 'zod';
-import { convexQueries } from '@/lib/convex/client';
+import type { ConvexHttpClient } from 'convex/browser';
 import { documentHandlersByArtifactKind } from '@/lib/artifacts/server';
+import { api } from '@/convex/_generated/api';
 import type { ChatMessage } from '@/lib/types';
 
 interface UpdateDocumentProps {
   session: AuthSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  convex: ConvexHttpClient;
 }
 
-export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
+export const updateDocument = ({ session, dataStream, convex }: UpdateDocumentProps) =>
   tool({
     description: 'Update a document with the given description and additional context.',
     inputSchema: z.object({
@@ -22,7 +24,7 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
       data: z.any().optional().describe('New structured data to incorporate'),
     }),
     execute: async ({ id, description, context, data }) => {
-      const document = await convexQueries.getDocumentsById({ id });
+      const document = await convex.query(api.documents.get, { id: id as any });
 
       if (!document) {
         return {
@@ -52,6 +54,7 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         data,
         dataStream,
         session,
+        convex,
       });
 
       dataStream.write({ type: 'data-finish', data: null, transient: true });

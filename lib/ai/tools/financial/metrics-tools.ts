@@ -24,16 +24,18 @@ export const searchMetrics = tool({
 
 // 2. Calculate metric using secure metric ID
 export const calculateMetric = tool({
-  description: 'Calculate financial metrics for specified companies using predefined or custom metric definitions',
+  description: 'Calculate financial metrics for specified companies using predefined or custom metric definitions. Supports both current and historical time point analysis.',
   inputSchema: z.object({
     metricId: z.string().describe('ID of the metric to calculate (from searchMetrics results)'),
     symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT", "GOOGL"])'),
     periods: z.number().optional().default(4).describe('Number of periods to retrieve (quarters or years)'),
-    periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze')
+    periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
+    asOf: z.string().optional().describe('Calculate metrics as of a specific historical time point. Format: "YYYY-QN" (e.g., "2019-Q3", "2020-Q1") or "YYYY-FY" (e.g., "2020-FY"). If omitted, uses latest available data. For TTM metrics, this calculates trailing periods from the specified date.')
   }),
   execute: async (params) => {
     // This will be handled by inline implementation in the API route
-    return `📊 Calculating metric ${params.metricId} for ${params.symbols.join(', ')} over ${params.periods} ${params.periodType}s`;
+    const timePoint = params.asOf ? ` as of ${params.asOf}` : ' (latest)';
+    return `📊 Calculating metric ${params.metricId} for ${params.symbols.join(', ')}${timePoint}`;
   }
 });
 

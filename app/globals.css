@@ -1,8 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap');
 
+/* KaTeX CSS - 必须在Tailwind之前加载 */
+@import 'katex/dist/katex.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Memo system styles */
+@import '../styles/memo-styles.css';
 
 @layer base {
     :root {

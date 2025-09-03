@@ -60,6 +60,11 @@ const PurePreviewMessage = ({
   const [processedMessageId, setProcessedMessageId] = useState<string | null>(null);
   const [showFullVerification, setShowFullVerification] = useState(false);
 
+  // 🔍 Calculate the correct Convex ID for API calls - priority: message._id, fallback: message.id
+  const actualConvexId = (message as any)._id || message.id;
+  const isValidConvexId = /^[a-z0-9]{32}$/.test(actualConvexId || ''); // Convex IDs are 32 chars
+  const messageContent = (message as any).content;
+
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === 'file',
   );
@@ -103,10 +108,6 @@ const PurePreviewMessage = ({
         // Extract metadata using complete message parts for data verification
         const messageParts = (message as any).content?.parts || message.parts || [];
         
-        // 🔍 Find the correct Convex ID - priority: message._id, fallback: message.id
-        const actualConvexId = (message as any)._id || message.id;
-        const isValidConvexId = /^[a-z0-9]{32}$/.test(actualConvexId || ''); // Convex IDs are 32 chars
-        
         console.log('🔍 DEBUG: Message ID analysis:', {
           message_id: message.id,
           message_id_length: message.id?.length,
@@ -148,7 +149,7 @@ const PurePreviewMessage = ({
         });
       }
     }
-  }, [isLoading, message.id, message.role, (message as any).content, message.parts, processedMessageId]);
+  }, [isLoading, message.id, message.role, messageContent, message.parts, processedMessageId, actualConvexId, isValidConvexId]);
 
   return (
     <AnimatePresence>
@@ -479,13 +480,13 @@ const PurePreviewMessage = ({
                     );
                   }
                   
-                  // Render the visualization directly in the message
-                  console.log('Rendering VisualizationMessage with messageId:', message.id);
+                  // Render the visualization directly in the message  
+                  console.log('Rendering VisualizationMessage with messageId:', actualConvexId, 'isValidConvexId:', isValidConvexId);
                   return (
                     <div key={toolCallId}>
                       <VisualizationMessage
                         id={output.id}
-                        messageId={message.id} // Pass message ID for caching
+                        messageId={isValidConvexId ? actualConvexId : undefined} // Only pass valid Convex IDs for caching
                         title={output.title}
                         code={output.code || ''}
                         description={output.description}

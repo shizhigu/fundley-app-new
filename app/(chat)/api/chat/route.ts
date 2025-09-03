@@ -101,6 +101,23 @@ export async function POST(request: Request) {
     // Ensure user exists in Convex database
     await convex.mutation(api.users.store);
 
+    // Get user's custom metrics for prompt enhancement
+    let customMetrics: Array<{ id: string; name: string; description: string; }> = [];
+    try {
+      const result = await convex.query(api.metrics.search, {
+        includeBuiltIn: false,
+        includeCustom: true
+      });
+      customMetrics = result.metrics.map(metric => ({
+        id: metric.id,
+        name: metric.name,
+        description: metric.description
+      }));
+      console.log(`📊 Loaded ${customMetrics.length} custom metrics for user`);
+    } catch (error) {
+      console.warn('Failed to load custom metrics for prompt:', error);
+    }
+
     // Skip rate limiting for now (we can add it back later if needed)
 
     // Get or create specific chat - support dynamic chatId from useChat
@@ -156,8 +173,8 @@ export async function POST(request: Request) {
         // Temporarily disable mem0 to test basic functionality
         const model = getLanguageModel(selectedChatModel);
           
-        // Build system prompt with memory context
-        const systemPromptText = systemPrompt({ requestHints });
+        // Build system prompt with memory context and custom metrics
+        const systemPromptText = systemPrompt({ requestHints, customMetrics });
         const enhancedSystemPrompt = memoryContext 
           ? `${systemPromptText}\n\n## Relevant Context from Previous Conversations:\n${memoryContext}`
           : systemPromptText;
@@ -170,8 +187,8 @@ export async function POST(request: Request) {
           // 统一使用tools配置，不需要experimental_activeTools
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
+            createDocument: createDocument({ session, dataStream, convex }),
+            updateDocument: updateDocument({ session, dataStream, convex }),
             createVisualization: createVisualization({ session, dataStream }),
             // 财务数据工具
             getFinancialData,
@@ -214,115 +231,123 @@ export async function POST(request: Request) {
               }
             },
             calculateMetric: {
-              description: 'Calculate financial metrics using Python code execution',
+              description: 'Calculate financial metrics using high-performance JSON AST engine',
               inputSchema: z.object({
                 metricId: z.string().describe('ID or name of the metric to calculate'),
                 symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT"])'),
                 periods: z.number().optional().default(8).describe('Number of periods to retrieve'),
+                asOf: z.string().optional().describe('Calculate metrics as of a specific historical time point. Format: "YYYY-QN" (e.g., "2019-Q3", "2020-Q1") or "YYYY-FY" (e.g., "2020-FY"). If omitted, uses latest available data. For TTM metrics, this calculates trailing periods from the specified date.'),
               }),
               execute: async (params) => {
                 try {
-                  // First, find the metric
-                  const searchResults = await convex.query(api.metrics.search, {
-                    query: params.metricId,
-                    includeCustom: true,
-                    includeBuiltIn: true
-                  });
+                  // Try to get metric by ID first, then by name search
+                  let fullMetric;
+                  
+                  try {
+                    // Try direct ID lookup first
+                    fullMetric = await convex.query(api.metrics.getById, { 
+                      metricId: params.metricId as any 
+                    });
+                  } catch (error) {
+                    // If ID lookup fails, try name search
+                    const searchResults = await convex.query(api.metrics.search, {
+                      query: params.metricId,
+                      includeCustom: true,
+                      includeBuiltIn: true
+                    });
 
-                  const metric = searchResults.metrics.find(m => 
-                    m.id === params.metricId || 
-                    m.name.toLowerCase() === params.metricId.toLowerCase()
-                  );
+                    const metric = searchResults.metrics.find(m => 
+                      m.name.toLowerCase() === params.metricId.toLowerCase()
+                    );
 
-                  if (!metric) {
-                    return `❌ Metric "${params.metricId}" not found. Use searchMetrics to find available metrics.`;
+                    if (!metric) {
+                      return `❌ Metric "${params.metricId}" not found. Use searchMetrics to find available metrics.`;
+                    }
+                    
+                    // Get full metric details
+                    fullMetric = await convex.query(api.metrics.getById, { 
+                      metricId: metric.id as any 
+                    });
                   }
 
-                  // Record usage
+                  // Record usage start time
                   const startTime = Date.now();
                   
                   try {
-                    // Get the full metric details with Python code
-                    const fullMetric = await convex.query(api.metrics.getById, { 
-                      metricId: metric.id as any 
-                    });
-
-                    // Execute the Python calculation using our Python service
-                    console.log('🐍 Executing Python code for metric:', fullMetric.name);
+                    // Use high-performance AST engine
+                    console.log('🧮 Executing AST calculation for metric:', fullMetric.name);
+                    console.log('🔍 Full Metric Object:', JSON.stringify(fullMetric, null, 2));
+                    console.log('🔍 AST Definition:', JSON.stringify(fullMetric.astDefinition, null, 2));
                     
-                    const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
-                    const pythonResponse = await fetch(`${pythonServiceUrl}/execute-metric`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        python_code: fullMetric.pythonCode,
-                        symbols: params.symbols,
-                        metric_name: fullMetric.name,
-                        timeout: fullMetric.executionConfig?.timeout || 30
-                      }),
-                    });
+                    // Import and use AST engine directly to avoid URL resolution issues
+                    const { FinancialASTEngine } = await import('@/app/api/calculate-metric-ast/route');
+                    
+                    const astEngine = new FinancialASTEngine();
+                    const calculationResult = await astEngine.calculateMetric({
+                      name: fullMetric.name,
+                      description: fullMetric.description,
+                      formula_display: fullMetric.formula,
+                      category: fullMetric.category,
+                      ast: fullMetric.astDefinition,
+                      data_requirements: fullMetric.dataRequirements || {}
+                    }, params.symbols, params.asOf);
+
+                    console.log('🔍 Calculation Result:', JSON.stringify(calculationResult, null, 2));
+                    const success = calculationResult.calculation_engine === 'Financial_AST_SQL_v1.0';
+                    console.log('🔍 Success Check:', success, calculationResult.calculation_engine);
 
                     const executionTime = Date.now() - startTime;
-                    let calculationResult;
-                    let success = false;
-
-                    if (pythonResponse.ok) {
-                      calculationResult = await pythonResponse.json();
-                      success = calculationResult.success;
-                    } else {
-                      calculationResult = {
-                        success: false,
-                        error: `Python service request failed: ${pythonResponse.status} ${pythonResponse.statusText}`
-                      };
-                    }
                     
+                    // Record usage statistics
                     await convex.mutation(api.metrics.recordUsage, {
-                      metricId: metric.id as any,
+                      metricId: fullMetric.id as any,
                       calculationTime: executionTime,
                       success: success
                     });
 
                     if (!success) {
-                      return `❌ Python execution failed: ${calculationResult.error}`;
+                      return `❌ Calculation failed: ${calculationResult.error}`;
                     }
 
                     // Format results for LLM consumption
                     let formattedOutput = `📊 **${fullMetric.name} Calculation Results**\n\n`;
+                    formattedOutput += `⚡ *High-Performance JSON AST Engine*\n`;
+                    if (params.asOf) {
+                      formattedOutput += `🕒 *As of: ${params.asOf}*\n`;
+                    }
+                    formattedOutput += `\n`;
                     
-                    if (calculationResult.result && Array.isArray(calculationResult.result)) {
-                      calculationResult.result.forEach(item => {
-                        if (typeof item === 'object' && item.symbol) {
-                          formattedOutput += `**${item.symbol}:**\n`;
-                          
-                          // Handle different result structures
-                          Object.entries(item).forEach(([key, value]) => {
-                            if (key !== 'symbol' && value !== null && value !== undefined) {
-                              if (typeof value === 'number') {
-                                formattedOutput += `  • ${key}: ${value.toFixed(4)}\n`;
-                              } else {
-                                formattedOutput += `  • ${key}: ${value}\n`;
-                              }
+                    // Handle AST engine results format
+                    if (calculationResult.results) {
+                      Object.entries(calculationResult.results).forEach(([symbol, result]: [string, any]) => {
+                        formattedOutput += `**${symbol}:**\n`;
+                        if (result.success && result.value !== null) {
+                          // Format the value appropriately
+                          const value = result.value;
+                          if (typeof value === 'number') {
+                            // Format as percentage for ratios, or regular number for others
+                            if (fullMetric.category === 'profitability' && value < 10) {
+                              formattedOutput += `- ${fullMetric.name}: ${(value * 100).toFixed(2)}%\n`;
+                            } else {
+                              formattedOutput += `- ${fullMetric.name}: ${value.toFixed(4)}\n`;
                             }
-                          });
-                          formattedOutput += '\n';
+                          }
+                          formattedOutput += `- Formula: ${result.formula}\n`;
+                        } else {
+                          formattedOutput += `- Error: ${result.error || 'Calculation failed'}\n`;
                         }
+                        formattedOutput += '\n';
                       });
                     } else {
-                      formattedOutput += `Result: ${JSON.stringify(calculationResult.result, null, 2)}\n`;
+                      formattedOutput += `Result: ${JSON.stringify(calculationResult, null, 2)}\n`;
                     }
 
-                    if (calculationResult.logs) {
-                      formattedOutput += `\n📋 **Execution Logs:**\n${calculationResult.logs}`;
-                    }
-
-                    formattedOutput += `\n\n⏱️ Execution Time: ${calculationResult.execution_time?.toFixed(2) || (executionTime/1000).toFixed(2)}s`;
+                    formattedOutput += `\n⏱️ Execution Time: ${(executionTime/1000).toFixed(2)}s`;
 
                     return formattedOutput;
                   } catch (error) {
                     await convex.mutation(api.metrics.recordUsage, {
-                      metricId: metric.id as any,
+                      metricId: fullMetric.id as any,
                       calculationTime: Date.now() - startTime,
                       success: false
                     });
@@ -334,14 +359,19 @@ export async function POST(request: Request) {
               }
             },
             createCustomMetric: {
-              description: 'Create a new custom financial metric with Python code',
+              description: 'Create a new custom financial metric with JSON AST definition',
               inputSchema: z.object({
                 name: z.string().describe('Display name of the metric'),
                 description: z.string().describe('What this metric measures'),
                 category: z.string().describe('Metric category (profitability, liquidity, efficiency, etc.)'),
                 formula: z.string().describe('Human-readable formula description'),
-                pythonCode: z.string().describe('Python function code that implements calculate_metric(symbols)'),
-                timeout: z.number().optional().default(30).describe('Execution timeout in seconds'),
+                astDefinition: z.any().describe('JSON AST structure defining the calculation'),
+                dataRequirements: z.object({
+                  income_statement: z.array(z.string()).optional(),
+                  balance_sheet: z.array(z.string()).optional(),
+                  cash_flow_statement: z.array(z.string()).optional(),
+                  periods_needed: z.array(z.string())
+                }).describe('Data requirements specification'),
                 isPublic: z.boolean().default(false).describe('Whether other users can see this metric')
               }),
               execute: async (params) => {
@@ -351,16 +381,12 @@ export async function POST(request: Request) {
                     description: params.description,
                     category: params.category,
                     formula: params.formula,
-                    pythonCode: params.pythonCode,
-                    executionConfig: {
-                      timeout: params.timeout,
-                      allowedLibraries: ['pandas', 'numpy', 'math'],
-                      description: 'Standard financial calculation environment'
-                    },
+                    astDefinition: params.astDefinition,
+                    dataRequirements: params.dataRequirements,
                     isPublic: params.isPublic
                   });
 
-                  return `✅ Custom metric "${params.name}" created successfully!\n\n📊 Metric Details:\n- ID: ${metricId}\n- Category: ${params.category}\n- Formula: ${params.formula}\n- Timeout: ${params.timeout}s\n- ${params.isPublic ? 'Public' : 'Private'} metric\n\n🎯 You can now use this metric with calculateMetric.\n\n🐍 Python code preview:\n\`\`\`python\n${params.pythonCode.substring(0, 200)}${params.pythonCode.length > 200 ? '...' : ''}\n\`\`\``;
+                  return `✅ Custom metric "${params.name}" created successfully!\n\n📊 Metric Details:\n- ID: ${metricId}\n- Category: ${params.category}\n- Formula: ${params.formula}\n- ${params.isPublic ? 'Public' : 'Private'} metric\n- Engine: High-Performance JSON AST\n\n🎯 You can now use this metric with calculateMetric.\n\n🧮 AST Structure:\n\`\`\`json\n${JSON.stringify(params.astDefinition, null, 2).substring(0, 300)}${JSON.stringify(params.astDefinition, null, 2).length > 300 ? '...' : ''}\n\`\`\``;
                 } catch (error) {
                   return `❌ Failed to create metric: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 }

@@ -480,5 +480,278 @@ export const cashFlowFields: FieldMetadata[] = [
       isPercentage: false,
       isRatio: false
     }
+  },
+
+  // Additional Operating Activities
+  {
+    field: "deferredIncomeTax",
+    name: "Deferred Income Tax",
+    description: "Changes in deferred tax assets and liabilities",
+    category: "Operating Activities",
+    aliases: ["deferred tax", "税务递延", "deferred tax provision"],
+    useCases: ["Tax analysis", "Cash flow quality", "Timing differences"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "otherWorkingCapital",
+    name: "Other Working Capital",
+    description: "Changes in other working capital components",
+    category: "Operating Activities",
+    aliases: ["other WC", "其他营运资金", "miscellaneous working capital"],
+    useCases: ["Working capital analysis", "Cash flow details", "Operational changes"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "otherNonCashItems",
+    name: "Other Non-Cash Items",
+    description: "Other non-cash charges and adjustments",
+    category: "Operating Activities",
+    aliases: ["non-cash adjustments", "其他非现金项目", "other adjustments"],
+    useCases: ["Cash flow quality", "Non-cash analysis", "Operating adjustments"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "netCashProvidedByOperatingActivities",
+    name: "Net Cash Provided by Operating Activities",
+    description: "Total net cash generated from all operating activities",
+    category: "Operating Activities",
+    aliases: ["operating cash flow total", "经营活动现金流净额", "CFO net"],
+    useCases: ["Cash generation", "Operating performance", "Cash flow analysis"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Additional Investing Activities
+  {
+    field: "otherInvestingActivities",
+    name: "Other Investing Activities",
+    description: "Other cash flows from investing activities",
+    category: "Investing Activities",
+    aliases: ["other investments", "其他投资活动", "miscellaneous investing"],
+    useCases: ["Investment analysis", "Capital allocation", "Investment strategy"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Additional Financing Activities - Debt
+  {
+    field: "longTermNetDebtIssuance",
+    name: "Long-term Net Debt Issuance",
+    description: "Net cash from long-term debt issuance minus repayments",
+    category: "Financing Activities",
+    aliases: ["long-term debt net", "长期债务净发行", "LT debt financing"],
+    useCases: ["Long-term financing", "Capital structure", "Debt maturity analysis"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "shortTermNetDebtIssuance",
+    name: "Short-term Net Debt Issuance",
+    description: "Net cash from short-term debt issuance minus repayments",
+    category: "Financing Activities",
+    aliases: ["short-term debt net", "短期债务净发行", "ST debt financing"],
+    useCases: ["Short-term financing", "Working capital funding", "Liquidity management"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Additional Financing Activities - Equity
+  {
+    field: "netStockIssuance",
+    name: "Net Stock Issuance",
+    description: "Net cash from all stock issuance minus repurchases",
+    category: "Financing Activities",
+    aliases: ["net equity issuance", "股票净发行", "net equity financing"],
+    useCases: ["Equity financing", "Share activity", "Capital raising"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "netCommonStockIssuance",
+    name: "Net Common Stock Issuance",
+    description: "Net cash from common stock issuance minus repurchases",
+    category: "Financing Activities",
+    aliases: ["common stock net", "普通股净发行", "common equity net"],
+    useCases: ["Common equity financing", "Dilution analysis", "Capital structure"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "netPreferredStockIssuance",
+    name: "Net Preferred Stock Issuance",
+    description: "Net cash from preferred stock issuance minus redemptions",
+    category: "Financing Activities",
+    aliases: ["preferred stock net", "优先股净发行", "preferred equity net"],
+    useCases: ["Preferred equity financing", "Capital structure", "Hybrid financing"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Additional Financing Activities - Dividends
+  {
+    field: "netDividendsPaid",
+    name: "Net Dividends Paid",
+    description: "Total cash paid for all dividends",
+    category: "Financing Activities",
+    aliases: ["total dividends", "股息总支付", "dividend payments total"],
+    useCases: ["Dividend policy", "Shareholder returns", "Cash distribution"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "preferredDividendsPaid",
+    name: "Preferred Dividends Paid",
+    description: "Cash paid to preferred shareholders as dividends",
+    category: "Financing Activities",
+    aliases: ["preferred dividend payments", "优先股股息", "preferred distributions"],
+    useCases: ["Preferred dividend policy", "Fixed income returns", "Capital structure"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Additional Financing Activities - Other
+  {
+    field: "otherFinancingActivities",
+    name: "Other Financing Activities",
+    description: "Other cash flows from financing activities",
+    category: "Financing Activities",
+    aliases: ["other financing", "其他筹资活动", "miscellaneous financing"],
+    useCases: ["Financing analysis", "Capital structure", "Other financing sources"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  // Foreign Exchange Impact
+  {
+    field: "effectOfForexChangesOnCash",
+    name: "Effect of Foreign Exchange on Cash",
+    description: "Impact of foreign currency translation on cash balances",
+    category: "Foreign Exchange",
+    aliases: ["forex effect", "currency translation", "汇率影响", "FX impact"],
+    useCases: ["Currency exposure", "International operations", "FX risk analysis"],
+    dataSource: {
+      endpoint: "/cash-flow-statement",
+      dataType: "getCashFlow",
+      statement: "Cash Flow Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
   }
 ]

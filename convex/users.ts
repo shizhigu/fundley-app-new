@@ -60,3 +60,13 @@ export const getCurrentUser = query({
       .unique();
   },
 });
+
+export const getByClerkUserId = query({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .unique();
+  },
+});

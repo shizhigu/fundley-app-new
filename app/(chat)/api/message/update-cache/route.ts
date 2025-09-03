@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,9 +21,12 @@ export async function POST(request: NextRequest) {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
     const token = await getToken({ template: 'convex' }); if (token) { convex.setAuth(token); }
 
-    // Get the current message
-    const message = await convex.query(api.messages.get, { id: messageId });
+    // Convert messageId to Convex ID type and get the message
+    const convexMessageId = messageId as Id<"messages">;
+    const message = await convex.query(api.messages.get, { id: convexMessageId });
+    
     if (!message) {
+      console.log('Message not found with ID:', messageId);
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Save the updated parts back to the message
     await convex.mutation(api.messages.updateParts, {
-      messageId,
+      messageId: convexMessageId,
       parts: updatedParts,
     });
 

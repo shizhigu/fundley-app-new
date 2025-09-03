@@ -101,16 +101,17 @@ export default defineSchema({
     description: v.string(),             // What this metric measures
     category: v.string(),                // profitability, liquidity, efficiency, etc.
     
-    // Python calculation logic
-    pythonCode: v.string(),              // User's Python calculation code
+    // JSON AST definition (high-performance calculation engine)
+    astDefinition: v.any(),              // JSON AST structure - REQUIRED
+    
     formula: v.string(),                 // Human-readable formula description
     
-    // Execution configuration
-    executionConfig: v.object({
-      timeout: v.number(),               // Execution timeout in seconds
-      allowedLibraries: v.array(v.string()), // ['pandas', 'numpy', 'math']
-      maxMemoryMB: v.optional(v.number()), // Memory limit
-      description: v.optional(v.string()) // Execution notes
+    // Data requirements for AST metrics
+    dataRequirements: v.object({
+      income_statement: v.optional(v.array(v.string())),
+      balance_sheet: v.optional(v.array(v.string())),
+      cash_flow_statement: v.optional(v.array(v.string())),
+      periods_needed: v.array(v.string())
     }),
     
     // Ownership & visibility

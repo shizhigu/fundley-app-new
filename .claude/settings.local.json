@@ -39,7 +39,11 @@
       "Bash(npx convex data:*)",
       "WebFetch(domain:ai-sdk.dev)",
       "Bash(pnpm run build:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(/bashes)",
+      "Bash(PORT=3000 pnpm dev)",
+      "Bash(psql:*)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": [],

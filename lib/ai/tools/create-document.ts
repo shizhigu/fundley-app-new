@@ -7,13 +7,15 @@ import {
   documentHandlersByArtifactKind,
 } from '@/lib/artifacts/server';
 import type { ChatMessage } from '@/lib/types';
+import type { ConvexHttpClient } from 'convex/browser';
 
 interface CreateDocumentProps {
   session: AuthSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  convex: ConvexHttpClient;
 }
 
-export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
+export const createDocument = ({ session, dataStream, convex }: CreateDocumentProps) =>
   tool({
     description:
       'Create a document for a writing or content creation activities. Pass all relevant context, data, and instructions to the document handler for proper generation.',
@@ -60,7 +62,7 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         throw new Error(`No document handler found for kind: ${kind}`);
       }
 
-      await documentHandler.onCreateDocument({
+      const actualDocumentId = await documentHandler.onCreateDocument({
         id,
         title,
         context,
@@ -68,18 +70,22 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         instructions,
         dataStream,
         session,
+        convex,
       });
 
       dataStream.write({ type: 'data-finish', data: null, transient: true });
 
+      // Use the actual document ID returned from Convex (or fallback to UUID)
+      const finalDocumentId = actualDocumentId || id;
+
       return {
-        id,
+        id: finalDocumentId,
         title,
         kind,
         content: 'A document was created and is now visible to the user.',
         // This will be saved in the message parts and persist across sessions
         documentMetadata: {
-          id,
+          id: finalDocumentId,
           title,
           kind,
           createdAt: new Date().toISOString()

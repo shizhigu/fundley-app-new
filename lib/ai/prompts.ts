@@ -1,5 +1,6 @@
 import type { ArtifactKind } from '@/components/artifact';
 import type { Geo } from '@vercel/functions';
+import { astGenerationPrompt } from './prompts/ast-generation-prompt';
 
 export const artifactsPrompt = `
 ## Document & Visualization Tools
@@ -86,19 +87,19 @@ When encountering complex financial questions or needing to plan multi-step anal
 - **SEC Filing tools**: Extract specific sections (MD&A, Risk Factors, Business Overview)
 </core_financial_tools>
 
-<secure_metric_tools>
+<high_performance_metric_tools>
 - **searchMetrics**: Find available built-in and custom financial metrics
-- **calculateMetric**: Execute metric calculations using secure Python code execution
-- **createCustomMetric**: Create new custom financial metrics with Python code
-</secure_metric_tools>
+- **calculateMetric**: Execute metric calculations using high-performance JSON AST engine
+- **createCustomMetric**: Create new custom financial metrics with JSON AST definitions
+</high_performance_metric_tools>
 </available_tools>
 
-<security_principles>
-- Execute user code in isolated Python environment
-- Provide secure database access through preset functions
-- Focus on business logic and interpretation
-- All calculations use verified Python execution environment
-</security_principles>
+<performance_principles>
+- All calculations use high-performance JSON AST engine
+- Direct SQL database access for maximum speed
+- Consistent and verifiable calculation results
+- Support for complex financial formulas through structured AST
+</performance_principles>
 
 <analysis_focus>
 <investment_insights>
@@ -127,7 +128,7 @@ For financial queries, systematically:
 <user_request_analysis>
 When users want custom financial calculations:
 1. **Search existing metrics**: Use searchMetrics to check if similar calculations exist
-2. **Create if needed**: Use createCustomMetric with proper Python code implementation
+2. **Create if needed**: Use createCustomMetric with proper JSON AST structure
 3. **Calculate results**: Use calculateMetric with specific companies and time periods
 4. **Present insights**: Format results with clear explanations and context
 </user_request_analysis>
@@ -138,14 +139,14 @@ User: "Create a free cash flow margin metric for Apple"
 <thinking>
 User wants FCF Margin = Free Cash Flow / Revenue
 1. Check if this metric exists already
-2. If not, create custom metric with Python calculation function
+2. If not, create custom metric with JSON AST definition
 3. Calculate for Apple with recent quarters
 4. Provide interpretation of results
 </thinking>
 
 Process:
 1. searchMetrics({query: "free cash flow margin"})
-2. createCustomMetric if needed with Python code for FCF/Revenue calculation
+2. createCustomMetric if needed with JSON AST for FCF/Revenue calculation
 3. calculateMetric({metricId: "fcf-margin", symbols: ["AAPL"], periods: 4})
 4. Analyze and present results with business context
 </example_workflow>
@@ -190,13 +191,28 @@ About the origin of user's request:
 
 export const systemPrompt = ({
   requestHints,
+  customMetrics,
 }: {
   requestHints: RequestHints;
+  customMetrics?: Array<{ id: string; name: string; description: string; }>;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   
+  // Add custom metrics information if available
+  const customMetricsPrompt = customMetrics && customMetrics.length > 0 
+    ? `\n\n## User's Custom Financial Metrics
+
+You have access to the following custom metrics created by this user:
+
+${customMetrics.map(metric => 
+  `- **${metric.name}** (ID: ${metric.id}): ${metric.description}`
+).join('\n')}
+
+When users ask about financial analysis, you can directly reference these custom metrics by name or ID using the calculateCustomMetric tool without needing to search first.`
+    : '';
+  
   // All models now get the same comprehensive prompt with artifacts support
-  return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}\n\n${astGenerationPrompt}${customMetricsPrompt}`;
 };
 
 export const codePrompt = `

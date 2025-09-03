@@ -68,7 +68,7 @@ export const DocumentMessage = memo(function DocumentMessage({
 
   // Fetch document data when needed
   const { data: documents } = useSWR<Document[]>(
-    isLoading ? `/api/document?id=${documentId}` : null,
+    isLoading && documentId ? `/api/document?id=${documentId}` : null,
     fetcher,
     {
       onSuccess: (data) => {
@@ -102,6 +102,13 @@ export const DocumentMessage = memo(function DocumentMessage({
   const handleOpen = () => {
     // Prevent multiple clicks while loading
     if (isLoading) return;
+    
+    // Only attempt to load if we have a valid documentId
+    if (!documentId) {
+      console.warn('Cannot open document: missing documentId');
+      return;
+    }
+    
     setIsLoading(true);
   };
 

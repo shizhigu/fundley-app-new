@@ -12,6 +12,10 @@ export const convexQueries = {
     return users ? [users] : [];
   },
 
+  async getUserByClerkId(clerkUserId: string) {
+    return await convexClient.query(api.users.getByClerkUserId, { clerkUserId });
+  },
+
   async createUser(data: {
     email: string;
     clerkUserId: string;

@@ -81,12 +81,69 @@ export const incomeStatementFields: FieldMetadata[] = [
   },
   
   {
+    field: "generalAndAdministrativeExpenses",
+    name: "General and Administrative Expenses",
+    description: "General and administrative expenses excluding selling costs",
+    category: "Operating Expenses",
+    aliases: ["G&A", "admin expenses", "general expenses", "一般管理费用"],
+    useCases: ["Cost structure analysis", "Administrative efficiency", "Overhead management"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "sellingAndMarketingExpenses",
+    name: "Selling and Marketing Expenses",
+    description: "Expenses related to sales and marketing activities",
+    category: "Operating Expenses",
+    aliases: ["sales expenses", "marketing costs", "S&M", "销售营销费用"],
+    useCases: ["Sales efficiency", "Marketing ROI", "Customer acquisition cost"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
     field: "sellingGeneralAndAdministrativeExpenses",
     name: "SG&A Expenses",
     description: "Selling, general and administrative expenses",
     category: "Operating Expenses",
     aliases: ["SGA", "sales expenses", "admin expenses", "销售管理费用"],
     useCases: ["Cost control analysis", "Operational efficiency", "Scalability assessment"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "otherExpenses",
+    name: "Other Expenses",
+    description: "Other operating and non-operating expenses",
+    category: "Operating Expenses",
+    aliases: ["miscellaneous expenses", "other costs", "其他费用"],
+    useCases: ["Expense analysis", "Cost categorization", "Unusual items"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",
@@ -117,15 +174,33 @@ export const incomeStatementFields: FieldMetadata[] = [
       isRatio: false
     }
   },
-  
-  // Operating Performance
+
   {
-    field: "operatingIncome",
-    name: "Operating Income",
-    description: "Profit from core business operations (EBIT)",
-    category: "Operating Performance",
-    aliases: ["EBIT", "operating profit", "earnings before interest and taxes", "营业利润"],
-    useCases: ["Core business profitability", "Operating efficiency", "Business performance"],
+    field: "costAndExpenses",
+    name: "Cost and Expenses",
+    description: "Total costs and expenses including cost of revenue and operating expenses",
+    category: "Cost Structure",
+    aliases: ["total costs", "costs and expenses", "成本费用总计"],
+    useCases: ["Total cost analysis", "Expense management", "Profitability analysis"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "depreciationAndAmortization",
+    name: "Depreciation and Amortization",
+    description: "Non-cash charges for asset depreciation and intangible amortization",
+    category: "Operating Expenses",
+    aliases: ["D&A", "depreciation", "amortization", "折旧摊销"],
+    useCases: ["Asset utilization", "Non-cash expenses", "EBITDA calculation"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",
@@ -138,6 +213,45 @@ export const incomeStatementFields: FieldMetadata[] = [
     }
   },
   
+  // Operating Performance
+    {
+    field: "ebit",
+    name: "EBIT",
+    description: "Earnings before interest and taxes",
+    category: "Operating Performance",
+    aliases: ["earnings before interest and taxes", "operating income", "息税前利润"],
+    useCases: ["Operating profitability", "Interest coverage", "Core earnings"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "operatingIncome",
+    name: "Operating Income",
+    description: "Profit from core business operations",
+    category: "Operating Performance",
+    aliases: ["operating profit", "operating earnings", "营业利润"],
+    useCases: ["Core business profitability", "Operating efficiency", "Business performance"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
   {
     field: "ebitda",
     name: "EBITDA",
@@ -157,7 +271,45 @@ export const incomeStatementFields: FieldMetadata[] = [
     }
   },
   
-  // Financial Items
+    // Financial Items
+  {
+    field: "netInterestIncome",
+    name: "Net Interest Income",
+    description: "Interest income minus interest expense",
+    category: "Financial Items",
+    aliases: ["net interest", "interest margin", "净利息收入"],
+    useCases: ["Net financing cost", "Interest margin analysis", "Financial efficiency"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "interestIncome",
+    name: "Interest Income",
+    description: "Income from investments and cash deposits",
+    category: "Financial Items",
+    aliases: ["investment income", "interest earned", "利息收入"],
+    useCases: ["Cash management", "Investment returns", "Financial income analysis"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
   {
     field: "interestExpense",
     name: "Interest Expense",
@@ -176,14 +328,33 @@ export const incomeStatementFields: FieldMetadata[] = [
       isRatio: false
     }
   },
-  
+
   {
-    field: "interestIncome",
-    name: "Interest Income",
-    description: "Income from investments and cash deposits",
+    field: "nonOperatingIncomeExcludingInterest",
+    name: "Non-Operating Income (Excluding Interest)",
+    description: "Non-operating income excluding interest income and expense",
     category: "Financial Items",
-    aliases: ["investment income", "interest earned", "利息收入"],
-    useCases: ["Cash management", "Investment returns", "Financial income analysis"],
+    aliases: ["other income", "non-operating income", "非营业收入"],
+    useCases: ["Non-core income", "One-time items", "Investment gains"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "totalOtherIncomeExpensesNet",
+    name: "Total Other Income/Expenses (Net)",
+    description: "Net total of all other income and expenses",
+    category: "Financial Items",
+    aliases: ["other income net", "other expenses net", "其他收入费用净额"],
+    useCases: ["Non-operating items", "Other income analysis", "Unusual items"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",
@@ -237,12 +408,107 @@ export const incomeStatementFields: FieldMetadata[] = [
   
   // Net Income
   {
+    field: "netIncomeFromContinuingOperations",
+    name: "Net Income from Continuing Operations",
+    description: "Net income from operations expected to continue",
+    category: "Net Profitability",
+    aliases: ["continuing operations income", "持续经营净收入"],
+    useCases: ["Core earnings", "Sustainable profitability", "Operational analysis"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "netIncomeFromDiscontinuedOperations",
+    name: "Net Income from Discontinued Operations",
+    description: "Net income from operations that have been or will be discontinued",
+    category: "Net Profitability",
+    aliases: ["discontinued operations income", "终止经营净收入"],
+    useCases: ["One-time items", "Business restructuring", "Asset disposal"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "otherAdjustmentsToNetIncome",
+    name: "Other Adjustments to Net Income",
+    description: "Other adjustments and unusual items affecting net income",
+    category: "Net Profitability",
+    aliases: ["net income adjustments", "other adjustments", "净收入其他调整"],
+    useCases: ["Unusual items", "One-time adjustments", "Income quality"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
     field: "netIncome",
     name: "Net Income",
-    description: "Bottom line profit after all expenses and taxes",
+    description: "Total net income after all items",
     category: "Net Profitability",
-    aliases: ["net profit", "bottom line", "earnings", "净利润", "净收益"],
+    aliases: ["net profit", "total earnings", "净利润", "净收益"],
     useCases: ["Overall profitability", "EPS calculation", "Dividend capacity", "ROE calculation"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "netIncomeDeductions",
+    name: "Net Income Deductions",
+    description: "Deductions from net income for preferred dividends or other items",
+    category: "Net Profitability",
+    aliases: ["income deductions", "preferred dividends", "净收入扣除项"],
+    useCases: ["Common shareholder income", "Preferred dividend impact", "Available earnings"],
+    dataSource: {
+      endpoint: "/income-statement",
+      dataType: "getIncomeStatement",
+      statement: "Income Statement"
+    },
+    dataFormat: {
+      unit: "USD",
+      isPercentage: false,
+      isRatio: false
+    }
+  },
+
+  {
+    field: "bottomLineNetIncome",
+    name: "Bottom Line Net Income",
+    description: "Final net income available to common shareholders",
+    category: "Net Profitability",
+    aliases: ["bottom line", "final net income", "common shareholders income", "最终净收入"],
+    useCases: ["Common shareholder returns", "EPS calculation", "Final profitability"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",
