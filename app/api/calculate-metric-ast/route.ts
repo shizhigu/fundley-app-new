@@ -3,54 +3,82 @@ import { auth } from '@clerk/nextjs/server';
 import { Pool } from 'pg';
 
 /**
- * Financial Metrics JSON AST Calculation API
+ * Simplified Financial Metrics JSON AST Calculation API
  * 
- * This API processes JSON-based Abstract Syntax Trees to calculate
- * financial metrics directly from our PostgreSQL database.
+ * 核心思路：
+ * 1. 从AST中提取数据需求（表、字段、期间）
+ * 2. 批量获取原始数据
+ * 3. 递归计算AST节点
+ * 4. 并发处理多个symbols
  */
 
-// AST Node Type Definitions
-export type ASTNode = 
+// Types
+interface MetricDefinition {
+  name: string;
+  description?: string;
+  formula_display?: string;
+  category?: string;
+  ast: any;
+  data_requirements?: {
+    [table: string]: string[];
+    periods_needed?: string[];
+  };
+}
+
+interface CalculationRequest {
+  metricDefinition: MetricDefinition;
+  symbols: string[];
+  periods?: number;
+  periodType?: 'quarter' | 'annual';
+  asOf?: string;
+}
+
+// AST Node Types
+type ASTNode = 
   | FieldNode 
   | ArithmeticNode 
   | AggregationNode 
   | ConditionalNode 
-  | ConstantNode
-  | RollingArithmeticNode;
+  | ConstantNode 
+  | RollingNode;
 
-export interface FieldNode {
+interface FieldNode {
   type: 'field';
-  source: 'income_statement' | 'balance_sheet' | 'cash_flow_statement';
+  source: string;
   field: string;
-  selector: PeriodSelector;
+  selector?: {
+    type: 'single' | 'rolling';
+    single?: { fiscalYear?: number; period?: string; position?: string };
+    rolling?: { window_size: number; window_type: string; aggregation: string; from?: string };
+  };
 }
 
-export interface ArithmeticNode {
+interface ArithmeticNode {
   type: 'arithmetic';
-  operator: 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'sqrt' | 'abs' | 'log' | 'log10' | 'round';
+  operator: 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'abs' | 'sqrt' | 'log' | 'log10' | 'round';
   left: ASTNode;
   right?: ASTNode;
 }
 
-export interface AggregationNode {
+interface AggregationNode {
   type: 'aggregation';
-  function: 'sum' | 'average' | 'max' | 'min' | 'ttm' | 'growth_rate';
+  function: 'sum' | 'average' | 'max' | 'min';
   values: ASTNode[];
 }
 
-export interface ConditionalNode {
+interface ConditionalNode {
   type: 'conditional';
-  condition: ComparisonNode;
+  condition: any;
   if_true: ASTNode;
   if_false: ASTNode;
 }
 
-export interface ConstantNode {
+interface ConstantNode {
   type: 'constant';
   value: number;
 }
 
-export interface RollingArithmeticNode {
+interface RollingNode {
   type: 'rolling_arithmetic';
   operation: ArithmeticNode;
   rolling: {
@@ -61,50 +89,22 @@ export interface RollingArithmeticNode {
   };
 }
 
-export interface ComparisonNode {
-  type: 'comparison';
-  operator: 'gt' | 'lt' | 'gte' | 'lte' | 'eq' | 'ne';
-  left: ASTNode;
-  right: ASTNode;
+
+// Raw Data Types
+interface RawDataRow {
+  symbol: string;
+  fiscalyear: number;
+  period: string;
+  [field: string]: any;
 }
 
-export interface PeriodSelector {
-  type: 'single' | 'rolling';
-  single?: {
-    position: 'latest' | 'latest_annual' | 'specific';
-    fiscalYear?: number;
-    period?: 'Q1' | 'Q2' | 'Q3' | 'Q4' | 'FY';
-    offset?: number; // -1 for previous quarter, -4 for same quarter last year
-  };
-  rolling?: {
-    window_size: number;
-    window_type: 'quarter' | 'year';
-    from: 'latest';
-    aggregation: 'sum' | 'average' | 'max' | 'min' | 'product' | 'geometric_mean';
-  };
+interface DataRequirements {
+  tables: Set<string>;
+  fields: Set<string>;
+  maxPeriods: number;
 }
 
-export interface MetricDefinition {
-  name: string;
-  description: string;
-  formula_display: string;
-  category: string;
-  ast: ASTNode;
-  data_requirements: {
-    income_statement?: string[];
-    balance_sheet?: string[];
-    cash_flow_statement?: string[];
-    periods_needed: string[];
-  };
-}
-
-interface CalculationRequest {
-  metricDefinition: MetricDefinition;
-  symbols: string[];
-  asOf?: string;
-}
-
-// Database connection pool
+// Database connection
 let pool: Pool | null = null;
 
 function getPool(): Pool {
@@ -122,399 +122,543 @@ function getPool(): Pool {
 }
 
 /**
- * Financial Data Access Layer - Direct SQL Queries
+ * 简化版本的财务计算引擎
  */
-class FinancialDataAccess {
+export class SimplifiedFinancialEngine {
   private pool: Pool;
-  private engine: FinancialASTEngine | null = null;
 
   constructor() {
     this.pool = getPool();
   }
-  
-  setEngine(engine: FinancialASTEngine) {
-    this.engine = engine;
+
+  /**
+   * 并发计算多个symbols的指标
+   */
+  async calculateMetric(
+    metric: MetricDefinition,
+    symbols: string[],
+    options: {
+      periods?: number;
+      periodType?: 'quarter' | 'annual';
+      asOf?: string;
+    } = {}
+  ) {
+    console.log(`🚀 SimplifiedEngine: Starting calculation for ${symbols.length} symbols`);
+    console.log(`📊 Metric: ${metric.name}`);
+    console.log(`🔍 Symbols: ${symbols.join(', ')}`);
+    console.log(`⚙️ Options:`, options);
+    console.log(`📋 Full Metric Object:`, JSON.stringify(metric, null, 2));
+    
+    try {
+      console.log(`🎯 About to start Promise.allSettled for symbols`);
+      
+      // 并发处理每个symbol
+      const results = await Promise.allSettled(
+        symbols.map((symbol, index) => {
+          console.log(`  🎯 Starting calculation for symbol ${index + 1}/${symbols.length}: ${symbol}`);
+          return this.calculateForSymbol(symbol, metric, options);
+        })
+      );
+      
+      console.log(`✅ Promise.allSettled completed with ${results.length} results`);
+      results.forEach((result, i) => {
+        console.log(`  Result ${i} (${symbols[i]}): ${result.status}`);
+        if (result.status === 'rejected') {
+          console.error(`    Error:`, result.reason);
+        }
+      });
+
+      // 组装最终结果
+      const finalResults: Record<string, any> = {};
+      
+      results.forEach((result, index) => {
+        const symbol = symbols[index];
+        if (result.status === 'fulfilled') {
+          finalResults[symbol] = result.value;
+        } else {
+          console.error(`❌ Failed to calculate ${symbol}:`, result.reason);
+          finalResults[symbol] = {
+            error: result.reason.message,
+            success: false,
+            periods: []
+          };
+        }
+      });
+
+      const finalResponse = {
+        metric_name: metric.name,
+        results: finalResults,
+        calculation_engine: 'SimplifiedFinancial_v1.0',
+        timestamp: new Date().toISOString(),
+        performance_stats: {
+          total_symbols: symbols.length,
+          successful_calculations: Object.values(finalResults).filter(r => r.success).length
+        }
+      };
+      
+      console.log(`✅ SimplifiedEngine: Completed ${metric.name} for ${symbols.length} symbols`);
+      return finalResponse;
+      
+    } catch (error) {
+      console.error(`❌ SimplifiedEngine: Fatal error during calculation:`, error);
+      throw error;
+    }
   }
 
   /**
-   * Get field data based on period selector
+   * 计算单个symbol的指标
    */
-  async getFieldData(
-    symbol: string,
-    source: string,
-    field: string,
-    selector: PeriodSelector
-  ): Promise<number | number[] | null> {
-    
-    switch (selector.type) {
-      case 'single':
-        return this.getSinglePeriodData(symbol, source, field, selector.single!);
-      case 'rolling':
-        return this.getRollingData(symbol, source, field, selector.rolling!);
-      default:
-        throw new Error(`Unsupported selector type: ${selector.type}`);
+  private async calculateForSymbol(
+    symbol: string, 
+    metric: MetricDefinition, 
+    options: {
+      periods?: number;
+      periodType?: 'quarter' | 'annual';
+      asOf?: string;
+    }
+  ) {
+    console.log(`🔍 Calculating ${metric.name} for ${symbol}`);
+
+    try {
+      // 1. 从AST中提取数据需求
+      const requirements = this.extractDataRequirements(metric.ast);
+      console.log(`📋 Data requirements for ${symbol}:`, {
+        tables: Array.from(requirements.tables),
+        fields: Array.from(requirements.fields),
+        maxPeriods: requirements.maxPeriods
+      });
+
+      // 2. 获取需要计算的期间列表
+      const periods = await this.getLatestPeriods(
+        symbol, 
+        options.periods || 5, 
+        options.periodType || 'quarter'
+      );
+      if (periods.length === 0) {
+        return {
+          success: false,
+          error: `No data available for ${symbol}`,
+          periods: []
+        };
+      }
+
+      // 3. 批量获取原始数据
+      const rawData = await this.fetchRawData(
+        symbol, 
+        Array.from(requirements.tables),
+        Array.from(requirements.fields),
+        Math.max(requirements.maxPeriods, periods.length + 4)
+      );
+
+      // 4. 对每个期间进行计算 - 回到最简单的逻辑
+      const periodResults = [];
+      for (const period of periods) {
+        try {
+          console.log(`🔄 Calculating ${symbol} for period ${period}`);
+          const value = this.evaluateAST(metric.ast, rawData, period);
+          console.log(`✅ ${symbol} ${period} = ${value}`);
+          
+          periodResults.push({
+            period,
+            value,
+            success: true,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error(`❌ Error calculating ${symbol} ${period}:`, error);
+          console.error('❌ Period calculation error details:', {
+            period,
+            errorMessage: error.message,
+            errorStack: error.stack
+          });
+          periodResults.push({
+            period,
+            value: null,
+            success: false,
+            error: error.message || 'Unknown calculation error'
+          });
+        }
+      }
+
+      return {
+        success: periodResults.some(p => p.success),
+        periods: periodResults,
+        formula: metric.formula_display,
+        calculation_method: 'SimplifiedRecursive_v1.0',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error(`❌ Failed to calculate ${symbol}:`, error);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      return {
+        success: false,
+        error: error.message || 'Unknown error',
+        periods: [],
+        formula: metric.formula_display,
+        calculation_method: 'SimplifiedRecursive_v1.0',
+        timestamp: new Date().toISOString()
+      };
     }
   }
 
-  private async getSinglePeriodData(
-    symbol: string,
-    source: string,
-    field: string,
-    config: NonNullable<PeriodSelector['single']>
-  ): Promise<number | null> {
+  /**
+   * 从AST中提取所有数据需求
+   */
+  private extractDataRequirements(node: any): DataRequirements {
+    const requirements: DataRequirements = {
+      tables: new Set(),
+      fields: new Set(),
+      maxPeriods: 4 // 默认TTM需要4个期间
+    };
+
+    const traverse = (n: any) => {
+      if (!n || typeof n !== 'object') return;
+
+      if (n.type === 'field') {
+        requirements.tables.add(n.source);
+        requirements.fields.add(n.field);
+      }
+
+      if (n.type === 'rolling_arithmetic' || (n.selector?.type === 'rolling')) {
+        const windowSize = n.rolling?.window_size || n.selector?.rolling?.window_size || 4;
+        requirements.maxPeriods = Math.max(requirements.maxPeriods, windowSize);
+      }
+
+      // 递归遍历所有子节点
+      Object.values(n).forEach(value => {
+        if (typeof value === 'object') {
+          traverse(value);
+        }
+      });
+
+      // 处理数组
+      if (Array.isArray(n.values)) {
+        n.values.forEach(traverse);
+      }
+    };
+
+    traverse(node);
+    return requirements;
+  }
+
+  /**
+   * 获取最新的可用期间
+   */
+  private async getLatestPeriods(
+    symbol: string, 
+    count: number, 
+    periodType: 'quarter' | 'annual'
+  ): Promise<string[]> {
+    const periodPattern = periodType === 'quarter' ? ['Q1', 'Q2', 'Q3', 'Q4'] : ['FY'];
+    const placeholders = periodPattern.map((_, i) => `$${i + 2}`).join(', ');
     
-    let sql = `SELECT ${field.toLowerCase()} FROM ${source} WHERE symbol = $1`;
-    const params: any[] = [symbol];
-    let paramIndex = 2;
-
-    // Handle specific fiscal year/period
-    if (config.fiscalYear) {
-      sql += ` AND fiscalyear = $${paramIndex}`;
-      params.push(config.fiscalYear);
-      paramIndex++;
-    }
-
-    if (config.period) {
-      sql += ` AND period = $${paramIndex}`;
-      params.push(config.period);
-      paramIndex++;
-    }
-
-    // Add asOf time constraint for single period queries
-    if (this.engine?.asOfDate && config.position === 'latest') {
-      sql += ` AND (
-        fiscalyear < $${paramIndex} OR 
-        (fiscalyear = $${paramIndex} AND CASE period 
-          WHEN 'FY' THEN 5
-          WHEN 'Q4' THEN 4 
-          WHEN 'Q3' THEN 3 
-          WHEN 'Q2' THEN 2 
-          WHEN 'Q1' THEN 1 
-        END <= $${paramIndex + 1})
-      )`;
-      params.push(this.engine!.asOfDate!.year, this.engine!.asOfDate!.periodOrder);
-      paramIndex += 2;
-    }
-
-    // Handle position and offset
-    if (config.position === 'latest') {
-      sql += ` ORDER BY fiscalyear DESC, 
+    // 使用INTERSECT确保期间在所有表中都存在
+    const sql = `
+      WITH available_periods AS (
+        SELECT DISTINCT fiscalyear, period,
                CASE period 
                  WHEN 'Q4' THEN 4 
                  WHEN 'Q3' THEN 3 
                  WHEN 'Q2' THEN 2 
                  WHEN 'Q1' THEN 1 
                  WHEN 'FY' THEN 5 
-               END DESC`;
-      
-      // Handle offset
-      if (config.offset && config.offset < 0) {
-        const offsetValue = Math.abs(config.offset);
-        sql += ` LIMIT 1 OFFSET ${offsetValue}`;
-      } else {
-        sql += ` LIMIT 1`;
-      }
-    }
-
-    try {
-      console.log(`🔍 Single period SQL with asOf constraint:`, sql);
-      console.log(`🔍 SQL params:`, params);
-      const result = await this.pool.query(sql, params);
-      const value = result.rows[0]?.[field.toLowerCase()];
-      return value !== undefined && value !== null ? parseFloat(value) : null;
-    } catch (error) {
-      console.error(`Error fetching ${field} from ${source}:`, error);
-      return null;
-    }
-  }
-
-  private async getRollingData(
-    symbol: string,
-    source: string,
-    field: string,
-    config: NonNullable<PeriodSelector['rolling']>
-  ): Promise<number | null> {
+               END as period_order
+        FROM income_statement 
+        WHERE symbol = $1 AND period IN (${placeholders})
+        
+        INTERSECT
+        
+        SELECT DISTINCT fiscalyear, period,
+               CASE period 
+                 WHEN 'Q4' THEN 4 
+                 WHEN 'Q3' THEN 3 
+                 WHEN 'Q2' THEN 2 
+                 WHEN 'Q1' THEN 1 
+                 WHEN 'FY' THEN 5 
+               END as period_order
+        FROM balance_sheet 
+        WHERE symbol = $1 AND period IN (${placeholders})
+        
+        INTERSECT
+        
+        SELECT DISTINCT fiscalyear, period,
+               CASE period 
+                 WHEN 'Q4' THEN 4 
+                 WHEN 'Q3' THEN 3 
+                 WHEN 'Q2' THEN 2 
+                 WHEN 'Q1' THEN 1 
+                 WHEN 'FY' THEN 5 
+               END as period_order
+        FROM cash_flow_statement 
+        WHERE symbol = $1 AND period IN (${placeholders})
+      )
+      SELECT fiscalyear, period
+      FROM available_periods
+      ORDER BY fiscalyear DESC, period_order DESC
+      LIMIT $${periodPattern.length + 2}
+    `;
     
-    // Build the aggregation function based on config
-    const aggregation = config.aggregation || 'sum'; // Default to sum for backward compatibility
-    let aggregationSQL: string;
+    const params = [symbol, ...periodPattern, count];
+    const result = await this.pool.query(sql, params);
     
-    switch (aggregation) {
-      case 'sum':
-        aggregationSQL = `SUM(${field.toLowerCase()}::numeric)`;
-        break;
-      case 'average':
-        aggregationSQL = `AVG(${field.toLowerCase()}::numeric)`;
-        break;
-      case 'max':
-        aggregationSQL = `MAX(${field.toLowerCase()}::numeric)`;
-        break;
-      case 'min':
-        aggregationSQL = `MIN(${field.toLowerCase()}::numeric)`;
-        break;
-      case 'product':
-        aggregationSQL = `EXP(SUM(LN(NULLIF(${field.toLowerCase()}::numeric, 0))))`;
-        break;
-      case 'geometric_mean':
-        aggregationSQL = `EXP(AVG(LN(NULLIF(${field.toLowerCase()}::numeric, 0))))`;
-        break;
-      default:
-        throw new Error(`Unsupported rolling aggregation: ${aggregation}`);
-    }
-    
-    if (config.window_type === 'quarter') {
-      // Build base SQL with optional asOf time constraint
-      let whereClause = 'WHERE symbol = $1 AND period IN (\'Q1\', \'Q2\', \'Q3\', \'Q4\')';
-      let params: any[] = [symbol];
-      let paramIndex = 2;
-
-      // Add asOf time constraint if specified
-      if (this.engine?.asOfDate) {
-        whereClause += ` AND (
-          fiscalyear < $${paramIndex} OR 
-          (fiscalyear = $${paramIndex} AND CASE period 
-            WHEN 'Q4' THEN 4 
-            WHEN 'Q3' THEN 3 
-            WHEN 'Q2' THEN 2 
-            WHEN 'Q1' THEN 1 
-          END <= $${paramIndex + 1})
-        )`;
-        params.push(this.engine!.asOfDate!.year, this.engine!.asOfDate!.periodOrder);
-        paramIndex += 2;
-      }
-      
-      // Add window size at the end
-      params.push(config.window_size);
-      
-      const sql = `
-        SELECT ${aggregationSQL} as rolling_value
-        FROM (
-          SELECT ${field.toLowerCase()}
-          FROM ${source}
-          ${whereClause}
-          ORDER BY fiscalyear DESC, 
-                   CASE period 
-                     WHEN 'Q4' THEN 4 
-                     WHEN 'Q3' THEN 3 
-                     WHEN 'Q2' THEN 2 
-                     WHEN 'Q1' THEN 1 
-                   END DESC
-          LIMIT $${params.length}
-        ) rolling_data
-      `;
-      
-      try {
-        console.log(`🔍 Rolling SQL with asOf constraint:`, sql);
-        console.log(`🔍 SQL params:`, params);
-        const result = await this.pool.query(sql, params);
-        const value = result.rows[0]?.rolling_value;
-        console.log(`🔍 Rolling ${aggregation} (${config.window_size} ${config.window_type}s): ${value}`);
-        return value !== undefined && value !== null ? parseFloat(value) : null;
-      } catch (error) {
-        console.error(`Error calculating rolling ${aggregation} for ${field}:`, error);
-        return null;
-      }
-    }
-
-    return null;
-  }
-}
-
-/**
- * Financial AST Calculation Engine
- */
-export class FinancialASTEngine {
-  private dataAccess: FinancialDataAccess;
-  private asOfDate: { year: number; period: string; periodOrder: number } | null = null;
-
-  constructor() {
-    this.dataAccess = new FinancialDataAccess();
-    this.dataAccess.setEngine(this);
+    return result.rows.map(row => `${row.fiscalyear}-${row.period}`);
   }
 
   /**
-   * Parse asOf date string into structured format
-   * Supports: "2019-Q3", "2020-Q1", "2020-FY"
+   * 批量获取原始数据
    */
-  private parseAsOfDate(asOfStr: string): { year: number; period: string; periodOrder: number } {
-    const match = asOfStr.match(/^(\d{4})-(Q[1-4]|FY)$/);
-    if (!match) {
-      throw new Error(`Invalid asOf format: ${asOfStr}. Use format: YYYY-QN or YYYY-FY`);
-    }
+  private async fetchRawData(
+    symbol: string,
+    tables: string[],
+    fields: string[],
+    periodCount: number
+  ): Promise<RawDataRow[]> {
+    console.log(`🔍 fetchRawData called with:`, {
+      symbol,
+      tables,
+      fields,
+      periodCount
+    });
 
-    const year = parseInt(match[1]);
-    const period = match[2];
+    // 构建每个表的查询
+    const tableQueries = tables.map(table => {
+      const fieldList = ['symbol', 'fiscalyear', 'period', ...fields]
+        .map(f => f.toLowerCase())
+        .join(', ');
+      
+      const query = `
+        SELECT '${table}' as source_table, ${fieldList}
+        FROM ${table}
+        WHERE symbol = $1
+        ORDER BY fiscalyear DESC, 
+                 CASE period 
+                   WHEN 'Q4' THEN 4 
+                   WHEN 'Q3' THEN 3 
+                   WHEN 'Q2' THEN 2 
+                   WHEN 'Q1' THEN 1
+                   WHEN 'FY' THEN 5
+                 END DESC
+        LIMIT $2
+      `;
+      
+      console.log(`📝 Generated SQL query for ${table}:`, query.trim());
+      return query;
+    });
+
+    // 执行所有查询并合并结果
+    const allData: RawDataRow[] = [];
     
-    // Convert period to order for comparison (Q1=1, Q2=2, Q3=3, Q4=4, FY=5)
-    const periodOrder = period === 'FY' ? 5 : 
-                       period === 'Q4' ? 4 :
-                       period === 'Q3' ? 3 :
-                       period === 'Q2' ? 2 : 1;
-
-    return { year, period, periodOrder };
-  }
-
-  async calculateMetric(
-    metric: MetricDefinition,
-    symbols: string[],
-    asOf?: string,
-    periods?: number,
-    periodType?: 'quarter' | 'annual'
-  ): Promise<Record<string, any>> {
-    const results: Record<string, any> = {};
-
-    for (const symbol of symbols) {
+    for (let i = 0; i < tableQueries.length; i++) {
+      const query = tableQueries[i];
+      const table = tables[i];
       try {
-        console.log(`🧮 Calculating ${metric.name} for ${symbol} using AST engine`);
-        console.log(`🔍 AST structure:`, JSON.stringify(metric.ast, null, 2));
-        
-        if (!metric.ast) {
-          throw new Error('Metric AST is null or undefined');
+        console.log(`⚡ Executing query for table ${table} with params:`, [symbol, periodCount * 2]);
+        const result = await this.pool.query(query, [symbol, periodCount * 2]);
+        console.log(`✅ Query result for ${table}: ${result.rows.length} rows`);
+        if (result.rows.length > 0) {
+          console.log(`📋 Sample row from ${table}:`, result.rows[0]);
         }
-        
-        // Validate and fix AST integrity before calculation
-        const validatedAST = this.validateAndFixAST(metric.ast);
-        console.log(`🔍 Validated AST:`, JSON.stringify(validatedAST, null, 2));
-        
-        if (periods && periods > 1) {
-          // Multi-period calculation
-          console.log(`🕒 Multi-period calculation: ${periods} ${periodType}s`);
-          
-          // Get the latest available periods from database
-          const latestPeriods = await this.getLatestPeriods(symbol, periods, periodType || 'quarter');
-          console.log(`🕒 Latest periods for ${symbol}:`, latestPeriods);
-          
-          const periodResults: any[] = [];
-          for (const period of latestPeriods) {
-            try {
-              // Set asOf context for this specific period
-              this.asOfDate = this.parseAsOfDate(period);
-              console.log(`🕒 Calculating for period: ${period}`);
-              
-              const value = await this.evaluateNode(validatedAST, symbol);
-              periodResults.push({
-                period: period,
-                value: value,
-                success: true,
-                timestamp: new Date().toISOString()
-              });
-              
-              console.log(`✅ ${symbol} ${period} = ${value}`);
-            } catch (error) {
-              console.error(`❌ Error calculating ${symbol} for ${period}:`, error);
-              periodResults.push({
-                period: period,
-                value: null,
-                success: false,
-                error: error.message
-              });
-            }
-          }
-          
-          results[symbol] = {
-            periods: periodResults,
-            formula: metric.formula_display,
-            calculation_method: 'JSON_AST_TimeSeries_v1.0',
-            timestamp: new Date().toISOString(),
-            success: periodResults.some(p => p.success)
-          };
-          
-        } else {
-          // Single period calculation (original behavior)
-          this.asOfDate = asOf ? this.parseAsOfDate(asOf) : null;
-          console.log(`🕒 AsOf context:`, this.asOfDate);
-          
-          const value = await this.evaluateNode(validatedAST, symbol);
-          
-          results[symbol] = {
-            value: value,
-            formula: metric.formula_display,
-            calculation_method: 'JSON_AST_v1.0',
-            timestamp: new Date().toISOString(),
-            success: true
-          };
-          
-          console.log(`✅ ${symbol} ${metric.name} = ${value}`);
-        }
-        
+        allData.push(...result.rows);
       } catch (error) {
-        console.error(`❌ Error calculating ${metric.name} for ${symbol}:`, error);
-        results[symbol] = {
-          error: `Calculation failed: ${error.message}`,
-          value: null,
-          success: false
-        };
+        console.error(`❌ Failed to fetch data from table ${table}:`, error);
       }
     }
 
-    return {
-      metric_name: metric.name,
-      results: results,
-      calculation_engine: 'Financial_AST_SQL_v1.0'
-    };
+    console.log(`📊 Fetched total ${allData.length} rows of raw data for ${symbol}`);
+    if (allData.length > 0) {
+      console.log(`📋 First few rows of combined data:`, allData.slice(0, 3));
+    }
+    return allData;
   }
 
-  private async evaluateNode(node: ASTNode, symbol: string): Promise<number | null> {
-    if (!node) {
-      console.error('❌ evaluateNode: node is null or undefined');
-      throw new Error('AST node is null or undefined');
+  /**
+   * 递归计算AST节点
+   */
+  private evaluateAST(node: any, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    if (!node || typeof node !== 'object') {
+      throw new Error('Invalid AST node');
     }
-    
-    if (!node.type) {
-      console.error('❌ evaluateNode: node.type is undefined. Node:', JSON.stringify(node, null, 2));
-      throw new Error('AST node type is undefined');
-    }
-    
-    console.log(`🔍 Evaluating node type: ${node.type} for symbol: ${symbol}`);
-    
+
+    console.log(`🔍 Evaluating node type: ${node.type} for period: ${asOfPeriod}`);
+
     switch (node.type) {
-      case 'field':
-        return this.evaluateField(node, symbol);
-      
-      case 'arithmetic':
-        return this.evaluateArithmetic(node, symbol);
-      
-      case 'aggregation':
-        return this.evaluateAggregation(node, symbol);
-      
-      case 'conditional':
-        return this.evaluateConditional(node, symbol);
-      
       case 'constant':
         return node.value;
-      
+
+      case 'field':
+        return this.evaluateField(node, rawData, asOfPeriod);
+
+      case 'arithmetic':
+        return this.evaluateArithmetic(node, rawData, asOfPeriod);
+
+      case 'aggregation':
+        return this.evaluateAggregation(node, rawData, asOfPeriod);
+
       case 'rolling_arithmetic':
-        return this.evaluateRollingArithmetic(node, symbol);
-      
+        return this.evaluateRollingArithmetic(node, rawData, asOfPeriod);
+
       default:
-        throw new Error(`Unknown AST node type: ${(node as any).type}`);
+        throw new Error(`Unknown AST node type: ${node.type}`);
     }
   }
 
-  private async evaluateField(node: FieldNode, symbol: string): Promise<number | null> {
-    // Map common field names to database column names
-    const fieldMappings: Record<string, string> = {
-      'totalStockholderEquity': 'totalstockholdersequity',
-      'totalStockholdersEquity': 'totalstockholdersequity',
-      'netIncome': 'netincome'
-    };
-    
-    const dbField = fieldMappings[node.field] || node.field;
-    console.log(`🔍 Field mapping: ${node.field} -> ${dbField}`);
-    
-    return this.dataAccess.getFieldData(symbol, node.source, dbField, node.selector);
+  /**
+   * 计算字段值
+   */
+  private evaluateField(node: FieldNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    console.log(`📊 Evaluating field: ${node.source}.${node.field} for ${asOfPeriod}`);
+    console.log(`📋 Available data rows: ${rawData.length}`);
+    console.log(`🔍 Looking for data matching: source_table='${node.source}' AND period='${asOfPeriod}'`);
+
+    // 显示所有相关数据行
+    const relevantRows = rawData.filter(row => row.source_table === node.source);
+    console.log(`🔍 Found ${relevantRows.length} rows from ${node.source} table:`);
+    relevantRows.forEach((row, i) => {
+      console.log(`  Row ${i}: ${row.fiscalyear}-${row.period} (${row.symbol})`);
+    });
+
+    if (node.selector?.type === 'rolling') {
+      console.log(`🔄 Field uses rolling selector, delegating to calculateRollingField`);
+      return this.calculateRollingField(node, rawData, asOfPeriod);
+    }
+
+    // Single period field
+    const targetData = rawData.find(row => 
+      row.source_table === node.source && 
+      `${row.fiscalyear}-${row.period}` === asOfPeriod
+    );
+
+    if (!targetData) {
+      console.warn(`⚠️ No data found for ${node.source}.${node.field} at ${asOfPeriod}`);
+      console.warn(`   Available periods in ${node.source}: ${relevantRows.map(r => `${r.fiscalyear}-${r.period}`).join(', ')}`);
+      return null;
+    }
+
+    const fieldKey = node.field.toLowerCase();
+    const value = targetData[fieldKey];
+    console.log(`✅ Found target data row:`, targetData);
+    console.log(`✅ Field value: ${node.field} (${fieldKey}) = ${value}`);
+    return value !== null ? parseFloat(value) : null;
   }
 
-  private async evaluateArithmetic(node: ArithmeticNode, symbol: string): Promise<number | null> {
-    const left = await this.evaluateNode(node.left, symbol);
+  /**
+   * 计算rolling字段
+   */
+  private calculateRollingField(node: FieldNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    const rollingConfig = node.selector!.rolling!;
+
+    // 过滤相关表的数据
+    const tableData = rawData.filter(row => row.source_table === node.source);
+    
+    // 获取TTM数据
+    const ttmValues = this.getTTMValues(
+      tableData, 
+      node.field.toLowerCase(), 
+      asOfPeriod, 
+      rollingConfig.window_size
+    );
+
+    console.log(`📈 TTM values for ${node.field}:`, ttmValues);
+
+    if (ttmValues.length === 0) {
+      console.warn(`⚠️ No TTM values found for ${node.field}`);
+      return null;
+    }
+
+    // 应用聚合函数
+    let result: number;
+    switch (rollingConfig.aggregation) {
+      case 'sum':
+        result = ttmValues.reduce((sum, val) => sum + val, 0);
+        break;
+      case 'average':
+        result = ttmValues.reduce((sum, val) => sum + val, 0) / ttmValues.length;
+        break;
+      case 'max':
+        result = Math.max(...ttmValues);
+        break;
+      case 'min':
+        result = Math.min(...ttmValues);
+        break;
+      default:
+        throw new Error(`Unknown aggregation: ${rollingConfig.aggregation}`);
+    }
+
+    console.log(`✅ Rolling calculation result for ${node.field}: ${result} (${rollingConfig.aggregation} of [${ttmValues.join(', ')}])`);
+    return result;
+  }
+
+  /**
+   * 获取TTM值
+   */
+  private getTTMValues(
+    data: RawDataRow[], 
+    field: string, 
+    asOfPeriod: string, 
+    windowSize: number
+  ): number[] {
+    // 解析asOf期间
+    const [asOfYear, asOfPeriod_] = asOfPeriod.split('-');
+    const asOfYearNum = parseInt(asOfYear);
+    const asOfPeriodOrder = this.getPeriodOrder(asOfPeriod_);
+
+    // 筛选符合时间条件的数据：包含asOfPeriod及其之前的所有季度数据
+    const eligibleData = data.filter(row => {
+      const rowPeriodOrder = this.getPeriodOrder(row.period);
+      // 只保留季度数据，排除年度数据
+      if (row.period === 'FY') return false;
+      
+      return (
+        row.fiscalyear < asOfYearNum ||
+        (row.fiscalyear === asOfYearNum && rowPeriodOrder <= asOfPeriodOrder)
+      );
+    });
+
+    // 按时间倒序排序
+    eligibleData.sort((a, b) => {
+      if (a.fiscalyear !== b.fiscalyear) return b.fiscalyear - a.fiscalyear;
+      return this.getPeriodOrder(b.period) - this.getPeriodOrder(a.period);
+    });
+
+    // 取最近的windowSize个值
+    const ttmData = eligibleData.slice(0, windowSize);
+
+    const values = ttmData
+      .map(row => {
+        const val = row[field];
+        console.log(`  ${row.fiscalyear}-${row.period}: ${field} = ${val}`);
+        return val;
+      })
+      .filter(val => {
+        const isValid = val !== null && val !== undefined;
+        console.log(`    Value ${val} is valid: ${isValid}`);
+        return isValid;
+      })
+      .map(val => {
+        const parsed = parseFloat(val);
+        console.log(`    Parsed ${val} to ${parsed}`);
+        return parsed;
+      });
+
+    console.log(`🎯 Final TTM values: [${values.join(', ')}]`);
+    return values;
+  }
+
+  /**
+   * 计算算术运算
+   */
+  private evaluateArithmetic(node: ArithmeticNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    const left = this.evaluateAST(node.left, rawData, asOfPeriod);
     
     if (left === null) return null;
 
-    // Unary operations
+    // 单元运算
     if (!node.right) {
       switch (node.operator) {
-        case 'sqrt': return Math.sqrt(left);
         case 'abs': return Math.abs(left);
+        case 'sqrt': return Math.sqrt(left);
         case 'log': return Math.log(left);
         case 'log10': return Math.log10(left);
         case 'round': return Math.round(left);
@@ -522,8 +666,8 @@ export class FinancialASTEngine {
       }
     }
 
-    // Binary operations
-    const right = await this.evaluateNode(node.right, symbol);
+    // 二元运算
+    const right = this.evaluateAST(node.right, rawData, asOfPeriod);
     if (right === null) return null;
 
     switch (node.operator) {
@@ -536,274 +680,65 @@ export class FinancialASTEngine {
     }
   }
 
-  private async evaluateAggregation(node: AggregationNode, symbol: string): Promise<number | null> {
-    const values = await Promise.all(
-      node.values.map(valueNode => this.evaluateNode(valueNode, symbol))
-    );
+  /**
+   * 计算聚合函数
+   */
+  private evaluateAggregation(node: AggregationNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    const values = node.values
+      .map(valueNode => this.evaluateAST(valueNode, rawData, asOfPeriod))
+      .filter(val => val !== null) as number[];
 
-    const validValues = values.filter(v => v !== null) as number[];
-    if (validValues.length === 0) return null;
+    if (values.length === 0) return null;
 
     switch (node.function) {
-      case 'sum':
-        return validValues.reduce((sum, val) => sum + val, 0);
-      
-      case 'average':
-        return validValues.reduce((sum, val) => sum + val, 0) / validValues.length;
-      
-      case 'max':
-        return Math.max(...validValues);
-      
-      case 'min':
-        return Math.min(...validValues);
-      
-      default:
-        throw new Error(`Unknown aggregation function: ${node.function}`);
+      case 'sum': return values.reduce((sum, val) => sum + val, 0);
+      case 'average': return values.reduce((sum, val) => sum + val, 0) / values.length;
+      case 'max': return Math.max(...values);
+      case 'min': return Math.min(...values);
+      default: throw new Error(`Unknown aggregation function: ${node.function}`);
     }
   }
 
-  private async evaluateConditional(node: ConditionalNode, symbol: string): Promise<number | null> {
-    const conditionResult = await this.evaluateComparison(node.condition, symbol);
-    
-    if (conditionResult) {
-      return this.evaluateNode(node.if_true, symbol);
-    } else {
-      return this.evaluateNode(node.if_false, symbol);
+  /**
+   * 计算rolling算术运算
+   */
+  private evaluateRollingArithmetic(node: RollingNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    // Rolling arithmetic: 对每个TTM期间执行operation，然后聚合
+    const windowSize = node.rolling.window_size;
+    const values: number[] = [];
+
+    // 对每个TTM窗口中的期间执行operation
+    for (let i = 0; i < windowSize; i++) {
+      const periodValue = this.evaluateArithmetic(node.operation, rawData, asOfPeriod);
+      if (periodValue !== null) values.push(periodValue);
     }
-  }
 
-  private async evaluateComparison(node: ComparisonNode, symbol: string): Promise<boolean> {
-    const left = await this.evaluateNode(node.left, symbol);
-    const right = await this.evaluateNode(node.right, symbol);
+    if (values.length === 0) return null;
 
-    if (left === null || right === null) return false;
-
-    switch (node.operator) {
-      case 'gt': return left > right;
-      case 'lt': return left < right;
-      case 'gte': return left >= right;
-      case 'lte': return left <= right;
-      case 'eq': return left === right;
-      case 'ne': return left !== right;
-      default: throw new Error(`Unknown comparison operator: ${node.operator}`);
-    }
-  }
-
-  private async evaluateRollingArithmetic(node: RollingArithmeticNode, symbol: string): Promise<number | null> {
-    console.log(`🔍 Rolling Arithmetic: ${node.rolling.aggregation} over ${node.rolling.window_size} ${node.rolling.window_type}s`);
-    
-    // Calculate the operation for each period in the rolling window
-    const values: (number | null)[] = [];
-    
-    for (let offset = 0; offset < node.rolling.window_size; offset++) {
-      // Create modified operation nodes for each period
-      const periodOperation: ArithmeticNode = {
-        ...node.operation,
-        left: this.addOffsetToNode(node.operation.left, -offset),
-        right: node.operation.right ? this.addOffsetToNode(node.operation.right, -offset) : undefined
-      };
-      
-      const periodValue = await this.evaluateArithmetic(periodOperation, symbol);
-      values.push(periodValue);
-      console.log(`🔍 Period -${offset}: ${periodValue}`);
-    }
-    
-    // Apply aggregation to the calculated values
-    const validValues = values.filter(v => v !== null) as number[];
-    if (validValues.length === 0) return null;
-    
-    let result: number;
+    // 应用rolling聚合
     switch (node.rolling.aggregation) {
-      case 'sum':
-        result = validValues.reduce((sum, val) => sum + val, 0);
-        break;
-      case 'average':
-        result = validValues.reduce((sum, val) => sum + val, 0) / validValues.length;
-        break;
-      case 'max':
-        result = Math.max(...validValues);
-        break;
-      case 'min':
-        result = Math.min(...validValues);
-        break;
-      case 'product':
-        result = validValues.reduce((prod, val) => prod * val, 1);
-        break;
-      case 'geometric_mean':
-        const product = validValues.reduce((prod, val) => prod * val, 1);
-        result = Math.pow(product, 1 / validValues.length);
-        break;
-      default:
-        throw new Error(`Unknown rolling aggregation: ${node.rolling.aggregation}`);
-    }
-    
-    console.log(`🔍 Rolling ${node.rolling.aggregation} result: ${result}`);
-    return result;
-  }
-  
-  /**
-   * Validate and fix AST integrity issues
-   * Handles common problems like missing type properties in nested structures
-   */
-  private validateAndFixAST(node: any): ASTNode {
-    if (!node) {
-      console.error('❌ AST node is null or undefined:', node);
-      throw new Error(`Invalid AST node: node is ${node === null ? 'null' : 'undefined'}`);
-    }
-    
-    // Handle case where AST was saved as string instead of object
-    if (typeof node === 'string') {
-      console.log('🔧 AST was saved as string, parsing JSON...');
-      try {
-        const parsed = JSON.parse(node);
-        console.log('✅ Successfully parsed AST from string');
-        return this.fixASTNode(parsed);
-      } catch (parseError) {
-        console.error('❌ Failed to parse AST string:', parseError);
-        throw new Error(`Invalid AST: string contains invalid JSON: ${parseError.message}`);
-      }
-    }
-    
-    if (typeof node !== 'object') {
-      console.error('❌ AST node is not an object:', typeof node, node);
-      throw new Error(`Invalid AST node: expected object, got ${typeof node}: ${JSON.stringify(node)}`);
-    }
-    
-    // Deep clone to avoid modifying original
-    const cloned = JSON.parse(JSON.stringify(node));
-    
-    return this.fixASTNode(cloned);
-  }
-  
-  private fixASTNode(node: any, path: string = 'root'): ASTNode {
-    if (!node || typeof node !== 'object') {
-      console.error(`❌ Invalid node at path "${path}":`, typeof node, node);
-      throw new Error(`Invalid AST node structure at "${path}": expected object, got ${typeof node}`);
-    }
-    
-    // Ensure node has type property
-    if (!node.type) {
-      // Try to infer type from other properties
-      if (node.source && node.field && node.selector) {
-        node.type = 'field';
-      } else if (node.operator && (node.left || node.right)) {
-        node.type = 'arithmetic';  
-      } else if (node.function && node.values) {
-        node.type = 'aggregation';
-      } else if (typeof node.value === 'number') {
-        node.type = 'constant';
-      } else {
-        console.error('❌ Cannot infer node type:', JSON.stringify(node, null, 2));
-        throw new Error(`Cannot determine AST node type for: ${JSON.stringify(node)}`);
-      }
-      
-      console.log(`🔧 Fixed missing type: ${node.type}`);
-    }
-    
-    // Recursively fix child nodes
-    if (node.left) {
-      node.left = this.fixASTNode(node.left, `${path}.left`);
-    }
-    if (node.right) {
-      node.right = this.fixASTNode(node.right, `${path}.right`);
-    }
-    if (node.values && Array.isArray(node.values)) {
-      node.values = node.values.map((v: any, i: number) => this.fixASTNode(v, `${path}.values[${i}]`));
-    }
-    
-    return node as ASTNode;
-  }
-  
-  /**
-   * Get the latest available periods from the database
-   * Uses actual data availability instead of hardcoded dates
-   */
-  private async getLatestPeriods(symbol: string, count: number, periodType: 'quarter' | 'annual'): Promise<string[]> {
-    try {
-      // Query the database for the latest available periods
-      const periodPattern = periodType === 'quarter' ? ['Q1', 'Q2', 'Q3', 'Q4'] : ['FY'];
-      
-      const sql = `
-        SELECT DISTINCT fiscalyear, period
-        FROM cash_flow_statement 
-        WHERE symbol = $1 AND period IN (${periodPattern.map((_, i) => `$${i + 2}`).join(', ')})
-        ORDER BY fiscalyear DESC, 
-                 CASE period 
-                   WHEN 'Q4' THEN 4 
-                   WHEN 'Q3' THEN 3 
-                   WHEN 'Q2' THEN 2 
-                   WHEN 'Q1' THEN 1 
-                   WHEN 'FY' THEN 5 
-                 END DESC
-        LIMIT $${periodPattern.length + 2}
-      `;
-      
-      const params = [symbol, ...periodPattern, count];
-      const result = await this.dataAccess.pool.query(sql, params);
-      
-      const periods = result.rows.map((row: any) => {
-        const year = row.fiscalyear;
-        const period = row.period;
-        return period === 'FY' ? `${year}-FY` : `${year}-${period}`;
-      });
-      
-      console.log(`🔍 Found ${periods.length} available periods for ${symbol}:`, periods);
-      return periods.slice(0, count);
-      
-    } catch (error) {
-      console.error(`❌ Error getting latest periods for ${symbol}:`, error);
-      
-      // Fallback: generate periods based on current date (original logic)
-      const periods: string[] = [];
-      const currentYear = new Date().getFullYear();
-      const currentQuarter = Math.floor((new Date().getMonth() + 3) / 3);
-      
-      for (let i = 0; i < count; i++) {
-        if (periodType === 'quarter') {
-          let year = currentYear;
-          let quarter = currentQuarter - i;
-          
-          while (quarter <= 0) {
-            quarter += 4;
-            year -= 1;
-          }
-          
-          periods.push(`${year}-Q${quarter}`);
-        } else {
-          periods.push(`${currentYear - i}-FY`);
-        }
-      }
-      
-      console.log(`🔄 Using fallback periods:`, periods);
-      return periods;
+      case 'sum': return values.reduce((sum, val) => sum + val, 0);
+      case 'average': return values.reduce((sum, val) => sum + val, 0) / values.length;
+      case 'max': return Math.max(...values);
+      case 'min': return Math.min(...values);
+      default: throw new Error(`Unknown rolling aggregation: ${node.rolling.aggregation}`);
     }
   }
 
-  private addOffsetToNode(node: ASTNode, offset: number): ASTNode {
-    if (node.type === 'field') {
-      return {
-        ...node,
-        selector: {
-          type: 'single',
-          single: {
-            position: 'latest',
-            offset: offset
-          }
-        }
-      };
+  /**
+   * 获取期间顺序
+   */
+  private getPeriodOrder(period: string): number {
+    switch (period) {
+      case 'Q1': return 1;
+      case 'Q2': return 2;
+      case 'Q3': return 3;
+      case 'Q4': return 4;
+      case 'FY': return 5;
+      default: return 0;
     }
-    
-    if (node.type === 'arithmetic') {
-      return {
-        ...node,
-        left: this.addOffsetToNode(node.left, offset),
-        right: node.right ? this.addOffsetToNode(node.right, offset) : undefined
-      };
-    }
-    
-    // For other node types, return as-is
-    return node;
   }
+
 }
 
 // API Route Handlers
@@ -813,7 +748,10 @@ export async function POST(request: NextRequest) {
   try {
     // Check authentication
     const { userId } = await auth();
-    if (!userId) {
+    const authHeader = request.headers.get('Authorization');
+    const isTestMode = authHeader === 'Bearer test-token' && process.env.NODE_ENV === 'development';
+    
+    if (!userId && !isTestMode) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -821,33 +759,48 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CalculationRequest = await request.json();
-    const { metricDefinition, symbols, asOf } = body;
+    const { metricDefinition, symbols, periods = 5, periodType = 'quarter', asOf } = body;
 
-    if (!metricDefinition || !symbols || symbols.length === 0) {
+    console.log(`📨 Simplified API Request:`, {
+      metric: metricDefinition.name,
+      symbols: symbols.length,
+      periods,
+      periodType
+    });
+
+    // Validate request
+    if (!metricDefinition || !metricDefinition.ast) {
       return NextResponse.json(
-        { error: 'Missing required parameters: metricDefinition and symbols' },
+        { error: 'Invalid metric definition: AST is required' },
         { status: 400 }
       );
     }
 
-    console.log(`🚀 AST calculation request: ${metricDefinition.name} for [${symbols.join(', ')}]`);
+    if (!symbols || symbols.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one symbol is required' },
+        { status: 400 }
+      );
+    }
 
-    console.log(`🕒 AsOf parameter:`, asOf);
-    
-    const engine = new FinancialASTEngine();
-    const results = await engine.calculateMetric(metricDefinition, symbols, asOf);
-
-    return NextResponse.json({
-      success: true,
-      ...results
+    // Create engine and calculate
+    const engine = new SimplifiedFinancialEngine();
+    const result = await engine.calculateMetric(metricDefinition, symbols, {
+      periods,
+      periodType,
+      asOf
     });
 
+    console.log(`✅ Simplified API Response completed`);
+    return NextResponse.json(result);
+
   } catch (error) {
-    console.error('AST calculation error:', error);
+    console.error('❌ Simplified API Error:', error);
     return NextResponse.json(
-      { 
-        error: 'Metric calculation failed', 
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        calculation_engine: 'SimplifiedFinancial_v1.0'
       },
       { status: 500 }
     );

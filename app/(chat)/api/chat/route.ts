@@ -238,7 +238,7 @@ export async function POST(request: Request) {
                 periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-12). Default 4 gets last 4 quarters'),
                 periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
                 asOf: z.string().optional().describe('Latest time point for analysis. Format: "YYYY-QN" (e.g., "2024-Q3"). If omitted, uses most recent data'),
-                includeHistorical: z.boolean().optional().default(false).describe('Whether to include historical data for trend analysis (calculates metric for multiple time points)')
+// Removed includeHistorical - periods parameter directly controls number of time points returned
               }),
               execute: async (params) => {
                 try {
@@ -279,100 +279,90 @@ export async function POST(request: Request) {
                     // Use high-performance AST engine
                     console.log('🧮 Executing AST calculation for metric:', fullMetric.name);
                     console.log('🔍 Full Metric Object:', JSON.stringify(fullMetric, null, 2));
-                    console.log('🔍 AST Definition:', JSON.stringify(fullMetric.astDefinition, null, 2));
-                    console.log('🔍 Include Historical:', params.includeHistorical, 'Periods:', params.periods);
+                    
+                    // Parse astDefinition if it's a string (common issue with Convex storage)
+                    let parsedAstDefinition = fullMetric.astDefinition;
+                    if (typeof fullMetric.astDefinition === 'string') {
+                      console.log('🔧 AST Definition is string, parsing...');
+                      try {
+                        parsedAstDefinition = JSON.parse(fullMetric.astDefinition);
+                        console.log('✅ Successfully parsed AST from string');
+                      } catch (parseError) {
+                        console.error('❌ Failed to parse AST string:', parseError);
+                        return `❌ Invalid AST definition stored in database: ${parseError.message}`;
+                      }
+                    }
+                    
+                    console.log('🔍 Parsed AST Definition:', JSON.stringify(parsedAstDefinition, null, 2));
+                    console.log('🔍 Periods:', params.periods, 'Period Type:', params.periodType);
                     
                     // Import and use AST engine directly to avoid URL resolution issues
-                    const { FinancialASTEngine } = await import('@/app/api/calculate-metric-ast/route');
-                    const astEngine = new FinancialASTEngine();
+                    console.log('⚡ About to import SimplifiedFinancialEngine...');
+                    const { SimplifiedFinancialEngine } = await import('@/app/api/calculate-metric-ast/route');
+                    console.log('✅ SimplifiedFinancialEngine imported successfully');
                     
-                    if (!params.includeHistorical) {
-                      // Simple case: single time point (current behavior)
-                      calculationResults = await astEngine.calculateMetric({
+                    console.log('⚡ About to create new SimplifiedFinancialEngine instance...');
+                    const astEngine = new SimplifiedFinancialEngine();
+                    console.log('✅ SimplifiedFinancialEngine instance created successfully');
+                    
+                    let calculationResult;
+                    
+                    // Always use the unified calculation approach
+                    console.log('⚡ About to call astEngine.calculateMetric...');
+                    console.log('🔍 Parameters for calculateMetric:', {
+                      metricName: fullMetric.name,
+                      symbols: params.symbols,
+                      options: {
+                        periods: params.periods,
+                        periodType: params.periodType,
+                        asOf: params.asOf
+                      }
+                    });
+                    
+                    try {
+                      calculationResult = await astEngine.calculateMetric({
                         name: fullMetric.name,
                         description: fullMetric.description,
                         formula_display: fullMetric.formula,
                         category: fullMetric.category,
-                        ast: fullMetric.astDefinition,
+                        ast: parsedAstDefinition,  // Use parsed AST definition
                         data_requirements: fullMetric.dataRequirements || {}
-                      }, params.symbols, params.asOf);
-                    } else {
-                      // Historical analysis: calculate for multiple time points
-                      const periodsToCalculate = params.periods || 2;
-                      const isQuarterly = params.periodType === 'quarter';
+                      }, params.symbols, {
+                        periods: params.periods,
+                        periodType: params.periodType,
+                        asOf: params.asOf
+                      });
                       
-                      // Generate time points (working backwards from asOf or latest)
-                      const timePoints: string[] = [];
-                      let baseYear = 2024;
-                      let baseQuarter = 3; // Default to Q3 2024
-                      
-                      if (params.asOf) {
-                        const parts = params.asOf.split('-');
-                        baseYear = parseInt(parts[0]);
-                        if (parts[1].startsWith('Q')) {
-                          baseQuarter = parseInt(parts[1].substring(1));
-                        }
-                      }
-                      
-                      for (let i = 0; i < periodsToCalculate; i++) {
-                        if (isQuarterly) {
-                          let year = baseYear;
-                          let quarter = baseQuarter - i;
-                          
-                          // Handle quarter underflow
-                          while (quarter <= 0) {
-                            quarter += 4;
-                            year -= 1;
-                          }
-                          
-                          timePoints.push(`${year}-Q${quarter}`);
-                        } else {
-                          timePoints.push(`${baseYear - i}-FY`);
-                        }
-                      }
-                      
-                      console.log('🕒 Historical time points:', timePoints);
-                      
-                      // Calculate for each time point using the SAME engine
-                      const allResults: any[] = [];
-                      for (const timePoint of timePoints) {
-                        try {
-                          const result = await astEngine.calculateMetric({
-                            name: fullMetric.name,
-                            description: fullMetric.description,
-                            formula_display: fullMetric.formula,
-                            category: fullMetric.category,
-                            ast: fullMetric.astDefinition,
-                            data_requirements: fullMetric.dataRequirements || {}
-                          }, params.symbols, timePoint);
-                          
-                          allResults.push({
-                            timePoint,
-                            ...result
-                          });
-                        } catch (error) {
-                          console.warn(`⚠️ Failed to calculate for ${timePoint}:`, error);
-                          allResults.push({
-                            timePoint,
-                            error: error.message,
-                            results: {}
-                          });
-                        }
-                      }
-                      
-                      // Format as historical results but keep same engine identifier
-                      calculationResults = {
-                        metric_name: fullMetric.name,
-                        historical_periods: allResults,
-                        calculation_engine: 'Financial_AST_SQL_v1.0' // Same engine, just called multiple times
-                      };
+                      console.log('✅ astEngine.calculateMetric completed successfully');
+                      console.log('📊 Calculation result:', JSON.stringify(calculationResult, null, 2));
+                    } catch (calcError) {
+                      console.error('❌ astEngine.calculateMetric failed:', calcError);
+                      throw calcError;
                     }
-                    
-                    const calculationResult = calculationResults;
 
                     console.log('🔍 Calculation Result:', JSON.stringify(calculationResult, null, 2));
-                    const success = calculationResult.calculation_engine === 'Financial_AST_SQL_v1.0';
-                    console.log('🔍 Success Check:', success, calculationResult.calculation_engine);
+                    
+                    // 详细的成功检查调试
+                    console.log('🔍 Success Check Details:');
+                    console.log(`  - calculation_engine: "${calculationResult.calculation_engine}"`);
+                    console.log(`  - calculation_engine === 'SimplifiedFinancial_v1.0': ${calculationResult.calculation_engine === 'SimplifiedFinancial_v1.0'}`);
+                    console.log(`  - results exists: ${!!calculationResult.results}`);
+                    console.log(`  - results keys: ${calculationResult.results ? Object.keys(calculationResult.results) : 'null'}`);
+                    console.log(`  - results keys length: ${calculationResult.results ? Object.keys(calculationResult.results).length : 0}`);
+                    
+                    // 检查每个结果的success状态
+                    if (calculationResult.results) {
+                      Object.entries(calculationResult.results).forEach(([symbol, result]: [string, any]) => {
+                        console.log(`  - ${symbol} success: ${result?.success}`);
+                        console.log(`  - ${symbol} periods count: ${result?.periods?.length || 0}`);
+                      });
+                    }
+                    
+                    const success = calculationResult.calculation_engine === 'SimplifiedFinancial_v1.0' && 
+                                    calculationResult.results && 
+                                    Object.keys(calculationResult.results).length > 0 &&
+                                    Object.values(calculationResult.results).some((result: any) => result.success);
+                    console.log('🔍 Final Success Check:', success);
 
                     const executionTime = Date.now() - startTime;
                     
@@ -384,27 +374,27 @@ export async function POST(request: Request) {
                     });
 
                     if (!success) {
-                      return `❌ Calculation failed: ${calculationResult.error}`;
+                      return `❌ Calculation failed: No results were generated for any symbols`;
                     }
 
                     // Format results for LLM consumption
                     let formattedOutput = `📊 **${fullMetric.name} Calculation Results**\n\n`;
                     formattedOutput += `⚡ *High-Performance JSON AST Engine*\n`;
-                    if (params.includeHistorical) {
+                    if (params.periods && params.periods > 1) {
                       formattedOutput += `📈 *Historical Analysis: ${params.periods} ${params.periodType}s*\n`;
                     }
                     if (params.asOf) {
-                      formattedOutput += `🕒 *${params.includeHistorical ? 'Latest period' : 'As of'}: ${params.asOf}*\n`;
+                      formattedOutput += `🕒 *As of: ${params.asOf}*\n`;
                     }
                     formattedOutput += `\n`;
                     
                     // Handle different result formats
-                    if (calculationResult.historical_periods) {
+                    if ('historical_periods' in calculationResult && Array.isArray(calculationResult.historical_periods)) {
                       // Historical analysis results - simple table
                       formattedOutput += `| Period | ${params.symbols.join(' | ')} |\n`;
                       formattedOutput += `|--------|${params.symbols.map(() => '--------').join('|')}|\n`;
                       
-                      calculationResult.historical_periods.forEach((periodResult: any) => {
+                      (calculationResult as any).historical_periods.forEach((periodResult: any) => {
                         formattedOutput += `| ${periodResult.timePoint} |`;
                         params.symbols.forEach((symbol: string) => {
                           const symbolResult = periodResult.results?.[symbol];
@@ -423,24 +413,27 @@ export async function POST(request: Request) {
                         formattedOutput += `\n`;
                       });
                       
-                    } else if (calculationResult.results) {
-                      // Single point analysis results (original format)
+                    } else if ('results' in calculationResult && calculationResult.results) {
+                      // SimplifiedFinancialEngine format with periods array
                       Object.entries(calculationResult.results).forEach(([symbol, result]: [string, any]) => {
                         formattedOutput += `**${symbol}:**\n`;
-                        if (result.success && result.value !== null) {
-                          // Format the value appropriately
-                          const value = result.value;
-                          if (typeof value === 'number') {
-                            // Format as percentage for ratios, or regular number for others
-                            if (fullMetric.category === 'profitability' && value < 10) {
-                              formattedOutput += `- ${fullMetric.name}: ${(value * 100).toFixed(2)}%\n`;
+                        if (result.success && result.periods && result.periods.length > 0) {
+                          // Display each period's value
+                          result.periods.forEach((period: any) => {
+                            if (period.success && period.value !== null) {
+                              const value = period.value;
+                              if (typeof value === 'number') {
+                                formattedOutput += `- ${period.period}: ${value.toFixed(4)}x\n`;
+                              } else {
+                                formattedOutput += `- ${period.period}: ${value}\n`;
+                              }
                             } else {
-                              formattedOutput += `- ${fullMetric.name}: ${value.toFixed(4)}\n`;
+                              formattedOutput += `- ${period.period}: N/A\n`;
                             }
-                          }
+                          });
                           formattedOutput += `- Formula: ${result.formula}\n`;
                         } else {
-                          formattedOutput += `- Error: ${result.error || 'Calculation failed'}\n`;
+                          formattedOutput += `- Error: ${result.error || 'No successful calculations'}\n`;
                         }
                         formattedOutput += '\n';
                       });
@@ -450,6 +443,7 @@ export async function POST(request: Request) {
 
                     formattedOutput += `\n⏱️ Execution Time: ${(executionTime/1000).toFixed(2)}s`;
 
+                    console.log('🎯 About to return formatted output:', formattedOutput.substring(0, 200) + '...');
                     return formattedOutput;
                   } catch (error) {
                     await convex.mutation(api.metrics.recordUsage, {

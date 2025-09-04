@@ -43,7 +43,9 @@
       "Bash(/bashes)",
       "Bash(PORT=3000 pnpm dev)",
       "Bash(psql:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(npm run lint)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": [],
