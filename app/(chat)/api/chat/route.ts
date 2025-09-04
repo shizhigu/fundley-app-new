@@ -181,7 +181,7 @@ export async function POST(request: Request) {
         const result = streamText({
           model,
           system: enhancedSystemPrompt,
-          messages: convertToModelMessages(processedMessages),
+          messages: convertToModelMessages(processedMessages as any),
           stopWhen: stepCountIs(5),
           // 统一使用tools配置，不需要experimental_activeTools
           experimental_transform: smoothStream({ chunking: 'word' }),
