@@ -21,14 +21,14 @@ import type { VisibilityType } from '@/components/visibility-selector';
 interface ChatViewProps {
   chatId: Id<"chats">;
   initialChatModel: string;
-  session: AuthSession;
+  user: AuthSession['user'];
   onToggleSidebar: () => void;
 }
 
 export function ChatView({
   chatId,
   initialChatModel,
-  session,
+  user,
   onToggleSidebar,
 }: ChatViewProps) {
   // Get messages for this specific chat
@@ -50,7 +50,7 @@ export function ChatView({
     <ChatViewContent
       chatId={chatId}
       initialChatModel={initialChatModel}
-      session={session}
+      user={session?.user || null}
       onToggleSidebar={onToggleSidebar}
       messagesFromDb={messagesFromDb}
       chat={chat}
@@ -62,7 +62,7 @@ export function ChatView({
 function ChatViewContent({
   chatId,
   initialChatModel,
-  session,
+  user,
   onToggleSidebar,
   messagesFromDb,
   chat,
@@ -154,7 +154,7 @@ function ChatViewContent({
             attachments={attachments}
             setAttachments={setAttachments}
             selectedVisibilityType="private"
-            session={session}
+            user={session?.user || null}
             selectedModelId={selectedChatModel}
             setSelectedModelId={setSelectedChatModel}
           />

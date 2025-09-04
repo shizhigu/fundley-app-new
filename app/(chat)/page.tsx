@@ -13,7 +13,7 @@ export default async function Page() {
   return (
     <PersistentChat 
       initialChatModel={DEFAULT_MODEL}
-      session={session}
+      user={session.user}
       preloadedMessages={null}
     />
   );

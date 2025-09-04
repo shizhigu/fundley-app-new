@@ -10,12 +10,12 @@ import { ChatView } from '@/components/chat-view';
 
 interface ChatInterfaceProps {
   initialChatModel: string;
-  session: AuthSession;
+  user: AuthSession['user'];
 }
 
 export function ChatInterface({
   initialChatModel,
-  session,
+  user,
 }: ChatInterfaceProps) {
   const [selectedChatId, setSelectedChatId] = useState<Id<"chats"> | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -49,7 +49,7 @@ export function ChatInterface({
         });
       }
     }
-  }, [session, selectedChatId, chats, isInitializing, getOrCreateDefault]);
+  }, [user, selectedChatId, chats, isInitializing, getOrCreateDefault]);
 
   // Loading state - ensure session is fully loaded
   if (!session || !session.user || !chats || !selectedChatId || isInitializing) {
@@ -69,7 +69,7 @@ export function ChatInterface({
         onChatSelect={setSelectedChatId}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        session={session}
+        user={session?.user || null}
       />
       
       {/* Main Chat Area */}
@@ -77,7 +77,7 @@ export function ChatInterface({
         <ChatView
           chatId={selectedChatId}
           initialChatModel={initialChatModel}
-          session={session}
+          user={session?.user || null}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
       </div>

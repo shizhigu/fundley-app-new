@@ -20,11 +20,11 @@ export function useChatContext() {
 }
 
 interface ChatLayoutProviderProps {
-  session: AuthSession | null;
+  user: AuthSession['user'];
   children: React.ReactNode;
 }
 
-export function ChatLayoutProvider({ session, children }: ChatLayoutProviderProps) {
+export function ChatLayoutProvider({ user, children }: ChatLayoutProviderProps) {
   const [selectedChatId, setSelectedChatId] = useState<string | undefined>(undefined);
 
   // 🔄 Load last selected chat from localStorage on mount
@@ -51,7 +51,7 @@ export function ChatLayoutProvider({ session, children }: ChatLayoutProviderProp
     <ChatContext.Provider value={{ selectedChatId, setSelectedChatId }}>
       <div className="professional-layout flex max-w-full">
         <NavigationSidebar 
-          user={session?.user || null}
+          user={user}
           selectedChatId={selectedChatId}
           onChatSelect={handleChatSelect}
         />

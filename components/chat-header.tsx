@@ -10,13 +10,13 @@ function PureChatHeader({
   selectedModelId,
   selectedVisibilityType,
   isReadonly,
-  session,
+  user,
 }: {
   chatId: string;
   selectedModelId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: AuthSession;
+  user: AuthSession['user'];
 }) {
 
   return (

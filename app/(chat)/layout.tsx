@@ -20,7 +20,7 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <DataStreamProvider>
-        <ChatLayoutProvider session={session}>
+        <ChatLayoutProvider user={session?.user || null}>
           <div className="flex-1 overflow-hidden max-w-full min-w-0">
             {children}
           </div>

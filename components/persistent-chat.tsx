@@ -10,13 +10,13 @@ import { useChatContext } from '@/components/chat-layout-provider';
 
 interface PersistentChatProps {
   initialChatModel: string;
-  session: AuthSession;
+  user: AuthSession['user'];
   preloadedMessages: Preloaded<typeof api.messages.list> | null;
 }
 
 export function PersistentChat({
   initialChatModel,
-  session,
+  user,
   preloadedMessages,
 }: PersistentChatProps) {
   // 使用Context获取选中的chatId
@@ -29,8 +29,8 @@ export function PersistentChat({
   
   // 🔄 实时更新（认证后） - 这是主要的数据源（默认chat）
   const realtimeMessages = useQuery(
-    session?.user && !selectedChatId ? api.messages.listForPersistentChat : "skip",
-    session?.user && !selectedChatId ? {} : "skip"
+    user && !selectedChatId ? api.messages.listForPersistentChat : "skip",
+    user && !selectedChatId ? {} : "skip"
   );
   
   // 暂时简化：不使用预加载数据，只使用实时数据
@@ -40,7 +40,7 @@ export function PersistentChat({
   const messages = selectedChatMessages ?? realtimeMessages;
   
   // 只在用户已认证但没有数据时显示加载状态
-  const isLoading = session?.user && !messages;
+  const isLoading = user && !messages;
 
   // Convert messages once when data changes
   const initialMessages = useMemo(() => {
@@ -71,7 +71,7 @@ export function PersistentChat({
       initialChatModel={initialChatModel}
       initialVisibilityType="private"
       isReadonly={false}
-      session={session}
+      user={user}
       autoResume={false}
     />
   );

@@ -30,7 +30,7 @@ export function Chat({
   initialChatModel,
   initialVisibilityType,
   isReadonly,
-  session,
+  user,
   autoResume,
 }: {
   id: string;
@@ -38,7 +38,7 @@ export function Chat({
   initialChatModel: string;
   initialVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: AuthSession;
+  user: AuthSession['user'];
   autoResume: boolean;
 }) {
   // Simple state-based model selection - no cookies needed
@@ -148,7 +148,7 @@ export function Chat({
           selectedModelId={selectedModel}
           selectedVisibilityType={initialVisibilityType}
           isReadonly={isReadonly}
-          session={session}
+          user={user}
         />
 
         {/* Messages area with full height and internal scrolling */}
@@ -179,7 +179,7 @@ export function Chat({
               setMessages={setMessages}
               sendMessage={sendMessage}
               selectedVisibilityType={visibilityType}
-              session={session}
+              user={user}
               selectedModelId={selectedModel}
               setSelectedModelId={setSelectedModel}
             />

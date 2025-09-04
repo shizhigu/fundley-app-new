@@ -50,7 +50,7 @@ function PureMultimodalInput({
   sendMessage,
   className,
   selectedVisibilityType,
-  session,
+  user,
   selectedModelId,
   setSelectedModelId,
 }: {
@@ -65,7 +65,7 @@ function PureMultimodalInput({
   sendMessage: UseChatHelpers<ChatMessage>['sendMessage'];
   className?: string;
   selectedVisibilityType: VisibilityType;
-  session: AuthSession;
+  user: AuthSession['user'];
   selectedModelId: string;
   setSelectedModelId?: (modelId: string) => void;
 }) {
@@ -320,7 +320,7 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-        <CompactModelSelector session={session} selectedModelId={selectedModelId} setSelectedModelId={setSelectedModelId} />
+        <CompactModelSelector user={user} selectedModelId={selectedModelId} setSelectedModelId={setSelectedModelId} />
       </div>
 
       <div className="absolute bottom-0 right-0 p-3 flex flex-row items-center">
@@ -379,18 +379,18 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 
 // Compact Model Selector for input area
 function PureCompactModelSelector({
-  session,
+  user,
   selectedModelId,
   setSelectedModelId,
 }: {
-  session: AuthSession;
+  user: AuthSession['user'];
   selectedModelId: string;
   setSelectedModelId?: (modelId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [optimisticModelId, setOptimisticModelId] = useOptimistic(selectedModelId);
 
-  const userType = session.user?.type ?? 'guest';
+  const userType = user?.type ?? 'guest';
   const { availableChatModelIds } = entitlementsByUserType[userType];
 
   const availableChatModels = chatModels.filter((chatModel) =>

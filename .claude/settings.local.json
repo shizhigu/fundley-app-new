@@ -49,7 +49,9 @@
       "Bash(ESLINT_NO_DEV_ERRORS=true pnpm build)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(chmod:*)",
+      "Bash(./fix-session-props.sh:*)"
     ],
     "deny": [],
     "ask": [],
