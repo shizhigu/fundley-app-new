@@ -90,7 +90,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
 
       if (args.session?.user?.id) {
         await args.convex.mutation(api.documents.update, {
-          id: args.document.id as any,
+          id: args.document._id as any,
           title: args.document.title,
           content: draftContent,
         });

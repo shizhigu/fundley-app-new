@@ -76,7 +76,7 @@ export const DocumentMessage = memo(function DocumentMessage({
           const doc = data[0];
           // Open the artifact with the document data
           setArtifact({
-            documentId: doc.id,
+            documentId: doc._id,
             title: doc.title,
             kind: doc.kind as any,
             content: doc.content || '',
@@ -214,7 +214,7 @@ export const DocumentMessageCompact = memo(function DocumentMessageCompact({
         if (data && data.length > 0) {
           const doc = data[0];
           setArtifact({
-            documentId: doc.id,
+            documentId: doc._id,
             title: doc.title,
             kind: doc.kind as any,
             content: doc.content || '',

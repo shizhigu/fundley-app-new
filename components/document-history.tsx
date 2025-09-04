@@ -132,8 +132,8 @@ export const DocumentHistory = memo(function DocumentHistory({
             <div className="space-y-2">
               {docs.map(doc => (
                 <DocumentMessage
-                  key={doc.id}
-                  documentId={doc.id}
+                  key={doc._id}
+                  documentId={doc._id}
                   title={doc.title}
                   kind={doc.kind as any}
                   preview={doc.content || undefined}
@@ -171,8 +171,8 @@ export const DocumentHistorySidebar = memo(function DocumentHistorySidebar() {
           
           return (
             <DocumentMessage
-              key={doc.id}
-              documentId={doc.id}
+              key={doc._id}
+              documentId={doc._id}
               title={doc.title}
               kind={doc.kind as any}
             />
