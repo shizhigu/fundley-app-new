@@ -20,7 +20,7 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
       <Streamdown 
         parseIncompleteMarkdown={true}
         className="streamdown-content"
-        shikiTheme="github-dark"
+        shikiTheme={["github-light", "github-dark"]}
         components={{
           code: ({ children, className, ...props }) => {
             const isInlineCode = !className;
