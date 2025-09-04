@@ -124,7 +124,7 @@ function getPool(): Pool {
 /**
  * 简化版本的财务计算引擎
  */
-export class SimplifiedFinancialEngine {
+class SimplifiedFinancialEngine {
   private pool: Pool;
 
   constructor() {
