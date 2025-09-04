@@ -7,65 +7,55 @@ import { cn } from '@/lib/utils';
 import { markdownRenderer } from '@/lib/markdown-renderer';
 import { useMermaid } from '@/hooks/use-mermaid';
 
-// 示例Memo数据
+// 示例Memo数据 - 使用String concatenation避免模板字符串问题
+const TSLA_CONTENT = '# Tesla (TSLA) 财务分析要点\n\n' +
+  '## 关键财务指标\n' +
+  '- **毛利率**: ~19.3% (2023 Q4)\n' +
+  '- **自由现金流**: $2.1B (季度)\n' +
+  '- **交付量增长**: 38% YoY\n\n' +
+  '## 风险因素\n' +
+  '- [ ] 竞争加剧（传统车企转型）\n' +
+  '- [ ] 中国市场政策变化\n' +
+  '- [x] 产能利用率优化\n\n' +
+  '## 估值模型\n\n' +
+  '假设DCF模型中的增长率为 **15%**，计算公式：\n\n' +
+  '$$PV = \\sum_{t=1}^{n} \\frac{FCF_t}{(1+r)^t}$$\n\n' +
+  '其中：\n' +
+  '- FCF_t = 第t年自由现金流\n' +
+  '- r = 贴现率 (WACC ~8.5%)\n\n' +
+  '**DCF估值框架：**\n\n' +
+  '```mermaid\n' +
+  'graph TD\n' +
+  '    A[Revenue Growth 15%] --> B[Free Cash Flow]\n' +
+  '    B --> C[Present Value Calculation]\n' +
+  '    C --> D[Fair Value: $180-220]\n' +
+  '    \n' +
+  '    E[Key Assumptions] --> F[WACC: 8.5%]\n' +
+  '    E --> G[Growth Rate: 15%]\n' +
+  '    E --> H[Terminal Value: 3%]\n' +
+  '    \n' +
+  '    F --> C\n' +
+  '    G --> C\n' +
+  '    H --> C\n' +
+  '```\n\n' +
+  '```python\n' +
+  '# 简化估值计算\n' +
+  'fcf_growth = 0.15\n' +
+  'wacc = 0.085\n' +
+  'current_fcf = 2.1  # Billion\n\n' +
+  'pv = sum(current_fcf * (1 + fcf_growth)**t / (1 + wacc)**t\n' +
+  '         for t in range(1, 11))\n' +
+  'print(f"Present Value: $" + "{pv:.2f}B")\n' +
+  '```\n\n' +
+  '> **结论**: 基于当前假设，目标价位区间为 $180-220\n\n' +
+  '---\n' +
+  '*最后更新: 2024年1月*';
+
 const SAMPLE_MEMOS = [
   {
     id: 'memo-1',
     title: 'TSLA财务分析要点',
-    content: `# Tesla (TSLA) 财务分析要点
-
-## 关键财务指标
-- **毛利率**: ~19.3% (2023 Q4)
-- **自由现金流**: $2.1B (季度)
-- **交付量增长**: 38% YoY
-
-## 风险因素
-- [ ] 竞争加剧（传统车企转型）
-- [ ] 中国市场政策变化
-- [x] 产能利用率优化
-
-## 估值模型
-
-假设DCF模型中的增长率为 **15%**，计算公式：
-
-$$PV = \\sum_{t=1}^{n} \\frac{FCF_t}{(1+r)^t}$$
-
-其中：
-- FCF_t = 第t年自由现金流  
-- r = 贴现率 (WACC ~8.5%)
-
-**DCF估值框架：**
-
-\`\`\`mermaid
-graph TD
-    A[Revenue Growth 15%] --> B[Free Cash Flow]
-    B --> C[Present Value Calculation]  
-    C --> D[Fair Value: $180-220]
-    
-    E[Key Assumptions] --> F[WACC: 8.5%]
-    E --> G[Growth Rate: 15%] 
-    E --> H[Terminal Value: 3%]
-    
-    F --> C
-    G --> C
-    H --> C
-\`\`\`
-
-\`\`\`python
-# 简化估值计算
-fcf_growth = 0.15
-wacc = 0.085
-current_fcf = 2.1  # Billion
-
-pv = sum(current_fcf * (1 + fcf_growth)**t / (1 + wacc)**t 
-         for t in range(1, 11))
-print(f"Present Value: $" + "{pv:.2f}B")
-\\\`\\\`\\\`
-
-> **结论**: 基于当前假设，目标价位区间为 $180-220
-
----
-*最后更新: 2024年1月*`,
+    content: TSLA_CONTENT,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   },

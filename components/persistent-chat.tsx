@@ -34,7 +34,7 @@ export function PersistentChat({
   );
   
   // 🔒 使用预加载数据作为初始状态（如果可用）
-  const preloadedData = preloadedMessages ? usePreloadedQuery(preloadedMessages) : null;
+  const preloadedData = usePreloadedQuery(preloadedMessages ?? "skip");
   
   // 优先使用选中chat的消息，回退到实时数据，最后回退到预加载数据
   const messages = selectedChatMessages ?? realtimeMessages ?? preloadedData;
