@@ -298,7 +298,7 @@ export async function POST(request: Request) {
                     
                     // Import and use AST engine directly to avoid URL resolution issues
                     console.log('⚡ About to import SimplifiedFinancialEngine...');
-                    const { SimplifiedFinancialEngine } = await import('@/app/api/calculate-metric-ast/route');
+                    const { SimplifiedFinancialEngine } = await import('@/lib/financial/simplified-engine');
                     console.log('✅ SimplifiedFinancialEngine imported successfully');
                     
                     console.log('⚡ About to create new SimplifiedFinancialEngine instance...');
@@ -321,13 +321,15 @@ export async function POST(request: Request) {
                     
                     try {
                       calculationResult = await astEngine.calculateMetric({
-                        name: fullMetric.name,
-                        description: fullMetric.description,
-                        formula_display: fullMetric.formula,
-                        category: fullMetric.category,
-                        ast: parsedAstDefinition,  // Use parsed AST definition
-                        data_requirements: fullMetric.dataRequirements || {}
-                      }, params.symbols, {
+                        metricDefinition: {
+                          name: fullMetric.name,
+                          description: fullMetric.description,
+                          formula_display: fullMetric.formula,
+                          category: fullMetric.category,
+                          ast: parsedAstDefinition,  // Use parsed AST definition
+                          data_requirements: fullMetric.dataRequirements || {}
+                        },
+                        symbols: params.symbols,
                         periods: params.periods,
                         periodType: params.periodType,
                         asOf: params.asOf
