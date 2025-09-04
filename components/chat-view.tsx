@@ -12,7 +12,9 @@ import { MultimodalInput } from '@/components/multimodal-input';
 import { DataStreamProvider } from '@/components/data-stream-provider';
 import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import type { Vote } from '@/lib/db/schema';
+import { useArtifactSelector } from '@/hooks/use-artifact';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { VisibilityType } from '@/components/visibility-selector';
 
@@ -72,6 +74,7 @@ function ChatViewContent({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const [uploadQueue, setUploadQueue] = useState<Array<{ file: File; progress: number }>>([]);
   const [input, setInput] = useState<string>('');
+  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   
   // Convert messages once data is loaded
   const uiMessages = convertToUIMessages(messagesFromDb);
@@ -82,17 +85,17 @@ function ChatViewContent({
     setMessages,
     status,
     stop,
-    reload,
-    data: streamingData,
-    append: sendMessage,
+    regenerate,
+    sendMessage,
   } = useChat({
-    api: '/api/chat',
-    body: {
-      selectedChatModel,
-    },
-    initialMessages: uiMessages,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: {
+        selectedChatModel,
+      },
+    }),
+    messages: uiMessages,
     id: chatId, // Use chatId as the chat session identifier
-    generateId: generateUUID,
     onError: (error) => {
       console.error('Chat error:', error);
     },
@@ -101,7 +104,7 @@ function ChatViewContent({
   console.log(`🔍 ChatView: useChat messages length: ${messages.length}`);
 
   return (
-    <DataStreamProvider data={streamingData}>
+    <>
       <div className="flex h-full flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-background px-4 py-3">
@@ -132,8 +135,9 @@ function ChatViewContent({
             votes={undefined} // Will implement votes later if needed
             messages={messages}
             setMessages={setMessages}
-            regenerate={reload}
+            regenerate={regenerate}
             isReadonly={false}
+            isArtifactVisible={isArtifactVisible}
           />
         </div>
 
@@ -156,6 +160,6 @@ function ChatViewContent({
           />
         </div>
       </div>
-    </DataStreamProvider>
+    </>
   );
 }

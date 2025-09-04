@@ -26,13 +26,13 @@ ${instructions ? `\nInstructions:\n${instructions}` : ''}`;
       const { type } = delta;
 
       if (type === 'text-delta') {
-        const { textDelta } = delta;
+        const { text } = delta;
 
-        draftContent += textDelta;
+        draftContent += text;
 
         dataStream.write({
           type: 'data-textDelta',
-          data: textDelta,
+          data: text,
           transient: true,
         });
       }
@@ -67,13 +67,13 @@ ${data ? `\nNew Data:\n${typeof data === 'string' ? data : JSON.stringify(data, 
       const { type } = delta;
 
       if (type === 'text-delta') {
-        const { textDelta } = delta;
+        const { text } = delta;
 
-        draftContent += textDelta;
+        draftContent += text;
 
         dataStream.write({
           type: 'data-textDelta',
-          data: textDelta,
+          data: text,
           transient: true,
         });
       }
