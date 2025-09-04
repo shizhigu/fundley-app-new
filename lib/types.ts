@@ -3,6 +3,13 @@ import type { getWeather } from './ai/tools/get-weather';
 import type { createDocument } from './ai/tools/create-document';
 import type { updateDocument } from './ai/tools/update-document';
 import type { requestSuggestions } from './ai/tools/request-suggestions';
+import type { createVisualization } from './ai/tools/create-visualization';
+import type { getFinancialData } from './ai/tools/financial/unified-financial-data';
+import type { 
+  extractMDA, 
+  extractRiskFactors, 
+  extractBusinessOverview 
+} from './ai/tools/financial/sec-filings';
 import type { InferUITool, UIMessage } from 'ai';
 
 import type { ArtifactKind } from '@/components/artifact';
@@ -22,9 +29,23 @@ type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
 type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
+type createVisualizationTool = InferUITool<ReturnType<typeof createVisualization>>;
+type getFinancialDataTool = InferUITool<typeof getFinancialData>;
+type extractMDATool = InferUITool<typeof extractMDA>;
+type extractRiskFactorsTool = InferUITool<typeof extractRiskFactors>;
+type extractBusinessOverviewTool = InferUITool<typeof extractBusinessOverview>;
 
-// Generic tool type to support all tools used in the application
 export type ChatTools = {
+  getWeather: weatherTool;
+  createDocument: createDocumentTool;
+  updateDocument: updateDocumentTool;
+  requestSuggestions: requestSuggestionsTool;
+  createVisualization: createVisualizationTool;
+  getFinancialData: getFinancialDataTool;
+  extractMDA: extractMDATool;
+  extractRiskFactors: extractRiskFactorsTool;
+  extractBusinessOverview: extractBusinessOverviewTool;
+  // Allow additional tools to be added dynamically
   [key: string]: any;
 };
 
