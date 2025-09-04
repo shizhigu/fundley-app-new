@@ -154,7 +154,7 @@ function PureArtifact({
             const newDocument = {
               ...currentDocument,
               content: updatedContent,
-              createdAt: new Date(),
+              createdAt: Date.now(),
             };
 
             return [...currentDocuments, newDocument];
@@ -301,7 +301,7 @@ function PureArtifact({
                     className="bg-background dark:bg-muted"
                     setMessages={setMessages}
                     selectedVisibilityType={selectedVisibilityType}
-                    session={{ user: null }}
+                    session={{ user: null, getToken: async () => null }}
                     selectedModelId="grok-3"
                   />
                 </form>

@@ -51,7 +51,7 @@ export function ChatLayoutProvider({ session, children }: ChatLayoutProviderProp
     <ChatContext.Provider value={{ selectedChatId, setSelectedChatId }}>
       <div className="professional-layout flex max-w-full">
         <NavigationSidebar 
-          user={session?.user}
+          user={session?.user || null}
           selectedChatId={selectedChatId}
           onChatSelect={handleChatSelect}
         />

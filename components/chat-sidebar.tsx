@@ -166,15 +166,12 @@ export function ChatSidebar({
             <div className="flex items-center space-x-3">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">
-                  {session.user.firstName?.[0] || session.user.email?.[0]?.toUpperCase() || 'U'}
+                  {session.user.email?.[0]?.toUpperCase() || 'U'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {session.user.firstName && session.user.lastName
-                    ? `${session.user.firstName} ${session.user.lastName}`
-                    : session.user.email
-                  }
+                  {session.user.email}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {chats.length} chat{chats.length !== 1 ? 's' : ''}
