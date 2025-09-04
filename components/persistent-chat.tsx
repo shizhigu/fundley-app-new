@@ -33,11 +33,11 @@ export function PersistentChat({
     session?.user && !selectedChatId ? {} : "skip"
   );
   
-  // 🔒 使用预加载数据作为初始状态（如果可用）
-  const preloadedData = usePreloadedQuery(preloadedMessages ?? "skip");
+  // 暂时简化：不使用预加载数据，只使用实时数据
+  // TODO: 重构预加载逻辑以符合React Hook规则
   
-  // 优先使用选中chat的消息，回退到实时数据，最后回退到预加载数据
-  const messages = selectedChatMessages ?? realtimeMessages ?? preloadedData;
+  // 优先使用选中chat的消息，回退到实时数据
+  const messages = selectedChatMessages ?? realtimeMessages;
   
   // 只在用户已认证但没有数据时显示加载状态
   const isLoading = session?.user && !messages;
