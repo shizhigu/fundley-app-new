@@ -22,9 +22,7 @@ export function ChatInterface({
   const [isInitializing, setIsInitializing] = useState(false);
   
   // 获取用户的所有chats
-  const chats = useQuery(
-    session?.user ? api.chats.list : "skip"
-  );
+  const chats = useQuery(api.chats.list);
   
   // 获取或创建默认chat的mutation
   const getOrCreateDefault = useMutation(api.chats.getOrCreateDefault);
@@ -36,8 +34,8 @@ export function ChatInterface({
       if (chats.length > 0) {
         // 优先选择有历史数据的chat（通常是迁移的默认chat）
         // 如果没有，则选择最新的chat
-        const chatHistory = chats.find(chat => chat.title === "Chat History");
-        const selectedChat = chatHistory || chats.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        const chatHistory = chats.find((chat: any) => chat.title === "Chat History");
+        const selectedChat = chatHistory || chats.sort((a: any, b: any) => b.updatedAt - a.updatedAt)[0];
         setSelectedChatId(selectedChat._id);
         setIsInitializing(false);
       } else {
