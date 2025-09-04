@@ -23,7 +23,7 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { ToolStatus } from './tool-status';
-import { hasMetadata } from '@/lib/message-metadata';
+import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 // Removed direct import - now using API route
@@ -217,7 +217,7 @@ const PurePreviewMessage = ({
               if (type === 'text') {
                 if (mode === 'view') {
                   // No metadata parsing - show clean text content
-                  const parsedMessage = { content: sanitizeText(part.text), metadata: {} };
+                  const parsedMessage = { content: sanitizeText(part.text), metadata: {} as MessageMetadata };
                   
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
