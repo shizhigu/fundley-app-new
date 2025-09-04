@@ -56,14 +56,14 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
   const [isValidating, setIsValidating] = useState(false);
 
   // Convex mutations
-  const createMetric = useMutation(api.customMetrics.create);
-  const updateMetric = useMutation(api.customMetrics.update);
+  const createMetric = useMutation(api.metrics.create);
+  const updateMetric = useMutation(api.metrics.update);
   
   // Load existing metric if editing
   const existingMetric = useQuery(
-    api.customMetrics.getById,
-    metricId ? { id: metricId as any } : 'skip'
-  ) as any;
+    api.metrics.getById,
+    metricId ? { metricId: metricId as any } : 'skip'
+  );
 
   // Parsers
   const parser = new FinancialFormulaParser();

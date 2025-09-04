@@ -16,7 +16,6 @@ import type {
 import type * as auth from "../auth.js";
 import type * as chats from "../chats.js";
 import type * as cleanup from "../cleanup.js";
-import type * as customMetrics from "../customMetrics.js";
 import type * as documents from "../documents.js";
 import type * as messages from "../messages.js";
 import type * as metrics from "../metrics.js";
@@ -40,7 +39,6 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chats: typeof chats;
   cleanup: typeof cleanup;
-  customMetrics: typeof customMetrics;
   documents: typeof documents;
   messages: typeof messages;
   metrics: typeof metrics;

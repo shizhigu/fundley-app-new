@@ -22,9 +22,9 @@ export function MetricsList({ onEditMetric, onCreateNew }: MetricsListProps) {
   const [includePublic, setIncludePublic] = useState(true);
 
   // Fetch metrics from Convex
-  const metrics = useQuery(api.customMetrics.getByUser, {
+  const metrics = useQuery(api.metrics.getByUser, {
     includePublic: includePublic,
-  }) as any;
+  });
 
   // Filter metrics based on search and category
   const filteredMetrics = metrics?.filter(metric => {

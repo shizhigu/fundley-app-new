@@ -348,3 +348,105 @@ export const seedBuiltInMetrics = mutation({
     return 'Built-in metrics seeded successfully';
   },
 });
+
+// Get user's custom metrics (similar to customMetrics.getByUser)
+export const getByUser = query({
+  args: {
+    includePublic: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_user_id', (q) => q.eq('clerkUserId', identity.subject))
+      .unique();
+
+    if (!user) {
+      return [];
+    }
+
+    const metrics = await ctx.db.query('metrics').collect();
+    
+    const filtered = metrics.filter((metric) => {
+      // Only show custom metrics for this function
+      if (metric.isBuiltIn) return false;
+      
+      // Show if: user owns it, or it's public (if includePublic), or it's org-shared
+      const canAccess = 
+        metric.userId === user._id ||
+        (args.includePublic && metric.isPublic) ||
+        (metric.organizationId && metric.organizationId === user.clerkOrganizationId);
+      
+      return canAccess;
+    });
+
+    return filtered.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// Update existing custom metric
+export const update = mutation({
+  args: {
+    id: v.id('metrics'),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    formula: v.optional(v.string()),
+    astDefinition: v.optional(v.any()),
+    dataRequirements: v.optional(v.object({
+      income_statement: v.optional(v.array(v.string())),
+      balance_sheet: v.optional(v.array(v.string())),
+      cash_flow_statement: v.optional(v.array(v.string())),
+      periods_needed: v.array(v.string())
+    })),
+    isPublic: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError('Authentication required');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_user_id', (q) => q.eq('clerkUserId', identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new ConvexError('User not found');
+    }
+
+    const metric = await ctx.db.get(args.id);
+    if (!metric) {
+      throw new ConvexError('Metric not found');
+    }
+
+    // Check permissions
+    const canEdit = metric.userId === user._id || 
+                   (metric.organizationId && metric.organizationId === user.clerkOrganizationId);
+    
+    if (!canEdit) {
+      throw new ConvexError('Permission denied');
+    }
+
+    const updates: any = {
+      updatedAt: Date.now(),
+    };
+
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.category !== undefined) updates.category = args.category;
+    if (args.formula !== undefined) updates.formula = args.formula;
+    if (args.astDefinition !== undefined) updates.astDefinition = args.astDefinition;
+    if (args.dataRequirements !== undefined) updates.dataRequirements = args.dataRequirements;
+    if (args.isPublic !== undefined) updates.isPublic = args.isPublic;
+
+    await ctx.db.patch(args.id, updates);
+    
+    return args.id;
+  },
+});
