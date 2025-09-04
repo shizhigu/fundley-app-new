@@ -467,6 +467,7 @@ export async function POST(request: Request) {
                 description: z.string().describe('What this metric measures'),
                 category: z.string().describe('Metric category (profitability, liquidity, efficiency, etc.)'),
                 formula: z.string().describe('Human-readable formula description'),
+                calculationType: z.enum(['single_period', 'ttm', 'multi_period']).default('ttm').describe('How to calculate across time periods'),
                 astDefinition: z.any().describe('JSON AST structure defining the calculation'),
                 dataRequirements: z.object({
                   income_statement: z.array(z.string()).optional(),
@@ -483,6 +484,7 @@ export async function POST(request: Request) {
                     description: params.description,
                     category: params.category,
                     formula: params.formula,
+                    calculationType: params.calculationType,
                     astDefinition: params.astDefinition,
                     dataRequirements: params.dataRequirements,
                     isPublic: params.isPublic

@@ -25,7 +25,7 @@ interface ChatSidebarProps {
   onChatSelect: (chatId: Id<"chats">) => void;
   isOpen: boolean;
   onToggle: () => void;
-  session: AuthSession;
+  user: AuthSession['user'];
 }
 
 export function ChatSidebar({
@@ -34,14 +34,14 @@ export function ChatSidebar({
   onChatSelect,
   isOpen,
   onToggle,
-  session,
+  user,
 }: ChatSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
   
   const createChat = useMutation(api.chats.create);
 
   const handleCreateChat = async () => {
-    if (!session?.user || isCreating) return;
+    if (!user || isCreating) return;
     
     setIsCreating(true);
     try {
@@ -161,17 +161,17 @@ export function ChatSidebar({
         </ScrollArea>
 
         {/* User info */}
-        {session?.user && (
+        {user && (
           <div className="border-t p-4">
             <div className="flex items-center space-x-3">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">
-                  {session.user.email?.[0]?.toUpperCase() || 'U'}
+                  {user.email?.[0]?.toUpperCase() || 'U'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {session.user.email}
+                  {user.email}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {chats.length} chat{chats.length !== 1 ? 's' : ''}

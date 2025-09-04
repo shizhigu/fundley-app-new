@@ -23,14 +23,14 @@ export function PersistentChat({
   const { selectedChatId } = useChatContext();
   // 获取选中chat的消息（如果提供了selectedChatId）
   const selectedChatMessages = useQuery(
-    selectedChatId ? api.messages.list : "skip",
-    selectedChatId ? { chatId: selectedChatId as any } : "skip"
+    selectedChatId ? api.messages.list : ("skip" as any),
+    selectedChatId ? { chatId: selectedChatId as any } : ("skip" as any)
   );
   
   // 🔄 实时更新（认证后） - 这是主要的数据源（默认chat）
   const realtimeMessages = useQuery(
-    user && !selectedChatId ? api.messages.listForPersistentChat : "skip",
-    user && !selectedChatId ? {} : "skip"
+    user && !selectedChatId ? api.messages.listForPersistentChat : ("skip" as any),
+    user && !selectedChatId ? {} : ("skip" as any)
   );
   
   // 暂时简化：不使用预加载数据，只使用实时数据

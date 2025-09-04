@@ -26,7 +26,7 @@ export const create = mutation({
     return await ctx.db.insert("documents", {
       title: args.title,
       kind: args.kind,
-      content: args.content,
+      content: args.content || "",
       userId: user._id,
       createdAt: Date.now(),
       updatedAt: Date.now(),

@@ -29,7 +29,7 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // 获取用户的所有chats
-  const chats = useQuery(user ? api.chats.list : "skip", user ? {} : "skip");
+  const chats = useQuery(api.chats.list);
   const createChat = useMutation(api.chats.create);
 
   const clearHideTimeout = () => {

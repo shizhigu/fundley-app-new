@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category, formula, prompt, isPublic } = body
+    const { name, description, category, formula, prompt, isPublic, calculationType } = body
 
     // 验证必需字段
     if (!name || !description || !formula?.sqlTemplate) {
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       description,
       category: category || 'custom',
       formula,
+      calculationType: calculationType || 'ttm',
       prompt: prompt || `自定义财务指标: ${name}`,
       isPublic: isPublic || false
     })

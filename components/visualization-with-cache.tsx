@@ -18,7 +18,7 @@ export async function VisualizationWithCache({
 }: VisualizationWithCacheProps) {
   // Server-side: fetch cache from database
   // TODO: Re-implement visualization cache with Convex
-  const cache = null; // await convexQueries.getVisualizationCacheByMessageId(messageId);
+  const cache: { htmlContent?: string; imageUrl?: string } | null = null; // await convexQueries.getVisualizationCacheByMessageId(messageId);
   
   return (
     <VisualizationMessage
@@ -27,8 +27,8 @@ export async function VisualizationWithCache({
       title={title}
       code={code}
       description={description}
-      cachedHtml={cache?.htmlContent || undefined}
-      cachedImage={cache?.imageUrl || undefined}
+      cachedHtml={undefined}
+      cachedImage={undefined}
     />
   );
 }

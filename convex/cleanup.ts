@@ -22,11 +22,21 @@ export const cleanupReasoningParts = mutation({
       throw new Error("User not found");
     }
 
-    // 获取用户的所有消息
-    const messages = await ctx.db
-      .query("messages")
+    // 首先获取用户的所有聊天
+    const chats = await ctx.db
+      .query("chats")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .collect();
+
+    // 然后获取这些聊天中的所有消息
+    const messages = [];
+    for (const chat of chats) {
+      const chatMessages = await ctx.db
+        .query("messages")
+        .withIndex("by_chat_id", (q) => q.eq("chatId", chat._id))
+        .collect();
+      messages.push(...chatMessages);
+    }
 
     console.log(`🔍 分析${messages.length}条消息中的reasoning parts...`);
     
@@ -159,10 +169,21 @@ export const analyzeUserMessages = query({
       return null;
     }
 
-    const messages = await ctx.db
-      .query("messages")
+    // 首先获取用户的所有聊天
+    const chats = await ctx.db
+      .query("chats")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .collect();
+
+    // 然后获取这些聊天中的所有消息
+    const messages = [];
+    for (const chat of chats) {
+      const chatMessages = await ctx.db
+        .query("messages")
+        .withIndex("by_chat_id", (q) => q.eq("chatId", chat._id))
+        .collect();
+      messages.push(...chatMessages);
+    }
     
     let totalParts = 0;
     let totalSize = 0;

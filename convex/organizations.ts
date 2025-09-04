@@ -27,7 +27,8 @@ export const create = mutation({
     return await ctx.db.insert("organizations", {
       name: args.name,
       slug: args.slug,
-      clerkOrganizationId: args.clerkOrganizationId,
+      clerkOrganizationId: args.clerkOrganizationId || "",
+      settings: {},
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -100,7 +101,7 @@ export const update = mutation({
     if (args.slug && args.slug !== organization.slug) {
       const existingOrg = await ctx.db
         .query("organizations")
-        .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+        .withIndex("by_slug", (q) => q.eq("slug", args.slug!))
         .unique();
 
       if (existingOrg) {

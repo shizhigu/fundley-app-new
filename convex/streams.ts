@@ -55,7 +55,7 @@ export const list = query({
 
     return await ctx.db
       .query("streams")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .order("asc")
       .collect();
   },
@@ -75,18 +75,13 @@ export const get = query({
       return null;
     }
 
-    // Verify user has access to the chat this stream belongs to
-    const chat = await ctx.db.get(stream.chatId);
-    if (!chat) {
-      return null;
-    }
-
+    // Verify user owns this stream
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || (chat.userId !== user._id && chat.visibility !== "public")) {
+    if (!user || stream.userId !== user._id) {
       return null;
     }
 

@@ -152,6 +152,7 @@ export const create = mutation({
     description: v.string(),
     category: v.string(),
     formula: v.string(),
+    calculationType: v.union(v.literal("single_period"), v.literal("ttm"), v.literal("multi_period")),
     prompt: v.optional(v.string()),      // Backward compatibility
     astDefinition: v.optional(v.any()),  // JSON AST structure - optional for now
     dataRequirements: v.optional(v.object({
@@ -195,6 +196,7 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       formula: args.formula,
+      calculationType: args.calculationType,
       astDefinition: args.astDefinition || null,
       dataRequirements: args.dataRequirements || {
         income_statement: [],
@@ -273,6 +275,7 @@ export const seedBuiltInMetrics = mutation({
         description: 'EPS to Revenue efficiency ratio - measures earnings per share relative to revenue',
         category: 'profitability',
         formula: 'EPS / Revenue',
+        calculationType: 'ttm' as const,
         sqlTemplate: `
           SELECT 
             symbol, 
@@ -285,13 +288,13 @@ export const seedBuiltInMetrics = mutation({
           ORDER BY symbol, fiscalYear DESC, period DESC 
           LIMIT {{limit}}
         `,
-        calculationType: 'ttm',
       },
       {
         name: 'Return on Equity',
         description: 'Net income divided by shareholders equity - measures profitability relative to equity',
         category: 'profitability',
         formula: 'Net Income / Shareholders Equity',
+        calculationType: 'ttm' as const,
         sqlTemplate: `
           SELECT 
             i.symbol,
@@ -305,13 +308,13 @@ export const seedBuiltInMetrics = mutation({
           ORDER BY i.symbol, i.fiscalYear DESC, i.period DESC
           LIMIT {{limit}}
         `,
-        calculationType: 'ttm',
       },
       {
         name: 'Current Ratio',
         description: 'Current assets divided by current liabilities - measures short-term liquidity',
         category: 'liquidity',
         formula: 'Current Assets / Current Liabilities',
+        calculationType: 'single_period' as const,
         sqlTemplate: `
           SELECT 
             symbol,
@@ -324,7 +327,6 @@ export const seedBuiltInMetrics = mutation({
           ORDER BY symbol, fiscalYear DESC, period DESC
           LIMIT {{limit}}
         `,
-        calculationType: 'single_period',
       }
     ];
 
@@ -345,6 +347,13 @@ export const seedBuiltInMetrics = mutation({
           organizationId: undefined,
           isBuiltIn: true,
           isPublic: true,
+          astDefinition: null, // Built-in metrics use SQL templates instead of AST
+          dataRequirements: {
+            income_statement: [],
+            balance_sheet: [],
+            cash_flow_statement: [],
+            periods_needed: ['annual']
+          },
           createdAt: now,
           updatedAt: now,
         });

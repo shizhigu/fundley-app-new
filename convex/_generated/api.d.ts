@@ -19,7 +19,6 @@ import type * as cleanup from "../cleanup.js";
 import type * as documents from "../documents.js";
 import type * as messages from "../messages.js";
 import type * as metrics from "../metrics.js";
-import type * as migrations from "../migrations.js";
 import type * as organizations from "../organizations.js";
 import type * as streams from "../streams.js";
 import type * as users from "../users.js";
@@ -42,7 +41,6 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   messages: typeof messages;
   metrics: typeof metrics;
-  migrations: typeof migrations;
   organizations: typeof organizations;
   streams: typeof streams;
   users: typeof users;

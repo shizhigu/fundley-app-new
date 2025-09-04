@@ -50,7 +50,7 @@ export function ChatView({
     <ChatViewContent
       chatId={chatId}
       initialChatModel={initialChatModel}
-      user={session?.user || null}
+      user={user}
       onToggleSidebar={onToggleSidebar}
       messagesFromDb={messagesFromDb}
       chat={chat}
@@ -154,7 +154,7 @@ function ChatViewContent({
             attachments={attachments}
             setAttachments={setAttachments}
             selectedVisibilityType="private"
-            user={session?.user || null}
+            user={user}
             selectedModelId={selectedChatModel}
             setSelectedModelId={setSelectedChatModel}
           />

@@ -191,6 +191,7 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
           description,
           category,
           formula: generatedPrompt,
+          calculationType: 'ttm', // Default to trailing twelve months
           astDefinition: formula,
           isPublic,
         });
