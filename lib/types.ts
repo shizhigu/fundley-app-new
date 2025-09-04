@@ -23,11 +23,9 @@ type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
 
+// Generic tool type to support all tools used in the application
 export type ChatTools = {
-  getWeather: weatherTool;
-  createDocument: createDocumentTool;
-  updateDocument: updateDocumentTool;
-  requestSuggestions: requestSuggestionsTool;
+  [key: string]: any;
 };
 
 export type CustomUIDataTypes = {
