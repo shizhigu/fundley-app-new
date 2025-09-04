@@ -45,7 +45,8 @@
       "Bash(psql:*)",
       "Bash(/dev/null)",
       "Bash(npm run lint)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(ESLINT_NO_DEV_ERRORS=true pnpm build)"
     ],
     "deny": [],
     "ask": [],
