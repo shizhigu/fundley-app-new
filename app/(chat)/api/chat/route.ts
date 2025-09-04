@@ -33,7 +33,6 @@ import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
 import { getStreamContext } from '@/lib/ai/utils/stream-context';
 import { ChatSDKError } from '@/lib/errors';
-import type { ChatMessage } from '@/lib/types';
 import type { ModelId } from '@/lib/ai/models';
 import { z } from 'zod';
 
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
       selectedChatModel,
       chatId: requestChatId,
     }: {
-      message: ChatMessage;
+      message: PostRequestBody['message'];
       selectedChatModel: ModelId;
       chatId?: string;
     } = requestBody;
