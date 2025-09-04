@@ -32,7 +32,7 @@ export interface Chat {
 export interface Message {
   _id: string;
   id?: string; // For backward compatibility
-  userId: string; // Changed from chatId to userId for Convex
+  chatId: string; // Messages belong to specific chats in Convex
   role: 'user' | 'assistant' | 'system';
   parts: any;
   attachments: any;
