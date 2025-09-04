@@ -26,7 +26,10 @@ export async function GET(
 
     // 创建认证的 Convex 客户端
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-    convex.setAuth(await getToken({ template: 'convex' }))
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      convex.setAuth(token)
+    }
 
     const { id } = await params
 
@@ -83,7 +86,10 @@ export async function PUT(
 
     // 创建认证的 Convex 客户端
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-    convex.setAuth(await getToken({ template: 'convex' }))
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      convex.setAuth(token)
+    }
 
     const { id } = await params
     const body = await request.json()
@@ -139,7 +145,10 @@ export async function DELETE(
 
     // 创建认证的 Convex 客户端
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-    convex.setAuth(await getToken({ template: 'convex' }))
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      convex.setAuth(token)
+    }
 
     const { id } = await params
 

@@ -23,9 +23,8 @@ export async function GET(request: NextRequest) {
     return new ChatSDKError('unauthorized:chat').toResponse();
   }
 
-  const chats = await convexQueries.getChatsByUserId({
-    id: session.user.id,
-  });
+  // Since we moved to permanent chat architecture, return message history instead of chats
+  const messages = await convexQueries.getMessagesByUserId();
 
-  return Response.json(chats);
+  return Response.json(messages);
 }

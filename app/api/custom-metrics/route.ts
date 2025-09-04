@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
 
     // 创建认证的 Convex 客户端
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-    convex.setAuth(await getToken({ template: 'convex' }))
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      convex.setAuth(token)
+    }
 
     const body = await request.json()
     const { name, description, category, formula, prompt, isPublic } = body
@@ -81,7 +84,10 @@ export async function GET(request: NextRequest) {
 
     // 创建认证的 Convex 客户端
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-    convex.setAuth(await getToken({ template: 'convex' }))
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      convex.setAuth(token)
+    }
 
     const { searchParams } = new URL(request.url)
     const includePublic = searchParams.get('includePublic') === 'true'

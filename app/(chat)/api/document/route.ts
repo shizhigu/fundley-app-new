@@ -51,9 +51,9 @@ export async function POST(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const { userId } = await auth();
 
-  if (!session?.user) {
+  if (!userId) {
     return new ChatSDKError('not_found:document').toResponse();
   }
 
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
   if (existingDocument) {
     // Get the Convex user ID corresponding to the Clerk user ID
-    const convexUser = await convexQueries.getUserByClerkId(session.user.id);
+    const convexUser = await convexQueries.getUserByClerkId(userId);
     const convexUserId = convexUser?._id;
     
     if (!convexUserId || existingDocument.userId !== convexUserId) {
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     title,
     content,
     kind,
-    userId: session.user.id,
+    userId: userId,
   });
 
   return Response.json(document, { status: 200 });
@@ -115,9 +115,9 @@ export async function DELETE(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const { userId } = await auth();
 
-  if (!session?.user) {
+  if (!userId) {
     return new ChatSDKError('unauthorized:document').toResponse();
   }
 
@@ -142,7 +142,7 @@ export async function DELETE(request: Request) {
   }
 
   // Get the Convex user ID corresponding to the Clerk user ID  
-  const convexUser = await convexQueries.getUserByClerkId(session.user.id);
+  const convexUser = await convexQueries.getUserByClerkId(userId);
   const convexUserId = convexUser?._id;
   
   if (!convexUserId || document.userId !== convexUserId) {

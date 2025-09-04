@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const result = await extractMetadata(messageParts, userQuestion)
     
     // If messageId is provided and extraction was successful, save to database
-    if (messageId && result.success && result.metadata) {
+    if (messageId && result && result.success && result.metadata) {
       try {
         const convexResult = await createAuthenticatedConvexClient()
         if ('error' in convexResult) {
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
           
           if (typeof messageId === 'string' && messageId.match(/^[a-z0-9]{32}$/)) {
             await convex.mutation(api.messages.updateMetadata, {
-              messageId,
-              extractedMetadata: result.metadata
+              messageId: messageId as any, // Type assertion for Convex ID
+              extractedMetadata: result!.metadata
             })
             console.log('✅ Saved metadata to database for message:', messageId)
           } else {

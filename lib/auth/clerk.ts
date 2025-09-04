@@ -8,6 +8,7 @@ export interface AuthSession {
     email: string;
     type: UserType;
   } | null;
+  getToken: (options?: { template: string }) => Promise<string | null>;
 }
 
 /**
@@ -15,17 +16,23 @@ export interface AuthSession {
  * This function bridges Clerk authentication with our database
  */
 export async function auth(): Promise<AuthSession> {
-  const { userId: clerkUserId } = await clerkAuth();
+  const { userId: clerkUserId, getToken } = await clerkAuth();
   
   if (!clerkUserId) {
-    return { user: null };
+    return { 
+      user: null, 
+      getToken: async () => null 
+    };
   }
 
   // Get Clerk user details
   const clerkUser = await currentUser();
   
   if (!clerkUser) {
-    return { user: null };
+    return { 
+      user: null, 
+      getToken: async () => null 
+    };
   }
 
   // For now, create a mock user object based on Clerk data
@@ -41,7 +48,8 @@ export async function auth(): Promise<AuthSession> {
       id: dbUser.id,
       email: dbUser.email,
       type: 'regular' as UserType, // All Clerk users are regular users
-    }
+    },
+    getToken
   };
 }
 

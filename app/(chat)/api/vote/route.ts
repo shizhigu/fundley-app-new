@@ -12,7 +12,10 @@ export async function GET(request: Request) {
 
   try {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-    convex.setAuth(await session.getToken());
+    const token = await session.getToken();
+    if (token) {
+      convex.setAuth(token);
+    }
 
     // Get all user votes (no chatId needed)
     const votes = await convex.query(api.votes.listByUser);
@@ -46,11 +49,14 @@ export async function PATCH(request: Request) {
 
   try {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-    convex.setAuth(await session.getToken());
+    const token = await session.getToken();
+    if (token) {
+      convex.setAuth(token);
+    }
 
     // Create or update vote (user-based, no chatId needed)
     await convex.mutation(api.votes.create, {
-      messageId,
+      messageId: messageId as any, // Type assertion for Convex ID
       isUpvoted: type === 'up',
     });
 
