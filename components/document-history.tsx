@@ -137,7 +137,7 @@ export const DocumentHistory = memo(function DocumentHistory({
                   title={doc.title}
                   kind={doc.kind as any}
                   preview={doc.content || undefined}
-                  createdAt={doc.createdAt}
+                  createdAt={new Date(doc.createdAt)}
                 />
               ))}
             </div>
