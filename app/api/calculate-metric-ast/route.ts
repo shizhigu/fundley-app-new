@@ -750,6 +750,9 @@ class SimplifiedFinancialEngine {
 
 }
 
+// Export the class for use in other modules
+export { SimplifiedFinancialEngine };
+
 // API Route Handlers
 export const maxDuration = 30;
 
