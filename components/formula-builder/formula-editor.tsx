@@ -63,7 +63,7 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
   const existingMetric = useQuery(
     api.customMetrics.getById,
     metricId ? { id: metricId as any } : 'skip'
-  );
+  ) as any;
 
   // Parsers
   const parser = new FinancialFormulaParser();
