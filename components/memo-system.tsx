@@ -171,23 +171,39 @@ function MemoWindow({ memo, onClose, onSave }: MemoWindowProps) {
 
   const renderedContent = markdownRenderer.render(content);
 
-  // 监听窗口大小变化，重新处理Mermaid图表
+  // 优化窗口大小变化时的Mermaid图表重渲染
   useEffect(() => {
+    let resizeTimeout: NodeJS.Timeout;
+    
     const handleResize = () => {
-      // 重新处理当前窗口中的mermaid图表
-      const mermaidElements = document.querySelectorAll(`[style*="left: ${position.x}px"] .mermaid[data-processed="true"] svg`);
-      mermaidElements.forEach((svg: any) => {
-        if (svg && svg.parentElement) {
-          // 确保SVG继续自适应
-          svg.style.width = '100%';
-          svg.style.height = 'auto';
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        // 重新处理当前窗口中的mermaid图表，使用更精确的选择器
+        try {
+          const memoWindow = document.querySelector(`[style*="left: ${position.x}px"][style*="top: ${position.y}px"]`);
+          if (memoWindow) {
+            const mermaidSvgs = memoWindow.querySelectorAll('.mermaid[data-processed="true"] svg');
+            mermaidSvgs.forEach((svg: any) => {
+              if (svg && svg.parentElement) {
+                // 确保SVG继续自适应
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Error adjusting mermaid charts on resize:', error);
         }
-      });
+      }, 150); // 去抖动处理
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [position.x]);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, [position.x, position.y]);
 
   return (
     <div

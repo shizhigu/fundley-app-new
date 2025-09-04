@@ -31,16 +31,12 @@ export function MessageReasoning({
     },
   };
 
+  // 只要有reasoning内容就显示toggle按钮，无论是否还在loading
+  const hasContent = reasoning && reasoning.trim().length > 0;
+  
   return (
     <div className="flex flex-col">
-      {isLoading ? (
-        <div className="flex flex-row gap-2 items-center">
-          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoning</div>
-          <div className="animate-spin scale-75">
-            <LoaderIcon />
-          </div>
-        </div>
-      ) : (
+      {hasContent ? (
         <button
           data-testid="message-reasoning-toggle"
           type="button"
@@ -49,7 +45,14 @@ export function MessageReasoning({
             setIsExpanded(!isExpanded);
           }}
         >
-          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoned for a few seconds</div>
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">
+            {isLoading ? "Reasoning..." : "Reasoned for a few seconds"}
+          </div>
+          {isLoading && (
+            <div className="animate-spin scale-75">
+              <LoaderIcon />
+            </div>
+          )}
           <div
             className={`scale-75 transition-transform duration-200 ${
               isExpanded ? 'rotate-180' : 'rotate-0'
@@ -58,10 +61,17 @@ export function MessageReasoning({
             <ChevronDownIcon />
           </div>
         </button>
-      )}
+      ) : isLoading ? (
+        <div className="flex flex-row gap-2 items-center">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoning</div>
+          <div className="animate-spin scale-75">
+            <LoaderIcon />
+          </div>
+        </div>
+      ) : null}
 
       <AnimatePresence initial={false}>
-        {isExpanded && (
+        {isExpanded && hasContent && (
           <motion.div
             data-testid="message-reasoning"
             key="content"

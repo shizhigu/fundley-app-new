@@ -591,7 +591,7 @@ export class SimplifiedFinancialEngine {
   }
 
   /**
-   * 获取TTM值
+   * 获取TTM值 (支持季度和年度rolling)
    */
   private getTTMValues(
     data: RawDataRow[], 
@@ -604,16 +604,25 @@ export class SimplifiedFinancialEngine {
     const asOfYearNum = parseInt(asOfYear);
     const asOfPeriodOrder = this.getPeriodOrder(asOfPeriod_);
 
-    // 筛选符合时间条件的数据：包含asOfPeriod及其之前的所有季度数据
+    // 根据asOf期间类型决定数据筛选策略
+    const isAsOfAnnual = asOfPeriod_ === 'FY';
+    
+    // 筛选符合时间条件的数据
     const eligibleData = data.filter(row => {
       const rowPeriodOrder = this.getPeriodOrder(row.period);
-      // 只保留季度数据，排除年度数据
-      if (row.period === 'FY') return false;
       
-      return (
-        row.fiscalyear < asOfYearNum ||
-        (row.fiscalyear === asOfYearNum && rowPeriodOrder <= asOfPeriodOrder)
-      );
+      if (isAsOfAnnual) {
+        // 年度rolling：只保留年度数据，排除季度数据
+        if (row.period !== 'FY') return false;
+        return row.fiscalyear <= asOfYearNum;
+      } else {
+        // 季度rolling：只保留季度数据，排除年度数据  
+        if (row.period === 'FY') return false;
+        return (
+          row.fiscalyear < asOfYearNum ||
+          (row.fiscalyear === asOfYearNum && rowPeriodOrder <= asOfPeriodOrder)
+        );
+      }
     });
 
     // 按时间倒序排序

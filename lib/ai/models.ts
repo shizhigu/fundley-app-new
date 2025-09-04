@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL = 'grok-3';
+export const DEFAULT_MODEL = 'gemini-2.5-pro';
 
 // Specialized model for suggestion generation and data verification
 export const SUGGESTION_MODEL = 'qwen/qwen2.5-vl-32b-instruct';
