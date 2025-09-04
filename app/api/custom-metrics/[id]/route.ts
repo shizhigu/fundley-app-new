@@ -41,8 +41,8 @@ export async function GET(
     }
 
     // 调用Convex query
-    const metric = await convex.query(api.customMetrics.getById, {
-      id: id as any // Convex ID类型
+    const metric = await convex.query(api.metrics.getById, {
+      metricId: id as any // Convex ID类型
     })
 
     if (!metric) {
@@ -102,7 +102,7 @@ export async function PUT(
     }
 
     // 调用Convex mutation
-    const updatedId = await convex.mutation(api.customMetrics.update, {
+    const updatedId = await convex.mutation(api.metrics.update, {
       id: id as any,
       ...body
     })
@@ -160,7 +160,7 @@ export async function DELETE(
     }
 
     // 调用Convex mutation
-    await convex.mutation(api.customMetrics.remove, {
+    await convex.mutation(api.metrics.remove, {
       id: id as any
     })
 

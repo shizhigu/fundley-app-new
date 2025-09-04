@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用Convex mutation
-    await convex.mutation(api.customMetrics.recordUsage, {
+    await convex.mutation(api.metrics.recordUsage, {
       metricId: metricId as any,
       calculationTime: calculationTime || 0,
       success: success !== false

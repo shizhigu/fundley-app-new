@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 调用Convex query
-    const results = await convex.query(api.customMetrics.search, {
+    const results = await convex.query(api.metrics.search, {
       query,
       includePublic
     })

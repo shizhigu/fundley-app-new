@@ -152,13 +152,14 @@ export const create = mutation({
     description: v.string(),
     category: v.string(),
     formula: v.string(),
-    astDefinition: v.any(),              // JSON AST structure - REQUIRED
-    dataRequirements: v.object({
+    prompt: v.optional(v.string()),      // Backward compatibility
+    astDefinition: v.optional(v.any()),  // JSON AST structure - optional for now
+    dataRequirements: v.optional(v.object({
       income_statement: v.optional(v.array(v.string())),
       balance_sheet: v.optional(v.array(v.string())),
       cash_flow_statement: v.optional(v.array(v.string())),
       periods_needed: v.array(v.string())
-    }),
+    })),
     isPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -194,8 +195,13 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       formula: args.formula,
-      astDefinition: args.astDefinition,
-      dataRequirements: args.dataRequirements,
+      astDefinition: args.astDefinition || null,
+      dataRequirements: args.dataRequirements || {
+        income_statement: [],
+        balance_sheet: [],
+        cash_flow_statement: [],
+        periods_needed: ['annual']
+      },
       userId: user._id,
       organizationId: user.clerkOrganizationId,
       isBuiltIn: false,
@@ -448,5 +454,54 @@ export const update = mutation({
     await ctx.db.patch(args.id, updates);
     
     return args.id;
+  },
+});
+
+// Remove/delete a custom metric
+export const remove = mutation({
+  args: {
+    id: v.id('metrics'),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError('Authentication required');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_user_id', (q) => q.eq('clerkUserId', identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new ConvexError('User not found');
+    }
+
+    const metric = await ctx.db.get(args.id);
+    if (!metric) {
+      throw new ConvexError('Metric not found');
+    }
+
+    // Check permissions (only owner or same org can delete)
+    const canDelete = metric.userId === user._id || 
+                     (metric.organizationId && metric.organizationId === user.clerkOrganizationId);
+    
+    if (!canDelete) {
+      throw new ConvexError('Permission denied');
+    }
+
+    await ctx.db.delete(args.id);
+    
+    // Also delete any usage records
+    const usageRecords = await ctx.db
+      .query('metricUsage')
+      .withIndex('by_metric', (q) => q.eq('metricId', args.id))
+      .collect();
+    
+    for (const record of usageRecords) {
+      await ctx.db.delete(record._id);
+    }
+
+    return true;
   },
 });

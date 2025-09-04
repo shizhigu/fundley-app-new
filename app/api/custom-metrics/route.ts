@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用Convex mutation
-    const metricId = await convex.mutation(api.customMetrics.create, {
+    const metricId = await convex.mutation(api.metrics.create, {
       name,
       description,
       category: category || 'custom',
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     const includePublic = searchParams.get('includePublic') === 'true'
 
     // 调用Convex query
-    const metrics = await convex.query(api.customMetrics.getByUser, {
+    const metrics = await convex.query(api.metrics.getByUser, {
       includePublic
     })
 
