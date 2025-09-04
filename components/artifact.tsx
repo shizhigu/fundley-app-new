@@ -301,7 +301,7 @@ function PureArtifact({
                     className="bg-background dark:bg-muted"
                     setMessages={setMessages}
                     selectedVisibilityType={selectedVisibilityType}
-                    session={{ user: null, getToken: async () => null }}
+                    user={null}
                     selectedModelId="grok-3"
                   />
                 </form>

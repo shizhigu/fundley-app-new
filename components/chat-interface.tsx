@@ -29,7 +29,7 @@ export function ChatInterface({
 
   // 如果没有选中的chat，自动选择或创建默认chat
   useEffect(() => {
-    if (session?.user && !selectedChatId && chats && !isInitializing) {
+    if (user && !selectedChatId && chats && !isInitializing) {
       setIsInitializing(true);
       if (chats.length > 0) {
         // 优先选择有历史数据的chat（通常是迁移的默认chat）
@@ -52,7 +52,7 @@ export function ChatInterface({
   }, [user, selectedChatId, chats, isInitializing, getOrCreateDefault]);
 
   // Loading state - ensure session is fully loaded
-  if (!session || !session.user || !chats || !selectedChatId || isInitializing) {
+  if (!user || !chats || !selectedChatId || isInitializing) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
@@ -69,7 +69,7 @@ export function ChatInterface({
         onChatSelect={setSelectedChatId}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        user={session?.user || null}
+        user={user}
       />
       
       {/* Main Chat Area */}
@@ -77,7 +77,7 @@ export function ChatInterface({
         <ChatView
           chatId={selectedChatId}
           initialChatModel={initialChatModel}
-          user={session?.user || null}
+          user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
       </div>
