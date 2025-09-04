@@ -21,7 +21,7 @@ export async function GET() {
     await convex.mutation(api.users.store);
     
     // Get recent user's messages with limit for performance
-    const messages = await convex.query(api.messages.list);
+    const messages = await convex.query(api.messages.listForPersistentChat);
     console.log('📝 Messages found:', messages.length);
     
     // Debug metadata in messages
