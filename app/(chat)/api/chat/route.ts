@@ -288,7 +288,8 @@ export async function POST(request: Request) {
                         console.log('✅ Successfully parsed AST from string');
                       } catch (parseError) {
                         console.error('❌ Failed to parse AST string:', parseError);
-                        return `❌ Invalid AST definition stored in database: ${parseError.message}`;
+                        const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                        return `❌ Invalid AST definition stored in database: ${errorMessage}`;
                       }
                     }
                     
