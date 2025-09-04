@@ -25,14 +25,14 @@ ${instructions ? `\nInstructions:\n${instructions}` : ''}`;
     for await (const delta of fullStream) {
       const { type } = delta;
 
-      if (type === 'text') {
-        const { text } = delta;
+      if (type === 'text-delta') {
+        const { textDelta } = delta;
 
-        draftContent += text;
+        draftContent += textDelta;
 
         dataStream.write({
           type: 'data-textDelta',
-          data: text,
+          data: textDelta,
           transient: true,
         });
       }
@@ -66,14 +66,14 @@ ${data ? `\nNew Data:\n${typeof data === 'string' ? data : JSON.stringify(data, 
     for await (const delta of fullStream) {
       const { type } = delta;
 
-      if (type === 'text') {
-        const { text } = delta;
+      if (type === 'text-delta') {
+        const { textDelta } = delta;
 
-        draftContent += text;
+        draftContent += textDelta;
 
         dataStream.write({
           type: 'data-textDelta',
-          data: text,
+          data: textDelta,
           transient: true,
         });
       }
