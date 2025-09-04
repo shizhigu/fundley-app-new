@@ -15,7 +15,7 @@ const ALL_FINANCIAL_FIELDS = [
   ...incomeStatementFields.map(field => ({
     id: field.field,
     name: field.name,
-    category: field.dataSource.statement.toLowerCase().replace(' statement', '').replace(' sheet', ''),
+    category: field.dataSource?.statement?.toLowerCase().replace(' statement', '').replace(' sheet', '') || 'other',
     description: field.description,
     unit: field.dataFormat.unit,
     aliases: field.aliases,

@@ -76,13 +76,13 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
       setDescription(existingMetric.description);
       setCategory(existingMetric.category);
       setIsPublic(existingMetric.isPublic);
-      setFormula(existingMetric.formula);
-      setGeneratedPrompt(existingMetric.prompt);
+      setFormula(existingMetric.astDefinition);
+      setGeneratedPrompt(existingMetric.formula); // Use formula string for display
       
       // Convert AST back to text formula for editing
-      if (existingMetric.formula) {
+      if (existingMetric.astDefinition) {
         try {
-          const textFormula = parser.astToString(existingMetric.formula);
+          const textFormula = parser.astToString(existingMetric.astDefinition);
           setTextFormula(textFormula);
         } catch (error) {
           console.error('Error converting AST to text:', error);
@@ -176,8 +176,8 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
           name,
           description,
           category,
-          formula,
-          prompt: generatedPrompt,
+          formula: generatedPrompt,
+          astDefinition: formula,
           isPublic,
         });
         
@@ -190,8 +190,8 @@ export function FormulaEditor({ open, onClose, metricId }: FormulaEditorProps) {
           name,
           description,
           category,
-          formula,
-          prompt: generatedPrompt,
+          formula: generatedPrompt,
+          astDefinition: formula,
           isPublic,
         });
         
