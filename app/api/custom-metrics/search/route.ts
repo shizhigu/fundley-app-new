@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     // 调用Convex query
     const results = await convex.query(api.metrics.search, {
       query,
-      includePublic
+      includeBuiltIn: true,  // Always include built-in metrics
+      includeCustom: true    // Always include custom metrics (includePublic handled in query logic)
     })
 
     return NextResponse.json(results)
