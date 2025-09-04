@@ -18,8 +18,8 @@ export async function POST() {
       convex.setAuth(token);
     }
     
-    // Get all messages
-    const messages = await convex.query(api.messages.list);
+    // Get all messages using the correct query for persistent chat
+    const messages = await convex.query(api.messages.listForPersistentChat);
     
     // Find incomplete assistant messages (empty parts)
     const incompleteMessages = messages.filter(
