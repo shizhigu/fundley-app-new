@@ -38,7 +38,8 @@ export const create = mutation({
     return await ctx.db.insert("votes", {
       messageId: args.messageId,
       chatId: args.chatId,
-      isUpvote: args.isUpvote,
+      userId: user._id,
+      isUpvoted: args.isUpvote,
       createdAt: Date.now(),
     });
   },
@@ -179,7 +180,7 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.id, {
-      isUpvote: args.isUpvote,
+      isUpvoted: args.isUpvote,
     });
   },
 });

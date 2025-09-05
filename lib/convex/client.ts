@@ -28,7 +28,7 @@ export const convexQueries = {
 
   // Message queries for permanent chat
   async getMessagesByUserId() {
-    return await convexClient.query(api.messages.list);
+    return await convexClient.query(api.messages.listForPersistentChat);
   },
 
   async saveMessages({ messages }: { 
@@ -40,20 +40,16 @@ export const convexQueries = {
       createdAt: Date;
     }>;
   }) {
-    return await convexClient.mutation(api.messages.createBatch, {
-      messages: messages.map(msg => ({
-        role: msg.role,
-        parts: msg.parts,
-        attachments: msg.attachments,
-      })),
-    });
+    // DEPRECATED: This function requires a chatId but is being used for backwards compatibility
+    // For now, just return null since the new architecture requires explicit chat contexts
+    console.warn('saveMessages is deprecated - use chat-based message creation');
+    return null;
   },
 
   async deleteAllMessagesForUser() {
-    // For now, delete messages after a specific timestamp (0 to delete all)
-    return await convexClient.mutation(api.messages.removeAfterTimestamp, {
-      timestamp: 0,
-    });
+    // DEPRECATED: This function requires a chatId but is being used for backwards compatibility
+    console.warn('deleteAllMessagesForUser is deprecated - use chat-based message deletion');
+    return null;
   },
 
   async getMessageCountByUserId({ 
@@ -124,7 +120,7 @@ export const convexQueries = {
   }) {
     return await convexClient.mutation(api.votes.create, {
       messageId: messageId as any,
-      isUpvote,
+      isUpvoted: isUpvote,
     });
   },
 
@@ -181,8 +177,10 @@ export const convexQueries = {
     
     return await convexClient.mutation(api.visualizationCache.create, {
       messageId: data.messageId as any,
+      visualizationType: data.title || 'generic',
+      visualizationData: result,
+      visualizationSpec: result,
       dataHash,
-      result,
     });
   },
 
@@ -203,9 +201,9 @@ export const convexQueries = {
   }: {
     timestamp: number;
   }) {
-    return await convexClient.mutation(api.messages.removeAfterTimestamp, {
-      timestamp,
-    });
+    // DEPRECATED: This function requires a chatId but is being used for backwards compatibility
+    console.warn('removeMessagesAfterTimestamp is deprecated - use chat-based message deletion');
+    return null;
   },
 };
 

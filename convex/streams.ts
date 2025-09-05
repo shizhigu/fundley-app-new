@@ -113,10 +113,10 @@ export const removeForChat = mutation({
       throw new Error("Unauthorized");
     }
 
-    // Delete all streams for this chat
+    // Delete all streams for this user (streams are no longer chat-specific)
     const streams = await ctx.db
       .query("streams")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.chatId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .collect();
 
     for (const stream of streams) {
@@ -141,18 +141,13 @@ export const remove = mutation({
       throw new Error("Stream not found");
     }
 
-    // Verify user owns the chat this stream belongs to
-    const chat = await ctx.db.get(stream.chatId);
-    if (!chat) {
-      throw new Error("Chat not found");
-    }
-
+    // Verify user owns this stream
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
 
-    if (!user || chat.userId !== user._id) {
+    if (!user || stream.userId !== user._id) {
       throw new Error("Unauthorized");
     }
 

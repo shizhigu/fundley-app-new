@@ -24,12 +24,21 @@ export async function addConversationMemory(
   metadata?: Record<string, any>
 ) {
   try {
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: [{ type: 'text' as const, text: msg.content }]
-    }));
+    const formattedMessages = messages.map(msg => {
+      const role = msg.role as 'user' | 'assistant' | 'system';
+      const content = [{ type: 'text' as const, text: msg.content }];
+      
+      // Return properly typed message based on role
+      if (role === 'system') {
+        return { role: 'system' as const, content: msg.content };
+      } else if (role === 'user') {
+        return { role: 'user' as const, content };
+      } else {
+        return { role: 'assistant' as const, content };
+      }
+    });
 
-    await addMemories(formattedMessages, { 
+    await addMemories(formattedMessages as any, { 
       user_id: userId,
       mem0ApiKey: process.env.MEM0_API_KEY,
       ...metadata 

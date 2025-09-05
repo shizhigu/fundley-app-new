@@ -1,7 +1,10 @@
 // 完整的金融Memo渲染配置
 import MarkdownIt from 'markdown-it';
+// @ts-ignore
 import katex from 'markdown-it-katex';
+// @ts-ignore  
 import hljs from 'markdown-it-highlightjs';
+// @ts-ignore
 import taskLists from 'markdown-it-task-lists';
 import mermaid from 'mermaid';
 

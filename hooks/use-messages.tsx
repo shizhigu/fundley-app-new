@@ -27,12 +27,15 @@ export function useMessages({
   const getLastMessageContent = useCallback(() => {
     if (!messages || messages.length === 0) return '';
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role === 'assistant' && Array.isArray(lastMessage.content)) {
-      return lastMessage.content.map(part => 
-        typeof part === 'string' ? part : (part.text || '')
-      ).join('');
+    if (lastMessage.role === 'assistant' && Array.isArray(lastMessage.parts)) {
+      return lastMessage.parts
+        .filter(part => part.type === 'text')
+        .map(part => (part as any).text || '')
+        .join('');
     }
-    return typeof lastMessage.content === 'string' ? lastMessage.content : '';
+    return Array.isArray(lastMessage.parts) && lastMessage.parts[0] 
+      ? (lastMessage.parts[0].type === 'text' ? (lastMessage.parts[0] as any).text || '' : '')
+      : '';
   }, [messages]);
 
   // Auto-scroll on messages load

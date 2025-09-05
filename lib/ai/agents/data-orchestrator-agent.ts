@@ -69,18 +69,32 @@ export const dataOrchestratorAgent = tool({
           let result;
           switch (toolName) {
             case 'get13FFilings':
-              result = await fmpApiTools.get13FFilings.execute({
-                symbol: symbols[0], // 主要关注第一个股票
-                limit: parameters.limit || 100
-              });
+              if (fmpApiTools.get13FFilings?.execute) {
+                result = await fmpApiTools.get13FFilings.execute({
+                  symbol: symbols[0], // 主要关注第一个股票
+                  limit: parameters.limit || 100
+                }, { 
+                  toolCallId: 'get13FFilings-call',
+                  messages: []
+                });
+              } else {
+                throw new Error('get13FFilings tool not available');
+              }
               break;
               
             case 'getInstitutionalHoldings':
-              result = await fmpApiTools.getInstitutionalHoldings.execute({
-                symbols: symbols.slice(0, 5), // 限制前5个
-                includeCurrentQuarter: parameters.includeCurrentQuarter !== false,
-                limit: parameters.limit || 50
-              });
+              if (fmpApiTools.getInstitutionalHoldings?.execute) {
+                result = await fmpApiTools.getInstitutionalHoldings.execute({
+                  symbols: symbols.slice(0, 5), // 限制前5个
+                  includeCurrentQuarter: parameters.includeCurrentQuarter !== false,
+                  limit: parameters.limit || 50
+                }, {
+                  toolCallId: 'getInstitutionalHoldings-call',
+                  messages: []
+                });
+              } else {
+                throw new Error('getInstitutionalHoldings tool not available');
+              }
               break;
               
             default:
@@ -92,15 +106,16 @@ export const dataOrchestratorAgent = tool({
       );
       
       // Step 3: 处理结果
-      const successfulResults = [];
-      const failedResults = [];
+      const successfulResults: any[] = [];
+      const failedResults: any[] = [];
       
       toolResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          if (result.value.success) {
-            successfulResults.push(result.value);
+          const value = result.value as any;
+          if (value.success) {
+            successfulResults.push(value);
           } else {
-            failedResults.push({ tool: mapping.tools[index], error: result.value.error });
+            failedResults.push({ tool: mapping.tools[index], error: value.error });
           }
         } else {
           failedResults.push({ tool: mapping.tools[index], error: result.reason.message });

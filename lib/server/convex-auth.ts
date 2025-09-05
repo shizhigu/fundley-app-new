@@ -34,7 +34,7 @@ export async function preloadUserMessages(chatId?: string) {
     // 使用官方推荐的 preloadQuery 方法
     const preloadedMessages = await preloadQuery(
       api.messages.list,
-      { chatId: targetChatId }, // 指定chatId参数
+      { chatId: targetChatId as any }, // 指定chatId参数
       { token } // 认证选项
     )
     

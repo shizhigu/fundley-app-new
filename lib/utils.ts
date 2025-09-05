@@ -106,9 +106,10 @@ export function convertToUIMessages(
   vizCacheMap?: Map<string, any>
 ): ChatMessage[] {
   return messages.map((message, index) => {
+    // Handle both Convex format (_id) and regular format (id)
+    const messageId = message._id || message.id || `temp-${index}`;
+    
     try {
-      // Handle both Convex format (_id) and regular format (id)
-      const messageId = message._id || message.id;
       
       // Get the parts
       let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
@@ -141,7 +142,7 @@ export function convertToUIMessages(
       parts,
       extractedMetadata: message.extractedMetadata, // Include cached metadata
       metadata: {
-        createdAt: formatISO(message.createdAt || new Date(message._createdTime)),
+        createdAt: formatISO(message.createdAt || new Date((message as any)._createdTime || Date.now())),
       },
     };
     

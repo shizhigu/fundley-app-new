@@ -31,7 +31,7 @@ export const store = mutation({
     return await ctx.db.insert("users", {
       email: identity.email || "",
       clerkUserId: identity.subject,
-      clerkOrganizationId: identity.organizationId,
+      clerkOrganizationId: typeof identity.organizationId === 'string' ? identity.organizationId : undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

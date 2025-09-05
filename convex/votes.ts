@@ -22,16 +22,24 @@ export const create = mutation({
       throw new Error("User not found");
     }
 
-    // Verify message belongs to user
+    // Verify message exists and get its chat
     const message = await ctx.db.get(args.messageId);
-    if (!message || message.userId !== user._id) {
-      throw new Error("Message not found or unauthorized");
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Verify user has access to the chat this message belongs to
+    const chat = await ctx.db.get(message.chatId);
+    if (!chat || (chat.userId !== user._id && chat.visibility !== "public")) {
+      throw new Error("Unauthorized");
     }
 
     return await ctx.db.insert("votes", {
       messageId: args.messageId,
+      chatId: message.chatId,
       userId: user._id,
       isUpvoted: args.isUpvoted,
+      createdAt: Date.now(),
     });
   },
 });
@@ -81,7 +89,13 @@ export const listByMessage = query({
     }
 
     const message = await ctx.db.get(args.messageId);
-    if (!message || message.userId !== user._id) {
+    if (!message) {
+      return [];
+    }
+
+    // Verify user has access to the chat this message belongs to
+    const chat = await ctx.db.get(message.chatId);
+    if (!chat || (chat.userId !== user._id && chat.visibility !== "public")) {
       return [];
     }
 

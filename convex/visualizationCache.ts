@@ -4,8 +4,10 @@ import { v } from "convex/values";
 export const create = mutation({
   args: {
     messageId: v.id("messages"),
+    visualizationType: v.string(),
+    visualizationData: v.any(),
+    visualizationSpec: v.optional(v.any()),
     dataHash: v.string(),
-    result: v.any(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -36,9 +38,12 @@ export const create = mutation({
 
     return await ctx.db.insert("visualizationCache", {
       messageId: args.messageId,
+      visualizationType: args.visualizationType,
+      visualizationData: args.visualizationData,
+      visualizationSpec: args.visualizationSpec,
       dataHash: args.dataHash,
-      result: args.result,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
   },
 });
@@ -163,7 +168,9 @@ export const get = query({
 export const update = mutation({
   args: {
     id: v.id("visualizationCache"),
-    result: v.any(),
+    visualizationType: v.optional(v.string()),
+    visualizationData: v.optional(v.any()),
+    visualizationSpec: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -197,9 +204,12 @@ export const update = mutation({
       throw new Error("Unauthorized");
     }
 
-    await ctx.db.patch(args.id, {
-      result: args.result,
-    });
+    const updates: any = { updatedAt: Date.now() };
+    if (args.visualizationType !== undefined) updates.visualizationType = args.visualizationType;
+    if (args.visualizationData !== undefined) updates.visualizationData = args.visualizationData;
+    if (args.visualizationSpec !== undefined) updates.visualizationSpec = args.visualizationSpec;
+
+    await ctx.db.patch(args.id, updates);
   },
 });
 
