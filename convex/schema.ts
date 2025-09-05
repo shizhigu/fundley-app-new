@@ -105,7 +105,7 @@ export default defineSchema({
     astDefinition: v.any(),              // JSON AST structure - REQUIRED
     
     formula: v.string(),                 // Human-readable formula description
-    calculationType: v.union(v.literal("single_period"), v.literal("ttm"), v.literal("multi_period")), // Calculation method
+    calculationType: v.optional(v.union(v.literal("single_period"), v.literal("ttm"), v.literal("multi_period"))), // Calculation method
     
     // Data requirements for AST metrics
     dataRequirements: v.object({
