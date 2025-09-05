@@ -241,16 +241,23 @@ export async function POST(request: Request) {
               }),
               execute: async (params) => {
                 try {
-                  // Try to get metric by ID first, then by name search
+                  // Determine if input is a Convex ID or metric name
                   let fullMetric;
                   
-                  try {
-                    // Try direct ID lookup first
-                    fullMetric = await convex.query(api.metrics.getById, { 
-                      metricId: params.metricId as any 
-                    });
-                  } catch (error) {
-                    // If ID lookup fails, try name search
+                  // Check if the input looks like a Convex ID (contains only alphanumeric characters and is the right length)
+                  const isConvexId = /^[a-z0-9]{32}$/.test(params.metricId);
+                  
+                  if (isConvexId) {
+                    try {
+                      // Direct ID lookup
+                      fullMetric = await convex.query(api.metrics.getById, { 
+                        metricId: params.metricId as any 
+                      });
+                    } catch (error) {
+                      return `❌ Metric with ID "${params.metricId}" not found.`;
+                    }
+                  } else {
+                    // Search by name
                     const searchResults = await convex.query(api.metrics.search, {
                       query: params.metricId,
                       includeCustom: true,
@@ -344,26 +351,20 @@ export async function POST(request: Request) {
 
                     console.log('🔍 Calculation Result:', JSON.stringify(calculationResult, null, 2));
                     
-                    // 详细的成功检查调试
+                    // 检查SimplifiedFinancialEngine返回的格式: { metric, symbols, metadata }
+                    const success = calculationResult && 
+                                   calculationResult.symbols && 
+                                   Array.isArray(calculationResult.symbols) &&
+                                   calculationResult.symbols.length > 0 &&
+                                   calculationResult.symbols.some((symbolData: any) => 
+                                     symbolData.values && symbolData.values.length > 0
+                                   );
+                                   
                     console.log('🔍 Success Check Details:');
-                    console.log(`  - calculation_engine: "${calculationResult.calculation_engine}"`);
-                    console.log(`  - calculation_engine === 'SimplifiedFinancial_v1.0': ${calculationResult.calculation_engine === 'SimplifiedFinancial_v1.0'}`);
-                    console.log(`  - results exists: ${!!calculationResult.results}`);
-                    console.log(`  - results keys: ${calculationResult.results ? Object.keys(calculationResult.results) : 'null'}`);
-                    console.log(`  - results keys length: ${calculationResult.results ? Object.keys(calculationResult.results).length : 0}`);
-                    
-                    // 检查每个结果的success状态
-                    if (calculationResult.results) {
-                      Object.entries(calculationResult.results).forEach(([symbol, result]: [string, any]) => {
-                        console.log(`  - ${symbol} success: ${result?.success}`);
-                        console.log(`  - ${symbol} periods count: ${result?.periods?.length || 0}`);
-                      });
-                    }
-                    
-                    const success = calculationResult.calculation_engine === 'SimplifiedFinancial_v1.0' && 
-                                    calculationResult.results && 
-                                    Object.keys(calculationResult.results).length > 0 &&
-                                    Object.values(calculationResult.results).some((result: any) => result.success);
+                    console.log(`  - calculationResult exists: ${!!calculationResult}`);
+                    console.log(`  - symbols array exists: ${!!(calculationResult?.symbols)}`);
+                    console.log(`  - symbols count: ${calculationResult?.symbols?.length || 0}`);
+                    console.log(`  - metric name: ${calculationResult?.metric || 'undefined'}`);
                     console.log('🔍 Final Success Check:', success);
 
                     const executionTime = Date.now() - startTime;

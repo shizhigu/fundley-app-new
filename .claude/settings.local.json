@@ -51,7 +51,8 @@
       "Bash(git push:*)",
       "Bash(pnpm run:*)",
       "Bash(chmod:*)",
-      "Bash(./fix-session-props.sh:*)"
+      "Bash(./fix-session-props.sh:*)",
+      "Bash(PORT=3002 pnpm dev)"
     ],
     "deny": [],
     "ask": [],

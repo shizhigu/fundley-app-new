@@ -4,6 +4,17 @@ import { Pool } from 'pg';
  * Database configuration for financial data
  */
 function getPool(): Pool {
+  // 优先使用完整的连接字符串
+  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  
+  if (connectionString) {
+    return new Pool({
+      connectionString,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    });
+  }
+  
+  // 回退到分开的环境变量
   return new Pool({
     user: process.env.POSTGRES_USER || 'postgres',
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -22,7 +33,7 @@ export interface MetricDefinition {
   category?: string;
   ast: any;
   data_requirements?: {
-    [table: string]: string[] | undefined;
+    [table: string]: string[];
     periods_needed?: string[];
   };
 }
@@ -35,7 +46,7 @@ export interface CalculationRequest {
   asOf?: string;
 }
 
-// AST Node Types
+// AST Node Types - 标准格式
 export type ASTNode = 
   | FieldNode 
   | ArithmeticNode 
@@ -49,15 +60,19 @@ export interface FieldNode {
   source: string;
   field: string;
   selector?: {
-    type: 'single' | 'rolling';
-    periods?: number;
-    operation?: 'sum' | 'average' | 'latest' | 'change';
+    type: 'rolling';
+    rolling: {
+      window_size: number;
+      window_type: 'quarter' | 'annual';
+      from: 'latest';
+      aggregation: 'sum' | 'average' | 'latest' | 'change';
+    };
   };
 }
 
 export interface ArithmeticNode {
   type: 'arithmetic';
-  operation: '+' | '-' | '*' | '/' | '**';
+  operator: 'divide' | 'add' | 'subtract' | 'multiply' | 'abs';
   left: ASTNode;
   right: ASTNode;
 }
@@ -155,30 +170,37 @@ export class SimplifiedFinancialEngine {
   }
 
   /**
-   * 从AST递归提取数据需求
+   * 从AST递归提取数据需求 - 支持legacy和新格式
    */
   private extractDataRequirements(node: ASTNode): { tables: Set<string>, fields: Set<string> } {
     const requirements = { tables: new Set<string>(), fields: new Set<string>() };
 
-    const traverse = (n: ASTNode) => {
+    const traverse = (n: any) => {
+      if (!n || typeof n !== 'object') {
+        console.warn('⚠️ Invalid AST node:', n);
+        return;
+      }
+
       switch (n.type) {
         case 'field':
-          requirements.tables.add(n.source);
-          requirements.fields.add(`${n.source}.${n.field}`);
+          if (n.source && n.field) {
+            requirements.tables.add(n.source);
+            requirements.fields.add(`${n.source}.${n.field}`);
+          }
           break;
         case 'arithmetic':
-          traverse(n.left);
-          traverse(n.right);
+          if (n.left) traverse(n.left);
+          if (n.right) traverse(n.right);
           break;
         case 'aggregation':
         case 'rolling':
-          traverse(n.operand);
+          if (n.operand) traverse(n.operand);
           break;
         case 'conditional':
-          traverse(n.condition.left);
-          traverse(n.condition.right);
-          traverse(n.then);
-          traverse(n.else);
+          if (n.condition?.left) traverse(n.condition.left);
+          if (n.condition?.right) traverse(n.condition.right);
+          if (n.then) traverse(n.then);
+          if (n.else) traverse(n.else);
           break;
         case 'constant':
           // No requirements for constants
@@ -299,12 +321,17 @@ export class SimplifiedFinancialEngine {
   /**
    * 递归评估AST节点
    */
-  private evaluateAST(node: ASTNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+  private evaluateAST(node: any, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    if (!node || typeof node !== 'object') {
+      console.warn(`⚠️ Invalid AST node:`, node);
+      return null;
+    }
+
     console.log(`🔍 Evaluating AST node:`, { type: node.type, asOfPeriod });
 
     switch (node.type) {
       case 'constant':
-        return node.value;
+        return typeof node.value === 'number' ? node.value : null;
 
       case 'field':
         return this.evaluateField(node, rawData, asOfPeriod);
@@ -313,15 +340,25 @@ export class SimplifiedFinancialEngine {
         const left = this.evaluateAST(node.left, rawData, asOfPeriod);
         const right = this.evaluateAST(node.right, rawData, asOfPeriod);
         
+        if (node.operator === 'abs') {
+          // Special case for absolute value - only use left operand
+          return left !== null ? Math.abs(left) : null;
+        }
+        
         if (left === null || right === null) return null;
         
-        switch (node.operation) {
-          case '+': return left + right;
-          case '-': return left - right;
-          case '*': return left * right;
-          case '/': return right !== 0 ? left / right : null;
-          case '**': return Math.pow(left, right);
-          default: return null;
+        switch (node.operator) {
+          case 'add':
+            return left + right;
+          case 'subtract':
+            return left - right;
+          case 'multiply':
+            return left * right;
+          case 'divide':
+            return right !== 0 ? left / right : null;
+          default:
+            console.warn(`⚠️ Unknown operator: ${node.operator}`);
+            return null;
         }
 
       case 'rolling':
@@ -337,15 +374,16 @@ export class SimplifiedFinancialEngine {
           this.evaluateAST(node.else, rawData, asOfPeriod);
 
       default:
-        console.warn(`⚠️ Unknown AST node type:`, node);
+        console.warn(`⚠️ Unknown AST node type: ${node.type}`);
         return null;
     }
   }
 
+
   /**
    * 评估字段节点
    */
-  private evaluateField(node: FieldNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
+  private evaluateField(node: any, rawData: RawDataRow[], asOfPeriod: string): number | null {
     console.log(`🔍 Evaluating field: ${node.source}.${node.field} at ${asOfPeriod}`);
     
     // 过滤相关数据
@@ -361,6 +399,7 @@ export class SimplifiedFinancialEngine {
       [node.field.toLowerCase()]: row[node.field.toLowerCase()]
     })));
 
+    // Check for rolling selector
     if (node.selector?.type === 'rolling') {
       console.log(`🔄 Field uses rolling selector, delegating to calculateRollingField`);
       return this.calculateRollingField(node, rawData, asOfPeriod);
@@ -388,12 +427,15 @@ export class SimplifiedFinancialEngine {
   /**
    * 计算rolling字段
    */
-  private calculateRollingField(node: FieldNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
-    if (!node.selector || node.selector.type !== 'rolling') {
+  private calculateRollingField(node: any, rawData: RawDataRow[], asOfPeriod: string): number | null {
+    if (!node.selector || !node.selector.rolling) {
       return null;
     }
 
-    const { periods = 4, operation = 'sum' } = node.selector;
+    const periods = node.selector.rolling.window_size || 4;
+    const operation = node.selector.rolling.aggregation || 'sum';
+
+    console.log(`🔄 Rolling calculation: ${periods} periods, operation: ${operation}`);
     
     // 解析目标期间
     const [targetYear, targetPeriod] = asOfPeriod.split('-');
