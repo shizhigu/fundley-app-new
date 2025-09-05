@@ -152,7 +152,7 @@ export const create = mutation({
     description: v.string(),
     category: v.string(),
     formula: v.string(),
-    calculationType: v.union(v.literal("single_period"), v.literal("ttm"), v.literal("multi_period")),
+    calculationType: v.optional(v.union(v.literal("single_period"), v.literal("ttm"), v.literal("multi_period"))),
     prompt: v.optional(v.string()),      // Backward compatibility
     astDefinition: v.optional(v.any()),  // JSON AST structure - optional for now
     dataRequirements: v.optional(v.object({
@@ -196,7 +196,7 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       formula: args.formula,
-      calculationType: args.calculationType,
+      calculationType: args.calculationType || 'ttm',
       astDefinition: args.astDefinition || null,
       dataRequirements: args.dataRequirements || {
         income_statement: [],
