@@ -33,7 +33,7 @@ export interface MetricDefinition {
   category?: string;
   ast: any;
   data_requirements?: {
-    [table: string]: string[];
+    [table: string]: string[] | undefined;
     periods_needed?: string[];
   };
 }
