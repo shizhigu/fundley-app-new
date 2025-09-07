@@ -80,7 +80,7 @@ export default function EditorPage() {
                 <li>• <kbd className="bg-blue-100 px-1 rounded">Ctrl/Cmd + Alt + 1-6</kbd> - 标题</li>
                 <li>• <kbd className="bg-blue-100 px-1 rounded">Ctrl/Cmd + Shift + 8</kbd> - 无序列表</li>
                 <li>• <kbd className="bg-blue-100 px-1 rounded">Ctrl/Cmd + Shift + 7</kbd> - 有序列表</li>
-                <li>• <kbd className="bg-blue-100 px-1 rounded">Ctrl/Cmd + Shift + ></kbd> - 引用</li>
+                <li>• <kbd className="bg-blue-100 px-1 rounded">Ctrl/Cmd + Shift + {'>'}</kbd> - 引用</li>
               </ul>
             </div>
           </div>

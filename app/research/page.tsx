@@ -128,7 +128,7 @@ export default function ResearchPage() {
                   <p>• <strong>键盘导航：</strong> 使用方向键在段落间无缝切换</p>
                   <p>• <strong>智能删除：</strong> Backspace会自动合并空段落</p>
                   <p>• <strong>AI分析：</strong> 选中任意文本，使用右侧AI助手分析</p>
-                  <p>• <strong>快捷格式：</strong> # 标题、* 列表、> 引用</p>
+                  <p>• <strong>快捷格式：</strong> # 标题、* 列表、{'>'} 引用</p>
                 </div>
               </CardContent>
             </Card>

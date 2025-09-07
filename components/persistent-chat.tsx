@@ -7,7 +7,6 @@ import { convertToUIMessages } from '@/lib/utils';
 import { api } from '@/convex/_generated/api';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { useChatContext } from '@/components/chat-layout-provider';
-import { logSystemPrompt } from '@/lib/ai/prompts';
 
 interface PersistentChatProps {
   initialChatModel: string;
@@ -56,15 +55,10 @@ export function PersistentChat({
     return [];
   }, [messages]);
 
-  // Debug: Log complete system prompt on component mount (development only)
+  // Debug: Component mount logging (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      try {
-        console.log('🔍 About to log system prompt...');
-        logSystemPrompt();
-      } catch (error) {
-        console.error('❌ Error logging system prompt:', error);
-      }
+      console.log('🔍 PersistentChat component mounted');
     }
   }, []);
 

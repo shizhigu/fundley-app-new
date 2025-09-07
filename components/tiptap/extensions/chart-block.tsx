@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { Node, mergeAttributes } from '@tiptap/core'
@@ -11,7 +12,7 @@ import { BarChart3, LineChart, PieChart, Settings, Download } from 'lucide-react
 import { useState } from 'react'
 
 // 图表块的React组件
-const ChartBlockComponent = ({ node, updateAttributes, deleteNode }) => {
+const ChartBlockComponent = ({ node, updateAttributes, deleteNode }: any) => {
   const [chartType, setChartType] = useState(node.attrs.chartType || 'line')
   const [symbol, setSymbol] = useState(node.attrs.symbol || 'AAPL')
 

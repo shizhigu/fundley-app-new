@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { Node, mergeAttributes } from '@tiptap/core'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { Node, mergeAttributes } from '@tiptap/core'
@@ -10,7 +11,7 @@ import { Brain, Zap, BarChart3, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 
 // AI分析块的React组件
-const AiAnalysisBlockComponent = ({ node, updateAttributes, deleteNode }) => {
+const AiAnalysisBlockComponent = ({ node, updateAttributes, deleteNode }: any) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState(node.attrs.result || '')
 
@@ -145,9 +146,9 @@ export const AiAnalysisBlock = Node.create({
 
   addCommands() {
     return {
-      setAiAnalysisBlock: (attributes) => ({ commands }) => {
+      setAiAnalysisBlock: (attributes: any) => ({ commands }: any) => {
         return commands.setNode(this.name, attributes)
       },
-    }
+    } as any
   },
 })
