@@ -2,7 +2,7 @@
 
 import { ChevronUp, Building2, Settings, Users, UserPlus } from 'lucide-react';
 import Image from 'next/image';
-import { useClerk, useUser, useOrganization, useOrganizationList } from '@clerk/nextjs';
+import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 
@@ -29,7 +29,6 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const { signOut, openOrganizationProfile, openCreateOrganization } = useClerk();
   const { isLoaded, user: clerkUser } = useUser();
   const { organization } = useOrganization();
-  const { setUserMemberships } = useOrganizationList();
   const { setTheme, resolvedTheme } = useTheme();
 
   const displayEmail = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || 'User';

@@ -73,9 +73,9 @@ export async function POST(req: Request) {
   // User events
   if (eventType === 'user.created') {
     const { id, email_addresses, organization_memberships } = evt.data;
-    const email = email_addresses[0]?.email_address;
+    const email = email_addresses?.[0]?.email_address;
 
-    if (email) {
+    if (email && id) {
       try {
         await convex.mutation(api.users.create, {
           email,
@@ -86,14 +86,16 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Error creating user:', error);
       }
+    } else {
+      console.error('User creation webhook missing required fields:', { id, email });
     }
   }
 
   if (eventType === 'user.updated') {
     const { id, email_addresses, organization_memberships } = evt.data;
-    const email = email_addresses[0]?.email_address;
+    const email = email_addresses?.[0]?.email_address;
 
-    if (email) {
+    if (id) {
       try {
         await convex.mutation(api.users.updateByClerkId, {
           clerkUserId: id,
@@ -104,6 +106,8 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Error updating user:', error);
       }
+    } else {
+      console.error('User update webhook missing id');
     }
   }
 
@@ -117,83 +121,106 @@ export async function POST(req: Request) {
   // Organization events
   if (eventType === 'organization.created') {
     const { id, name, slug } = evt.data;
-    try {
-      await convex.mutation(api.organizations.createFromWebhook, {
-        clerkOrganizationId: id,
-        name,
-        slug,
-        settings: {}
-      });
-      console.log(`✅ Organization created: ${name} (${id})`);
-    } catch (error) {
-      console.error('Error creating organization:', error);
+    if (id && name && slug) {
+      try {
+        await convex.mutation(api.organizations.createFromWebhook, {
+          clerkOrganizationId: id,
+          name,
+          slug,
+          settings: {}
+        });
+        console.log(`✅ Organization created: ${name} (${id})`);
+      } catch (error) {
+        console.error('Error creating organization:', error);
+      }
+    } else {
+      console.error('Organization creation webhook missing required fields:', { id, name, slug });
     }
   }
 
   if (eventType === 'organization.updated') {
     const { id, name, slug } = evt.data;
-    try {
-      await convex.mutation(api.organizations.updateByClerkId, {
-        clerkOrganizationId: id,
-        name,
-        slug,
-      });
-      console.log(`✅ Organization updated: ${name} (${id})`);
-    } catch (error) {
-      console.error('Error updating organization:', error);
+    if (id) {
+      try {
+        await convex.mutation(api.organizations.updateByClerkId, {
+          clerkOrganizationId: id,
+          name,
+          slug,
+        });
+        console.log(`✅ Organization updated: ${name} (${id})`);
+      } catch (error) {
+        console.error('Error updating organization:', error);
+      }
+    } else {
+      console.error('Organization update webhook missing id');
     }
   }
 
   if (eventType === 'organization.deleted') {
     const { id } = evt.data;
-    try {
-      await convex.mutation(api.organizations.deleteByClerkId, {
-        clerkOrganizationId: id,
-      });
-      console.log(`✅ Organization deleted: ${id}`);
-    } catch (error) {
-      console.error('Error deleting organization:', error);
+    if (id) {
+      try {
+        await convex.mutation(api.organizations.deleteByClerkId, {
+          clerkOrganizationId: id,
+        });
+        console.log(`✅ Organization deleted: ${id}`);
+      } catch (error) {
+        console.error('Error deleting organization:', error);
+      }
+    } else {
+      console.error('Organization deletion webhook missing id');
     }
   }
 
   // Organization membership events
   if (eventType === 'organizationMembership.created') {
     const { organization, public_user_data } = evt.data;
-    const userId = public_user_data.user_id;
-    const orgId = organization.id;
+    const userId = public_user_data?.user_id;
+    const orgId = organization?.id;
     
-    try {
-      await convex.mutation(api.users.updateByClerkId, {
-        clerkUserId: userId,
-        clerkOrganizationId: orgId,
-      });
-      console.log(`✅ User ${userId} joined organization ${orgId}`);
-    } catch (error) {
-      console.error('Error handling membership created:', error);
+    if (userId && orgId) {
+      try {
+        await convex.mutation(api.users.updateByClerkId, {
+          clerkUserId: userId,
+          clerkOrganizationId: orgId,
+        });
+        console.log(`✅ User ${userId} joined organization ${orgId}`);
+      } catch (error) {
+        console.error('Error handling membership created:', error);
+      }
+    } else {
+      console.error('Membership creation webhook missing required fields:', { userId, orgId });
     }
   }
 
   if (eventType === 'organizationMembership.updated') {
     const { organization, public_user_data, role } = evt.data;
-    console.log(`✅ Membership updated for user ${public_user_data.user_id} in org ${organization.id} (role: ${role})`);
+    const userId = public_user_data?.user_id;
+    const orgId = organization?.id;
+    if (userId && orgId) {
+      console.log(`✅ Membership updated for user ${userId} in org ${orgId} (role: ${role})`);
+    }
   }
 
   if (eventType === 'organizationMembership.deleted') {
     const { organization, public_user_data } = evt.data;
-    const userId = public_user_data.user_id;
+    const userId = public_user_data?.user_id;
+    const orgId = organization?.id;
     
-    if (!ENFORCE_ORGANIZATION_MODE) {
+    if (userId && orgId && !ENFORCE_ORGANIZATION_MODE) {
       try {
         await convex.mutation(api.users.updateByClerkId, {
           clerkUserId: userId,
           clerkOrganizationId: undefined,
         });
-        console.log(`✅ User ${userId} removed from organization ${organization.id}`);
+        console.log(`✅ User ${userId} removed from organization ${orgId}`);
       } catch (error) {
         console.error('Error removing user from organization:', error);
       }
-    } else {
+    } else if (userId && orgId) {
       console.warn(`⚠️ User ${userId} removed from org but ENFORCE_ORGANIZATION_MODE is true`);
+    } else {
+      console.error('Membership deletion webhook missing required fields:', { userId, orgId });
     }
   }
 
