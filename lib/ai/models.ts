@@ -1,7 +1,7 @@
 export const DEFAULT_MODEL = 'gemini-2.5-pro';
 
 // Specialized model for suggestion generation and data verification
-export const SUGGESTION_MODEL = 'qwen/qwen2.5-vl-32b-instruct';
+export const SUGGESTION_MODEL = 'deepseek/deepseek-r1-0528-qwen3-8b';
 
 // Simple model configuration
 export const AVAILABLE_MODELS = {
