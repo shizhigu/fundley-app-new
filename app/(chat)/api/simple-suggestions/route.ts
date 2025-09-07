@@ -8,7 +8,7 @@ const suggestionsModel = openrouter(SUGGESTION_MODEL)
 
 const SimpleSuggestionsSchema = z.object({
   tickers: z.array(z.string()).max(5).describe('Stock ticker symbols found in the message (e.g. ["AAPL", "TSLA"])'),
-  suggestions: z.array(z.string()).max(3).describe('2-3 short actionable follow-up questions (max 8-10 words each)'),
+  suggestions: z.array(z.string()).max(3).describe('2-3 insightful data-driven follow-up questions (max 12 words each)'),
   containsRealData: z.boolean().describe('True if message contains real data from tool calls'),
   verificationMessage: z.string().optional().describe('Short data source description if containsRealData is true')
 })
@@ -25,24 +25,54 @@ export async function POST(request: NextRequest) {
     
     const result = await generateObject({
       model: suggestionsModel,
-      system: `Extract tickers, generate suggestions, and verify data sources from this financial assistant message.
+      system: `You are an expert financial analyst. Generate insightful, data-driven follow-up questions for financial analysis.
 
-INSTRUCTIONS:
-1. TICKERS: Find stock symbols (AAPL, TSLA, etc.) - return uppercase
-2. SUGGESTIONS: Create 2-3 SHORT actionable follow-ups (max 8-10 words each)
-   - Examples: "Compare with industry peers", "Analyze recent trends", "Check quarterly performance"
-3. DATA VERIFICATION: Check if message contains real tool call data
-   - If yes: set containsRealData=true and describe data source
-   - If no: set containsRealData=false
+## INSTRUCTIONS:
 
-Keep it simple and fast.`,
-      prompt: `Analyze this financial assistant message:
+### 1. TICKERS: Find stock symbols (AAPL, TSLA, etc.) - uppercase
+
+### 2. SUGGESTIONS: Generate 2-3 analytical questions (max 12 words each)
+
+When message contains financial data, prioritize questions that explore:
+
+**Data-driven insights:**
+- "Why did [specific metric] change in [time period]?"
+- "What factors drove the [X]% [increase/decline] in [metric]?" 
+- "How does this [trend/ratio] compare to industry benchmarks?"
+
+**Investment implications:**
+- "What risks could reverse this performance trend?"
+- "Is this [improvement/decline] sustainable long-term?"
+- "How does current valuation reflect these fundamentals?"
+
+**Comparative analysis:**
+- "How do these metrics compare to key competitors?"
+- "What does this trend mean for market positioning?"
+- "Which business segment is driving these results?"
+
+### 3. DATA VERIFICATION: 
+- containsRealData: true if tool call data present
+- verificationMessage: describe data source
+
+## FOCUS:
+- Ask WHY behind data changes, not just WHAT
+- Target investment decision-making context  
+- Be specific to the actual data shown
+- Avoid generic questions like "analyze performance"
+
+Generate questions professional analysts would ask.`,
+      prompt: `Analyze this financial message:
 
 MESSAGE: ${messageText}
 
 MESSAGE PARTS: ${JSON.stringify(messageParts, null, 2)}
 
-Extract tickers, generate suggestions, verify data sources.`,
+Generate follow-up questions that focus on:
+- WHY specific metrics/trends changed 
+- WHAT data patterns mean for investment decisions
+- HOW results compare to benchmarks/competitors
+
+Make questions specific to the actual data and companies mentioned.`,
       schema: SimpleSuggestionsSchema
     });
     
