@@ -22,6 +22,7 @@ import {
   extractRiskFactors, 
   extractBusinessOverview 
 } from '@/lib/ai/tools/financial/sec-filings';
+import { webSearch } from '@/lib/ai/tools/search/perplexity-search';
 // Removed old tool imports - using inline implementations with Convex access
 import { 
   getRelevantMemories, 
@@ -195,6 +196,8 @@ export async function POST(request: Request) {
             extractMDA,
             extractRiskFactors,
             extractBusinessOverview,
+            // 网络搜索工具
+            webSearch,
             // 新的安全指标工具架构 - 内联实现以访问 Convex
             searchMetrics: {
               description: 'Search for available financial metrics (both built-in and custom)',
@@ -230,54 +233,169 @@ export async function POST(request: Request) {
               }
             },
             calculateMetric: {
-              description: 'Calculate financial metrics using high-performance JSON AST engine with support for historical time series analysis',
+              description: 'Calculate financial metrics using high-performance JSON AST engine. Supports both single and multiple metrics calculation.',
               inputSchema: z.object({
-                metricId: z.string().describe('ID or name of the metric to calculate'),
+                metricId: z.string().optional().describe('Single metric ID or name (legacy support)'),
+                metricIds: z.array(z.string()).optional().describe('Multiple metric IDs or names for batch calculation'),
                 symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT"])'),
-                periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-12). Default 4 gets last 4 quarters'),
+                periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-25). Default 4 gets last 4 quarters'),
                 periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
                 asOf: z.string().optional().describe('Latest time point for analysis. Format: "YYYY-QN" (e.g., "2024-Q3"). If omitted, uses most recent data'),
-// Removed includeHistorical - periods parameter directly controls number of time points returned
-              }),
+              }).refine(
+                (data) => data.metricId || data.metricIds,
+                "Either metricId or metricIds must be provided"
+              ),
               execute: async (params) => {
                 try {
-                  // Determine if input is a Convex ID or metric name
-                  let fullMetric;
+                  // 1. 规范化输入参数 - 支持单指标和多指标
+                  const metricIds = params.metricIds || (params.metricId ? [params.metricId] : []);
                   
-                  // Check if the input looks like a Convex ID (contains only alphanumeric characters and is the right length)
-                  const isConvexId = /^[a-z0-9]{32}$/.test(params.metricId);
+                  if (metricIds.length === 0) {
+                    return '❌ No metric IDs provided. Please specify either metricId or metricIds.';
+                  }
                   
-                  if (isConvexId) {
+                  console.log(`🔍 Calculating ${metricIds.length} metric(s) for ${params.symbols.length} symbol(s)`);
+                  console.log(`📊 Metrics: [${metricIds.join(', ')}]`);
+                  console.log(`🎯 Symbols: [${params.symbols.join(', ')}]`);
+                  
+                  // 2. 获取所有指标的定义
+                  const fullMetrics = [];
+                  const failedMetrics = [];
+                  
+                  for (const metricId of metricIds) {
                     try {
-                      // Direct ID lookup
-                      fullMetric = await convex.query(api.metrics.getById, { 
-                        metricId: params.metricId as any 
-                      });
+                      let fullMetric;
+                      
+                      // Check if the input looks like a Convex ID (contains only alphanumeric characters and is the right length)
+                      const isConvexId = /^[a-z0-9]{32}$/.test(metricId);
+                      
+                      if (isConvexId) {
+                        try {
+                          // Direct ID lookup
+                          fullMetric = await convex.query(api.metrics.getById, { 
+                            metricId: metricId as any 
+                          });
+                        } catch (error) {
+                          throw new Error(`Metric with ID "${metricId}" not found.`);
+                        }
+                      } else {
+                        // Search by name
+                        const searchResults = await convex.query(api.metrics.search, {
+                          query: metricId,
+                          includeCustom: true,
+                          includeBuiltIn: true
+                        });
+
+                        const metric = searchResults.metrics.find(m => 
+                          m.name.toLowerCase() === metricId.toLowerCase()
+                        );
+
+                        if (!metric) {
+                          throw new Error(`Metric "${metricId}" not found. Use searchMetrics to find available metrics.`);
+                        }
+                        
+                        // Get full metric details
+                        fullMetric = await convex.query(api.metrics.getById, { 
+                          metricId: metric.id as any 
+                        });
+                      }
+
+                      if (!fullMetric) {
+                        throw new Error(`Failed to retrieve metric definition for "${metricId}"`);
+                      }
+
+                      fullMetrics.push(fullMetric);
+                      console.log(`✅ Retrieved metric definition for "${metricId}": ${fullMetric.name}`);
+                      
                     } catch (error) {
-                      return `❌ Metric with ID "${params.metricId}" not found.`;
+                      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                      console.error(`❌ Failed to retrieve metric "${metricId}": ${errorMsg}`);
+                      failedMetrics.push({ id: metricId, error: errorMsg });
                     }
-                  } else {
-                    // Search by name
-                    const searchResults = await convex.query(api.metrics.search, {
-                      query: params.metricId,
-                      includeCustom: true,
-                      includeBuiltIn: true
-                    });
-
-                    const metric = searchResults.metrics.find(m => 
-                      m.name.toLowerCase() === params.metricId.toLowerCase()
-                    );
-
-                    if (!metric) {
-                      return `❌ Metric "${params.metricId}" not found. Use searchMetrics to find available metrics.`;
-                    }
-                    
-                    // Get full metric details
-                    fullMetric = await convex.query(api.metrics.getById, { 
-                      metricId: metric.id as any 
-                    });
                   }
 
+                  // 检查是否有任何指标成功获取
+                  if (fullMetrics.length === 0) {
+                    const errorSummary = failedMetrics.map(f => `- ${f.id}: ${f.error}`).join('\n');
+                    return `❌ Failed to retrieve any metrics:\n${errorSummary}`;
+                  }
+
+                  // 如果有失败的指标，记录但继续处理成功的指标
+                  if (failedMetrics.length > 0) {
+                    const failedIds = failedMetrics.map(f => f.id).join(', ');
+                    console.warn(`⚠️ Some metrics failed to load: [${failedIds}]. Continuing with successful metrics.`);
+                  }
+
+                  // 3. 处理多symbol或多指标情况 - 最土的办法：多次调用单symbol逻辑
+                  if (params.symbols.length > 1 || fullMetrics.length > 1) {
+                    const allResults = [];
+                    
+                    // 最土的办法：每个symbol分别算
+                    for (const symbol of params.symbols) {
+                      for (const metric of fullMetrics) {
+                        try {
+                          // 调用单symbol单指标的逻辑
+                          const { SimplifiedFinancialEngine } = await import('@/lib/financial/simplified-engine');
+                          const engine = new SimplifiedFinancialEngine();
+                          
+                          let parsedAstDefinition = metric.astDefinition;
+                          if (typeof metric.astDefinition === 'string') {
+                            parsedAstDefinition = JSON.parse(metric.astDefinition);
+                          }
+                          
+                          const result = await engine.calculateMetric({
+                            metricDefinition: {
+                              name: metric.name,
+                              description: metric.description,
+                              formula_display: metric.formula,
+                              category: metric.category,
+                              ast: parsedAstDefinition,
+                              data_requirements: metric.dataRequirements || undefined
+                            },
+                            symbols: [symbol], // 单symbol
+                            periods: params.periods,
+                            periodType: params.periodType,
+                            asOf: params.asOf
+                          });
+                          
+                          allResults.push({
+                            symbol: symbol,
+                            metric: metric.name,
+                            success: true,
+                            data: result
+                          });
+                          
+                        } catch (error) {
+                          allResults.push({
+                            symbol: symbol,
+                            metric: metric.name,
+                            success: false,
+                            error: error instanceof Error ? error.message : 'Unknown error'
+                          });
+                        }
+                      }
+                    }
+                    
+                    // 简单拼接结果
+                    let resultText = `Multi-symbol calculation completed:\n`;
+                    for (const result of allResults) {
+                      if (result.success) {
+                        resultText += `✅ ${result.symbol} ${result.metric}: Success\n`;
+                      } else {
+                        resultText += `❌ ${result.symbol} ${result.metric}: ${result.error}\n`;
+                      }
+                    }
+                    
+                    return {
+                      success: true,
+                      message: resultText,
+                      results: allResults
+                    };
+                  }
+                  
+                  // 4. 单指标：使用完全原有的逻辑
+                  const fullMetric = fullMetrics[0];
+                  
                   // Record usage start time
                   const startTime = Date.now();
                   
@@ -334,7 +452,7 @@ export async function POST(request: Request) {
                           formula_display: fullMetric.formula,
                           category: fullMetric.category,
                           ast: parsedAstDefinition,  // Use parsed AST definition
-                          data_requirements: fullMetric.dataRequirements || {}
+                          data_requirements: fullMetric.dataRequirements || undefined
                         },
                         symbols: params.symbols,
                         periods: params.periods,

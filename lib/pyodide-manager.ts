@@ -108,7 +108,7 @@ class PyodideManager {
     this.isExecuting = true;
     
     while (this.executionQueue.length > 0) {
-      const task = this.executionQueue.pop(); // 从后往前执行 (LIFO)
+      const task = this.executionQueue.shift();
       if (task) {
         try {
           await task();

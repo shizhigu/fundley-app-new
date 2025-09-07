@@ -162,7 +162,7 @@ export const executeCustomMetric = tool({
     metricId: z.string().describe('ID of the custom metric'),
     symbols: z.array(z.string()).min(1).describe('List of stock symbols, e.g. ["AAPL"] or ["AAPL", "MSFT"]'),
     timeframe: z.enum(['ttm', 'latest', 'historical']).default('latest').describe('Data timeframe: ttm=trailing 12 months, latest=most recent period, historical=historical trends'),
-    periods: z.number().optional().default(5).describe('Number of historical periods to limit (1-20)')
+    periods: z.number().optional().default(5).describe('Number of historical periods to limit (1-25)')
   }),
 
   execute: async ({ metricId, symbols, timeframe, periods = 5 }) => {

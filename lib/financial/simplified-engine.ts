@@ -79,9 +79,8 @@ export interface ArithmeticNode {
 
 export interface AggregationNode {
   type: 'aggregation';
-  operation: 'sum' | 'average' | 'min' | 'max' | 'count';
-  operand: ASTNode;
-  periods: number;
+  function: 'sum' | 'average' | 'max' | 'min' | 'ttm';
+  values: ASTNode[];
 }
 
 export interface ConditionalNode {
@@ -193,6 +192,11 @@ export class SimplifiedFinancialEngine {
           if (n.right) traverse(n.right);
           break;
         case 'aggregation':
+          // 新的aggregation结构使用values数组
+          if (n.values && Array.isArray(n.values)) {
+            n.values.forEach(traverse);
+          }
+          break;
         case 'rolling':
           if (n.operand) traverse(n.operand);
           break;
@@ -247,22 +251,45 @@ export class SimplifiedFinancialEngine {
     const orderBy = 'fiscalyear DESC, period DESC';
     const limitClause = `LIMIT ${periods * symbols.length * (periodType === 'annual' ? 1 : 4)}`;
 
-    const queries = tables.map(table => {
+    // 简化方案：为每个表单独查询，然后在应用层合并
+    // 这样避免了UNION的列数匹配问题
+    const allResults: any[] = [];
+    
+    for (const table of tables) {
       const whereClause = whereConditions.join(' AND ');
-      return `
+      const tableNameLower = table.toLowerCase();
+      
+      const query = `
         SELECT '${table}' as source_table, *
-        FROM ${table}
+        FROM ${tableNameLower}
         WHERE ${whereClause}
         ORDER BY ${orderBy}
-        ${limitClause}
+        LIMIT ${periods * symbols.length * (periodType === 'annual' ? 1 : 4)}
       `;
+      
+      console.log(`🔍 Executing query for ${table}:`, query);
+      
+      try {
+        const result = await this.pool.query(query);
+        console.log(`📊 Table '${table}' returned ${result.rows.length} rows`);
+        allResults.push(...result.rows);
+      } catch (error) {
+        console.error(`❌ Query failed for table '${table}':`, error instanceof Error ? error.message : 'Unknown error');
+        // 继续处理其他表
+      }
+    }
+    
+    console.log(`📊 Total combined results: ${allResults.length} rows`);
+    
+    // 调试：按表统计返回的行数
+    const tableStats: Record<string, number> = {};
+    allResults.forEach((row: any) => {
+      const table = row.source_table;
+      tableStats[table] = (tableStats[table] || 0) + 1;
     });
-
-    const combinedQuery = queries.join(' UNION ALL ');
-    console.log('🔍 Executing query:', combinedQuery);
-
-    const result = await this.pool.query(combinedQuery);
-    return result.rows;
+    console.log(`📊 Rows per table:`, tableStats);
+    
+    return allResults;
   }
 
   /**
@@ -386,6 +413,18 @@ export class SimplifiedFinancialEngine {
   private evaluateField(node: any, rawData: RawDataRow[], asOfPeriod: string): number | null {
     console.log(`🔍 Evaluating field: ${node.source}.${node.field} at ${asOfPeriod}`);
     
+    // 调试：显示rawData的总体信息
+    console.log(`📊 Total rawData rows: ${rawData.length}`);
+    if (rawData.length > 0) {
+      // console.log(`📊 Sample rawData (first 2 rows):`, rawData.slice(0, 2).map(row => ({
+      //   source_table: row.source_table,
+      //   symbol: row.symbol,
+      //   fiscalyear: row.fiscalyear,
+      //   period: row.period
+      // })));
+      console.log(`📊 Unique source_tables in rawData:`, [...new Set(rawData.map(r => r.source_table))]);
+    }
+    
     // 过滤相关数据
     const relevantRows = rawData.filter(row => 
       row.source_table === node.source && 
@@ -405,15 +444,42 @@ export class SimplifiedFinancialEngine {
       return this.calculateRollingField(node, rawData, asOfPeriod);
     }
 
-    // Single period field
-    const targetData = rawData.find(row => 
-      row.source_table === node.source && 
-      `${row.fiscalyear}-${row.period}` === asOfPeriod
-    );
+    // Single period field with offset support
+    let targetPeriod = asOfPeriod;
+    
+    // 处理offset逻辑
+    if (node.selector?.single?.offset) {
+      const offset = node.selector.single.offset;
+      console.log(`🔍 Applying offset ${offset} to period ${asOfPeriod}`);
+      targetPeriod = this.calculateOffsetPeriod(asOfPeriod, offset);
+      console.log(`🔍 Target period after offset: ${targetPeriod}`);
+    }
+    
+    console.log(`🔍 Searching for period: ${targetPeriod} in source: ${node.source}`);
+    
+    const targetData = rawData.find(row => {
+      const matches = row.source_table === node.source && 
+                     `${row.fiscalyear}-${row.period}` === targetPeriod;
+      
+      if (matches) {
+        console.log(`✅ Found matching row:`, {
+          source_table: row.source_table,
+          period: `${row.fiscalyear}-${row.period}`,
+          hasField: row.hasOwnProperty(node.field.toLowerCase()),
+          fieldValue: row[node.field.toLowerCase()]
+        });
+      }
+      
+      return matches;
+    });
 
     if (!targetData) {
-      console.warn(`⚠️ No data found for ${node.source}.${node.field} at ${asOfPeriod}`);
+      console.warn(`⚠️ No data found for ${node.source}.${node.field} at ${targetPeriod}`);
+      if (targetPeriod !== asOfPeriod) {
+        console.warn(`   Original period: ${asOfPeriod}, Target period after offset: ${targetPeriod}`);
+      }
       console.warn(`   Available periods in ${node.source}: ${relevantRows.map(r => `${r.fiscalyear}-${r.period}`).join(', ')}`);
+      console.warn(`   Looking for exact match of: source_table='${node.source}' AND period='${targetPeriod}'`);
       return null;
     }
 
@@ -504,11 +570,58 @@ export class SimplifiedFinancialEngine {
 
   /**
    * 评估聚合节点
+   * 对多个值进行聚合计算（求和、平均、最大/最小值）
    */
   private evaluateAggregation(node: AggregationNode, rawData: RawDataRow[], asOfPeriod: string): number | null {
-    // Aggregation nodes need to evaluate across multiple periods
-    console.warn('⚠️ Aggregation node evaluation not yet implemented');
-    return null;
+    console.log(`🔄 Evaluating aggregation node: ${node.function} over ${node.values.length} values`);
+    
+    // 评估所有子节点获取值数组
+    const evaluatedValues: number[] = [];
+    
+    for (const valueNode of node.values) {
+      const result = this.evaluateAST(valueNode, rawData, asOfPeriod);
+      if (result === null) {
+        console.warn(`⚠️ Aggregation: one of the values evaluated to null, skipping`);
+        continue; // 跳过null值，继续处理其他值
+      }
+      evaluatedValues.push(result);
+    }
+    
+    if (evaluatedValues.length === 0) {
+      console.warn(`⚠️ Aggregation: no valid values found`);
+      return null;
+    }
+    
+    console.log(`📊 Aggregation input values:`, evaluatedValues);
+    
+    // 根据聚合函数类型执行计算
+    let result: number;
+    
+    switch (node.function) {
+      case 'sum':
+      case 'ttm': // TTM is essentially a sum over trailing 12 months
+        result = evaluatedValues.reduce((acc, val) => acc + val, 0);
+        break;
+        
+      case 'average':
+        result = evaluatedValues.reduce((acc, val) => acc + val, 0) / evaluatedValues.length;
+        break;
+        
+      case 'max':
+        result = Math.max(...evaluatedValues);
+        break;
+        
+      case 'min':
+        result = Math.min(...evaluatedValues);
+        break;
+        
+      default:
+        console.warn(`⚠️ Unknown aggregation function: ${node.function}`);
+        return null;
+    }
+    
+    console.log(`✅ Aggregation result: ${node.function}(${evaluatedValues.join(', ')}) = ${result}`);
+    return result;
   }
 
   /**
@@ -542,6 +655,45 @@ export class SimplifiedFinancialEngine {
       case 'Q4': return 4;
       case 'FY': return 5;
       default: return 0;
+    }
+  }
+
+  /**
+   * 计算偏移后的期间
+   * @param basePeriod 基准期间 (如 "2025-Q2")
+   * @param offset 偏移量 (如 -4 表示4个季度前)
+   * @returns 偏移后的期间
+   */
+  private calculateOffsetPeriod(basePeriod: string, offset: number): string {
+    const [yearStr, period] = basePeriod.split('-');
+    let year = parseInt(yearStr);
+    
+    if (period === 'FY') {
+      // 年度数据，offset直接加到年份上
+      return `${year + offset}-FY`;
+    } else {
+      // 季度数据
+      const quarterMatch = period.match(/Q(\d)/);
+      if (!quarterMatch) {
+        console.warn(`⚠️ Invalid period format: ${period}`);
+        return basePeriod;
+      }
+      
+      let quarter = parseInt(quarterMatch[1]);
+      
+      // 计算新的季度和年份
+      // offset为负数时往前回退，正数时往前推进
+      let totalQuarters = (year - 1) * 4 + quarter + offset;
+      
+      if (totalQuarters <= 0) {
+        console.warn(`⚠️ Calculated period is too early: ${basePeriod} + ${offset}`);
+        return basePeriod; // 返回原值，避免计算错误
+      }
+      
+      const newYear = Math.floor((totalQuarters - 1) / 4) + 1;
+      const newQuarter = ((totalQuarters - 1) % 4) + 1;
+      
+      return `${newYear}-Q${newQuarter}`;
     }
   }
 }

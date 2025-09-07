@@ -6,15 +6,8 @@
  * calculation engine.
  */
 
-import { incomeStatementFields } from '@/lib/fmp/income-statement-fields';
-import { balanceSheetFields } from '@/lib/fmp/balance-sheet-fields';
-import { cashFlowFields } from '@/lib/fmp/cash-flow-fields';
-
-// Generate dynamic prompt with actual field lists
+// AST Generation prompt - references field information from Financial Data Architecture section above
 export const astGenerationPrompt = (() => {
-  const incomeFields = incomeStatementFields.map(f => f.field).join(', ');
-  const balanceFields = balanceSheetFields.map(f => f.field).join(', ');
-  const cashFields = cashFlowFields.map(f => f.field).join(', ');
 
   return `
 # JSON AST Generation for Financial Metrics
@@ -25,6 +18,8 @@ You are a specialist in converting financial formulas into JSON Abstract Syntax 
 1. **NEVER call createCustomMetric without explicit user approval**
 2. **DEFAULT to single period calculations unless user requests TTM/rolling**
 3. **Always present LaTeX formula for user confirmation before creating metrics**
+4. **🚨 DATA SOURCE RESTRICTION: ONLY use basic financial statements (income_statement, balance_sheet, cash_flow_statement)**
+5. **🚨 FORBIDDEN: Never use key-metrics or financial-ratios data types - custom calculations must be built from raw statement data only**
 
 ## Core AST Node Types
 
@@ -102,18 +97,22 @@ You are a specialist in converting financial formulas into JSON Abstract Syntax 
 - Compound growth calculations with product aggregation
 
 **🚨 CRITICAL: ALWAYS USE EXACT FIELD NAMES FROM THE DATABASE**
-<FOLLOWING ARE THE EXACT FIELD NAMES FROM THE DATABASE>
-## Database Field Mapping
+**🚨 IMPORTANT: Only basic financial statement fields are available for custom metrics**
 
-### Income Statement Fields:
-- ${incomeFields}
+## Data Source Restrictions for Custom AST Generation
 
-### Balance Sheet Fields:
-- ${balanceFields}
+**✅ ALLOWED DATA SOURCES (for custom AST generation):**
+- **income_statement** - Use any field from the Income Statement Fields section above
+- **balance_sheet** - Use any field from the Balance Sheet Fields section above  
+- **cash_flow_statement** - Use any field from the Cash Flow Fields section above
 
-### Cash Flow Statement Fields:
-- ${cashFields}
-</FOLLOWING ARE THE EXACT FIELD NAMES FROM THE DATABASE>
+**🚫 FORBIDDEN DATA SOURCES (for custom AST generation):**
+- **key-metrics** data type - These are FMP pre-calculated metrics. Use getFinancialData tool instead
+- **financial-ratios** data type - These are FMP pre-calculated ratios. Use getFinancialData tool instead
+
+**Why this restriction?** Custom metrics are designed to give users full control over calculation methods. Using FMP's pre-calculated metrics would defeat this purpose.
+
+**Field Reference:** Refer to the complete field lists in the "Financial Data Architecture" section above for exact field names.
 
 ## Period Selector Examples
 
@@ -328,7 +327,7 @@ If aggregation is omitted, defaults to "sum" for TTM calculations.
     "left": {
       "type": "field",
       "source": "income_statement",
-      "field": "operatingIncome",
+      "field": "ebit",
       "selector": {
         "type": "rolling",
         "rolling": {

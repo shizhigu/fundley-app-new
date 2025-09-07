@@ -7,7 +7,7 @@ import { safeExecute } from '../tool-wrapper'
 const API_ENDPOINTS = {
   historical: {
     'getIncomeStatement': '/income-statement',
-    'getBalanceSheet': '/balance-sheet', 
+    'getBalanceSheet': '/balance-sheet-statement', 
     'getCashFlow': '/cash-flow-statement',
     'getFinancialRatios': '/ratios',
     'getKeyMetrics': '/key-metrics'
@@ -60,9 +60,22 @@ const extractFields = (data: any[], fields: string[], timeframe: 'historical' | 
 }
 
 export const getFinancialData = tool({
-  description: `Get financial data for companies. ALWAYS call financialFieldsAgent first to get field mapping.
+  description: `Get comprehensive financial data from Financial Modeling Prep (FMP) API.
 
-  Required: symbols + fieldsByDataType (from financialFieldsAgent)
+  This tool provides direct access to 5 complete financial datasets:
+  - Income Statement: revenue, expenses, profitability metrics
+  - Balance Sheet: assets, liabilities, equity positions  
+  - Cash Flow: operating, investing, financing activities
+  - Key Metrics: ROE, ROA, debt ratios, market valuations (FMP pre-calculated)
+  - Financial Ratios: margins, efficiency, liquidity ratios (FMP pre-calculated)
+
+  Use this tool when:
+  - Need quick access to standard financial data
+  - FMP's pre-calculated metrics are acceptable
+  - Doing cross-company analysis or benchmarking
+  - Want comprehensive data across all 5 financial statement types
+
+  For custom metric definitions or when users want control over calculation methods, use calculateMetric instead.
   
   Examples:
   • Revenue analysis: { symbols: ["AAPL"], fieldsByDataType: {"getIncomeStatement": ["revenue"]} }
@@ -75,7 +88,7 @@ export const getFinancialData = tool({
     symbols: z.array(z.string()).min(1).describe('Stock symbols: ["AAPL"] or ["AAPL","MSFT"]'),
     
     // Method 1: Cross-dataset support (new, preferred)  
-    fieldsByDataType: z.record(z.array(z.string())).optional().describe('Object with dataType keys and field name arrays from financialFieldsAgent.fieldsByDataType'),
+    fieldsByDataType: z.record(z.array(z.string())).optional().describe('Object with dataType keys and field name arrays. Use exact field names from database schema.'),
     
     // Method 2: Single dataset (legacy compatibility)
     fields: z.array(z.string()).optional().describe('Field names - use only if fieldsByDataType not provided'),
@@ -105,7 +118,7 @@ export const getFinancialData = tool({
         return {
           success: false,
           error: '🚨 PARAMETER ERROR: Must provide either fieldsByDataType (preferred) or both fields + dataType parameters',
-          solution: 'SOLUTION: First call financialFieldsAgent to get field mapping, then use fieldsByDataType parameter',
+          solution: 'SOLUTION: Use fieldsByDataType with exact field names from database schema, or provide both fields + dataType parameters',
           examples: {
             correct: 'fieldsByDataType: {"getKeyMetrics": ["returnOnEquity", "returnOnAssets"]}',
             alsocorrect: 'fields: ["revenue", "netIncome"] + dataType: "getIncomeStatement"'

@@ -1,0 +1,150 @@
+/* TipTap编辑器样式 */
+
+/* 基础编辑器样式 */
+.tiptap-editor .ProseMirror {
+  @apply outline-none;
+}
+
+/* 占位符样式 */
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+/* 段落间距 */
+.tiptap-editor .ProseMirror p {
+  @apply mb-4;
+}
+
+.tiptap-editor .ProseMirror p:last-child {
+  @apply mb-0;
+}
+
+/* 标题样式 */
+.tiptap-editor .ProseMirror h1 {
+  @apply text-4xl font-bold mb-6 mt-8;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  @apply text-3xl font-bold mb-5 mt-7;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  @apply text-2xl font-bold mb-4 mt-6;
+}
+
+.tiptap-editor .ProseMirror h4 {
+  @apply text-xl font-bold mb-3 mt-5;
+}
+
+.tiptap-editor .ProseMirror h5 {
+  @apply text-lg font-bold mb-3 mt-4;
+}
+
+.tiptap-editor .ProseMirror h6 {
+  @apply text-base font-bold mb-2 mt-4;
+}
+
+/* 列表样式 */
+.tiptap-editor .ProseMirror ul {
+  @apply list-disc pl-6 mb-4;
+}
+
+.tiptap-editor .ProseMirror ol {
+  @apply list-decimal pl-6 mb-4;
+}
+
+.tiptap-editor .ProseMirror li {
+  @apply mb-1;
+}
+
+.tiptap-editor .ProseMirror li p {
+  @apply mb-0;
+}
+
+/* 引用样式 */
+.tiptap-editor .ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-4;
+}
+
+/* 代码样式 */
+.tiptap-editor .ProseMirror code {
+  @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.tiptap-editor .ProseMirror pre {
+  @apply bg-gray-100 p-4 rounded-lg mb-4 overflow-auto;
+}
+
+.tiptap-editor .ProseMirror pre code {
+  @apply bg-transparent p-0 text-sm;
+}
+
+/* 水平线样式 */
+.tiptap-editor .ProseMirror hr {
+  @apply border-0 border-t border-gray-300 my-6;
+}
+
+/* 粗体和斜体 */
+.tiptap-editor .ProseMirror strong {
+  @apply font-bold;
+}
+
+.tiptap-editor .ProseMirror em {
+  @apply italic;
+}
+
+/* 删除线 */
+.tiptap-editor .ProseMirror s {
+  @apply line-through;
+}
+
+/* 选择文本时的高亮 */
+.tiptap-editor .ProseMirror ::selection {
+  @apply bg-blue-200;
+}
+
+/* 焦点状态 */
+.tiptap-editor:focus-within {
+  @apply ring-2 ring-blue-500 ring-opacity-20;
+}
+
+/* 浮动菜单和气泡菜单样式 */
+.tippy-box[data-theme~='light'] {
+  @apply bg-white border border-gray-200 shadow-lg rounded-lg;
+}
+
+.tippy-box[data-theme~='light'] .tippy-content {
+  @apply p-0;
+}
+
+/* 只读模式样式 */
+.tiptap-editor.readonly {
+  @apply bg-gray-50;
+}
+
+.tiptap-editor.readonly .ProseMirror {
+  @apply cursor-default;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .tiptap-editor .ProseMirror {
+    @apply text-sm;
+  }
+  
+  .tiptap-editor .ProseMirror h1 {
+    @apply text-2xl;
+  }
+  
+  .tiptap-editor .ProseMirror h2 {
+    @apply text-xl;
+  }
+  
+  .tiptap-editor .ProseMirror h3 {
+    @apply text-lg;
+  }
+}

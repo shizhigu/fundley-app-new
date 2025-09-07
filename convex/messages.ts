@@ -311,6 +311,62 @@ export const updateParts = mutation({
   },
 });
 
+export const findByContentMatch = query({
+  args: {
+    contentPrefix: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system"))
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Find the most recent message from user's chats that matches the content prefix
+    const userChats = await ctx.db
+      .query("chats")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const userChatIds = userChats.map(chat => chat._id);
+
+    // Search through recent messages (last 50) for content match
+    const recentMessages = await ctx.db
+      .query("messages")
+      .withIndex("by_created_at", (q) => q.gte("createdAt", Date.now() - 24 * 60 * 60 * 1000)) // Last 24 hours
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("role"), args.role),
+          q.or(...userChatIds.map(chatId => q.eq(q.field("chatId"), chatId)))
+        )
+      )
+      .order("desc")
+      .take(20);
+
+    // Find message with matching text content
+    for (const message of recentMessages) {
+      if (message.parts && Array.isArray(message.parts)) {
+        const textPart = message.parts.find((part: any) => part.type === 'text');
+        if (textPart?.text && textPart.text.trim().startsWith(args.contentPrefix)) {
+          return message;
+        }
+      }
+    }
+
+    return null;
+  },
+});
+
 export const updateMetadata = mutation({
   args: { 
     messageId: v.id("messages"),

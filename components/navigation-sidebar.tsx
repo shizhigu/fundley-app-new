@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Briefcase, Layout } from 'lucide-react';
+import { MessageCircle, Briefcase, Layout, Brain, EditIcon, TrashIcon } from 'lucide-react';
 import { PlusIcon } from './icons';
 import { Button } from './ui/button';
 import { SidebarUserNav } from './sidebar-user-nav';
@@ -14,6 +14,22 @@ import { ComingSoon } from './coming-soon';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface NavigationSidebarProps {
   user: AuthSession['user'];
@@ -21,16 +37,60 @@ interface NavigationSidebarProps {
   onChatSelect?: (chatId: string) => void;
 }
 
-type NavigationItem = 'chats' | 'portfolio' | 'spaces';
+type NavigationItem = 'chats' | 'portfolio' | 'spaces' | 'research';
 
 export function NavigationSidebar({ user, selectedChatId, onChatSelect }: NavigationSidebarProps) {
   const router = useRouter();
   const [hoveredItem, setHoveredItem] = useState<NavigationItem | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; chat: any | null }>({ open: false, chat: null });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; chat: any | null }>({ open: false, chat: null });
+  const [newTitle, setNewTitle] = useState('');
   
   // 获取用户的所有chats
   const chats = useQuery(api.chats.list);
   const createChat = useMutation(api.chats.create);
+  const updateChat = useMutation(api.chats.update);
+  const deleteChat = useMutation(api.chats.remove);
+
+  const handleRename = (chat: any) => {
+    setNewTitle(chat.title);
+    setRenameDialog({ open: true, chat });
+  };
+
+  const handleDelete = (chat: any) => {
+    setDeleteDialog({ open: true, chat });
+  };
+
+  const confirmRename = async () => {
+    if (!renameDialog.chat || !newTitle.trim()) return;
+    
+    try {
+      await updateChat({
+        id: renameDialog.chat._id,
+        title: newTitle.trim(),
+      });
+      setRenameDialog({ open: false, chat: null });
+      setNewTitle('');
+    } catch (error) {
+      console.error('Failed to rename chat:', error);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.chat) return;
+    
+    try {
+      await deleteChat({ id: deleteDialog.chat._id });
+      setDeleteDialog({ open: false, chat: null });
+      // If deleted chat was selected, clear selection
+      if (selectedChatId === deleteDialog.chat._id) {
+        onChatSelect?.('');
+      }
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  };
 
   const clearHideTimeout = () => {
     if (hideTimeoutRef.current) {
@@ -76,6 +136,12 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
       label: 'Chats',
       icon: MessageCircle,
       description: 'AI Chat Conversations',
+    },
+    {
+      id: 'research' as NavigationItem,
+      label: 'Research',
+      icon: Brain,
+      description: 'AI Native Investment Research',
     },
     {
       id: 'portfolio' as NavigationItem,
@@ -134,26 +200,43 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
                   {chats
                     .sort((a, b) => b.updatedAt - a.updatedAt)
                     .map((chat) => (
-                      <Button
-                        key={chat._id}
-                        variant="ghost"
-                        className={cn(
-                          "w-full justify-start text-left h-auto p-2 mb-1 rounded-lg text-sm transition-colors",
-                          selectedChatId === chat._id
-                            ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
-                            : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        )}
-                        onClick={() => onChatSelect?.(chat._id)}
-                      >
-                        <div className="flex flex-col items-start w-full min-w-0">
-                          <span className="font-medium truncate w-full">
-                            {chat.title}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(chat.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </Button>
+                      <ContextMenu key={chat._id}>
+                        <ContextMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start text-left h-auto p-2 mb-1 rounded-lg text-sm transition-colors",
+                              selectedChatId === chat._id
+                                ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                            )}
+                            onClick={() => onChatSelect?.(chat._id)}
+                          >
+                            <div className="flex flex-col items-start w-full min-w-0">
+                              <span className="font-medium truncate w-full">
+                                {chat.title}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(chat.updatedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </Button>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-48">
+                          <ContextMenuItem onClick={() => handleRename(chat)}>
+                            <EditIcon className="h-4 w-4 mr-2" />
+                            Rename Chat
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem 
+                            onClick={() => handleDelete(chat)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <TrashIcon className="h-4 w-4 mr-2" />
+                            Delete Chat
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     ))}
                 </div>
               ) : (
@@ -176,6 +259,45 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
           </GlassmorphismPanel>
         );
       
+      case 'research':
+        return (
+          <GlassmorphismPanel>
+            <div className="p-4 border-b border-gray-300 dark:border-gray-600">
+              <div className="flex flex-col">
+                <div className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+                  AI Native Research
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Intelligent Investment Analysis
+                </div>
+              </div>
+              
+              <Link href="/research">
+                <Button
+                  variant="ghost"
+                  className="w-full bg-gradient-to-r from-primary/50 to-primary/70 hover:from-primary/60 hover:to-primary/80 !text-white hover:!text-white rounded-xl py-2 px-3 flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg backdrop-blur-sm border border-primary/30 hover:border-primary/40 [&>*]:!text-white [&:hover>*]:!text-white text-sm mt-3"
+                >
+                  <Brain size={16} />
+                  <span className="font-medium">Open Research Platform</span>
+                </Button>
+              </Link>
+            </div>
+
+            <div className="p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                Features:
+              </div>
+              <ul className="space-y-2 text-xs text-gray-500 dark:text-gray-400">
+                <li>• AI-powered financial analysis</li>
+                <li>• Block-based document editor</li>
+                <li>• Real-time data integration</li>
+                <li>• Custom metric calculations</li>
+                <li>• Interactive charts & visualizations</li>
+              </ul>
+            </div>
+          </GlassmorphismPanel>
+        );
+        
       case 'portfolio':
         return (
           <GlassmorphismPanel>
@@ -256,6 +378,57 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
           </div>
         )}
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialog.open} onOpenChange={(open) => setRenameDialog({ open, chat: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Chat</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this chat.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Chat name"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmRename();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog({ open: false, chat: null })}>
+              Cancel
+            </Button>
+            <Button onClick={confirmRename} disabled={!newTitle.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, chat: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteDialog.chat?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, chat: null })}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

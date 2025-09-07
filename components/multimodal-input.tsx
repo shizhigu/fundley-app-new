@@ -402,7 +402,8 @@ function PureCompactModelSelector({
     const names = {
       'grok-3': 'Grok',
       'gemini-2.5-pro': 'Gemini', 
-      'gpt-5': 'GPT'
+      'gpt-5': 'GPT',
+      'sonar': 'Search'
     };
     return names[modelId as keyof typeof names] || modelId;
   };

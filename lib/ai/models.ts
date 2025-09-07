@@ -17,6 +17,10 @@ export const AVAILABLE_MODELS = {
     name: 'GPT',
     description: 'OpenAI',
   },
+  'sonar': {
+    name: 'Search',
+    description: 'Perplexity',
+  },
 } as const;
 
 export type ModelId = keyof typeof AVAILABLE_MODELS;

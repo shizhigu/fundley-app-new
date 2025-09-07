@@ -28,6 +28,235 @@ import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 // Removed direct import - now using API route
 
+// Citation Card Component
+const CitationCard = ({ citation }: { citation: any }) => {
+  const [imageError, setImageError] = useState(false);
+  const [metadata, setMetadata] = useState<{title?: string, description?: string, loading?: boolean}>({ loading: true });
+  
+  // Parse citation data
+  const url = typeof citation === 'string' ? citation : citation.url || citation.link;
+  
+  // Fetch real page title and description with caching
+  useEffect(() => {
+    const cacheKey = `metadata_${url}`;
+    
+    // Check localStorage cache first
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached);
+        // Check if cache is less than 1 hour old
+        if (Date.now() - cachedData.timestamp < 60 * 60 * 1000) {
+          setMetadata({
+            title: cachedData.title,
+            description: cachedData.description,
+            loading: false
+          });
+          return;
+        }
+      } catch (e) {
+        // Invalid cached data, continue to fetch
+      }
+    }
+
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch(`/api/metadata?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        
+        const metadataResult = {
+          title: data.title,
+          description: data.description,
+          loading: false
+        };
+        
+        setMetadata(metadataResult);
+        
+        // Cache the result
+        localStorage.setItem(cacheKey, JSON.stringify({
+          title: data.title,
+          description: data.description,
+          timestamp: Date.now()
+        }));
+        
+      } catch (error) {
+        console.warn('Failed to fetch metadata for', url);
+        // Fallback to domain name
+        try {
+          const domain = new URL(url).hostname.replace('www.', '');
+          const fallbackResult = {
+            title: domain,
+            description: `Content from ${domain}`,
+            loading: false
+          };
+          
+          setMetadata(fallbackResult);
+          
+          // Cache fallback too
+          localStorage.setItem(cacheKey, JSON.stringify({
+            title: domain,
+            description: `Content from ${domain}`,
+            timestamp: Date.now()
+          }));
+          
+        } catch {
+          const defaultResult = {
+            title: 'Web Page',
+            description: 'External content',
+            loading: false
+          };
+          
+          setMetadata(defaultResult);
+          
+          localStorage.setItem(cacheKey, JSON.stringify({
+            title: 'Web Page',
+            description: 'External content',
+            timestamp: Date.now()
+          }));
+        }
+      }
+    };
+
+    fetchMetadata();
+  }, [url]);
+  
+  const displayTitle = metadata.loading ? 'Loading...' : metadata.title || new URL(url).hostname;
+  const displayDescription = metadata.loading ? '' : metadata.description || '';
+  
+  // Generate preview image URL (using favicon as fallback)
+  const getPreviewImage = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    } catch {
+      return '/favicon.ico';
+    }
+  };
+
+  return (
+    <a 
+      href={url} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="block p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 group"
+    >
+      <div className="flex gap-3">
+        {/* Preview Image */}
+        <div className="flex-shrink-0">
+          {!imageError ? (
+            <img
+              src={getPreviewImage(url)}
+              alt={displayTitle}
+              className="w-8 h-8 rounded object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
+              <span className="text-xs text-gray-500">🌐</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-sm text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
+            {displayTitle}
+          </div>
+          {displayDescription && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+              {displayDescription}
+            </div>
+          )}
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
+            {new URL(url).hostname}
+          </div>
+        </div>
+        
+        {/* External link indicator */}
+        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-gray-400 text-xs">↗</span>
+        </div>
+      </div>
+    </a>
+  );
+};
+
+// Search Results Component with expand/collapse state
+const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; output: any; input: any }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Parse the output if it's a structured response
+  let content = '';
+  let citations = [];
+  
+  if (typeof output === 'string') {
+    content = output;
+  } else if (output && typeof output === 'object') {
+    content = output.content || output.answer || JSON.stringify(output);
+    citations = output.citations || [];
+  }
+
+  return (
+    <div key={toolCallId} className="border rounded-lg bg-green-50/50 dark:bg-green-900/20">
+      {/* Header - Always visible */}
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-green-100/50 dark:hover:bg-green-800/30 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="text-green-600">🔍</div>
+          <span className="font-medium text-green-700 dark:text-green-300">
+            Web Search Results
+          </span>
+          {input?.query && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+              "{input.query.substring(0, 50)}{input.query.length > 50 ? '...' : ''}"
+            </span>
+          )}
+        </div>
+        <div className="text-green-600 dark:text-green-400">
+          {isExpanded ? '▼' : '▶'}
+        </div>
+      </div>
+      
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-4 pb-4 border-t border-green-200/50 dark:border-green-700/50">
+          {input?.query && (
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-3 mt-3">
+              <strong>Query:</strong> {input.query}
+              {input?.searchAfterDate && (
+                <div><strong>Date Filter:</strong> After {input.searchAfterDate}</div>
+              )}
+              {input?.searchBeforeDate && (
+                <div><strong>Date Filter:</strong> Before {input.searchBeforeDate}</div>
+              )}
+            </div>
+          )}
+          
+          <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
+            <Markdown>{content}</Markdown>
+          </div>
+          
+          {/* Citations */}
+          {citations.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Sources ({citations.length})
+              </h4>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {citations.map((citation: any, idx: number) => (
+                  <CitationCard key={idx} citation={citation} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Type narrowing is handled by TypeScript's control flow analysis
 // The AI SDK provides proper discriminated unions for tool calls
 
@@ -35,6 +264,7 @@ const PurePreviewMessage = ({
   message,
   vote,
   isLoading,
+  isLatest,
   setMessages,
   regenerate,
   isReadonly,
@@ -44,6 +274,7 @@ const PurePreviewMessage = ({
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
+  isLatest?: boolean;
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
   regenerate: UseChatHelpers<ChatMessage>['regenerate'];
   isReadonly: boolean;
@@ -57,13 +288,8 @@ const PurePreviewMessage = ({
     containsRealData?: boolean,
     verificationMessage?: string
   } | null>(null);
-  const [processedMessageId, setProcessedMessageId] = useState<string | null>(null);
+  const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
   const [showFullVerification, setShowFullVerification] = useState(false);
-
-  // 🔍 Calculate the correct Convex ID for API calls - priority: message._id, fallback: message.id
-  const actualConvexId = (message as any)._id || message.id;
-  const isValidConvexId = /^[a-z0-9]{32}$/.test(actualConvexId || ''); // Convex IDs are 32 chars
-  const messageContent = (message as any).content;
 
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === 'file',
@@ -71,85 +297,52 @@ const PurePreviewMessage = ({
 
   useDataStream();
 
-  // Extract metadata when message is complete and it's an assistant message
+  // 🎯 SIMPLIFIED: Only extract suggestions for the latest assistant message
   useEffect(() => {
+    // Only process if this is the latest assistant message that just finished streaming
     if (!isLoading && 
         message.role === 'assistant' && 
         message.id &&
-        processedMessageId !== message.id) {
+        isLatest &&
+        !suggestionsGenerated) {
       
-      setProcessedMessageId(message.id);
+      setSuggestionsGenerated(true);
       
-      // Check if message already has cached metadata
-      if ((message as any).extractedMetadata) {
-        console.log('📋 Using cached metadata from database for message', message.id, (message as any).extractedMetadata);
-        setExtractedMetadata((message as any).extractedMetadata);
-        return;
-      } else {
-        console.log('⚠️ No cached metadata found for message', message.id, 'extractedMetadata field:', typeof (message as any).extractedMetadata);
-      }
+      // Simple approach: always generate fresh suggestions, no caching
+      const allText = message.parts
+        ?.filter((part: any) => part.type === 'text')
+        ?.map((part: any) => part.text)
+        ?.join('') || '';
       
-      // Try both content.parts and direct parts structure
-      let allText = '';
-      
-      if ((message as any).content?.parts) {
-        allText = (message as any).content.parts
-          ?.filter((part: any) => part.type === 'text')
-          ?.map((part: any) => part.text)
-          ?.join('') || '';
-      } else if (message.parts) {
-        allText = message.parts
-          ?.filter((part: any) => part.type === 'text')
-          ?.map((part: any) => part.text)
-          ?.join('') || '';
-      }
-      
-      if (allText.trim()) {
-        // Extract metadata using complete message parts for data verification
-        const messageParts = (message as any).content?.parts || message.parts || [];
+      if (allText.trim().length > 50) { // Only if there's meaningful content
         
-        console.log('🔍 DEBUG: Message ID analysis:', {
-          message_id: message.id,
-          message_id_length: message.id?.length,
-          message_id_format: /^[a-z0-9]{32}$/.test(message.id || '') ? 'Convex' : 'UUID',
-          message_internal_id: (message as any)._id,
-          actualConvexId,
-          isValidConvexId,
-          full_message_keys: Object.keys(message),
-          willSendToAPI: isValidConvexId
-        });
-
-        // Only send to API if we have a valid Convex ID
-        if (!isValidConvexId) {
-          console.warn('⚠️ Skipping metadata API call - no valid Convex ID found for message');
-          return;
-        }
-        
-        fetch('/api/metadata', {
+        // Simple metadata API call - no complex ID validation
+        fetch('/api/simple-suggestions', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            messageParts: messageParts,
-            userQuestion: undefined, // TODO: Add user question context from messages array
-            messageId: actualConvexId // Use the actual Convex ID
+            messageText: allText.substring(0, 2000), // Limit text length
+            messageParts: message.parts,
           }),
         })
         .then(response => response.json())
         .then(result => {
-          console.log('🎯 Metadata API response:', result);
-          if (result.success && result.metadata) {
-            console.log('📊 Setting metadata:', result.metadata);
-            setExtractedMetadata(result.metadata);
+          if (result.success && result.suggestions) {
+            setExtractedMetadata({
+              suggestions: result.suggestions,
+              tickers: result.tickers,
+              containsRealData: result.containsRealData,
+              verificationMessage: result.verificationMessage
+            });
+            console.log('✅ Got suggestions:', result.suggestions);
           }
         })
         .catch(error => {
-          console.error('Metadata API error:', error);
+          console.warn('Suggestion API error:', error);
         });
       }
     }
-  }, [isLoading, message.id, message.role, messageContent, message.parts, processedMessageId, actualConvexId, isValidConvexId]);
+  }, [isLoading, message.id, message.role, message.parts, suggestionsGenerated]);
 
   return (
     <AnimatePresence>
@@ -481,12 +674,19 @@ const PurePreviewMessage = ({
                   }
                   
                   // Render the visualization directly in the message  
-                  console.log('Rendering VisualizationMessage with messageId:', actualConvexId, 'isValidConvexId:', isValidConvexId);
+                  // console.log(`🎨 Rendering VisualizationMessage:`, {
+                  //   toolCallId,
+                  //   vizId: output.id,
+                  //   title: output.title,
+                  //   messageId: actualConvexId,
+                  //   isValidConvexId,
+                  //   key: `viz-${toolCallId}-${output.id}` // More unique key
+                  // });
                   return (
-                    <div key={toolCallId}>
+                    <div key={`viz-${toolCallId}-${output.id}`}>
                       <VisualizationMessage
                         id={output.id}
-                        messageId={isValidConvexId ? actualConvexId : undefined} // Only pass valid Convex IDs for caching
+                        messageId={(message as any)._id || message.id} // Pass message ID for caching
                         title={output.title}
                         code={output.code || ''}
                         description={output.description}
@@ -715,6 +915,65 @@ const PurePreviewMessage = ({
                 }
               }
               
+              // Handle web search tool
+              if (type === 'tool-webSearch') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  const { input } = part;
+                  return (
+                    <div key={toolCallId} className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-900/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="animate-spin">
+                          <LoaderIcon size={16} />
+                        </div>
+                        <span className="font-medium text-blue-700 dark:text-blue-300">
+                          Searching the web...
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <strong>Query:</strong> {input?.query}
+                        {input?.searchAfterDate && (
+                          <div><strong>After:</strong> {input.searchAfterDate}</div>
+                        )}
+                        {input?.searchBeforeDate && (
+                          <div><strong>Before:</strong> {input.searchBeforeDate}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output, input } = part;
+                  
+                  if (typeof output === 'string' && output.startsWith('Search failed:')) {
+                    return (
+                      <div key={toolCallId} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-900/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="text-red-600">⚠️</div>
+                          <span className="font-medium text-red-700 dark:text-red-300">
+                            Search Failed
+                          </span>
+                        </div>
+                        <div className="text-sm text-red-600 dark:text-red-400">
+                          {output}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <SearchResultsCard 
+                      key={toolCallId}
+                      toolCallId={toolCallId}
+                      output={output}
+                      input={input}
+                    />
+                  );
+                }
+              }
+
               // saveCustomMetric is now handled as a regular server-side tool
             })}
 
@@ -787,6 +1046,7 @@ export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
     if (prevProps.isLoading !== nextProps.isLoading) return false;
+    if (prevProps.isLatest !== nextProps.isLatest) return false;
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
       return false;

@@ -141,15 +141,16 @@ export function convertToUIMessages(
       role: message.role as 'user' | 'assistant' | 'system',
       parts,
       extractedMetadata: message.extractedMetadata, // Include cached metadata
+      _id: message._id, // Preserve Convex ID for metadata API
       metadata: {
         createdAt: formatISO(message.createdAt || new Date((message as any)._createdTime || Date.now())),
       },
     };
     
     // Debug log for metadata
-    if (message.role === 'assistant' && message.extractedMetadata) {
-      console.log('🎯 ConvertToUIMessages: Found cached metadata for message', messageId, message.extractedMetadata);
-    }
+    // if (message.role === 'assistant' && message.extractedMetadata) {
+    //   console.log('🎯 ConvertToUIMessages: Found cached metadata for message', messageId, message.extractedMetadata);
+    // }
     
     return convertedMessage;
     } catch (error) {

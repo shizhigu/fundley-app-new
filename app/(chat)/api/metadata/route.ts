@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     
     const result = await extractMetadata(messageParts, userQuestion)
     
-    // If messageId is provided and extraction was successful, save to database
+    // If messageId is provided and extraction was successful, try to save to database
     if (messageId && result && result.success && result.metadata) {
       try {
         const convexResult = await createAuthenticatedConvexClient()
@@ -25,24 +25,53 @@ export async function POST(request: NextRequest) {
         } else {
           const { convex } = convexResult
           
-          // 硬性验证：确保 messageId 是有效的 Convex ID 格式 (32 characters)
-          console.log('🔍 REGEX DEBUG:', {
+          console.log('🔍 Message ID analysis:', {
             messageId,
             messageIdType: typeof messageId,
             messageIdLength: messageId?.length,
-            regexTest_28: /^[a-z0-9]{28}$/.test(messageId || ''),
-            regexTest_32: /^[a-z0-9]{32}$/.test(messageId || ''),
-            regexMatch_32: messageId?.match(/^[a-z0-9]{32}$/),
+            isConvexFormat: /^[a-z0-9]{32}$/.test(messageId || ''),
+            isUuidFormat: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId || ''),
           });
           
-          if (typeof messageId === 'string' && messageId.match(/^[a-z0-9]{32}$/)) {
-            await convex.mutation(api.messages.updateMetadata, {
-              messageId: messageId as any, // Type assertion for Convex ID
-              extractedMetadata: result!.metadata
-            })
-            console.log('✅ Saved metadata to database for message:', messageId)
-          } else {
-            console.warn('⚠️ Invalid Convex ID format, skipping metadata save:', messageId)
+          if (typeof messageId === 'string') {
+            if (messageId.match(/^[a-z0-9]{32}$/)) {
+              // Direct Convex ID - save directly
+              await convex.mutation(api.messages.updateMetadata, {
+                messageId: messageId as any,
+                extractedMetadata: result!.metadata
+              })
+              console.log('✅ Saved metadata to database for Convex message:', messageId)
+            } else if (messageId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+              // UUID format - find the corresponding Convex message and save there
+              try {
+                // Find the most recent assistant message that matches the content
+                // This is a simple approach - find by matching first text part
+                const firstTextPart = messageParts.find(part => part.type === 'text')?.text?.substring(0, 100);
+                
+                if (firstTextPart) {
+                  const foundMessage = await convex.query(api.messages.findByContentMatch, {
+                    contentPrefix: firstTextPart.trim(),
+                    role: 'assistant'
+                  })
+                  
+                  if (foundMessage) {
+                    await convex.mutation(api.messages.updateMetadata, {
+                      messageId: foundMessage._id,
+                      extractedMetadata: result!.metadata
+                    })
+                    console.log('✅ Saved metadata to database via content matching:', messageId, '→', foundMessage._id)
+                  } else {
+                    console.warn('⚠️ UUID message not found by content matching, metadata not saved:', messageId)
+                  }
+                } else {
+                  console.warn('⚠️ No text content to match, metadata not saved:', messageId)
+                }
+              } catch (error) {
+                console.warn('⚠️ Failed to find UUID message by content:', error)
+              }
+            } else {
+              console.log('ℹ️ Unknown ID format, metadata extracted but not saved to DB:', messageId)
+            }
           }
         }
       } catch (dbError) {

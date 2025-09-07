@@ -19,8 +19,12 @@ export const createVisualization = ({ session, dataStream }: CreateVisualization
     }),
     execute: async ({ title, code, description }) => {
       try {
-        // Generate a unique ID for this visualization
-        const vizId = generateUUID();
+        // Generate a unique ID for this visualization with timestamp
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 8);
+        const vizId = `viz_${timestamp}_${random}`;
+        
+        console.log(`🎨 Creating visualization with unique ID: ${vizId}, title: ${title}`);
         
         // Return the visualization data that will be rendered in the message
         // This will be saved in message.parts when the message is persisted
@@ -36,6 +40,7 @@ export const createVisualization = ({ session, dataStream }: CreateVisualization
           cachedImage: null,
         };
       } catch (error: any) {
+        console.error('❌ Visualization creation failed:', error);
         return {
           error: error.message || 'Failed to create visualization',
         };

@@ -48,7 +48,7 @@ function PureMessages({
   const isNewChatLoading = pathname.includes('/chat/') && !pathname.includes('/permanent') && messages.length === 0 && (status === 'submitted' || status === 'streaming');
 
   // Optimize message rendering to save memory
-  const MAX_VISIBLE_MESSAGES = 30; // Show last 30 messages (about 15 conversations)
+  const MAX_VISIBLE_MESSAGES = 100; // Show last 100 messages (about 50 conversations)
   
   const { visibleMessages, hiddenCount } = useMemo(() => {
     if (messages.length <= MAX_VISIBLE_MESSAGES) {
@@ -96,6 +96,7 @@ function PureMessages({
             key={message.id}
             message={message}
             isLoading={status === 'streaming' && messages.length - 1 === originalIndex}
+            isLatest={originalIndex === messages.length - 1} // Pass isLatest flag
             vote={
               votes
                 ? votes.find((vote) => vote.messageId === message.id)

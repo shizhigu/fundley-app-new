@@ -39,7 +39,6 @@ export function ChatLayoutProvider({ user, children }: ChatLayoutProviderProps) 
   }, []);
 
   const handleChatSelect = (chatId: string) => {
-    console.log('💾 Saving selected chat to localStorage:', chatId);
     setSelectedChatId(chatId);
     // Save to localStorage for persistence
     if (typeof window !== 'undefined') {

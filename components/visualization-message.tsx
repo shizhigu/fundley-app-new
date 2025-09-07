@@ -32,6 +32,7 @@ export function VisualizationMessage({
   const [outputImage, setOutputImage] = useState<string | null>(cachedImage || null);
   const executionAbortController = useRef<AbortController | null>(null);
 
+
   // Save cache to message parts
   const saveCache = async (html: string | null, image: string | null) => {
     if (!messageId) {
@@ -39,7 +40,6 @@ export function VisualizationMessage({
       return;
     }
     
-    console.log('Saving visualization cache to message parts:', messageId);
     
     try {
       // Get current message from useDataStream context or via API
@@ -56,9 +56,12 @@ export function VisualizationMessage({
       
       if (!response.ok) {
         const errorText = await response.text();
+        if (response.status === 404) {
+          console.warn('Message not found (likely deleted), skipping cache save:', messageId);
+          return; // Gracefully handle deleted messages
+        }
         console.error('Cache save failed:', response.status, errorText);
       } else {
-        console.log('Cache saved successfully to message parts');
       }
     } catch (err) {
       console.error('Failed to save cache:', err);
@@ -76,6 +79,13 @@ export function VisualizationMessage({
         hasCachedImage: !!cachedImage,
         messageId 
       });
+      setIsLoading(false);
+      return;
+    }
+    
+    // Only execute if visualization is expanded (visible to user)
+    if (!isExpanded) {
+      console.log('Visualization collapsed, skipping execution until expanded');
       setIsLoading(false);
       return;
     }
@@ -102,8 +112,11 @@ export function VisualizationMessage({
           let collectingPlotly = false;
           let matplotlibImage = null;
           
-          pyodide.setStdout({
+          
+          const outputCapture = {
             batched: (output: string) => {
+              // console.log(`📊 Output received:`, output.substring(0, 100));
+              
               // Check for Plotly HTML output
               if (output.includes('PLOTLY_HTML_START')) {
                 collectingPlotly = true;
@@ -126,13 +139,14 @@ export function VisualizationMessage({
               
               // Check for matplotlib image
               if (output.startsWith('data:image/png;base64')) {
+                console.log(`✅ Matplotlib image captured`);
                 matplotlibImage = output;
                 setOutputImage(output);
                 // Save to cache
                 saveCache(null, output);
               }
-            },
-          });
+            }
+          };
           
           // Install and setup visualization libraries
           if (code.includes('plotly') || code.includes('px.') || code.includes('go.')) {
@@ -235,8 +249,16 @@ setup_matplotlib_output()
             console.log('Some packages may need manual installation:', e);
           }
           
-          // Execute the code
-          await pyodide.runPythonAsync(code);
+          // Set up stdout capture
+          pyodide.setStdout(outputCapture);
+          
+          try {
+            // Execute the code
+            await pyodide.runPythonAsync(code);
+          } finally {
+            // Restore default stdout
+            pyodide.setStdout({ batched: () => {} });
+          }
         });
         
         setIsLoading(false);
@@ -257,7 +279,15 @@ setup_matplotlib_output()
         executionAbortController.current = null;
       }
     };
-  }, [code, id]);
+  }, [code, id, isExpanded, cachedHtml, cachedImage]);
+
+  // Handle expansion - execute code when visualization is expanded for the first time
+  useEffect(() => {
+    if (isExpanded && !cachedHtml && !cachedImage && !outputHtml && !outputImage && !isLoading) {
+      console.log('Visualization expanded for first time, triggering execution');
+      setIsLoading(true); // Trigger re-execution by changing loading state
+    }
+  }, [isExpanded]);
 
   return (
     <div className="my-2 border rounded-lg overflow-hidden bg-background">

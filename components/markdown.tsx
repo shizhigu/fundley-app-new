@@ -11,8 +11,8 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
     // This regex matches $ that are:
     // 1. Not preceded by another $
     // 2. Not followed by another $
-    // 3. Likely part of currency (followed by digit)
-    return children.replace(/(?<!\$)\$(?!\$)(\d)/g, '\\$$1');
+    // 3. Likely part of currency (followed by digits)
+    return children.replace(/(?<!\$)\$(?!\$)(?=\d)/g, '\\$');
   }, [children]);
 
   return (

@@ -7,7 +7,23 @@ import type { AuthSession } from '@/lib/auth/clerk';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlusIcon, MessageSquare, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { PlusIcon, MessageSquare, ChevronLeftIcon, ChevronRightIcon, EditIcon, TrashIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Chat {
@@ -37,8 +53,13 @@ export function ChatSidebar({
   user,
 }: ChatSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; chat: Chat | null }>({ open: false, chat: null });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; chat: Chat | null }>({ open: false, chat: null });
+  const [newTitle, setNewTitle] = useState('');
   
   const createChat = useMutation(api.chats.create);
+  const updateChat = useMutation(api.chats.update);
+  const deleteChat = useMutation(api.chats.remove);
 
   const handleCreateChat = async () => {
     if (!user || isCreating) return;
@@ -54,6 +75,49 @@ export function ChatSidebar({
       console.error('Failed to create new chat:', error);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleRename = (chat: Chat) => {
+    setNewTitle(chat.title);
+    setRenameDialog({ open: true, chat });
+  };
+
+  const handleDelete = (chat: Chat) => {
+    setDeleteDialog({ open: true, chat });
+  };
+
+  const confirmRename = async () => {
+    if (!renameDialog.chat || !newTitle.trim()) return;
+    
+    try {
+      await updateChat({
+        id: renameDialog.chat._id,
+        title: newTitle.trim(),
+      });
+      setRenameDialog({ open: false, chat: null });
+      setNewTitle('');
+    } catch (error) {
+      console.error('Failed to rename chat:', error);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.chat) return;
+    
+    try {
+      await deleteChat({ id: deleteDialog.chat._id });
+      setDeleteDialog({ open: false, chat: null });
+      // If deleted chat was selected, clear selection
+      if (selectedChatId === deleteDialog.chat._id) {
+        // Select first available chat or null
+        const remainingChats = chats.filter(c => c._id !== deleteDialog.chat!._id);
+        if (remainingChats.length > 0) {
+          onChatSelect(remainingChats[0]._id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
     }
   };
 
@@ -134,27 +198,44 @@ export function ChatSidebar({
               chats
                 .sort((a, b) => b.updatedAt - a.updatedAt)
                 .map((chat) => (
-                  <Button
-                    key={chat._id}
-                    variant={selectedChatId === chat._id ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full justify-start text-left h-auto p-3",
-                      selectedChatId === chat._id && "bg-secondary"
-                    )}
-                    onClick={() => onChatSelect(chat._id)}
-                  >
-                    <div className="flex flex-col items-start w-full min-w-0">
-                      <div className="flex items-center justify-between w-full">
-                        <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatDate(chat.updatedAt)}
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium truncate w-full mt-1">
-                        {chat.title}
-                      </span>
-                    </div>
-                  </Button>
+                  <ContextMenu key={chat._id}>
+                    <ContextMenuTrigger asChild>
+                      <Button
+                        variant={selectedChatId === chat._id ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-left h-auto p-3",
+                          selectedChatId === chat._id && "bg-secondary"
+                        )}
+                        onClick={() => onChatSelect(chat._id)}
+                      >
+                        <div className="flex flex-col items-start w-full min-w-0">
+                          <div className="flex items-center justify-between w-full">
+                            <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {formatDate(chat.updatedAt)}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium truncate w-full mt-1">
+                            {chat.title}
+                          </span>
+                        </div>
+                      </Button>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextMenuItem onClick={() => handleRename(chat)}>
+                        <EditIcon className="h-4 w-4 mr-2" />
+                        Rename Chat
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem 
+                        onClick={() => handleDelete(chat)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-2" />
+                        Delete Chat
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))
             )}
           </div>
@@ -181,6 +262,57 @@ export function ChatSidebar({
           </div>
         )}
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialog.open} onOpenChange={(open) => setRenameDialog({ open, chat: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Chat</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this chat.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Chat name"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmRename();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog({ open: false, chat: null })}>
+              Cancel
+            </Button>
+            <Button onClick={confirmRename} disabled={!newTitle.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, chat: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteDialog.chat?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, chat: null })}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

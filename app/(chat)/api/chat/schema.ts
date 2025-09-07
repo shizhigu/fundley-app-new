@@ -39,7 +39,7 @@ export const postRequestBodySchema = z.object({
     role: z.enum(['user', 'assistant']), // Support both user and assistant messages
     parts: z.array(partSchema),
   }),
-  selectedChatModel: z.enum(['grok-3', 'gemini-2.5-pro', 'gpt-5']),
+  selectedChatModel: z.enum(['grok-3', 'gemini-2.5-pro', 'gpt-5', 'sonar']),
   chatId: z.string().optional(), // Support dynamic chat selection
 });
 

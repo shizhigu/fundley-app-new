@@ -154,7 +154,19 @@ export const remove = mutation({
       .withIndex("by_chat_id", (q) => q.eq("chatId", args.id))
       .collect();
 
+    // Delete visualization caches for all messages in this chat
     for (const message of messages) {
+      // Find and delete visualization caches for this message
+      const visualizationCaches = await ctx.db
+        .query("visualizationCache")
+        .withIndex("by_message_id", (q) => q.eq("messageId", message._id))
+        .collect();
+      
+      for (const cache of visualizationCaches) {
+        await ctx.db.delete(cache._id);
+      }
+      
+      // Delete the message itself
       await ctx.db.delete(message._id);
     }
 

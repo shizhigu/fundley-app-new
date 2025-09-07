@@ -7,6 +7,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* TipTap Editor Styles */
+@import '../styles/tiptap.css';
+
 /* Memo system styles */
 @import '../styles/memo-styles.css';
 
