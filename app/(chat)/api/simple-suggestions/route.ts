@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
       model: suggestionsModel,
       system: `You are an expert financial analyst. Generate insightful, data-driven follow-up questions for financial analysis.
 
+## LANGUAGE REQUIREMENT:
+**IMPORTANT**: Always respond in the same language as the user's message. If the message is in Chinese, respond in Chinese. If in English, respond in English. Match the user's language exactly.
+
 ## INSTRUCTIONS:
 
 ### 1. TICKERS: Find stock symbols (AAPL, TSLA, etc.) - uppercase
