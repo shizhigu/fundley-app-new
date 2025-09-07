@@ -594,7 +594,7 @@ export async function POST(request: Request) {
                   cash_flow_statement: z.array(z.string()).optional(),
                   periods_needed: z.array(z.string())
                 }).describe('Data requirements specification'),
-                isPublic: z.boolean().default(false).describe('Whether other users can see this metric')
+                isPublic: z.boolean().default(false).describe('Sharing scope: true = organization-wide sharing, false = personal use only')
               }),
               execute: async (params) => {
                 try {
@@ -609,7 +609,7 @@ export async function POST(request: Request) {
                     isPublic: params.isPublic
                   });
 
-                  return `✅ Custom metric "${params.name}" created successfully!\n\n📊 Metric Details:\n- ID: ${metricId}\n- Category: ${params.category}\n- Formula: ${params.formula}\n- ${params.isPublic ? 'Public' : 'Private'} metric\n- Engine: High-Performance JSON AST\n\n🎯 You can now use this metric with calculateMetric.\n\n🧮 AST Structure:\n\`\`\`json\n${JSON.stringify(params.astDefinition, null, 2).substring(0, 300)}${JSON.stringify(params.astDefinition, null, 2).length > 300 ? '...' : ''}\n\`\`\``;
+                  return `✅ Custom metric "${params.name}" created successfully!\n\n📊 Metric Details:\n- ID: ${metricId}\n- Category: ${params.category}\n- Formula: ${params.formula}\n- Sharing: ${params.isPublic ? 'Organization-wide (team shared)' : 'Personal use only'}\n- Engine: High-Performance JSON AST\n\n🎯 You can now use this metric with calculateMetric.\n\n🧮 AST Structure:\n\`\`\`json\n${JSON.stringify(params.astDefinition, null, 2).substring(0, 300)}${JSON.stringify(params.astDefinition, null, 2).length > 300 ? '...' : ''}\n\`\`\``;
                 } catch (error) {
                   return `❌ Failed to create metric: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 }

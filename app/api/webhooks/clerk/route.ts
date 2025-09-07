@@ -1,7 +1,8 @@
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import type { WebhookEvent } from '@clerk/nextjs/server';
-import { convexQueries } from '@/lib/convex/client';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
 
 /**
  * Clerk Webhook Handler
@@ -26,6 +27,9 @@ import { convexQueries } from '@/lib/convex/client';
 const ENFORCE_ORGANIZATION_MODE = true; // Set to false to allow personal users
 
 export async function POST(req: Request) {
+  // Create Convex client
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  
   // Get the headers
   const headerPayload = await headers();
   const svix_id = headerPayload.get('svix-id');
@@ -64,26 +68,41 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type;
-  console.log(`Webhook received: ${eventType}`);
+  console.log(`🎣 Clerk Webhook received: ${eventType}`);
 
   // User events
-  if (eventType === 'user.created' || eventType === 'user.updated') {
+  if (eventType === 'user.created') {
     const { id, email_addresses, organization_memberships } = evt.data;
     const email = email_addresses[0]?.email_address;
 
     if (email) {
-      // Check if user exists
-      const existingUsers = await convexQueries.getUser(email);
-      
-      if (existingUsers.length === 0) {
-        // Create user in database
-        // NOTE: organizationId is null initially, will be updated when user joins org
-        await convexQueries.createUser({
+      try {
+        await convex.mutation(api.users.create, {
           email,
           clerkUserId: id,
           clerkOrganizationId: organization_memberships?.[0]?.organization?.id,
         });
-        console.log(`User created: ${email} (${id})`);
+        console.log(`✅ User created: ${email} (${id})`);
+      } catch (error) {
+        console.error('Error creating user:', error);
+      }
+    }
+  }
+
+  if (eventType === 'user.updated') {
+    const { id, email_addresses, organization_memberships } = evt.data;
+    const email = email_addresses[0]?.email_address;
+
+    if (email) {
+      try {
+        await convex.mutation(api.users.updateByClerkId, {
+          clerkUserId: id,
+          email,
+          clerkOrganizationId: organization_memberships?.[0]?.organization?.id,
+        });
+        console.log(`✅ User updated: ${email} (${id})`);
+      } catch (error) {
+        console.error('Error updating user:', error);
       }
     }
   }
@@ -98,25 +117,43 @@ export async function POST(req: Request) {
   // Organization events
   if (eventType === 'organization.created') {
     const { id, name, slug } = evt.data;
-    await convexQueries.createOrganization({
-      clerkOrganizationId: id,
-      name,
-      slug,
-      settings: {}
-    });
-    console.log(`Organization created: ${name} (${id})`);
+    try {
+      await convex.mutation(api.organizations.createFromWebhook, {
+        clerkOrganizationId: id,
+        name,
+        slug,
+        settings: {}
+      });
+      console.log(`✅ Organization created: ${name} (${id})`);
+    } catch (error) {
+      console.error('Error creating organization:', error);
+    }
   }
 
   if (eventType === 'organization.updated') {
     const { id, name, slug } = evt.data;
-    // Update organization in database
-    // TODO: Implement updateOrganization function
-    console.log(`Organization updated: ${name} (${id})`);
+    try {
+      await convex.mutation(api.organizations.updateByClerkId, {
+        clerkOrganizationId: id,
+        name,
+        slug,
+      });
+      console.log(`✅ Organization updated: ${name} (${id})`);
+    } catch (error) {
+      console.error('Error updating organization:', error);
+    }
   }
 
   if (eventType === 'organization.deleted') {
-    // Note: Be careful with deletion - might want to soft delete
-    console.log(`Organization deletion webhook received for ${evt.data.id}`);
+    const { id } = evt.data;
+    try {
+      await convex.mutation(api.organizations.deleteByClerkId, {
+        clerkOrganizationId: id,
+      });
+      console.log(`✅ Organization deleted: ${id}`);
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+    }
   }
 
   // Organization membership events
@@ -125,44 +162,38 @@ export async function POST(req: Request) {
     const userId = public_user_data.user_id;
     const orgId = organization.id;
     
-    /**
-     * IMPORTANT: Organization Assignment Logic
-     * =========================================
-     * In ENFORCED mode: User's organizationId is updated to the new org
-     * In OPTIONAL mode: User can belong to multiple orgs (future feature)
-     * 
-     * Current: One org per user (updates organizationId)
-     * Future: Many-to-many relationship (organization_members table)
-     */
-    
-    await convexQueries.updateUserOrganization(userId, orgId);
-    console.log(`User ${userId} joined organization ${orgId}`);
+    try {
+      await convex.mutation(api.users.updateByClerkId, {
+        clerkUserId: userId,
+        clerkOrganizationId: orgId,
+      });
+      console.log(`✅ User ${userId} joined organization ${orgId}`);
+    } catch (error) {
+      console.error('Error handling membership created:', error);
+    }
   }
 
   if (eventType === 'organizationMembership.updated') {
-    // Handle role changes, etc.
     const { organization, public_user_data, role } = evt.data;
-    console.log(`Membership updated for user ${public_user_data.user_id} in org ${organization.id}`);
+    console.log(`✅ Membership updated for user ${public_user_data.user_id} in org ${organization.id} (role: ${role})`);
   }
 
   if (eventType === 'organizationMembership.deleted') {
     const { organization, public_user_data } = evt.data;
     const userId = public_user_data.user_id;
     
-    /**
-     * IMPORTANT: Membership Removal Logic
-     * ====================================
-     * In ENFORCED mode: This shouldn't happen (users must belong to an org)
-     * In OPTIONAL mode: Set user's organizationId to null
-     * 
-     * For multi-org support: Remove from organization_members table only
-     */
-    
     if (!ENFORCE_ORGANIZATION_MODE) {
-      await convexQueries.removeUserFromOrganization(userId);
-      console.log(`User ${userId} removed from organization ${organization.id}`);
+      try {
+        await convex.mutation(api.users.updateByClerkId, {
+          clerkUserId: userId,
+          clerkOrganizationId: undefined,
+        });
+        console.log(`✅ User ${userId} removed from organization ${organization.id}`);
+      } catch (error) {
+        console.error('Error removing user from organization:', error);
+      }
     } else {
-      console.warn(`User ${userId} removed from org but ENFORCE_ORGANIZATION_MODE is true`);
+      console.warn(`⚠️ User ${userId} removed from org but ENFORCE_ORGANIZATION_MODE is true`);
     }
   }
 

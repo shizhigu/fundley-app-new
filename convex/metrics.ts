@@ -204,9 +204,13 @@ export const create = mutation({
         cash_flow_statement: [],
         periods_needed: ['annual']
       },
+      // Always store both IDs for full tracking
       userId: user._id,
-      organizationId: user.clerkOrganizationId,
+      organizationId: user.clerkOrganizationId || undefined,
       isBuiltIn: false,
+      // isPublic controls sharing scope:
+      // - true: Organization-wide sharing (if organizationId exists) or globally public
+      // - false: Personal use only (creator access only)
       isPublic: args.isPublic ?? false,
       createdAt: now,
       updatedAt: now,

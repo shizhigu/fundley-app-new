@@ -1,8 +1,8 @@
 'use client';
 
-import { ChevronUp, Building2 } from 'lucide-react';
+import { ChevronUp, Building2, Settings, Users, UserPlus } from 'lucide-react';
 import Image from 'next/image';
-import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
+import { useClerk, useUser, useOrganization, useOrganizationList } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 
@@ -26,9 +26,10 @@ interface SidebarUserNavProps {
 
 export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const router = useRouter();
-  const { signOut } = useClerk();
+  const { signOut, openOrganizationProfile, openCreateOrganization } = useClerk();
   const { isLoaded, user: clerkUser } = useUser();
   const { organization } = useOrganization();
+  const { setUserMemberships } = useOrganizationList();
   const { setTheme, resolvedTheme } = useTheme();
 
   const displayEmail = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || 'User';
@@ -92,6 +93,29 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             side="top"
             className="w-[--radix-popper-anchor-width]"
           >
+            {organization && (
+              <>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => openOrganizationProfile()}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Organization Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={() => openCreateOrganization()}
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              {organization ? 'Switch Organization' : 'Create Organization'}
+            </DropdownMenuItem>
+            
+            <DropdownMenuSeparator />
+            
             <DropdownMenuItem
               data-testid="user-nav-item-theme"
               className="cursor-pointer"
@@ -99,7 +123,9 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             >
               {`${resolvedTheme === 'light' ? 'Dark' : 'Light'} mode`}
             </DropdownMenuItem>
+            
             <DropdownMenuSeparator />
+            
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 type="button"

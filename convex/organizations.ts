@@ -135,3 +135,70 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Webhook-specific functions for Clerk integration
+export const createFromWebhook = mutation({
+  args: {
+    name: v.string(),
+    slug: v.string(),
+    clerkOrganizationId: v.string(),
+    settings: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("organizations", {
+      name: args.name,
+      slug: args.slug,
+      clerkOrganizationId: args.clerkOrganizationId,
+      settings: args.settings || {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const updateByClerkId = mutation({
+  args: {
+    clerkOrganizationId: v.string(),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrganizationId", args.clerkOrganizationId))
+      .unique();
+
+    if (!org) {
+      throw new Error(`Organization with clerkOrganizationId ${args.clerkOrganizationId} not found`);
+    }
+
+    const updates: any = {
+      updatedAt: Date.now(),
+    };
+
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.slug !== undefined) updates.slug = args.slug;
+
+    await ctx.db.patch(org._id, updates);
+    return org._id;
+  },
+});
+
+export const deleteByClerkId = mutation({
+  args: {
+    clerkOrganizationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrganizationId", args.clerkOrganizationId))
+      .unique();
+
+    if (!org) {
+      throw new Error(`Organization with clerkOrganizationId ${args.clerkOrganizationId} not found`);
+    }
+
+    await ctx.db.delete(org._id);
+    return org._id;
+  },
+});

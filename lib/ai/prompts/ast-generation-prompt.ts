@@ -833,16 +833,75 @@ $$CAGR = \sqrt[n]{\frac{Value_{end}}{Value_{start}}} - 1$$
 ### Multi-step Calculations:
 $$ComplexMetric = \frac{A + B}{C - D} \times E$$
 
-## LaTeX Formatting Rules
+## LaTeX Formatting Rules - CRITICAL PRECISION REQUIREMENTS
 
-1. **Use subscripts** for time periods: Value_TTM, Value_Latest, Value_q-1
-2. **Use fractions** for divisions: \\frac{A}{B} not A/B  
-3. **Use summation** for rolling sums: \\sum_{i=0}^{3}
-4. **Use products** for multiplications: \\prod_{i=0}^{3}
-5. **Use clear variable names** that map to actual fields
-6. **Add parentheses** for clarity in complex formulas
+**🚨 FORMULA FIELD REQUIREMENTS - MUST BE EXACT:**
 
-Remember: The LaTeX formula should be **visually clear** and **mathematically precise**, making it easy for users to verify the calculation logic before approval.
+1. **Use EXACT database field names in LaTeX text** - Match JSON AST field names precisely
+2. **Use rigorous mathematical LaTeX notation** with proper formatting
+3. **Use fully expanded formulas** - Show all calculation steps explicitly  
+4. **Use subscripts for time periods** with exact field references: \\text{netIncome}_q, \\text{totalAssets}_{q-1}
+5. **Use \\frac{}{} for all divisions** - Never use / in LaTeX display
+6. **Use \\text{fieldName} for all database fields** - Wrap field names in \\text{} 
+7. **Use proper aggregation notation** - \\sum, \\prod, \\text{avg} as appropriate
+8. **Add parentheses for complex calculations** - Group operations clearly
+9. **Use \\times for multiplication** - Never use * in LaTeX display
+10. **Use \\left( \\right) for large fractions** - Proper parenthesis scaling
+
+**🚨 VARIABLE NAME CONSISTENCY:**
+- LaTeX formula MUST use IDENTICAL field names as JSON AST
+- NO abbreviations or synonyms - use exact database field names
+- Example: If AST uses "totalStockholderEquity", LaTeX must use "\\text{totalStockholderEquity}"
+
+**CORRECT LaTeX Examples:**
+
+**✅ CORRECT - ROCE Formula:**
+\`\`\`latex
+$$\\text{ROCE\\_Pct} = \\frac{\\text{ebit}_q}{\\left(\\frac{\\text{totalAssets}_q + \\text{totalAssets}_{q-1}}{2}\\right) - \\left(\\frac{\\text{totalCurrentLiabilities}_q + \\text{totalCurrentLiabilities}_{q-1}}{2}\\right)} \\times 100$$
+\`\`\`
+
+**✅ CORRECT - ROE Formula:**
+\`\`\`latex  
+$$\\text{ROE} = \\frac{\\text{netIncome}_{\\text{TTM}}}{\\text{totalStockholderEquity}_{\\text{latest}}} \\times 100$$
+\`\`\`
+
+**✅ CORRECT - Current Ratio:**
+\`\`\`latex
+$$\\text{Current\\_Ratio} = \\frac{\\text{totalCurrentAssets}_{\\text{latest}}}{\\text{totalCurrentLiabilities}_{\\text{latest}}}$$
+\`\`\`
+
+**❌ WRONG Examples:**
+\`\`\`latex
+// Wrong: Abbreviated field names
+$$ROE = \\frac{NI}{Equity}$$
+
+// Wrong: Using / instead of \\frac
+$$ROE = NetIncome / Equity$$  
+
+// Wrong: Missing \\text{} wrapper
+$$ROE = \\frac{netIncome}{totalEquity}$$
+
+// Wrong: Field names don't match AST
+$$ROE = \\frac{\\text{net\_income}}{\\text{shareholders\_equity}}$$
+\`\`\`
+
+**MANDATORY Formula Structure:**
+1. **Start with double dollar signs**: $$
+2. **Use \\text{} for all field names**: \\text{exactFieldName}  
+3. **Use subscripts for periods**: _{\\text{latest}}, _{\\text{TTM}}, _{q-1}
+4. **Use \\frac{numerator}{denominator}** for divisions
+5. **Use \\times for multiplication**, \\div for explicit division notation
+6. **Use \\left( \\right)** for scaling parentheses in complex fractions
+7. **End with double dollar signs**: $$
+
+**Field Name Validation Process:**
+1. First build complete JSON AST with exact field names
+2. Extract ALL field names used in AST
+3. Use IDENTICAL field names in LaTeX formula with \\text{} wrapper
+4. Verify every field name matches between AST and LaTeX
+5. No synonyms, abbreviations, or alternative names allowed
+
+Remember: The LaTeX formula is the PRIMARY REFERENCE for users - it must be **mathematically rigorous**, **visually clear**, and **100% consistent** with the executable AST definition.
 
 ## Error Prevention
 

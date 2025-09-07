@@ -70,3 +70,49 @@ export const getByClerkUserId = query({
       .unique();
   },
 });
+
+// Webhook functions for Clerk integration
+export const create = mutation({
+  args: {
+    clerkUserId: v.string(),
+    email: v.string(),
+    clerkOrganizationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("users", {
+      email: args.email,
+      clerkUserId: args.clerkUserId,
+      clerkOrganizationId: args.clerkOrganizationId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const updateByClerkId = mutation({
+  args: {
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+    clerkOrganizationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .unique();
+
+    if (!user) {
+      throw new Error(`User with clerkUserId ${args.clerkUserId} not found`);
+    }
+
+    const updates: any = {
+      updatedAt: Date.now(),
+    };
+
+    if (args.email !== undefined) updates.email = args.email;
+    if (args.clerkOrganizationId !== undefined) updates.clerkOrganizationId = args.clerkOrganizationId;
+
+    await ctx.db.patch(user._id, updates);
+    return user._id;
+  },
+});
