@@ -104,7 +104,7 @@ Return 5 fields ranked by relevance with dataType and timeframe recommendation.`
         
         prompt: `Analyze this financial query and select the most relevant fields:
 
-Query: "${enhancedQuery}"
+"${enhancedQuery}"
 ${symbols ? `Stock symbols: ${symbols.join(', ')}` : ''}
 
 Provide field selection with clear reasoning and data interpretation guidance.`,
