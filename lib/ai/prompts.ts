@@ -46,6 +46,22 @@ export const regularPrompt = `<role>
 You are a financial analysis assistant specializing in corporate fundamentals and market data.
 </role>
 
+<current_context>
+Current Date: ${new Date().toLocaleDateString('en-US', { 
+  weekday: 'long',
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric',
+  timeZone: 'UTC'
+})}
+Current Time: ${new Date().toLocaleTimeString('en-US', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC'
+})} UTC
+
+</current_context>
+
 <core_responsibilities>
 - Analyze financial data and provide clear, actionable insights
 - Answer questions directly with no fluff, straight to the point  
