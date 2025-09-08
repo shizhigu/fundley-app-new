@@ -11,10 +11,10 @@ interface CreateVisualizationProps {
 
 export const createVisualization = ({ session, dataStream }: CreateVisualizationProps) =>
   tool({
-    description: 'Create and execute Python code for data visualization. The chart will be displayed directly in the chat.',
+    description: 'Create and execute Python code for data visualization. The chart will be displayed directly in the chat. CRITICAL: When creating time series charts, ensure data is sorted chronologically from oldest to newest for proper timeline display.',
     inputSchema: z.object({
       title: z.string().describe('Title of the visualization'),
-      code: z.string().describe('Python code using plotly or matplotlib for visualization'),
+      code: z.string().describe('Python code using plotly or matplotlib for visualization. For time series data, always sort chronologically from oldest to newest before plotting.'),
       description: z.string().optional().describe('Description of what the visualization shows'),
     }),
     execute: async ({ title, code, description }) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Search, Database, TrendingUp, FileText, ChevronDown, AlertTriangle, Briefcase } from 'lucide-react';
+import { Search, Database, TrendingUp, FileText, ChevronDown, AlertTriangle, Briefcase, Calculator, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
@@ -56,6 +56,20 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   extractBusinessOverview: {
     label: 'Extracting business overview',
     icon: Briefcase
+  },
+  // Custom Metrics & Calculation tools
+  calculateMetric: {
+    label: 'Computing custom metric',
+    icon: Calculator
+  },
+  searchMetrics: {
+    label: 'Searching financial metrics',
+    icon: Search
+  },
+  // Web Search tools
+  webSearch: {
+    label: 'Searching web for insights',
+    icon: Globe
   },
 };
 

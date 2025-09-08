@@ -37,19 +37,19 @@ export async function POST(request: NextRequest) {
 
 ### 1. TICKERS: Find stock symbols (AAPL, TSLA, etc.) - uppercase
 
-### 2. SUGGESTIONS: Generate 2-3 analytical questions (max 8 words each in Chinese, max 10 words in English)
+### 2. SUGGESTIONS: Generate 2-3 insightful follow-up questions (max 8 words each in Chinese, max 10 words in English)
 
-When message contains financial data, prioritize questions that explore:
+**CRITICAL**: Analyze the specific message content and context. Generate questions that:
+- Build naturally on what was just discussed
+- Offer deeper analytical insights relevant to the conversation
+- Are genuinely valuable for the user's understanding
+- Match the sophistication level and focus area of the original message
 
-**Data-driven insights:**
-- Chinese: "为什么[指标]在[时期]发生变化?" / English: "Why did [metric] change in [period]?"
-- Chinese: "什么因素推动了[指标][X]%的变化?" / English: "What drove [X]% change in [metric]?"
-- Chinese: "这个[趋势/比率]与行业基准如何比较?" / English: "How does this compare to benchmarks?"
-
-**Investment implications:**
-- Chinese: "什么风险可能逆转这一趋势?" / English: "What risks could reverse this trend?"
-- Chinese: "这种[改善/下降]可持续吗?" / English: "Is this [improvement/decline] sustainable?"
-- Chinese: "当前估值如何反映这些基本面?" / English: "How does valuation reflect fundamentals?"
+**Question Framework**:
+- **Strategic**: Business implications, competitive positioning, long-term outlook
+- **Analytical**: Root cause analysis, trend interpretation, comparative insights  
+- **Risk-focused**: Potential challenges, scenario analysis, sustainability concerns
+- **Practical**: Investment implications, timing considerations, decision factors
 
 ### 3. DATA VERIFICATION: 
 - containsRealData: true if tool call data present

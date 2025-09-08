@@ -28,7 +28,7 @@ import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 // Removed direct import - now using API route
 
-// Citation Card Component
+// Citation Card Component - handles metadata fetching
 const CitationCard = ({ citation }: { citation: any }) => {
   const [imageError, setImageError] = useState(false);
   const [metadata, setMetadata] = useState<{title?: string, description?: string, loading?: boolean}>({ loading: true });
@@ -138,36 +138,36 @@ const CitationCard = ({ citation }: { citation: any }) => {
       href={url} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="block p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 group"
+      className="block p-2 bg-white/20 dark:bg-gray-800/20 border border-gray-200/30 dark:border-gray-700/30 rounded text-xs hover:bg-white/30 dark:hover:bg-gray-700/30 transition-colors group"
     >
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         {/* Preview Image */}
         <div className="flex-shrink-0">
           {!imageError ? (
             <img
               src={getPreviewImage(url)}
               alt={displayTitle}
-              className="w-8 h-8 rounded object-cover"
+              className="w-6 h-6 rounded object-cover"
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
-              <span className="text-xs text-gray-500">🌐</span>
+            <div className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
+              <span className="text-xs">🌐</span>
             </div>
           )}
         </div>
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
+          <div className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate text-xs">
             {displayTitle}
           </div>
           {displayDescription && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+            <div className="text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 text-xs">
               {displayDescription}
             </div>
           )}
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
+          <div className="text-gray-400 dark:text-gray-500 mt-1 truncate text-xs">
             {new URL(url).hostname}
           </div>
         </div>
@@ -181,11 +181,11 @@ const CitationCard = ({ citation }: { citation: any }) => {
   );
 };
 
-// Search Results Component with expand/collapse state
+// Compact Search Results Component - restored working version
 const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; output: any; input: any }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // Parse the output if it's a structured response
+  // Parse the output exactly as before
   let content = '';
   let citations = [];
   
@@ -197,63 +197,96 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
   }
 
   return (
-    <div key={toolCallId} className="border rounded-lg bg-green-50/50 dark:bg-green-900/20">
-      {/* Header - Always visible */}
+    <motion.div
+      initial={{ opacity: 0, y: 5, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className={cn(
+        "relative rounded-lg overflow-hidden max-w-xl", // Made smaller
+        "bg-white/30 dark:bg-gray-900/30", // More transparent
+        "backdrop-blur-md border border-white/20 dark:border-gray-700/20",
+        "shadow-[0_4px_16px_-4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.2)]",
+        "transition-all duration-200"
+      )}
+    >
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/3 via-transparent to-blue-500/3 pointer-events-none" />
+      
+      {/* Compact Header - Clickable */}
       <div 
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-green-100/50 dark:hover:bg-green-800/30 transition-colors"
+        className="relative px-3 py-2 cursor-pointer hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
-          <div className="text-green-600">🔍</div>
-          <span className="font-medium text-green-700 dark:text-green-300">
-            Web Search Results
-          </span>
-          {input?.query && (
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-              "{input.query.substring(0, 50)}{input.query.length > 50 ? '...' : ''}"
-            </span>
-          )}
-        </div>
-        <div className="text-green-600 dark:text-green-400">
-          {isExpanded ? '▼' : '▶'}
+          <div className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400">🌐</div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xs font-medium text-gray-900 dark:text-gray-100">
+              Web Search
+            </h3>
+            {input?.query && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                &ldquo;{input.query.substring(0, 30)}...&rdquo;
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {citations.length > 0 && (
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {citations.length} sources
+              </span>
+            )}
+            <div className={cn(
+              "w-3.5 h-3.5 text-gray-400 transition-transform duration-200",
+              isExpanded && "rotate-180"
+            )}>↓</div>
+          </div>
         </div>
       </div>
       
       {/* Expandable content */}
-      {isExpanded && (
-        <div className="px-4 pb-4 border-t border-green-200/50 dark:border-green-700/50">
-          {input?.query && (
-            <div className="text-sm text-gray-600 dark:text-gray-300 mb-3 mt-3">
-              <strong>Query:</strong> {input.query}
-              {input?.searchAfterDate && (
-                <div><strong>Date Filter:</strong> After {input.searchAfterDate}</div>
-              )}
-              {input?.searchBeforeDate && (
-                <div><strong>Date Filter:</strong> Before {input.searchBeforeDate}</div>
-              )}
-            </div>
-          )}
-          
-          <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
-            <Markdown>{content}</Markdown>
-          </div>
-          
-          {/* Citations */}
-          {citations.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Sources ({citations.length})
-              </h4>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {citations.map((citation: any, idx: number) => (
-                  <CitationCard key={idx} citation={citation} />
-                ))}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden border-t border-gray-200/40 dark:border-gray-700/40"
+          >
+            {/* Compact content */}
+            {content && (
+              <div className="px-3 py-2">
+                <div className="flex items-start gap-2 mb-3">
+                  <div className="w-3 h-3 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0">✨</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                      Key Insights
+                    </h4>
+                    <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
+                      <Markdown>{content}</Markdown>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            )}
+            
+            {/* Compact Citations */}
+            {citations.length > 0 && (
+              <div className="px-3 pb-3 border-t border-gray-200/20 dark:border-gray-700/20">
+                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 mt-2">
+                  Sources ({citations.length})
+                </h4>
+                <div className="space-y-1">
+                  {citations.map((citation: any, idx: number) => (
+                    <CitationCard key={idx} citation={citation} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
@@ -915,6 +948,62 @@ const PurePreviewMessage = ({
                 }
               }
               
+              // Handle calculate metric tool
+              if (type === 'tool-calculateMetric') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  const { input } = part;
+                  const metricName = input?.metricName || input?.name || 'Financial Metric';
+                  const symbols = input?.symbols || [];
+                  
+                  return (
+                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/40 dark:bg-gray-900/40 backdrop-blur-md border border-white/50 dark:border-gray-700/50 text-sm not-prose">
+                      <div className="animate-spin text-gray-600 dark:text-gray-400">
+                        <LoaderIcon size={14} />
+                      </div>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        Computing {metricName}{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}...
+                      </span>
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output, input } = part;
+                  
+                  // Try to extract metric name from the output string
+                  let metricDisplayName = 'Custom Metric';
+                  
+                  if (output && typeof output === 'string') {
+                    // Look for Chinese metric name in the output
+                    const chineseMatch = output.match(/\*\*([^*]+)\s*Calculation Results\*\*/);
+                    if (chineseMatch && chineseMatch[1]) {
+                      metricDisplayName = chineseMatch[1];
+                    }
+                  }
+                  
+                  // Fallback to input parameters - but not the ID
+                  if (metricDisplayName === 'Custom Metric') {
+                    metricDisplayName = input?.metricName || input?.name || 'Financial Metric';
+                  }
+                  
+                  const symbols = input?.symbols || [];
+                  
+                  // Simple success display without expansion
+                  return (
+                    <div key={toolCallId} className="not-prose">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/40 dark:bg-gray-900/40 backdrop-blur-md border border-white/50 dark:border-gray-700/50 text-sm">
+                        <div className="w-3 h-3 bg-green-500/70 rounded-full"></div>
+                        <span className="text-gray-700 dark:text-gray-300 font-medium">
+                          {metricDisplayName} calculated{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+              }
+
               // Handle web search tool
               if (type === 'tool-webSearch') {
                 const { toolCallId, state } = part;
