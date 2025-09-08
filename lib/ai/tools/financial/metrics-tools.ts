@@ -34,7 +34,7 @@ export const calculateMetric = tool({
     symbols: z.array(z.string()).describe('Stock ticker symbols (e.g., ["AAPL", "MSFT", "GOOGL"])'),
     periods: z.number().optional().default(4).describe('Number of historical periods to retrieve (1-25). Default 4 gets last 4 quarters'),
     periodType: z.enum(['quarter', 'annual']).optional().default('quarter').describe('Type of periods to analyze'),
-    asOf: z.string().optional().describe('Latest time point for historical analysis. Format: "YYYY-QN" (e.g., "2024-Q3"). If omitted, uses most recent data available'),
+    asOf: z.string().optional().describe('Latest time point for historical analysis. Format: "YYYY-QN" (e.g., "2025-Q3"). If omitted, uses most recent data available'),
     analysisType: z.enum(['single', 'historical', 'trend']).optional().default('single').describe('single: latest value only, historical: multiple time points, trend: time series analysis')
   }).refine(
     (data) => data.metricId || data.metricIds,

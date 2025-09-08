@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Core Commands
+
 - **Development**: `pnpm dev` - Runs Next.js with Turbo in development mode
 - **Build**: `pnpm build` - Builds the Next.js application
 - **Linting**: `pnpm lint` - Runs Next.js lint and Biome lint with auto-fix
@@ -12,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Testing**: `pnpm test` - Runs Playwright E2E tests (sets PLAYWRIGHT=True environment variable)
 
 ### Convex Database Commands
+
 - **Deploy**: `npx convex deploy` - Deploys Convex functions and schema to production
 - **Dev mode**: `npx convex dev` - Runs Convex development server with hot reload
 
@@ -20,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Next.js 15 AI chatbot application using the App Router pattern with the following key components:
 
 ### Core Stack
+
 - **Framework**: Next.js 15 with App Router, React Server Components, and Server Actions
 - **AI Integration**: Vercel AI SDK with xAI (grok models) as default provider
 - **Database**: Convex with TypeScript-native queries and real-time subscriptions
@@ -30,6 +33,7 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 ### Project Structure
 
 #### `/app` - Next.js App Router
+
 - `(auth)` - Authentication flow (login, register, auth config)
 - `(chat)` - Main chat interface and API routes
   - `/api/chat` - Chat streaming endpoint
@@ -37,12 +41,14 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
   - `/api/files/upload` - File upload handling
 
 #### `/components` - React Components
+
 - Core UI components using shadcn/ui patterns
 - Chat components: `chat.tsx`, `messages.tsx`, `multimodal-input.tsx`
 - Artifact system: `artifact.tsx` with specialized editors
 - Data streaming: `data-stream-provider.tsx` for real-time updates
 
 #### `/lib` - Core Libraries
+
 - `/ai` - AI configuration
   - `providers.ts` - Model provider configuration (xAI/test models)
   - `tools/` - AI tool implementations (create/update documents, weather, suggestions)
@@ -51,6 +57,7 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 - `/convex` - Convex client adapter for API compatibility
 
 #### `/convex` - Convex Backend Functions
+
 - `schema.ts` - Database schema definitions with indexes
 - `users.ts` - User management with Clerk integration
 - `chats.ts` - Chat CRUD operations
@@ -63,7 +70,9 @@ This is a Next.js 15 AI chatbot application using the App Router pattern with th
 - `auth.config.ts` - Clerk authentication configuration
 
 #### `/artifacts` - Artifact System
+
 Each artifact type (code, text, sheet) has:
+
 - `client.tsx` - Client-side React component
 - `server.ts` - Server-side document handler with streaming
 
@@ -92,6 +101,7 @@ Each artifact type (code, text, sheet) has:
 ### CRITICAL: Vercel AI SDK Tool Schema
 
 **❌ COMMON ERROR - DO NOT USE `parameters`:**
+
 ```typescript
 export const myTool = tool({
   description: "My tool description",
@@ -102,6 +112,7 @@ export const myTool = tool({
 ```
 
 **✅ CORRECT - ALWAYS USE `inputSchema`:**
+
 ```typescript
 export const myTool = tool({
   description: "My tool description", 
@@ -112,20 +123,23 @@ export const myTool = tool({
 ```
 
 ### Why This Matters
+
 - **Symptom**: LLM calls tool but tool receives empty parameters `{}`
 - **Error**: Tool validation fails with "parameter is required" even when LLM passes parameters
 - **Root Cause**: Vercel AI SDK expects `inputSchema`, not `parameters`
 - **Fix**: Always use `inputSchema` for tool parameter definitions
 
 ### Model Configuration
+
 - **Use OpenRouter**: All models must use the unified OpenRouter configuration from `lib/ai/providers.ts`
 - **Never use direct provider SDKs**: Don't call OpenAI, Anthropic, etc. directly
 - **Model Selection**: Use `financialFieldsModel`, `subAgentModel`, or other predefined models
 - **Example**: `const { text } = await generateText({ model: financialFieldsModel, ... })`
 
 ### Tool Development Checklist
+
 1. ✅ Use `inputSchema` (not `parameters`)
-2. ✅ Import models from `lib/ai/providers.ts` 
+2. ✅ Import models from `lib/ai/providers.ts`
 3. ✅ Use OpenRouter configuration
 4. ✅ Add comprehensive parameter descriptions
 5. ✅ Include error handling and validation
@@ -136,6 +150,7 @@ export const myTool = tool({
 ### Core Tables (8 Tables)
 
 #### Users Table
+
 ```typescript
 users: defineTable({
   email: v.string(),
@@ -146,13 +161,16 @@ users: defineTable({
 }).index("by_clerk_user_id", ["clerkUserId"])
   .index("by_email", ["email"])
 ```
+
 **Purpose**: User management with Clerk authentication integration
-**Key Features**: 
+**Key Features**:
+
 - Clerk user ID mapping for authentication
 - Optional organization support
 - Timestamp tracking
 
 #### Chats Table  
+
 ```typescript
 chats: defineTable({
   title: v.string(),
@@ -163,13 +181,16 @@ chats: defineTable({
 }).index("by_user_id", ["userId"])
   .index("by_created_at", ["createdAt"])
 ```
+
 **Purpose**: Chat session management
 **Key Features**:
+
 - User ownership with foreign key
 - Public/private visibility control
 - Chronological indexing
 
 #### Messages Table
+
 ```typescript
 messages: defineTable({
   chatId: v.id("chats"),
@@ -180,14 +201,17 @@ messages: defineTable({
 }).index("by_chat_id", ["chatId"])
   .index("by_created_at", ["createdAt"])
 ```
+
 **Purpose**: Store conversation messages with multimodal support
 **Key Features**:
+
 - Chat association with foreign key
 - Role-based message types (user/assistant/system)
 - Flexible parts structure for multimodal content
 - Attachment support
 
 #### Documents Table
+
 ```typescript
 documents: defineTable({
   title: v.string(),
@@ -199,13 +223,16 @@ documents: defineTable({
 }).index("by_user_id", ["userId"])
   .index("by_kind", ["kind"])
 ```
+
 **Purpose**: Document artifact management
 **Key Features**:
+
 - Document type classification (text/code/sheet)
 - User ownership
 - Content storage with optional field
 
 #### Organizations Table
+
 ```typescript
 organizations: defineTable({
   name: v.string(),
@@ -216,13 +243,16 @@ organizations: defineTable({
 }).index("by_clerk_org_id", ["clerkOrganizationId"])
   .index("by_slug", ["slug"])
 ```
+
 **Purpose**: Organization management
 **Key Features**:
+
 - Unique slug for URL routing
 - Clerk organization integration
 - Name and slug indexing
 
 #### Streams Table
+
 ```typescript
 streams: defineTable({
   chatId: v.id("chats"),
@@ -230,13 +260,16 @@ streams: defineTable({
   createdAt: v.number(),
 }).index("by_chat_id", ["chatId"])
 ```
+
 **Purpose**: Real-time data streaming for chat sessions
 **Key Features**:
+
 - Chat association
 - Flexible data structure
 - Timestamp indexing
 
 #### Votes Table
+
 ```typescript
 votes: defineTable({
   messageId: v.id("messages"),
@@ -246,13 +279,16 @@ votes: defineTable({
 }).index("by_message_id", ["messageId"])
   .index("by_chat_id", ["chatId"])
 ```
+
 **Purpose**: Message voting/rating system
 **Key Features**:
+
 - Message and chat association
 - Boolean upvote/downvote
 - Dual indexing for queries
 
 #### Visualization Cache Table
+
 ```typescript
 visualizationCache: defineTable({
   messageId: v.id("messages"),
@@ -262,8 +298,10 @@ visualizationCache: defineTable({
 }).index("by_message_id", ["messageId"])
   .index("by_data_hash", ["dataHash"])
 ```
+
 **Purpose**: Cache expensive visualization computations
 **Key Features**:
+
 - Message association for context
 - Hash-based cache key
 - Flexible result storage
@@ -271,22 +309,27 @@ visualizationCache: defineTable({
 ### Schema Features
 
 #### Automatic Indexes
+
 Convex automatically creates the following indexes:
+
 - Primary ID indexes for all tables
 - Custom indexes as defined in schema
 - Compound indexes for efficient querying
 
 #### Type Safety
+
 - Full TypeScript integration
 - Runtime validation with Convex values
 - End-to-end type safety from database to frontend
 
 #### Real-time Subscriptions
+
 - Automatic reactivity for all queries
 - WebSocket-based updates
 - No polling required
 
 #### Authentication Integration
+
 - Seamless Clerk integration
 - User context in all functions  
 - Row-level security through function logic
@@ -294,6 +337,7 @@ Convex automatically creates the following indexes:
 ### Migration Benefits
 
 **From PostgreSQL to Convex**:
+
 1. **Simplified Architecture**: No ORM configuration needed
 2. **Real-time by Default**: Built-in subscriptions
 3. **Type Safety**: Native TypeScript support
@@ -301,6 +345,7 @@ Convex automatically creates the following indexes:
 5. **Developer Experience**: Hot reloading and introspection
 
 **Removed Complexity**:
+
 - No SQL migrations
 - No connection pooling
 - No query optimization
@@ -350,6 +395,7 @@ Focus on essential endpoints that provide maximum value:
 - **Portfolio Analytics**: Holdings analysis, performance metrics
 
 ##### Tool Implementation Pattern
+
 ```typescript
 // lib/ai/tools/financial/[tool-name].ts
 export const getCompanyFinancials = tool({
@@ -748,6 +794,7 @@ export const getFinancialData = tool({
 When adding a new FMP endpoint to the system, follow this exact process:
 
 #### Step 1: API Exploration
+
 ```bash
 # Test the endpoint with stable API format
 curl "https://financialmodelingprep.com/stable/{endpoint}?symbol=AAPL&period=annual&limit=1&apikey=YOUR_KEY"
@@ -757,6 +804,7 @@ curl "..." | jq '.[0] | keys'
 ```
 
 #### Step 2: Create Field Definition File
+
 Create `/lib/fmp/{endpoint-name}-fields.ts`:
 
 ```typescript
@@ -786,7 +834,9 @@ export const endpointNameFields: FieldMetadata[] = [
 ```
 
 #### Step 3: Update Unified Tool
+
 In `/lib/ai/tools/financial/unified-financial-data.ts`:
+
 ```typescript
 const API_ENDPOINTS = {
   'getIncomeStatement': '/income-statement',
@@ -795,7 +845,9 @@ const API_ENDPOINTS = {
 ```
 
 #### Step 4: Update Field Aggregation
+
 In `/lib/fmp/field-metadata.ts`:
+
 ```typescript
 import { newEndpointFields } from './new-endpoint-fields'
 
@@ -817,7 +869,9 @@ export const ALL_FINANCIAL_FIELDS = [
 ```
 
 #### Step 5: Update Agent Schema
+
 In `/lib/ai/agents/financial-fields-agent.ts`:
+
 ```typescript
 dataType: z.enum([
   'getIncomeStatement', 'getBalanceSheet', 'getCashFlow', 
@@ -829,11 +883,13 @@ dataType: z.enum([
 ### Field Selection Guidelines
 
 **✅ Include in field files:**
+
 - Business metrics: revenue, netIncome, totalAssets
 - Financial ratios: grossProfitRatio, debtToEquity
 - Performance indicators: eps, roce, cashFlow
 
 **❌ Exclude from field files:**
+
 - Metadata: date, symbol, reportedCurrency, cik
 - Administrative: filingDate, acceptedDate, period
 - Identifiers: All string values and fields containing "year"
@@ -843,11 +899,13 @@ dataType: z.enum([
 ### FMP API Format (2025)
 
 **Correct Stable API Format:**
+
 ```
 https://financialmodelingprep.com/stable/income-statement?symbol=AAPL&period=annual&limit=5&apikey=KEY
 ```
 
 **Important Notes:**
+
 - Use `/stable/` not `/api/v3/` (v3 retiring 2025/2026)
 - Parameters: symbol, period, limit are typically required
 - Always test with actual API key to verify data availability
@@ -867,6 +925,7 @@ The SEC filing tools provide intelligent extraction of key sections from SEC fil
 ### Available Tools
 
 #### 1. `extractMDA` - Management Discussion & Analysis
+
 Extracts MD&A sections from 10-K (Section 7) and 10-Q (Part 1 Item 2) filings.
 
 ```typescript
@@ -874,42 +933,47 @@ Extracts MD&A sections from 10-K (Section 7) and 10-Q (Part 1 Item 2) filings.
 const mdaData = await extractMDA({
   symbol: 'AAPL',
   formType: '10-K',
-  filingYear: 2024 // Optional
+  filingYear: 2025 // Optional
 });
 ```
 
 **Returns LLM-optimized structure:**
+
 - Company information (symbol, name, CIK)
 - Filing metadata (date, period, accession number)
 - MD&A content with word count and key topics analysis
 - Auto-generated summary for quick understanding
 
 #### 2. `extractRiskFactors` - Risk Factors Analysis
+
 Extracts Section 1A (Risk Factors) from 10-K filings with intelligent categorization.
 
 ```typescript
 const riskData = await extractRiskFactors({
   symbol: 'TSLA',
-  filingYear: 2024
+  filingYear: 2025
 });
 ```
 
 **Features:**
+
 - Automatic risk categorization (Market, Operational, Regulatory, etc.)
 - Key risk extraction from paragraphs
 - Structured data for LLM analysis
 
 #### 3. `extractBusinessOverview` - Business Description
+
 Extracts Section 1 (Business) from 10-K filings with key point identification.
 
 ```typescript
 const businessData = await extractBusinessOverview({
   symbol: 'MSFT',
-  filingYear: 2024
+  filingYear: 2025
 });
 ```
 
 **Features:**
+
 - Business segment identification
 - Key business activity extraction
 - Structured overview for competitive analysis
@@ -917,6 +981,7 @@ const businessData = await extractBusinessOverview({
 ### Technical Architecture
 
 #### LLM-Optimized Data Format
+
 All SEC tools return data optimized for language model consumption:
 
 ```typescript
@@ -942,6 +1007,7 @@ interface SecFilingResponse {
 ```
 
 #### Error Handling
+
 - Graceful fallbacks for missing filings
 - Clear error messages for debugging
 - Rate limiting compliance with SEC-API.io
@@ -955,7 +1021,7 @@ Add SEC-API.io credentials to your environment:
 SEC_API_KEY=your-sec-api-key-here
 ```
 
-Get your API key at: https://sec-api.io/
+Get your API key at: <https://sec-api.io/>
 
 ### Integration Pattern
 

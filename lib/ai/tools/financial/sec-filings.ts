@@ -87,7 +87,7 @@ export const extractMDA = tool({
   inputSchema: z.object({
     symbol: z.string().describe('REQUIRED: Stock ticker symbol like AAPL, TSLA, MSFT, GOOGL, AMZN, etc.'),
     formType: z.enum(['10-K', '10-Q']).optional().default('10-K').describe('Filing type: 10-K (annual) or 10-Q (quarterly)'),
-    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2024, 2023)')
+    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2025, 2023)')
   }),
   execute: async ({ symbol, formType, filingYear }) => {
     console.log('🔍 extractMDA called with params:', { symbol, formType, filingYear });
@@ -174,7 +174,7 @@ export const extractRiskFactors = tool({
   description: 'Extract Risk Factors section from 10-K annual SEC filings. You MUST provide a stock ticker symbol (e.g., AAPL for Apple, TSLA for Tesla). Extracts Section 1A containing detailed business risk disclosures.',
   inputSchema: z.object({
     symbol: z.string().describe('REQUIRED: Stock ticker symbol like AAPL, TSLA, MSFT, GOOGL, AMZN, etc.'),
-    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2024, 2023)')
+    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2025, 2023)')
   }),
   execute: async ({ symbol, filingYear }) => {
     try {
@@ -248,7 +248,7 @@ export const extractBusinessOverview = tool({
   description: 'Extract Business overview section from 10-K annual SEC filings. You MUST provide a stock ticker symbol (e.g., AAPL for Apple, TSLA for Tesla). Extracts Section 1 describing business operations and strategy.',
   inputSchema: z.object({
     symbol: z.string().describe('REQUIRED: Stock ticker symbol like AAPL, TSLA, MSFT, GOOGL, AMZN, etc.'),
-    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2024, 2023)')
+    filingYear: z.number().optional().describe('Optional: Specific year (e.g., 2025, 2023)')
   }),
   execute: async ({ symbol, filingYear }) => {
     try {

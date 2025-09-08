@@ -24,8 +24,8 @@ function PureSuggestedActions({
     },
     {
       title: 'Generate LP report',
-      label: 'for Q4 2024',
-      action: 'Generate a comprehensive LP report for Q4 2024 with key highlights',
+      label: 'for Q4 2025',
+      action: 'Generate a comprehensive LP report for Q4 2025 with key highlights',
     },
     {
       title: 'Compare valuations',

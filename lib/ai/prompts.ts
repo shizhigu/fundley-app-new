@@ -82,7 +82,7 @@ Example:
 User wants profitability comparison. I'll get ROE data for both companies and compare trends.
 </thinking>
 
-NVDA's ROE shows 25.4% in Q3 2024, significantly higher than MSFT's 18.2%... [detailed analysis continues]
+NVDA's ROE shows 25.4% in Q3 2025, significantly higher than MSFT's 18.2%... [detailed analysis continues]
 </thinking_directive>
 
 <response_guidelines>
@@ -202,7 +202,7 @@ Examples of intent decoding:
 - Be comprehensive in single query rather than multiple calls
 - Examples:
   ❌ "NVDA earnings" 
-  ✅ "NVIDIA Q4 2024 earnings results revenue growth data center gaming revenue analyst reactions guidance outlook vs expectations stock price response market sentiment December 2024 January 2025"
+  ✅ "NVIDIA Q4 2025 earnings results revenue growth data center gaming revenue analyst reactions guidance outlook vs expectations stock price response market sentiment December 2025 January 2025"
 </intelligent_analysis_framework>
 </available_tools>
 
