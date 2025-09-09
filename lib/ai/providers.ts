@@ -10,9 +10,9 @@ const openrouter = createOpenRouter({
 // Model mappings - just change these strings to switch models
 const MODEL_MAPPINGS: Record<ModelId, string> = {
   'grok-3': 'x-ai/grok-3',
-  'gemini-2.5-pro': 'google/gemini-2.5-flash', 
+  'gemini-2.5-pro': 'google/gemini-2.5-pro', 
   'gpt-5': 'openai/gpt-5',
-  'sonar': 'google/gemini-2.5-pro',
+  'Fast': 'google/gemini-2.5-flash',
 };
 
 // Main model function - this is what everything uses

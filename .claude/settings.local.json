@@ -55,7 +55,8 @@
       "Bash(PORT=3002 pnpm dev)",
       "Bash(npx shadcn:*)",
       "Bash(git restore:*)",
-      "Bash(pnpm remove:*)"
+      "Bash(pnpm remove:*)",
+      "WebFetch(domain:sdk.vercel.ai)"
     ],
     "deny": [],
     "ask": [],

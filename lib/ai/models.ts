@@ -17,9 +17,9 @@ export const AVAILABLE_MODELS = {
     name: 'GPT',
     description: 'OpenAI',
   },
-  'sonar': {
-    name: 'Search',
-    description: 'Perplexity',
+  'Fast': {
+    name: 'Fast',
+    description: 'Google',
   },
 } as const;
 
