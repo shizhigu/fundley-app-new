@@ -379,10 +379,10 @@ export default function CustomAnalysisPage() {
                           <td className="p-3">
                             <div className="flex items-center">
                               <Badge 
-                                variant={result.rank <= 3 ? "default" : "secondary"} 
+                                variant={result.rank && result.rank <= 3 ? "default" : "secondary"} 
                                 className="min-w-[2rem] justify-center"
                               >
-                                {result.rank}
+                                {result.rank || '-'}
                               </Badge>
                             </div>
                           </td>
