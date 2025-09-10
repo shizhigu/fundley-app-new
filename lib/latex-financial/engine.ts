@@ -113,10 +113,17 @@ class MotherDuckClient {
  * 核心LaTeX财务引擎
  */
 export class LaTeXFinancialEngine {
-  private duckdb: MotherDuckClient;
+  private duckdb: MotherDuckClient | null = null;
   
   constructor() {
-    this.duckdb = new MotherDuckClient();
+    // Lazy initialization - client will be created when first needed
+  }
+
+  private getClient(): MotherDuckClient {
+    if (!this.duckdb) {
+      this.duckdb = new MotherDuckClient();
+    }
+    return this.duckdb;
   }
 
   /**
@@ -141,7 +148,7 @@ export class LaTeXFinancialEngine {
       
       // 第2步：执行DuckDB查询
       const duckdbStart = performance.now();
-      const rawResults = await this.duckdb.query(generatedSQL);
+      const rawResults = await this.getClient().query(generatedSQL);
       const duckdbExecutionTime = performance.now() - duckdbStart;
       
       console.log(`📊 DuckDB returned ${rawResults.length} rows`);
@@ -540,6 +547,8 @@ Generate SQL based on user query complexity and optimization mode:
    * 关闭数据库连接
    */
   async close(): Promise<void> {
-    await this.duckdb.close();
+    if (this.duckdb) {
+      await this.duckdb.close();
+    }
   }
 }

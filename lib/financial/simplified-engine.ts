@@ -152,10 +152,17 @@ interface RawDataRow {
  * 简化版本的财务计算引擎 - 现在使用DuckDB MotherDuck
  */
 export class SimplifiedFinancialEngine {
-  private client: MotherDuckClient;
+  private client: MotherDuckClient | null = null;
 
   constructor() {
-    this.client = new MotherDuckClient();
+    // Lazy initialization - client will be created when first needed
+  }
+
+  private getClient(): MotherDuckClient {
+    if (!this.client) {
+      this.client = new MotherDuckClient();
+    }
+    return this.client;
   }
 
   /**
@@ -175,7 +182,7 @@ export class SimplifiedFinancialEngine {
       console.log('🔍 Generated SQL:', sql);
 
       // 2. 一次性在DuckDB中完成所有计算
-      const rawResults = await this.client.query(sql);
+      const rawResults = await this.getClient().query(sql);
       console.log(`📊 DuckDB returned ${rawResults.length} calculated rows`);
 
       // 3. 按symbol分组结果
@@ -560,7 +567,7 @@ export class SimplifiedFinancialEngine {
       console.log(`🔍 Executing query for ${table}:`, query);
       
       try {
-        const result = await this.client.query(query);
+        const result = await this.getClient().query(query);
         console.log(`📊 Table '${table}' returned ${result.length} rows`);
         allResults.push(...result);
       } catch (error) {
@@ -991,6 +998,8 @@ export class SimplifiedFinancialEngine {
    * 关闭数据库连接
    */
   async close(): Promise<void> {
-    await this.client.close();
+    if (this.client) {
+      await this.client.close();
+    }
   }
 }

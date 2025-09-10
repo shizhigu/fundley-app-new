@@ -190,11 +190,18 @@ export interface RollingNode {
  * Enhanced Financial Engine with DuckDB + Market Scanning
  */
 export class EnhancedFinancialEngine {
-  private client: MotherDuckClient;
+  private client: MotherDuckClient | null = null;
   private dbName = 'financial_db';
 
   constructor() {
-    this.client = new MotherDuckClient();
+    // Lazy initialization - client will be created when first needed
+  }
+
+  private getClient(): MotherDuckClient {
+    if (!this.client) {
+      this.client = new MotherDuckClient();
+    }
+    return this.client;
   }
 
   /**
@@ -247,7 +254,7 @@ export class EnhancedFinancialEngine {
       console.log(`🔧 Generated SQL:`, sql);
 
       // 2. 执行DuckDB查询
-      const results = await this.client.query(sql);
+      const results = await this.getClient().query(sql);
       
       const executionTime = Date.now() - startTime;
       
@@ -594,6 +601,8 @@ export class EnhancedFinancialEngine {
    * 关闭MotherDuck连接
    */
   async close(): Promise<void> {
-    await this.client.close();
+    if (this.client) {
+      await this.client.close();
+    }
   }
 }
