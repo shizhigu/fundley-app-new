@@ -5,7 +5,7 @@
 
 import { financialFieldsModel } from '@/lib/ai/providers';
 import { generateText } from 'ai';
-import * as duckdb from 'duckdb';
+// Dynamic import for DuckDB to prevent build-time errors in cloud environments
 import { incomeStatementFields } from '@/lib/fmp/income-statement-fields';
 import { balanceSheetFields } from '@/lib/fmp/balance-sheet-fields';
 import { cashFlowFields } from '@/lib/fmp/cash-flow-fields';
@@ -24,7 +24,8 @@ import { LaTeXEngineError } from './types';
  */
 class MotherDuckClient {
   private token: string;
-  private db: duckdb.Database | null = null;
+  private db: any = null;
+  private duckdb: any = null;
   
   constructor() {
     const motherduckToken = process.env.MOTHERDUCK_TOKEN;
@@ -34,8 +35,20 @@ class MotherDuckClient {
     this.token = motherduckToken;
   }
   
-  private async getConnection(): Promise<duckdb.Database> {
+  private async loadDuckDB(): Promise<any> {
+    if (!this.duckdb) {
+      try {
+        this.duckdb = await import('duckdb');
+      } catch (error) {
+        throw new Error('DuckDB is not available in this environment. Make sure it is installed.');
+      }
+    }
+    return this.duckdb;
+  }
+  
+  private async getConnection(): Promise<any> {
     if (!this.db) {
+      const duckdb = await this.loadDuckDB();
       const connectionString = `md:financial_db?motherduck_token=${this.token}`;
       console.log('🦆 LaTeX Engine connecting to MotherDuck...');
       this.db = new duckdb.Database(connectionString);
