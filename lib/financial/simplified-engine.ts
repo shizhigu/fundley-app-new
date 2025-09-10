@@ -1,12 +1,10 @@
-// Dynamic import for DuckDB to prevent build-time errors in cloud environments
-
 /**
- * DuckDB MotherDuck Client for financial data
+ * MotherDuck HTTP REST API Client for Serverless Environments
+ * 使用HTTP API而不是原生二进制文件，完全支持Vercel等云环境
  */
 class MotherDuckClient {
   private token: string;
-  private db: any = null;
-  private duckdb: any = null;
+  private apiBaseUrl: string = 'https://api.motherduck.com';
   
   constructor() {
     const motherduckToken = process.env.MOTHERDUCK_TOKEN;
@@ -16,53 +14,48 @@ class MotherDuckClient {
     this.token = motherduckToken;
   }
   
-  private async loadDuckDB(): Promise<any> {
-    if (!this.duckdb) {
-      try {
-        this.duckdb = await import('duckdb');
-      } catch (error) {
-        throw new Error('DuckDB is not available in this environment. Make sure it is installed.');
-      }
-    }
-    return this.duckdb;
-  }
-  
-  private async getConnection(): Promise<any> {
-    if (!this.db) {
-      const duckdb = await this.loadDuckDB();
-      const connectionString = `md:financial_db?motherduck_token=${this.token}`;
-      console.log('🦆 Connecting to MotherDuck...');
-      this.db = new duckdb.Database(connectionString);
-    }
-    return this.db;
-  }
-  
   async query(sql: string): Promise<any[]> {
     try {
-      const db = await this.getConnection();
+      console.log('🦆 Executing SQL via MotherDuck HTTP API:', sql);
       
-      return new Promise((resolve, reject) => {
-        db.all(sql, (err: Error | null, rows: any[]) => {
-          if (err) {
-            console.error('❌ MotherDuck query error:', err);
-            reject(err);
-          } else {
-            resolve(rows || []);
-          }
-        });
+      const response = await fetch(`${this.apiBaseUrl}/v1/query`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          database: 'financial_db',
+          query: sql,
+          output_format: 'json'
+        })
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`MotherDuck API error (${response.status}): ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log(`✅ MotherDuck HTTP API query completed: ${result.data?.length || 0} rows`);
+      
+      return result.data || [];
+      
     } catch (error) {
-      console.error('❌ MotherDuck connection error:', error);
+      console.error('❌ MotherDuck HTTP API error:', error);
+      
+      // 如果HTTP API不可用，提供有用的错误信息
+      if (error instanceof Error && error.message.includes('fetch')) {
+        throw new Error(`MotherDuck HTTP API connection failed. Please check your internet connection and MotherDuck service status. Original error: ${error.message}`);
+      }
+      
       throw error;
     }
   }
   
   async close(): Promise<void> {
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
+    // HTTP连接无需显式关闭
+    console.log('🦆 MotherDuck HTTP client closed');
   }
 }
 

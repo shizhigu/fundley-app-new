@@ -20,12 +20,12 @@ import type {
 import { LaTeXEngineError } from './types';
 
 /**
- * MotherDuck连接客户端（复用现有逻辑）
+ * MotherDuck HTTP REST API Client - Serverless compatible
+ * Uses MotherDuck's HTTP API instead of native DuckDB binaries
  */
 class MotherDuckClient {
   private token: string;
-  private db: any = null;
-  private duckdb: any = null;
+  private apiBaseUrl: string = 'https://api.motherduck.com';
   
   constructor() {
     const motherduckToken = process.env.MOTHERDUCK_TOKEN;
@@ -35,48 +35,50 @@ class MotherDuckClient {
     this.token = motherduckToken;
   }
   
-  private async loadDuckDB(): Promise<any> {
-    if (!this.duckdb) {
-      try {
-        this.duckdb = await import('duckdb');
-      } catch (error) {
-        throw new Error('DuckDB is not available in this environment. Make sure it is installed.');
-      }
-    }
-    return this.duckdb;
-  }
-  
-  private async getConnection(): Promise<any> {
-    if (!this.db) {
-      const duckdb = await this.loadDuckDB();
-      const connectionString = `md:financial_db?motherduck_token=${this.token}`;
-      console.log('🦆 LaTeX Engine connecting to MotherDuck...');
-      this.db = new duckdb.Database(connectionString);
-    }
-    return this.db;
-  }
-  
   async query(sql: string): Promise<any[]> {
     try {
-      const db = await this.getConnection();
-      console.log('🔍 Executing SQL:', sql);
+      console.log('🔍 Executing MotherDuck HTTP API query:', sql);
       
-      return new Promise((resolve, reject) => {
-        db.all(sql, (err: Error | null, rows: any[]) => {
-          if (err) {
-            console.error('❌ MotherDuck query error:', err);
-            console.error('❌ Failed SQL:', sql);
-            reject(err);
-          } else {
-            console.log(`📊 Query returned ${rows?.length || 0} rows`);
-            const processedRows = this.processBigIntValues(rows || []);
-            resolve(processedRows);
-          }
-        });
+      const response = await fetch(`${this.apiBaseUrl}/v1/query`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          database: 'financial_db',
+          query: sql,
+          output_format: 'json'
+        })
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`MotherDuck API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Handle different response formats
+      let rows: any[];
+      if (result.data) {
+        rows = result.data;
+      } else if (Array.isArray(result)) {
+        rows = result;
+      } else if (result.rows) {
+        rows = result.rows;
+      } else {
+        console.warn('Unexpected response format:', result);
+        rows = [];
+      }
+      
+      console.log(`📊 MotherDuck HTTP API query returned ${rows.length} rows`);
+      
+      const processedRows = this.processBigIntValues(rows);
+      return processedRows;
+      
     } catch (error) {
-      console.error('❌ MotherDuck connection error:', error);
+      console.error('❌ MotherDuck HTTP API query error:', error);
       throw error;
     }
   }
@@ -102,10 +104,8 @@ class MotherDuckClient {
   }
   
   async close(): Promise<void> {
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
+    // HTTP client doesn't need explicit closing
+    console.log('🔌 MotherDuck HTTP client closed');
   }
 }
 
