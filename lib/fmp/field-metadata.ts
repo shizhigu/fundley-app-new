@@ -12,7 +12,7 @@ export interface FieldMetadata {
   // Updated for unified tool architecture
   dataSource: {
     endpoint: string // API endpoint path (e.g., '/income-statement', '/ratios')
-    dataType: 'getIncomeStatement' | 'getBalanceSheet' | 'getCashFlow' | 'getFinancialRatios' | 'getKeyMetrics' // For unified tool
+    dataType: 'getIncomeStatement' | 'getBalanceSheet' | 'getCashFlow' | 'getFinancialRatios' | 'getKeyMetrics' | 'getCompanyProfile' // For unified tool
     statement?: string // Which financial statement (for clarity)
   }
   

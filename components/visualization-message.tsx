@@ -30,6 +30,18 @@ export function VisualizationMessage({
   const [error, setError] = useState<string | null>(null);
   const [outputHtml, setOutputHtml] = useState<string | null>(cachedHtml || null);
   const [outputImage, setOutputImage] = useState<string | null>(cachedImage || null);
+  
+  // Debug logging
+  console.log('🎨 VisualizationMessage render:', {
+    id,
+    title,
+    hasCachedHtml: !!cachedHtml,
+    hasCachedImage: !!cachedImage,
+    hasOutputHtml: !!outputHtml,
+    hasOutputImage: !!outputImage,
+    isLoading,
+    error
+  });
   const executionAbortController = useRef<AbortController | null>(null);
 
 

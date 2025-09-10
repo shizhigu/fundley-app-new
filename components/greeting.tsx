@@ -15,7 +15,7 @@ export const Greeting = () => {
           className="brand-logo-large mb-6"
         >
           <div className="text-4xl font-bold text-brand-primary mb-2">
-            Fundley
+            Foga
           </div>
           <div className="text-lg text-brand-secondary font-medium">
             Professional AI Financial Assistant

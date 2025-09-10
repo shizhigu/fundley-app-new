@@ -1,28 +1,56 @@
-import { Pool } from 'pg';
+import * as duckdb from 'duckdb';
 
 /**
- * Database configuration for financial data
+ * DuckDB MotherDuck Client for financial data
  */
-function getPool(): Pool {
-  // 优先使用完整的连接字符串
-  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+class MotherDuckClient {
+  private token: string;
+  private db: duckdb.Database | null = null;
   
-  if (connectionString) {
-    return new Pool({
-      connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    });
+  constructor() {
+    const motherduckToken = process.env.MOTHERDUCK_TOKEN;
+    if (!motherduckToken) {
+      throw new Error('MOTHERDUCK_TOKEN environment variable is required');
+    }
+    this.token = motherduckToken;
   }
   
-  // 回退到分开的环境变量
-  return new Pool({
-    user: process.env.POSTGRES_USER || 'postgres',
-    host: process.env.POSTGRES_HOST || 'localhost',
-    database: process.env.POSTGRES_DATABASE || 'financial_data',
-    password: process.env.POSTGRES_PASSWORD || '',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  });
+  private async getConnection(): Promise<duckdb.Database> {
+    if (!this.db) {
+      const connectionString = `md:financial_db?motherduck_token=${this.token}`;
+      console.log('🦆 Connecting to MotherDuck...');
+      this.db = new duckdb.Database(connectionString);
+    }
+    return this.db;
+  }
+  
+  async query(sql: string): Promise<any[]> {
+    try {
+      const db = await this.getConnection();
+      
+      return new Promise((resolve, reject) => {
+        db.all(sql, (err: Error | null, rows: any[]) => {
+          if (err) {
+            console.error('❌ MotherDuck query error:', err);
+            reject(err);
+          } else {
+            resolve(rows || []);
+          }
+        });
+      });
+      
+    } catch (error) {
+      console.error('❌ MotherDuck connection error:', error);
+      throw error;
+    }
+  }
+  
+  async close(): Promise<void> {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
 }
 
 // Types
@@ -115,57 +143,313 @@ interface RawDataRow {
 }
 
 /**
- * 简化版本的财务计算引擎
+ * 简化版本的财务计算引擎 - 现在使用DuckDB MotherDuck
  */
 export class SimplifiedFinancialEngine {
-  private pool: Pool;
+  private client: MotherDuckClient;
 
   constructor() {
-    this.pool = getPool();
+    this.client = new MotherDuckClient();
   }
 
   /**
    * 计算多个symbols的指标
    */
   async calculateMetric(request: CalculationRequest): Promise<any> {
+    const startTime = performance.now();
     const { metricDefinition, symbols, periods = 4, periodType = 'quarter', asOf } = request;
 
-    console.log(`🚀 Starting calculation for ${symbols.length} symbols`);
+    console.log(`🚀 DuckDB-optimized calculation for ${symbols.length} symbols`);
     console.log(`📊 Metric: ${metricDefinition.name}`);
     console.log(`📅 Periods: ${periods} ${periodType}s`);
 
     try {
-      // 1. 从AST提取数据需求
-      const dataRequirements = this.extractDataRequirements(metricDefinition.ast);
-      console.log('📋 Data requirements:', dataRequirements);
+      // 1. 直接生成包含AST计算的优化SQL
+      const sql = this.generateOptimizedSQL(metricDefinition.ast, symbols, periods, periodType, asOf);
+      console.log('🔍 Generated SQL:', sql);
 
-      // 2. 批量获取原始数据
-      const rawData = await this.fetchRawData(symbols, dataRequirements, periods, periodType, asOf);
-      console.log(`📊 Retrieved ${rawData.length} data rows`);
+      // 2. 一次性在DuckDB中完成所有计算
+      const rawResults = await this.client.query(sql);
+      console.log(`📊 DuckDB returned ${rawResults.length} calculated rows`);
 
-      // 3. 并发计算每个symbol
-      const results = await Promise.all(
-        symbols.map(symbol => this.calculateSymbolMetric(symbol, metricDefinition.ast, rawData, periods, periodType, asOf))
-      );
+      // 3. 按symbol分组结果
+      const groupedResults = this.groupResultsBySymbol(rawResults);
+
+      const endTime = performance.now();
+      const executionTimeMs = Math.round(endTime - startTime);
+
+      console.log(`⚡ DuckDB calculation completed in ${executionTimeMs}ms`);
 
       return {
         metric: metricDefinition.name,
-        symbols: symbols.map((symbol, i) => ({
+        symbols: symbols.map(symbol => ({
           symbol,
-          values: results[i]
+          values: groupedResults[symbol] || []
         })),
         metadata: {
           periods,
           periodType,
           asOf,
-          calculatedAt: new Date().toISOString()
+          executionTimeMs,
+          executionTimeFormatted: `${executionTimeMs}ms`,
+          calculatedAt: new Date().toISOString(),
+          rowsProcessed: rawResults.length
         }
       };
 
     } catch (error) {
-      console.error('❌ Calculation error:', error);
+      console.error('❌ DuckDB calculation error:', error);
       throw error;
     }
+  }
+
+  /**
+   * 生成优化的DuckDB SQL - 核心重构方法
+   */
+  private generateOptimizedSQL(
+    ast: ASTNode, 
+    symbols: string[], 
+    periods: number, 
+    periodType: 'quarter' | 'annual', 
+    asOf?: string
+  ): string {
+    // 1. 从AST提取需要的表和字段
+    const requirements = this.extractDataRequirements(ast);
+    const tables = Array.from(requirements.tables);
+    
+    // 2. 转换AST为SQL表达式
+    const metricExpression = this.astToSQL(ast);
+    
+    // 3. 构建符号过滤条件
+    const symbolList = symbols.map(s => `'${s}'`).join(',');
+    
+    // 4. 构建时间过滤条件
+    let timeFilter = '';
+    if (periodType === 'annual') {
+      timeFilter = `AND period = 'FY'`;
+    } else {
+      timeFilter = `AND period IN ('Q1', 'Q2', 'Q3', 'Q4')`;
+    }
+    
+    if (asOf) {
+      const [year, period] = asOf.split('-');
+      if (periodType === 'annual') {
+        timeFilter += ` AND fiscalyear <= ${year}`;
+      } else {
+        // 简化的季度过滤逻辑
+        timeFilter += ` AND fiscalyear <= ${year}`;
+      }
+    }
+    
+    // 5. 检查是否包含聚合函数，决定查询结构
+    const hasAggregates = this.containsAggregateFunction(ast);
+    
+    if (hasAggregates) {
+      // 包含聚合函数 - 需要GROUP BY，用HAVING过滤
+      if (tables.length === 1) {
+        const table = tables[0];
+        return `
+          SELECT 
+            symbol,
+            fiscalyear,
+            period,
+            ${metricExpression} as metric_value
+          FROM ${table}
+          WHERE symbol IN (${symbolList})
+            ${timeFilter}
+          GROUP BY symbol, fiscalyear, period
+          HAVING ${metricExpression} IS NOT NULL
+          ORDER BY symbol, fiscalyear DESC, period DESC
+          LIMIT ${periods * symbols.length}
+        `;
+      } else {
+        const baseTable = tables[0];
+        const joins = tables.slice(1).map(table => 
+          `LEFT JOIN ${table} USING (symbol, fiscalyear, period)`
+        ).join('\n          ');
+        
+        return `
+          SELECT 
+            ${baseTable}.symbol,
+            ${baseTable}.fiscalyear,
+            ${baseTable}.period,
+            ${metricExpression} as metric_value
+          FROM ${baseTable}
+          ${joins}
+          WHERE ${baseTable}.symbol IN (${symbolList})
+            ${timeFilter}
+          GROUP BY ${baseTable}.symbol, ${baseTable}.fiscalyear, ${baseTable}.period
+          HAVING ${metricExpression} IS NOT NULL
+          ORDER BY ${baseTable}.symbol, ${baseTable}.fiscalyear DESC, ${baseTable}.period DESC
+          LIMIT ${periods * symbols.length}
+        `;
+      }
+    } else {
+      // 不包含聚合函数 - 可以在WHERE中直接过滤
+      if (tables.length === 1) {
+        const table = tables[0];
+        return `
+          SELECT 
+            symbol,
+            fiscalyear,
+            period,
+            ${metricExpression} as metric_value
+          FROM ${table}
+          WHERE symbol IN (${symbolList})
+            ${timeFilter}
+            AND ${metricExpression} IS NOT NULL
+          ORDER BY symbol, fiscalyear DESC, period DESC
+          LIMIT ${periods * symbols.length}
+        `;
+      } else {
+        const baseTable = tables[0];
+        const joins = tables.slice(1).map(table => 
+          `LEFT JOIN ${table} USING (symbol, fiscalyear, period)`
+        ).join('\n          ');
+        
+        return `
+          SELECT 
+            ${baseTable}.symbol,
+            ${baseTable}.fiscalyear,
+            ${baseTable}.period,
+            ${metricExpression} as metric_value
+          FROM ${baseTable}
+          ${joins}
+          WHERE ${baseTable}.symbol IN (${symbolList})
+            ${timeFilter}
+            AND ${metricExpression} IS NOT NULL
+          ORDER BY ${baseTable}.symbol, ${baseTable}.fiscalyear DESC, ${baseTable}.period DESC
+          LIMIT ${periods * symbols.length}
+        `;
+      }
+    }
+  }
+
+  /**
+   * AST节点转SQL表达式
+   */
+  private astToSQL(node: ASTNode): string {
+    switch (node.type) {
+      case 'field':
+        return `${node.source}.${node.field}`;
+      
+      case 'arithmetic':
+        const left = this.astToSQL(node.left);
+        const right = this.astToSQL(node.right);
+        const op = node.operator;
+        
+        // 防除零处理
+        if (op === 'divide') {
+          return `(${left} / NULLIF(${right}, 0))`;
+        }
+        
+        return `(${left} ${this.getOperatorSymbol(op)} ${right})`;
+      
+      case 'constant':
+        return node.value.toString();
+      
+      case 'aggregation':
+        const values = node.values?.map(v => this.astToSQL(v)).join(', ') || '';
+        const functionName = this.normalizeAggregateFunction(node.function);
+        return `${functionName}(${values})`;
+      
+      case 'rolling':
+        // 简化处理，实际可能需要窗口函数
+        return this.astToSQL(node.operand);
+      
+      case 'conditional':
+        const condition = `${this.astToSQL(node.condition.left)} ${node.condition.operator} ${this.astToSQL(node.condition.right)}`;
+        const thenExpr = this.astToSQL(node.then);
+        const elseExpr = node.else ? this.astToSQL(node.else) : 'NULL';
+        return `CASE WHEN ${condition} THEN ${thenExpr} ELSE ${elseExpr} END`;
+      
+      default:
+        throw new Error(`Unsupported AST node type: ${(node as any).type}`);
+    }
+  }
+
+  /**
+   * 运算符映射
+   */
+  private getOperatorSymbol(op: string): string {
+    const operators: { [key: string]: string } = {
+      'add': '+',
+      'subtract': '-',
+      'multiply': '*',
+      'divide': '/',
+      'modulo': '%'
+    };
+    return operators[op] || op;
+  }
+
+  /**
+   * 标准化聚合函数名称 - 修正 average -> AVG
+   */
+  private normalizeAggregateFunction(functionName: string): string {
+    const normalizedFunctions: { [key: string]: string } = {
+      'average': 'AVG',
+      'avg': 'AVG',
+      'sum': 'SUM',
+      'count': 'COUNT',
+      'min': 'MIN',
+      'max': 'MAX',
+      'median': 'MEDIAN',
+      'stddev': 'STDDEV',
+      'variance': 'VAR_SAMP'
+    };
+    
+    const normalized = normalizedFunctions[functionName.toLowerCase()];
+    if (normalized) {
+      return normalized;
+    }
+    
+    // 如果没有映射，就转换为大写
+    return functionName.toUpperCase();
+  }
+
+  /**
+   * 检查AST表达式是否包含聚合函数
+   */
+  private containsAggregateFunction(node: ASTNode): boolean {
+    switch (node.type) {
+      case 'aggregation':
+        return true;
+      case 'arithmetic':
+        return this.containsAggregateFunction(node.left) || this.containsAggregateFunction(node.right);
+      case 'conditional':
+        return this.containsAggregateFunction(node.condition.left) || 
+               this.containsAggregateFunction(node.condition.right) ||
+               this.containsAggregateFunction(node.then) ||
+               (node.else ? this.containsAggregateFunction(node.else) : false);
+      case 'rolling':
+        return this.containsAggregateFunction(node.operand);
+      case 'field':
+      case 'constant':
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * 按symbol分组结果
+   */
+  private groupResultsBySymbol(results: any[]): { [symbol: string]: any[] } {
+    const grouped: { [symbol: string]: any[] } = {};
+    
+    for (const row of results) {
+      if (!grouped[row.symbol]) {
+        grouped[row.symbol] = [];
+      }
+      grouped[row.symbol].push({
+        period: `${row.fiscalyear}-${row.period}`,
+        value: row.metric_value,
+        fiscalyear: row.fiscalyear,
+        quarter: row.period
+      });
+    }
+    
+    return grouped;
   }
 
   /**
@@ -270,9 +554,9 @@ export class SimplifiedFinancialEngine {
       console.log(`🔍 Executing query for ${table}:`, query);
       
       try {
-        const result = await this.pool.query(query);
-        console.log(`📊 Table '${table}' returned ${result.rows.length} rows`);
-        allResults.push(...result.rows);
+        const result = await this.client.query(query);
+        console.log(`📊 Table '${table}' returned ${result.length} rows`);
+        allResults.push(...result);
       } catch (error) {
         console.error(`❌ Query failed for table '${table}':`, error instanceof Error ? error.message : 'Unknown error');
         // 继续处理其他表
@@ -695,5 +979,12 @@ export class SimplifiedFinancialEngine {
       
       return `${newYear}-Q${newQuarter}`;
     }
+  }
+  
+  /**
+   * 关闭数据库连接
+   */
+  async close(): Promise<void> {
+    await this.client.close();
   }
 }

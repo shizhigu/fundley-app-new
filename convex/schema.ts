@@ -142,4 +142,45 @@ export default defineSchema({
   })
     .index("by_metric", ["metricId"])
     .index("by_user", ["userId"]),
+
+  // NEW LaTeX-based financial metrics (完全独立的新系统)
+  latexMetrics: defineTable({
+    // 基础信息
+    name: v.string(),                    // 指标名称，如 "ROCE", "Custom ROE"
+    description: v.string(),             // 指标描述
+    category: v.string(),                // 分类：profitability, liquidity, efficiency等
+    
+    // 核心：LaTeX公式定义
+    latexFormula: v.string(),            // LaTeX数学公式，如 "ROCE = \\frac{EBIT}{\\overline{Assets - Liab}}"
+    
+    // 变量到数据源的映射
+    variableMapping: v.any(), // 灵活的对象结构，支持任意变量映射
+    
+    
+    // 示例数据（用于验证和展示）
+    exampleResult: v.optional(v.object({
+      symbol: v.string(),
+      value: v.number(),
+      period: v.string()
+    })),
+    
+    // 性能元数据
+    avgExecutionTimeMs: v.optional(v.number()),
+    lastExecutionSql: v.optional(v.string()),
+    
+    // 创建信息和权限
+    createdBy: v.id("users"),
+    clerkOrganizationId: v.optional(v.string()), // Clerk organization ID - 与用户表保持一致
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    
+    // 使用统计
+    usageCount: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_creator", ["createdBy"])
+    .index("by_category", ["category"])
+    .index("by_usage", ["usageCount"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_organization", ["clerkOrganizationId"]),
 });

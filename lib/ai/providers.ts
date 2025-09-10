@@ -30,5 +30,5 @@ export const titleModel = openrouter('google/gemini-2.5-flash-lite'); // Lightwe
 export const artifactModel = openrouter('google/gemini-2.5-pro'); // Full model for artifacts
 
 // Sub-agent models - optimized for specific tasks
-export const financialFieldsModel = openrouter('google/gemini-2.5-flash'); // Fast and cost-effective for field matching
+export const financialFieldsModel = openrouter('x-ai/grok-code-fast-1'); // More powerful for complex SQL generation
 export const subAgentModel = openrouter('google/gemini-2.5-flash'); // General purpose sub-agent model

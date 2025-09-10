@@ -13,9 +13,7 @@ import { convexQueries } from '@/lib/convex/client';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 import { convertToUIMessages, generateUUID } from '@/lib/utils';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { createVisualization } from '@/lib/ai/tools/create-visualization';
+import { createJSVisualization } from '@/lib/ai/tools/create-js-visualization';
 import { getFinancialData } from '@/lib/ai/tools/financial/unified-financial-data';
 import { 
   extractMDA, 
@@ -23,6 +21,14 @@ import {
   extractBusinessOverview 
 } from '@/lib/ai/tools/financial/sec-filings';
 import { webSearch } from '@/lib/ai/tools/search/perplexity-search';
+import { scanMarket, scanTopCompanies } from '@/lib/ai/tools/financial/market-scanner';
+// 全新的LaTeX财务指标工具
+import { 
+  createLatexMetric, 
+  calculateLatexMetric, 
+  searchLatexMetrics,
+  getPopularLatexMetrics 
+} from '@/lib/ai/tools/financial/latex-tools';
 // Removed old tool imports - using inline implementations with Convex access
 import { 
   getRelevantMemories, 
@@ -101,21 +107,20 @@ export async function POST(request: Request) {
     // Ensure user exists in Convex database
     await convex.mutation(api.users.store);
 
-    // Get user's custom metrics for prompt enhancement
+    // Get user's accessible LaTeX metrics for prompt enhancement  
     let customMetrics: Array<{ id: string; name: string; description: string; }> = [];
     try {
-      const result = await convex.query(api.metrics.search, {
-        includeBuiltIn: false,
-        includeCustom: true
+      const latexMetrics = await convex.query(api.latexMetrics.getAccessibleLatexMetrics, {
+        limit: 20
       });
-      customMetrics = result.metrics.map(metric => ({
-        id: metric.id,
+      customMetrics = latexMetrics.map(metric => ({
+        id: metric._id,
         name: metric.name,
         description: metric.description
       }));
-      console.log(`📊 Loaded ${customMetrics.length} custom metrics for user`);
+      console.log(`📊 Loaded ${customMetrics.length} LaTeX metrics for user`);
     } catch (error) {
-      console.warn('Failed to load custom metrics for prompt:', error);
+      console.warn('Failed to load LaTeX metrics for prompt:', error);
     }
 
     // Skip rate limiting for now (we can add it back later if needed)
@@ -187,9 +192,7 @@ export async function POST(request: Request) {
           // 统一使用tools配置，不需要experimental_activeTools
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
-            createDocument: createDocument({ session, dataStream, convex }),
-            updateDocument: updateDocument({ session, dataStream, convex }),
-            createVisualization: createVisualization({ session, dataStream }),
+            createJSVisualization: createJSVisualization({ session, dataStream }),
             // 财务数据工具
             getFinancialData,
             // SEC文件分析工具 
@@ -198,8 +201,11 @@ export async function POST(request: Request) {
             extractBusinessOverview,
             // 网络搜索工具
             webSearch,
-            // 新的安全指标工具架构 - 内联实现以访问 Convex
-            searchMetrics: {
+            // 市场扫描工具 - 新增全市场分析功能
+            // scanMarket,
+            // scanTopCompanies,
+            // 旧的AST指标工具 - 已注释，现在使用LaTeX系统
+            /* searchMetrics: {
               description: 'Search for available financial metrics (both built-in and custom)',
               inputSchema: z.object({
                 query: z.string().optional().describe('Search keywords for metric name or description'),
@@ -231,8 +237,8 @@ export async function POST(request: Request) {
                   return `❌ Error searching metrics: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 }
               }
-            },
-            calculateMetric: {
+            }, */
+            /* calculateMetric: {
               description: 'Calculate financial metrics using high-performance JSON AST engine. Supports both single and multiple metrics calculation.',
               inputSchema: z.object({
                 metricId: z.string().optional().describe('Single metric ID or name (legacy support)'),
@@ -334,7 +340,7 @@ export async function POST(request: Request) {
                     for (const symbol of params.symbols) {
                       for (const metric of fullMetrics) {
                         try {
-                          // 调用单symbol单指标的逻辑
+                          // 调用增强引擎处理单symbol单指标
                           const { SimplifiedFinancialEngine } = await import('@/lib/financial/simplified-engine');
                           const engine = new SimplifiedFinancialEngine();
                           
@@ -400,8 +406,8 @@ export async function POST(request: Request) {
                   const startTime = Date.now();
                   
                   try {
-                    // Use high-performance AST engine
-                    console.log('🧮 Executing AST calculation for metric:', fullMetric.name);
+                    // Use enhanced AST engine with DuckDB and market scanning
+                    console.log('🧮 Executing enhanced AST calculation for metric:', fullMetric.name);
                     console.log('🔍 Full Metric Object:', JSON.stringify(fullMetric, null, 2));
                     
                     // Parse astDefinition if it's a string (common issue with Convex storage)
@@ -421,7 +427,7 @@ export async function POST(request: Request) {
                     console.log('🔍 Parsed AST Definition:', JSON.stringify(parsedAstDefinition, null, 2));
                     console.log('🔍 Periods:', params.periods, 'Period Type:', params.periodType);
                     
-                    // Import and use AST engine directly to avoid URL resolution issues
+                    // Import and use AST engine with DuckDB
                     console.log('⚡ About to import SimplifiedFinancialEngine...');
                     const { SimplifiedFinancialEngine } = await import('@/lib/financial/simplified-engine');
                     console.log('✅ SimplifiedFinancialEngine imported successfully');
@@ -579,7 +585,7 @@ export async function POST(request: Request) {
                 }
               }
             },
-            createCustomMetric: {
+            /* createCustomMetric: {
               description: 'Create a new custom financial metric with JSON AST definition',
               inputSchema: z.object({
                 name: z.string().describe('Display name of the metric'),
@@ -614,7 +620,12 @@ export async function POST(request: Request) {
                   return `❌ Failed to create metric: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 }
               }
-            },
+            }, */
+            // LaTeX 财务指标工具 - 新的灵活LaTeX-first系统 (传入已认证的Convex客户端)
+            createLatexMetric: createLatexMetric(convex),
+            calculateLatexMetric: calculateLatexMetric(convex),
+            searchLatexMetrics: searchLatexMetrics(convex),
+            getPopularLatexMetrics: getPopularLatexMetrics(convex),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

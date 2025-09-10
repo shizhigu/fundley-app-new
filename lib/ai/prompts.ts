@@ -1,45 +1,63 @@
-import type { ArtifactKind } from '@/components/artifact';
 import type { Geo } from '@vercel/functions';
 import { astGenerationPrompt } from './prompts/ast-generation-prompt';
+import { ALL_FINANCIAL_FIELDS } from '@/lib/fmp/field-metadata';
+
+// Generate comprehensive data sources information from field metadata
+const generateDataSourcesPrompt = () => {
+  // Group fields by data source
+  const fieldsByDataType = ALL_FINANCIAL_FIELDS.reduce((acc, field) => {
+    const dataType = field.dataSource?.dataType || 'unknown';
+    if (!acc[dataType]) {
+      acc[dataType] = [];
+    }
+    acc[dataType].push(field);
+    return acc;
+  }, {} as Record<string, typeof ALL_FINANCIAL_FIELDS>);
+
+  const dataTypeLabels = {
+    'getIncomeStatement': 'income_statement',
+    'getBalanceSheet': 'balance_sheet', 
+    'getCashFlow': 'cash_flow',
+    'getFinancialRatios': 'financial_ratios',
+    'getKeyMetrics': 'key_metrics'
+  };
+
+  let prompt = '<data_sources>\n';
+  
+  for (const [dataType, fields] of Object.entries(fieldsByDataType)) {
+    const label = dataTypeLabels[dataType as keyof typeof dataTypeLabels] || dataType;
+    if (fields.length > 0) {
+      const fieldNames = fields.map(f => f.field).join(', ');
+      prompt += `<${label}>${fieldNames}</${label}>\n`;
+    }
+  }
+  
+  prompt += '</data_sources>';
+  return prompt;
+};
 
 export const artifactsPrompt = `
-## Document & Visualization Tools
+## Visualization Tools
 
-You have 4 core tools for creating content:
+You have access to advanced visualization capabilities:
 
-### 1. createDocument
-- For reports, code, and spreadsheets that appear in the artifact panel
-- Use kind: 'text' for reports, 'code' for Python code, 'sheet' for tables
-- Always include comprehensive context and data
-
-### 2. updateDocument  
-- For modifying existing documents in the artifact panel
-- Wait for user feedback before updating after creation
-
-### 3. createVisualization
+### createJSVisualization  
+- ⚡ **Fast Chart.js Visualization Tool** - Creates interactive charts in 1-3 seconds
+- **Chart.js ONLY** - No Observable Plot or other libraries
 - For charts and graphs that appear directly in the chat
-- Use for all data visualizations and financial charts
+- Perfect for financial data, time series, comparisons, and business charts
 - **IMPORTANT**: Only create ONE visualization per message
 - For multiple charts, inform users they can request additional visualizations in follow-up messages
 
+**REQUIRED FORMAT** (Chart.js only):
+- Bar chart: {"title": "Chart Title", "config": {"data": [{"symbol": "AAPL", "metric_value": 0.95}], "spec": {"type": "bar", "label": "Data Label"}}}
+- Line chart: {"title": "Chart Title", "config": {"data": [{"period": "Q1", "value": 100}], "spec": {"type": "line", "label": "Revenue"}}}
+- Multiple series: Use multiple objects in data array with same x-axis field
 
 ## Key Rules:
-- For VISUALIZATIONS → use createVisualization (ONE per message only)
-- For CODE/REPORTS/TABLES → use createDocument
-- Never update documents immediately after creating them
-- Python only for all code generation
+- For VISUALIZATIONS → use createJSVisualization (ONE per message only)
 - **Visualization Limit**: Maximum 1 visualization per response - tell users to ask for more in separate messages
-
-Example:
-\`\`\`
-createDocument({
-  title: "Revenue Analysis Report",
-  kind: "text", 
-  context: "Analysis of company revenue trends",
-  data: { /* financial data */ },
-  instructions: "Format as executive summary"
-})
-\`\`\`
+- Focus on data analysis and insights, not document creation
 `;
 
 export const regularPrompt = `<role>
@@ -236,12 +254,7 @@ Process:
 </example_workflow>
 </metric_workflow>
 
-<data_sources>
-<income_statement>revenue, netIncome, grossProfit, operatingIncome, eps, etc.</income_statement>
-<balance_sheet>totalAssets, totalDebt, totalEquity, currentAssets, etc.</balance_sheet>
-<cash_flow>operatingCashFlow, freeCashFlow, capitalExpenditure, etc.</cash_flow>
-<key_metrics>pe, pb, roe, roa, debtToEquity, currentRatio, etc.</key_metrics>
-</data_sources>
+${generateDataSourcesPrompt()}
 
 <formatting_rules>
 <percentages>Convert 0.15 → 15% (for ratios that should be percentages)</percentages>
@@ -282,48 +295,58 @@ export const systemPrompt = ({
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   
-  // Add custom metrics information if available
+  // Add LaTeX metrics information if available
   const customMetricsPrompt = customMetrics && customMetrics.length > 0 
-    ? `\n\n## User's Custom Financial Metrics
+    ? `\n\n## Organization's LaTeX Financial Metrics
 
-You have access to the following custom metrics created by this user:
+You have access to the following LaTeX-based financial metrics within your organization:
 
 ${customMetrics.map(metric => 
   `- **${metric.name}** (ID: ${metric.id}): ${metric.description}`
 ).join('\n')}
 
-When users ask about financial analysis, you can directly reference these custom metrics by name or ID using the calculateCustomMetric tool without needing to search first.`
+When users ask about financial analysis, you can directly reference these LaTeX metrics by name or ID using the calculateLatexMetric tool.`
     : '';
   
   // All models now get the same comprehensive prompt with artifacts support
-  return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}\n\n${astGenerationPrompt}${customMetricsPrompt}`;
+  return `${regularPrompt}\n\n${financialDataPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}\n\n${customMetricsPrompt}`;
 };
 
 export const codePrompt = `
-You are a Python code generator specialized in data analysis and visualization.
+You are a data visualization and analysis specialist using modern JavaScript libraries.
 
-## IMPORTANT: Python Only
+## IMPORTANT: Use createJSVisualization for Charts
 
-All code should be written in Python. You have access to:
+For all data visualizations, use the createJSVisualization tool which:
+- Creates interactive charts that load in 1-3 seconds
+- Supports Observable Plot, Chart.js, and Plotly.js
+- Perfect for financial data, time series, and business charts
+- Professional styling and responsive design
+
+## For Python Code Generation:
+When users specifically ask for Python code (not visualizations), you can use Python with:
 - Standard libraries (math, datetime, json, etc.)
 - Data analysis: pandas, numpy, scipy
-- Visualization: matplotlib for static plots, plotly for interactive charts
-- Financial analysis: yfinance (if needed)
-- Any other libraries available in Pyodide
+- Note: For visualizations, always use createJSVisualization instead
 
-## For Data Visualizations:
+## JavaScript Visualization Configuration:
 
-### Use Plotly (PREFERRED for financial data):
-- Interactive charts that users can zoom, pan, and explore
-- Professional financial visualizations
-- Time series with range selectors
-- Candlestick charts for stock prices
-- Hover tooltips with detailed information
+### Chart.js Format (PREFERRED - Default):
+Use this simple format for most charts:
+- library: "chart-js"
+- data: Array of objects with symbol/category and metric_value/value
+- spec: {type: "bar" or "line", label: "Chart Label"}
 
-### Use Matplotlib when:
-- User explicitly requests static images
-- Simple plots are sufficient
-- Creating publication-ready figures
+### Observable Plot Format:
+More complex but flexible:
+- library: "observable-plot" 
+- data: Array of objects
+- spec: {marks: array, x: config, y: config}
+
+### IMPORTANT: Chart.js is simpler and more reliable
+- Automatically handles common financial data fields
+- Works with: symbol, metric_value, value, category, period, date
+- No complex mark configurations needed
 
 ## Example Plotly usage:
 
@@ -404,30 +427,4 @@ def factorial(n):
 print(f"Factorial of 5 is: {factorial(5)}")
 `;
 
-export const sheetPrompt = `
-You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.
-`;
 
-export const updateDocumentPrompt = (
-  currentContent: string | null,
-  type: ArtifactKind,
-) =>
-  type === 'text'
-    ? `\
-Improve the following contents of the document based on the given prompt.
-
-${currentContent}
-`
-    : type === 'code'
-      ? `\
-Improve the following code snippet based on the given prompt.
-
-${currentContent}
-`
-      : type === 'sheet'
-        ? `\
-Improve the following spreadsheet based on the given prompt.
-
-${currentContent}
-`
-        : '';

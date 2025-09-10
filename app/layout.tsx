@@ -10,7 +10,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://fundley.ai'),
-  title: 'Fundley - Private Equity AI Assistant',
+  title: 'FogaAI - Private Equity AI Assistant',
   description: 'Professional AI-powered assistant for private equity, hedge funds, and family offices',
 };
 

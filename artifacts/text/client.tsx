@@ -1,6 +1,5 @@
 import { Artifact } from '@/components/create-artifact';
 import { DiffView } from '@/components/diffview';
-import { DocumentSkeleton } from '@/components/document-skeleton';
 import { Editor } from '@/components/text-editor';
 import {
   ClockRewind,
@@ -65,7 +64,14 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     metadata,
   }) => {
     if (isLoading) {
-      return <DocumentSkeleton artifactKind="text" />;
+      return (
+        <div className="flex flex-col space-y-4 p-8">
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-3/4 rounded"></div>
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 w-full rounded"></div>
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 w-5/6 rounded"></div>
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 w-4/6 rounded"></div>
+        </div>
+      );
     }
 
     if (mode === 'diff') {

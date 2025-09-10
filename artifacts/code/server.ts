@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { artifactModel } from '@/lib/ai/providers';
-import { codePrompt, updateDocumentPrompt } from '@/lib/ai/prompts';
+import { codePrompt } from '@/lib/ai/prompts';
 import { createDocumentHandler } from '@/lib/artifacts/server';
 
 export const codeDocumentHandler = createDocumentHandler<'code'>({
@@ -50,7 +50,7 @@ ${instructions ? `\nSpecific Requirements:\n${instructions}` : ''}`;
 
     const { fullStream } = streamObject({
       model: artifactModel,
-      system: updateDocumentPrompt(document.content, 'code'),
+      system: `Improve the following code snippet based on the given prompt.\n\n${document.content}`,
       prompt: description,
       schema: z.object({
         code: z.string(),

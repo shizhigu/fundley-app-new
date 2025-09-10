@@ -3,7 +3,6 @@ import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
 import type { Vote } from '@/lib/db/schema';
-import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
 import { Shield } from 'lucide-react';
 import { Markdown } from './markdown';
@@ -15,8 +14,6 @@ import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
-import { DocumentPreview } from './document-preview';
-import { DocumentMessage } from './document-message';
 import { MessageReasoning } from './message-reasoning';
 import { VisualizationMessage } from './visualization-message';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -350,12 +347,17 @@ const PurePreviewMessage = ({
       if (allText.trim().length > 50) { // Only if there's meaningful content
         
         // Simple metadata API call - no complex ID validation
+        // Handle BigInt serialization in message parts
+        const serializableParts = JSON.parse(JSON.stringify(message.parts, (_, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        ));
+        
         fetch('/api/simple-suggestions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             messageText: allText.substring(0, 2000), // Limit text length
-            messageParts: message.parts,
+            messageParts: serializableParts,
           }),
         })
         .then(response => response.json())
@@ -584,112 +586,22 @@ const PurePreviewMessage = ({
                 }
               }
 
-              if (type === 'tool-createDocument') {
-                const { toolCallId, state } = part;
 
-                if (state === 'input-available') {
-                  const { input } = part;
-                  return (
-                    <div key={toolCallId}>
-                      <DocumentPreview isReadonly={isReadonly} args={input} />
-                    </div>
-                  );
-                }
 
-                if (state === 'output-available') {
-                  const { output } = part;
-
-                  if ('error' in output) {
-                    return (
-                      <div
-                        key={toolCallId}
-                        className="text-red-500 p-2 border rounded"
-                      >
-                        Error: {String(output.error)}
-                      </div>
-                    );
-                  }
-
-                  // Also show DocumentMessage for regular createDocument
-                  if (output?.id) {
-                    return (
-                      <div key={toolCallId}>
-                        <DocumentMessage
-                          documentId={output.id}
-                          title={output.title}
-                          kind={output.kind}
-                          preview={output.content}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={toolCallId}>
-                      <DocumentPreview
-                        isReadonly={isReadonly}
-                        result={output}
-                      />
-                    </div>
-                  );
-                }
-              }
-
-              if (type === 'tool-updateDocument') {
-                const { toolCallId, state } = part;
-
-                if (state === 'input-available') {
-                  const { input } = part;
-
-                  return (
-                    <div key={toolCallId}>
-                      <DocumentToolCall
-                        type="update"
-                        args={input}
-                        isReadonly={isReadonly}
-                      />
-                    </div>
-                  );
-                }
-
-                if (state === 'output-available') {
-                  const { output } = part;
-
-                  if ('error' in output) {
-                    return (
-                      <div
-                        key={toolCallId}
-                        className="text-red-500 p-2 border rounded"
-                      >
-                        Error: {String(output.error)}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={toolCallId}>
-                      <DocumentToolResult
-                        type="update"
-                        result={output}
-                        isReadonly={isReadonly}
-                      />
-                    </div>
-                  );
-                }
-              }
-
-              if (type === 'tool-createVisualization' as any) {
+              // Support both old and new visualization tools
+              if (type === 'tool-createVisualization' as any || type === 'tool-createJSVisualization' as any) {
                 const { toolCallId, state } = part as any;
 
                 if (state === 'input-available') {
                   const { input } = part as any;
+                  const toolName = type === 'tool-createJSVisualization' ? 'JS visualization' : 'visualization';
                   return (
                     <div key={toolCallId} className="skeleton">
                       <div className="flex items-center gap-2 p-2 text-sm">
                         <div className="animate-spin size-fit">
                           <LoaderIcon />
                         </div>
-                        <span>Creating visualization: {input?.title}</span>
+                        <span>Creating {toolName}: {input?.title}</span>
                       </div>
                     </div>
                   );
@@ -721,7 +633,7 @@ const PurePreviewMessage = ({
                         id={output.id}
                         messageId={(message as any)._id || message.id} // Pass message ID for caching
                         title={output.title}
-                        code={output.code || ''}
+                        code={output.code || ''} // For old tool compatibility
                         description={output.description}
                         cachedHtml={output.cachedHtml} // Pass cached HTML if available
                         cachedImage={output.cachedImage} // Pass cached image if available
@@ -733,19 +645,6 @@ const PurePreviewMessage = ({
 
               if (type === 'tool-requestSuggestions') {
                 const { toolCallId, state } = part;
-
-                if (state === 'input-available') {
-                  const { input } = part;
-                  return (
-                    <div key={toolCallId}>
-                      <DocumentToolCall
-                        type="request-suggestions"
-                        args={input}
-                        isReadonly={isReadonly}
-                      />
-                    </div>
-                  );
-                }
 
                 if (state === 'output-available') {
                   const { output } = part;
@@ -762,45 +661,55 @@ const PurePreviewMessage = ({
                   }
 
                   return (
-                    <div key={toolCallId}>
-                      <DocumentToolResult
-                        type="request-suggestions"
-                        result={output}
-                        isReadonly={isReadonly}
-                      />
+                    <div key={toolCallId} className="text-sm text-gray-600">
+                      Suggestions generated successfully
                     </div>
                   );
                 }
               }
               
-              // Handle createDocumentWithData tool
-              if (type === 'tool-createDocumentWithData' as any) {
-                const { toolCallId, state } = part as any;
-                
+              // Handle calculate LaTeX metric tool
+              if (type === 'tool-calculateLatexMetric') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  const { input } = part;
+                  const metricName = input?.metricId || 'LaTeX Metric';
+                  
+                  return (
+                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/40 dark:bg-purple-900/40 backdrop-blur-md border border-purple-200/50 dark:border-purple-700/50 text-sm not-prose">
+                      <div className="animate-spin text-purple-600 dark:text-purple-400">
+                        <LoaderIcon size={14} />
+                      </div>
+                      <span className="text-purple-700 dark:text-purple-300 font-medium">
+                        Computing LaTeX metric {metricName}...
+                      </span>
+                    </div>
+                  );
+                }
+
                 if (state === 'output-available') {
-                  const { output } = part as any;
+                  const { input } = part;
                   
-                  if (output?.id && output.success) {
-                    return (
-                      <div key={toolCallId}>
-                        <DocumentMessage
-                          documentId={output.id}
-                          title={output.title}
-                          kind={output.kind}
-                          preview={output.content}
-                        />
-                      </div>
-                    );
-                  }
+                  // Extract metric name from input
+                  const metricName = input?.metricId || 'LaTeX Metric';
+                  const description = input?.dataRequirements?.description || '';
                   
-                  // If document creation failed
-                  if (output && !output.success) {
-                    return (
-                      <div key={toolCallId} className="text-red-500 p-2 border rounded">
-                        Failed to create document: {output.message}
+                  return (
+                    <div key={toolCallId} className="not-prose">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/40 dark:bg-purple-900/40 backdrop-blur-md border border-purple-200/50 dark:border-purple-700/50 text-sm">
+                        <div className="w-3 h-3 bg-purple-500/70 rounded-full"></div>
+                        <span className="text-purple-700 dark:text-purple-300 font-medium">
+                          LaTeX metric {metricName} calculated
+                        </span>
+                        {description && (
+                          <span className="text-purple-600/70 dark:text-purple-400/70 text-xs">
+                            • {description.slice(0, 50)}{description.length > 50 ? '...' : ''}
+                          </span>
+                        )}
                       </div>
-                    );
-                  }
+                    </div>
+                  );
                 }
               }
               

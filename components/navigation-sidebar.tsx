@@ -168,7 +168,7 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
               <div className="flex items-center justify-between mb-3">
                 <div className="flex flex-col">
                   <div className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-                    FUNDLEY A.I+
+                    Foga AI+
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     Financial Intelligence

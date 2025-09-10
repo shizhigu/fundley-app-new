@@ -56,7 +56,12 @@
       "Bash(npx shadcn:*)",
       "Bash(git restore:*)",
       "Bash(pnpm remove:*)",
-      "WebFetch(domain:sdk.vercel.ai)"
+      "WebFetch(domain:sdk.vercel.ai)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm rebuild:*)",
+      "Bash(npm run install:*)",
+      "Bash(pnpm why:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

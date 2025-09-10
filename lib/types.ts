@@ -1,15 +1,18 @@
 import { z } from 'zod';
 import type { getWeather } from './ai/tools/get-weather';
-import type { createDocument } from './ai/tools/create-document';
-import type { updateDocument } from './ai/tools/update-document';
 import type { requestSuggestions } from './ai/tools/request-suggestions';
-import type { createVisualization } from './ai/tools/create-visualization';
 import type { getFinancialData } from './ai/tools/financial/unified-financial-data';
 import type { 
   extractMDA, 
   extractRiskFactors, 
   extractBusinessOverview 
 } from './ai/tools/financial/sec-filings';
+import type { 
+  createLatexMetric, 
+  calculateLatexMetric, 
+  searchLatexMetrics,
+  getPopularLatexMetrics 
+} from './ai/tools/financial/latex-tools';
 import type { InferUITool, UIMessage } from 'ai';
 
 import type { ArtifactKind } from '@/components/artifact';
@@ -24,27 +27,29 @@ export const messageMetadataSchema = z.object({
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
 type weatherTool = InferUITool<typeof getWeather>;
-type createDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
-type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
 type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
-type createVisualizationTool = InferUITool<ReturnType<typeof createVisualization>>;
 type getFinancialDataTool = InferUITool<typeof getFinancialData>;
 type extractMDATool = InferUITool<typeof extractMDA>;
 type extractRiskFactorsTool = InferUITool<typeof extractRiskFactors>;
 type extractBusinessOverviewTool = InferUITool<typeof extractBusinessOverview>;
+type createLatexMetricTool = InferUITool<ReturnType<typeof createLatexMetric>>;
+type calculateLatexMetricTool = InferUITool<ReturnType<typeof calculateLatexMetric>>;
+type searchLatexMetricsTool = InferUITool<ReturnType<typeof searchLatexMetrics>>;
+type getPopularLatexMetricsTool = InferUITool<ReturnType<typeof getPopularLatexMetrics>>;
 
 export type ChatTools = {
   getWeather: weatherTool;
-  createDocument: createDocumentTool;
-  updateDocument: updateDocumentTool;
   requestSuggestions: requestSuggestionsTool;
-  createVisualization: createVisualizationTool;
   getFinancialData: getFinancialDataTool;
   extractMDA: extractMDATool;
   extractRiskFactors: extractRiskFactorsTool;
   extractBusinessOverview: extractBusinessOverviewTool;
+  createLatexMetric: createLatexMetricTool;
+  calculateLatexMetric: calculateLatexMetricTool;
+  searchLatexMetrics: searchLatexMetricsTool;
+  getPopularLatexMetrics: getPopularLatexMetricsTool;
   // Allow additional tools to be added dynamically
   [key: string]: any;
 };
