@@ -20,12 +20,13 @@ import type {
 import { LaTeXEngineError } from './types';
 
 /**
- * MotherDuck HTTP REST API Client - Serverless compatible
- * Uses MotherDuck's HTTP API instead of native DuckDB binaries
+ * MotherDuck WASM Client - Serverless compatible
+ * Uses DuckDB WASM instead of native DuckDB binaries
  */
 class MotherDuckClient {
   private token: string;
-  private apiBaseUrl: string = 'https://api.motherduck.com';
+  private db: any = null;
+  private connection: any = null;
   
   constructor() {
     const motherduckToken = process.env.MOTHERDUCK_TOKEN;
@@ -35,50 +36,64 @@ class MotherDuckClient {
     this.token = motherduckToken;
   }
   
+  private async initializeWasm(): Promise<void> {
+    if (this.db) return;
+    
+    try {
+      const duckdb = await import('@duckdb/duckdb-wasm');
+      
+      let MANUAL_BUNDLES: any;
+      if (typeof window !== 'undefined') {
+        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
+      } else {
+        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
+      }
+      
+      const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
+      const worker = await duckdb.createWorker(bundle.mainWorker!);
+      const logger = new duckdb.ConsoleLogger();
+      this.db = new duckdb.AsyncDuckDB(logger, worker);
+      await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      
+      console.log('🦆 LaTeX Engine: DuckDB WASM initialized');
+      
+      this.connection = await this.db.connect();
+      await this.connection.query(`SET motherduck_token='${this.token}';`);
+      console.log('🔐 LaTeX Engine: MotherDuck token configured');
+      
+    } catch (error) {
+      console.error('❌ LaTeX Engine: DuckDB WASM initialization failed:', error);
+      throw new Error(`Failed to initialize DuckDB WASM: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
   async query(sql: string): Promise<any[]> {
     try {
-      console.log('🔍 Executing MotherDuck HTTP API query:', sql);
+      console.log('🦆 LaTeX Engine: Executing SQL via DuckDB WASM:', sql);
       
-      const response = await fetch(`${this.apiBaseUrl}/v1/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          database: 'financial_db',
-          query: sql,
-          output_format: 'json'
-        })
+      await this.initializeWasm();
+      
+      if (!this.connection) {
+        throw new Error('DuckDB WASM connection not initialized');
+      }
+      
+      const result = await this.connection.query(sql);
+      
+      const rows = result.toArray().map((row: any) => {
+        const obj: any = {};
+        result.schema.fields.forEach((field: any, index: number) => {
+          obj[field.name] = row.get(index);
+        });
+        return obj;
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`MotherDuck API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Handle different response formats
-      let rows: any[];
-      if (result.data) {
-        rows = result.data;
-      } else if (Array.isArray(result)) {
-        rows = result;
-      } else if (result.rows) {
-        rows = result.rows;
-      } else {
-        console.warn('Unexpected response format:', result);
-        rows = [];
-      }
-      
-      console.log(`📊 MotherDuck HTTP API query returned ${rows.length} rows`);
+      console.log(`📊 LaTeX Engine: DuckDB WASM query returned ${rows.length} rows`);
       
       const processedRows = this.processBigIntValues(rows);
       return processedRows;
       
     } catch (error) {
-      console.error('❌ MotherDuck HTTP API query error:', error);
+      console.error('❌ LaTeX Engine: DuckDB WASM query error:', error);
       throw error;
     }
   }
@@ -104,8 +119,19 @@ class MotherDuckClient {
   }
   
   async close(): Promise<void> {
-    // HTTP client doesn't need explicit closing
-    console.log('🔌 MotherDuck HTTP client closed');
+    try {
+      if (this.connection) {
+        await this.connection.close();
+        this.connection = null;
+      }
+      if (this.db) {
+        await this.db.terminate();
+        this.db = null;
+      }
+      console.log('🦆 LaTeX Engine: DuckDB WASM client closed');
+    } catch (error) {
+      console.error('❌ LaTeX Engine: Error closing DuckDB WASM client:', error);
+    }
   }
 }
 

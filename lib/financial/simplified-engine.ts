@@ -1,10 +1,11 @@
 /**
- * MotherDuck HTTP REST API Client for Serverless Environments
- * 使用HTTP API而不是原生二进制文件，完全支持Vercel等云环境
+ * MotherDuck WASM Client for Serverless Environments
+ * 使用DuckDB WASM而不是原生二进制文件，完全支持Vercel等云环境
  */
 class MotherDuckClient {
   private token: string;
-  private apiBaseUrl: string = 'https://api.motherduck.com';
+  private db: any = null;
+  private connection: any = null;
   
   constructor() {
     const motherduckToken = process.env.MOTHERDUCK_TOKEN;
@@ -14,48 +15,92 @@ class MotherDuckClient {
     this.token = motherduckToken;
   }
   
-  async query(sql: string): Promise<any[]> {
+  private async initializeWasm(): Promise<void> {
+    if (this.db) return;
+    
     try {
-      console.log('🦆 Executing SQL via MotherDuck HTTP API:', sql);
+      // 动态导入DuckDB WASM
+      const duckdb = await import('@duckdb/duckdb-wasm');
       
-      const response = await fetch(`${this.apiBaseUrl}/v1/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          database: 'financial_db',
-          query: sql,
-          output_format: 'json'
-        })
-      });
+      // 根据环境选择bundle
+      let MANUAL_BUNDLES: any;
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`MotherDuck API error (${response.status}): ${errorText}`);
+      if (typeof window !== 'undefined') {
+        // 浏览器环境
+        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
+      } else {
+        // Node.js/Serverless环境 
+        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
       }
       
-      const result = await response.json();
-      console.log(`✅ MotherDuck HTTP API query completed: ${result.data?.length || 0} rows`);
+      // 初始化DuckDB
+      const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
+      const worker = await duckdb.createWorker(bundle.mainWorker!);
+      const logger = new duckdb.ConsoleLogger();
+      this.db = new duckdb.AsyncDuckDB(logger, worker);
+      await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
       
-      return result.data || [];
+      console.log('🦆 DuckDB WASM initialized successfully');
+      
+      // 连接到MotherDuck
+      this.connection = await this.db.connect();
+      
+      // 设置MotherDuck token
+      await this.connection.query(`SET motherduck_token='${this.token}';`);
+      console.log('🔐 MotherDuck token configured');
       
     } catch (error) {
-      console.error('❌ MotherDuck HTTP API error:', error);
+      console.error('❌ DuckDB WASM initialization failed:', error);
+      throw new Error(`Failed to initialize DuckDB WASM: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  async query(sql: string): Promise<any[]> {
+    try {
+      console.log('🦆 Executing SQL via DuckDB WASM:', sql);
       
-      // 如果HTTP API不可用，提供有用的错误信息
-      if (error instanceof Error && error.message.includes('fetch')) {
-        throw new Error(`MotherDuck HTTP API connection failed. Please check your internet connection and MotherDuck service status. Original error: ${error.message}`);
+      await this.initializeWasm();
+      
+      if (!this.connection) {
+        throw new Error('DuckDB WASM connection not initialized');
       }
       
+      // 执行查询
+      const result = await this.connection.query(sql);
+      
+      // 转换结果为JSON数组
+      const rows = result.toArray().map((row: any) => {
+        const obj: any = {};
+        result.schema.fields.forEach((field: any, index: number) => {
+          obj[field.name] = row.get(index);
+        });
+        return obj;
+      });
+      
+      console.log(`✅ DuckDB WASM query completed: ${rows.length} rows`);
+      
+      return rows;
+      
+    } catch (error) {
+      console.error('❌ DuckDB WASM query error:', error);
       throw error;
     }
   }
   
   async close(): Promise<void> {
-    // HTTP连接无需显式关闭
-    console.log('🦆 MotherDuck HTTP client closed');
+    try {
+      if (this.connection) {
+        await this.connection.close();
+        this.connection = null;
+      }
+      if (this.db) {
+        await this.db.terminate();
+        this.db = null;
+      }
+      console.log('🦆 DuckDB WASM client closed');
+    } catch (error) {
+      console.error('❌ Error closing DuckDB WASM client:', error);
+    }
   }
 }
 
