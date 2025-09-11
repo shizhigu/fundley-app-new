@@ -19,81 +19,26 @@ import type {
 } from './types';
 import { LaTeXEngineError } from './types';
 
+import { motherDuckAPI } from '@/lib/motherduck/api-client';
+
 /**
- * MotherDuck WASM Client - Serverless compatible
- * Uses DuckDB WASM instead of native DuckDB binaries
+ * MotherDuck API Client for LaTeX Engine
+ * 使用部署在Render的Python FastAPI服务
  */
 class MotherDuckClient {
-  private token: string;
-  private db: any = null;
-  private connection: any = null;
-  
-  constructor() {
-    const motherduckToken = process.env.MOTHERDUCK_TOKEN;
-    if (!motherduckToken) {
-      throw new Error('MOTHERDUCK_TOKEN environment variable is required');
-    }
-    this.token = motherduckToken;
-  }
-  
-  private async initializeWasm(): Promise<void> {
-    if (this.db) return;
-    
-    try {
-      const duckdb = await import('@duckdb/duckdb-wasm');
-      
-      let MANUAL_BUNDLES: any;
-      if (typeof window !== 'undefined') {
-        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
-      } else {
-        MANUAL_BUNDLES = duckdb.getJsDelivrBundles();
-      }
-      
-      const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
-      const worker = await duckdb.createWorker(bundle.mainWorker!);
-      const logger = new duckdb.ConsoleLogger();
-      this.db = new duckdb.AsyncDuckDB(logger, worker);
-      await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-      
-      console.log('🦆 LaTeX Engine: DuckDB WASM initialized');
-      
-      this.connection = await this.db.connect();
-      await this.connection.query(`SET motherduck_token='${this.token}';`);
-      console.log('🔐 LaTeX Engine: MotherDuck token configured');
-      
-    } catch (error) {
-      console.error('❌ LaTeX Engine: DuckDB WASM initialization failed:', error);
-      throw new Error(`Failed to initialize DuckDB WASM: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-  
   async query(sql: string): Promise<any[]> {
     try {
-      console.log('🦆 LaTeX Engine: Executing SQL via DuckDB WASM:', sql);
+      console.log('🦆 LaTeX Engine: Executing SQL via MotherDuck API:', sql);
       
-      await this.initializeWasm();
+      const rows = await motherDuckAPI.query(sql);
       
-      if (!this.connection) {
-        throw new Error('DuckDB WASM connection not initialized');
-      }
-      
-      const result = await this.connection.query(sql);
-      
-      const rows = result.toArray().map((row: any) => {
-        const obj: any = {};
-        result.schema.fields.forEach((field: any, index: number) => {
-          obj[field.name] = row.get(index);
-        });
-        return obj;
-      });
-      
-      console.log(`📊 LaTeX Engine: DuckDB WASM query returned ${rows.length} rows`);
+      console.log(`📊 LaTeX Engine: MotherDuck API query returned ${rows.length} rows`);
       
       const processedRows = this.processBigIntValues(rows);
       return processedRows;
       
     } catch (error) {
-      console.error('❌ LaTeX Engine: DuckDB WASM query error:', error);
+      console.error('❌ LaTeX Engine: MotherDuck API query error:', error);
       throw error;
     }
   }
@@ -119,19 +64,7 @@ class MotherDuckClient {
   }
   
   async close(): Promise<void> {
-    try {
-      if (this.connection) {
-        await this.connection.close();
-        this.connection = null;
-      }
-      if (this.db) {
-        await this.db.terminate();
-        this.db = null;
-      }
-      console.log('🦆 LaTeX Engine: DuckDB WASM client closed');
-    } catch (error) {
-      console.error('❌ LaTeX Engine: Error closing DuckDB WASM client:', error);
-    }
+    console.log('🦆 LaTeX Engine: MotherDuck API client - no cleanup needed');
   }
 }
 

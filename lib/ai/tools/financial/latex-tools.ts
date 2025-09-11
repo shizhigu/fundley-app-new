@@ -220,10 +220,7 @@ ${formulaExplanation}
 Template Selected: ${template.name}
 Use Cases: ${template.useCases.join(', ')}
 
-## MANDATORY: Use this EXACT pattern for ${metricKey}:
-\`\`\`sql
-${FinancialSQLGenerator.fillTemplate(template, params)}
-\`\`\`
+
 
 **CRITICAL FIELD RESTRICTIONS**:
 🚫 **STRICTLY FORBIDDEN**: You MUST ONLY use fields that are explicitly defined in the LaTeX formula. 

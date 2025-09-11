@@ -61,7 +61,11 @@
       "Bash(pnpm rebuild:*)",
       "Bash(npm run install:*)",
       "Bash(pnpm why:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(source:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": [],
