@@ -43,6 +43,7 @@ import { ChatSDKError } from '@/lib/errors';
 import type { ModelId } from '@/lib/ai/models';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 

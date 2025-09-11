@@ -23,15 +23,25 @@ export class MotherDuckAPIClient {
   
   async query(sql: string): Promise<any[]> {
     try {
-      console.log('🦆 Executing SQL via MotherDuck API:', sql);
+      console.log('🦆 [MotherDuck API] Starting query:', sql);
+      console.log('🦆 [MotherDuck API] Base URL:', this.baseUrl);
+      console.log('🦆 [MotherDuck API] Environment:', process.env.NODE_ENV);
+      
+      const requestStart = Date.now();
       
       const response = await fetch(`${this.baseUrl}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'User-Agent': 'Fundley-MotherDuck-Client/1.0',
         },
         body: JSON.stringify({ sql }),
       });
+      
+      const requestEnd = Date.now();
+      console.log(`🦆 [MotherDuck API] Request completed in ${requestEnd - requestStart}ms`);
+      console.log('🦆 [MotherDuck API] Response status:', response.status);
+      console.log('🦆 [MotherDuck API] Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

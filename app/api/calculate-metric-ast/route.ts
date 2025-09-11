@@ -17,7 +17,8 @@ import {
  */
 
 // API Route Handlers
-export const maxDuration = 30;
+export const runtime = 'nodejs';  // 使用Node.js运行时而不是Edge Runtime
+export const maxDuration = 60;    // 增加超时时间
 
 export async function POST(request: NextRequest) {
   try {
