@@ -119,7 +119,7 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
   Provide: Complete structured requirements for precise SQL generation`,
   
   inputSchema: z.object({
-    metricId: z.string().describe('LaTeX metric ID from database'),
+    metricIds: z.array(z.string()).describe('LaTeX metric IDs from database (supports batch calculation of multiple metrics)'),
     
     // Data requirements specification
     dataRequirements: z.object({
@@ -150,43 +150,56 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
   }),
 
   execute: async ({
-    metricId,
+    metricIds,
     dataRequirements,
     querySpecification,
     expectedOutput
   }) => {
     try {
-      console.log(`🧮 Calculating LaTeX metric ID: ${metricId}`);
+      console.log(`🧮 Calculating ${metricIds.length} LaTeX metric(s): ${metricIds.join(', ')}`);
       console.log(`📊 Data Requirements:`, dataRequirements);
       console.log(`🔍 Query Specification:`, querySpecification);
       console.log(`📋 Expected Output:`, expectedOutput);
       
-      // Get LaTeX metric definition
-      const metric = await convex.query(api.latexMetrics.getLatexMetric, { 
-        id: metricId as any 
+      // Fetch all metrics concurrently
+      const metricsPromises = metricIds.map(async (metricId) => {
+        const metric = await convex.query(api.latexMetrics.getLatexMetric, { 
+          id: metricId as any 
+        });
+        return { metricId, metric };
       });
       
-      if (!metric) {
+      const metricsResults = await Promise.all(metricsPromises);
+      
+      // Check for missing metrics
+      const missingMetrics = metricsResults.filter(({ metric }) => !metric);
+      if (missingMetrics.length > 0) {
+        const missingIds = missingMetrics.map(({ metricId }) => metricId);
         return {
           success: false,
-          error: 'Metric not found',
-          message: `❌ LaTeX metric with ID "${metricId}" not found`
+          error: 'Metrics not found',
+          message: `❌ LaTeX metrics not found: ${missingIds.join(', ')}`
         };
       }
 
-      // Build LaTeX metric definition
-      const metricDefinition: LaTeXMetricDefinition = {
-        name: metric.name,
-        description: metric.description,
-        category: metric.category,
-        latexFormula: metric.latexFormula
-      };
+      // Calculate all metrics concurrently
+      const calculationPromises = metricsResults.map(async ({ metricId, metric }) => {
+        if (!metric) return null;
+        
+        // Build LaTeX metric definition
+        const metricDefinition: LaTeXMetricDefinition = {
+          name: metric.name,
+          description: metric.description,
+          category: metric.category,
+          latexFormula: metric.latexFormula
+        };
 
-      // Create LaTeX engine and execute calculation
-      const engine = new LaTeXFinancialEngine();
-      
-      // Try template-based approach first for known metrics
-      const metricKey = identifyMetricType(metric.latexFormula);
+        // Create LaTeX engine and execute calculation
+        const engine = new LaTeXFinancialEngine();
+        
+        try {
+          // Try template-based approach first for known metrics
+          const metricKey = identifyMetricType(metric.latexFormula);
       let enhancedQuery: string;
       
       if (metricKey && ENHANCED_FINANCIAL_FORMULAS[metricKey]) {
@@ -215,6 +228,12 @@ ${formulaExplanation}
 - Companies: ${querySpecification.companies}
 - Time Range: ${querySpecification.timeRange}
 - Output Fields: ${expectedOutput.sqlFields}
+
+**CRITICAL TIME DIMENSION REQUIREMENTS**:
+- ALWAYS include fiscalyear, period, and date fields in SELECT clause
+- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering  
+- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
+- Never return only quarter without fiscal year context
 
 ## TEMPLATE GUIDANCE:
 Template Selected: ${template.name}
@@ -279,6 +298,12 @@ Generate the final SQL now, following this proven pattern and STRICT FIELD USAGE
 
 **REMINDER**: Before writing any SQL, identify ONLY the fields that exist in the LaTeX formula and map them to exact database field names. Do not use any other fields.
 
+**CRITICAL TIME DIMENSION REQUIREMENTS**:
+- ALWAYS include fiscalyear, period, and date fields in SELECT clause
+- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
+- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
+- Never return only quarter without fiscal year context
+
 Generate SQL following proven financial time series patterns and STRICT FIELD USAGE:
 `;
       }
@@ -308,11 +333,37 @@ Generate SQL following proven financial time series patterns and STRICT FIELD US
         sql: result.metadata?.generatedSQL
       });
       
-      // Clean up and close connection
-      await engine.close();
+        // Clean up and close connection
+        await engine.close();
+        
+        return {
+          metricId,
+          metricName: metric.name,
+          result
+        };
+        } catch (error) {
+          await engine.close();
+          console.error(`❌ Failed to calculate metric ${metricId}:`, error);
+          return null;
+        }
+      });
       
-      // Return DuckDB raw results directly
-      return result;
+      // Wait for all calculations to complete
+      const allResults = await Promise.all(calculationPromises);
+      const validResults = allResults.filter(r => r !== null);
+      
+      // Return combined results
+      return {
+        success: true,
+        totalMetrics: metricIds.length,
+        results: validResults.map(r => ({
+          metricId: r!.metricId,
+          metricName: r!.metricName,
+          data: r!.result.data,
+          metadata: r!.result.metadata
+        })),
+        message: `✅ Successfully calculated ${validResults.length} metrics`
+      };
       
     } catch (error) {
       console.error('❌ LaTeX metric calculation failed:', error);
