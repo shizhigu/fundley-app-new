@@ -182,27 +182,77 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
         };
       }
 
-      // Calculate all metrics concurrently
-      const calculationPromises = metricsResults.map(async ({ metricId, metric }) => {
-        if (!metric) return null;
-        
-        // Build LaTeX metric definition
-        const metricDefinition: LaTeXMetricDefinition = {
-          name: metric.name,
-          description: metric.description,
-          category: metric.category,
-          latexFormula: metric.latexFormula
-        };
+      // Build unified metric definitions for all requested metrics
+      const allMetricDefinitions = metricsResults.map(({ metric }) => ({
+        name: metric!.name,
+        description: metric!.description,
+        category: metric!.category,
+        latexFormula: metric!.latexFormula
+      }));
 
-        // Create LaTeX engine and execute calculation
-        const engine = new LaTeXFinancialEngine();
-        
-        try {
-          // Try template-based approach first for known metrics
-          const metricKey = identifyMetricType(metric.latexFormula);
-      let enhancedQuery: string;
+      // Create LaTeX engine for unified calculation
+      const engine = new LaTeXFinancialEngine();
       
-      if (metricKey && ENHANCED_FINANCIAL_FORMULAS[metricKey]) {
+      // Build unified prompt with ALL metrics and requirements
+      const metricsInfo = allMetricDefinitions.map(metric => 
+        `**${metric.name}**: ${metric.latexFormula} (${metric.description})`
+      ).join('\n');
+      
+      // Create comprehensive unified query prompt
+      const enhancedQuery = `
+# UNIFIED MULTI-METRIC SQL GENERATION
+Generate a SINGLE SQL query that calculates ALL requested metrics together for comparison and analysis.
+
+## REQUESTED METRICS:
+${metricsInfo}
+
+## USER REQUIREMENTS:
+- Analysis Description: ${dataRequirements.description}
+- Expected Volume: ${dataRequirements.expectedDataVolume}
+- Row Definition: ${dataRequirements.rowDefinition}
+- Column Requirements: ${dataRequirements.columnRequirements}
+
+## QUERY SPECIFICATIONS:
+- Companies: ${querySpecification.companies}
+- Time Range: ${querySpecification.timeRange}
+- Filter Criteria: ${querySpecification.filterCriteria}
+- Sort/Limit: ${querySpecification.sortAndLimit}
+
+## OUTPUT REQUIREMENTS:
+- Expected Fields: ${expectedOutput.sqlFields}
+
+**CRITICAL UNIFIED CALCULATION STRATEGY**:
+1. Use WITH clauses (CTEs) to structure the calculation
+2. Calculate ALL metrics in the SAME query for consistent data alignment
+3. Include all metrics as separate columns in the final SELECT
+4. Apply cross-metric filtering if specified (e.g., "ROCE > 15% AND ROE > 20%")
+5. Ensure proper field mapping for each LaTeX formula
+6. Handle time-series data consistently across all metrics
+
+**CRITICAL TIME DIMENSION REQUIREMENTS**:
+- ALWAYS include fiscalyear, period, and date fields in SELECT clause
+- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
+- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
+- Never return only quarter without fiscal year context
+
+**FIELD REQUIREMENTS FOR EACH METRIC**:
+${allMetricDefinitions.map(metric => 
+  `- ${metric.name}: Extract fields from formula "${metric.latexFormula}"`
+).join('\n')}
+
+Generate a single comprehensive SQL query that calculates all metrics together with consistent data alignment:
+`;
+
+      // Create unified metric definition for the engine
+      const unifiedMetricDefinition: LaTeXMetricDefinition = {
+        name: `Unified Analysis: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
+        description: `Multi-metric analysis combining: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
+        category: 'unified',
+        latexFormula: allMetricDefinitions.map(m => `${m.name} = ${m.latexFormula}`).join(' | ')
+      };
+
+      // Skip template-based approach for unified queries (use general approach)
+      if (false) {
         console.log(`🎯 Using enhanced template for ${metricKey}`);
         
         // Use the smart template selector
@@ -309,60 +359,35 @@ Generate SQL following proven financial time series patterns and STRICT FIELD US
       }
       
       const request: LaTeXCalculationRequest = {
-        metricDefinition,
+        metricDefinition: unifiedMetricDefinition,
         query: enhancedQuery
       };
 
       const result = await engine.calculateMetric(request);
       
-      // Validate the generated SQL if we used a template
-      if (metricKey && result.metadata?.generatedSQL) {
-        const validation = SQLPatternValidator.validatePattern(result.metadata.generatedSQL, metricKey);
-        if (!validation.isValid) {
-          console.warn(`⚠️ SQL validation issues for ${metricKey}:`, validation.issues);
-          // Log issues but don't fail - let the execution proceed
-        } else {
-          console.log(`✅ SQL validation passed for ${metricKey}`);
-        }
-      }
-      
-      // Update usage statistics
+      // Log to Convex for the unified calculation (single entry)
       await convex.mutation(api.latexMetrics.updateMetricUsage, {
-        metricId: metricId as any,
+        metricId: metricIds[0] as any, // Primary metric for logging
         executionTimeMs: result.metadata?.executionTimeMs,
         sql: result.metadata?.generatedSQL
       });
       
-        // Clean up and close connection
-        await engine.close();
-        
-        return {
-          metricId,
-          metricName: metric.name,
-          result
-        };
-        } catch (error) {
-          await engine.close();
-          console.error(`❌ Failed to calculate metric ${metricId}:`, error);
-          return null;
-        }
-      });
+      // Clean up and close connection
+      await engine.close();
       
-      // Wait for all calculations to complete
-      const allResults = await Promise.all(calculationPromises);
-      const validResults = allResults.filter(r => r !== null);
-      
-      // Return combined results
+      // Return unified results with metadata about all metrics
       return {
-        success: true,
-        totalMetrics: metricIds.length,
-        results: validResults.map(r => ({
-          metricId: r!.metricId,
-          metricName: r!.metricName,
-          data: r!.result.data,
-          metadata: r!.result.metadata
-        })),
-        message: `✅ Successfully calculated ${validResults.length} metrics`
+        ...result,
+        unifiedAnalysis: {
+          totalMetrics: metricIds.length,
+          metrics: allMetricDefinitions.map(m => ({
+            name: m.name,
+            formula: m.latexFormula,
+            category: m.category
+          })),
+          calculationMethod: 'unified_sql',
+          message: `✅ Unified analysis completed for ${metricIds.length} metrics: ${allMetricDefinitions.map(m => m.name).join(', ')}`
+        }
       };
       
     } catch (error) {
