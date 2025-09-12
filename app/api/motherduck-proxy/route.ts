@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       console.log(`⏱️ [Proxy] Request took ${duration}ms`);
       console.log('📡 [Proxy] Response status:', response.status);
-      console.log('📡 [Proxy] Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📡 [Proxy] Response headers:', response.headers);
 
       if (!response.ok) {
         throw new Error(`Render API returned ${response.status}: ${response.statusText}`);
