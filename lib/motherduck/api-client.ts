@@ -17,9 +17,11 @@ interface QueryResponse {
 export class MotherDuckAPIClient {
   async query(sql: string): Promise<any[]> {
     try {
-      console.log('🦆 [MotherDuck API] Starting query via Next.js backend:', sql);
+      console.log('🦆 [Client] Starting MotherDuck query:', sql);
+      console.log('🦆 [Client] Making request to /api/motherduck-proxy');
       
       // 直接调用 Next.js API 路由，让后端发起请求
+      const startTime = Date.now();
       const response = await fetch('/api/motherduck-proxy', {
         method: 'POST',
         headers: {
@@ -27,6 +29,10 @@ export class MotherDuckAPIClient {
         },
         body: JSON.stringify({ sql }),
       });
+      
+      const duration = Date.now() - startTime;
+      console.log(`🦆 [Client] Proxy request took ${duration}ms`);
+      console.log('🦆 [Client] Proxy response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

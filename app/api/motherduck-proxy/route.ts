@@ -15,8 +15,12 @@ interface QueryResponse {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 [Proxy] POST request received at motherduck-proxy');
+  
   try {
+    console.log('📥 [Proxy] Parsing request body...');
     const { sql }: QueryRequest = await request.json();
+    console.log('✅ [Proxy] Request body parsed successfully');
     
     if (!sql) {
       return NextResponse.json(
