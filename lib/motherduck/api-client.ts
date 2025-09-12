@@ -16,41 +16,35 @@ interface QueryResponse {
 
 export class MotherDuckAPIClient {
   async query(sql: string): Promise<any[]> {
-    try {
-      console.log('🦆 [Client] Starting MotherDuck query:', sql);
-      console.log('🦆 [Client] Making request to /api/motherduck-proxy');
-      
-      // 直接调用 motherduck-proxy API 路由，让后端发起请求
-      const startTime = Date.now();
-      const response = await fetch('/api/motherduck-proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sql }),
-      });
-      
-      const duration = Date.now() - startTime;
-      console.log(`🦆 [Client] Proxy request took ${duration}ms`);
-      console.log('🦆 [Client] Proxy response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result: QueryResponse = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Query failed');
-      }
-      
-      console.log(`✅ MotherDuck API query completed: ${result.row_count} rows`);
-      return result.data;
-      
-    } catch (error) {
-      console.error('❌ MotherDuck API query failed:', error);
-      throw new Error(`MotherDuck API query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.log('🦆 [Client] Query:', sql);
+    
+    // 如果在服务器端，直接调用Render服务
+    const apiUrl = typeof window === 'undefined' 
+      ? process.env.MOTHERDUCK_API_URL || 'https://fundley-backend.onrender.com'
+      : '/api/motherduck-proxy';
+    
+    const endpoint = typeof window === 'undefined' 
+      ? `${apiUrl}/query`
+      : apiUrl;
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Query failed');
+    }
+    
+    console.log(`✅ Query completed: ${result.row_count} rows`);
+    return result.data;
   }
   
   async testConnection(): Promise<boolean> {
