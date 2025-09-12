@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     
     try {
+      // 创建手动超时控制器
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
       const response = await fetch(`${renderUrl}/query`, {
         method: 'POST',
         headers: {
@@ -48,9 +52,10 @@ export async function POST(request: NextRequest) {
           'User-Agent': 'Next.js-Proxy/1.0',
         },
         body: JSON.stringify({ sql }),
-        // 添加 30 秒超时
-        signal: AbortSignal.timeout(30000),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       
       const duration = Date.now() - startTime;
       console.log(`⏱️ [Proxy] Request took ${duration}ms`);
