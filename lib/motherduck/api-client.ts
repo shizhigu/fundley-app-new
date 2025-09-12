@@ -15,37 +15,18 @@ interface QueryResponse {
 }
 
 export class MotherDuckAPIClient {
-  private baseUrl: string;
-  
-  constructor() {
-    this.baseUrl = process.env.MOTHERDUCK_API_URL || 'https://fundley-backend.onrender.com';
-  }
-  
   async query(sql: string): Promise<any[]> {
     try {
-      console.log('🦆 [MotherDuck API] Starting query:', sql);
-      console.log('🦆 [MotherDuck API] Base URL:', this.baseUrl);
-      console.log('🦆 [MotherDuck API] Environment:', process.env.NODE_ENV);
+      console.log('🦆 [MotherDuck API] Starting query via Next.js backend:', sql);
       
-      const requestStart = Date.now();
-      
-      const response = await fetch(`${this.baseUrl}/query`, {
+      // 直接调用 Next.js API 路由，让后端发起请求
+      const response = await fetch('/api/motherduck-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'Fundley-MotherDuck-Client/1.0',
-          'Connection': 'keep-alive',
         },
         body: JSON.stringify({ sql }),
-        // 强制使用 Node.js fetch 配置
-        keepalive: true,
       });
-      
-      const requestEnd = Date.now();
-      console.log(`🦆 [MotherDuck API] Request completed in ${requestEnd - requestStart}ms`);
-      console.log('🦆 [MotherDuck API] Response status:', response.status);
-      console.log('🦆 [MotherDuck API] Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
