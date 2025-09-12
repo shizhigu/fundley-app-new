@@ -20,9 +20,9 @@ export class MotherDuckAPIClient {
       console.log('🦆 [Client] Starting MotherDuck query:', sql);
       console.log('🦆 [Client] Making request to /api/motherduck-proxy');
       
-      // 直接调用现有的 test-db API 路由，让后端发起请求
+      // 直接调用 motherduck-proxy API 路由，让后端发起请求
       const startTime = Date.now();
-      const response = await fetch('/api/test-db', {
+      const response = await fetch('/api/motherduck-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,7 +55,7 @@ export class MotherDuckAPIClient {
   
   async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch('/api/test-db', {
+      const response = await fetch('/api/motherduck-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
