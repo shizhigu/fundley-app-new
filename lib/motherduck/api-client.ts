@@ -49,22 +49,17 @@ export class MotherDuckAPIClient {
   
   async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/test`);
+      const response = await fetch('/api/motherduck-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sql: 'SELECT 1 as test' }),
+      });
       const result = await response.json();
       return result.success === true;
     } catch (error) {
       console.error('❌ MotherDuck API connection test failed:', error);
-      return false;
-    }
-  }
-  
-  async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/`);
-      const result = await response.json();
-      return result.status === 'healthy';
-    } catch (error) {
-      console.error('❌ MotherDuck API health check failed:', error);
       return false;
     }
   }
