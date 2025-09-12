@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "app/api/calculate-metric-ast/route.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 60
+    },
+    "app/(chat)/api/chat/route.ts": {
+      "runtime": "nodejs20.x", 
+      "maxDuration": 60
+    },
+    "app/api/test-motherduck/route.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  }
+}

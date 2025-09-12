@@ -33,9 +33,13 @@ export class MotherDuckAPIClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'User-Agent': 'Fundley-MotherDuck-Client/1.0',
+          'Connection': 'keep-alive',
         },
         body: JSON.stringify({ sql }),
+        // 强制使用 Node.js fetch 配置
+        keepalive: true,
       });
       
       const requestEnd = Date.now();

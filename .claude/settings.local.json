@@ -65,7 +65,8 @@
       "Bash(timeout:*)",
       "WebFetch(domain:github.com)",
       "Bash(source:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": [],
