@@ -9,32 +9,7 @@ import type { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 import { LaTeXFinancialEngine } from '@/lib/latex-financial/engine';
 import type { LaTeXMetricDefinition, LaTeXCalculationRequest } from '@/lib/latex-financial/types';
-import { FinancialTemplateSelector, FinancialSQLGenerator } from '@/lib/latex-financial/financial-time-series-templates';
-import { LatexFormulaExplainer, SQLPatternValidator, ENHANCED_FINANCIAL_FORMULAS } from '@/lib/latex-financial/enhanced-latex-formulas';
 
-/**
- * Helper function to identify metric type from LaTeX formula
- */
-function identifyMetricType(latexFormula: string): string | null {
-  const formula = latexFormula.toLowerCase();
-  
-  if (formula.includes('roce') || 
-      (formula.includes('ebit') && formula.includes('capital'))) {
-    return 'ROCE';
-  }
-  
-  if (formula.includes('roe') || 
-      (formula.includes('netincome') && formula.includes('equity'))) {
-    return 'ROE';
-  }
-  
-  if (formula.includes('roa') || 
-      (formula.includes('netincome') && formula.includes('assets'))) {
-    return 'ROA';
-  }
-  
-  return null;
-}
 
 /**
  * 创建LaTeX财务指标工具 (工厂函数)
@@ -199,7 +174,7 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
       ).join('\n');
       
       // Create comprehensive unified query prompt
-      const enhancedQuery = `
+      let enhancedQuery = `
 # UNIFIED MULTI-METRIC SQL GENERATION
 Generate a SINGLE SQL query that calculates ALL requested metrics together for comparison and analysis.
 
@@ -251,93 +226,32 @@ Generate a single comprehensive SQL query that calculates all metrics together w
         latexFormula: allMetricDefinitions.map(m => `${m.name} = ${m.latexFormula}`).join(' | ')
       };
 
-      // Skip template-based approach for unified queries (use general approach)
-      if (false) {
-        console.log(`🎯 Using enhanced template for ${metricKey}`);
-        
-        // Use the smart template selector
-        const { template, params } = FinancialTemplateSelector.selectTemplate({
-          description: dataRequirements.description,
-          companies: querySpecification.companies,
-          timeRange: querySpecification.timeRange,
-          expectedDataVolume: dataRequirements.expectedDataVolume
-        });
-        
-        // Generate detailed formula explanation
-        const formulaExplanation = LatexFormulaExplainer.generateDetailedExplanation(metricKey);
-        
-        // Create enhanced prompt with template guidance
-        enhancedQuery = `
-# ENHANCED FINANCIAL METRIC CALCULATION
+      // Use unified SQL generation approach
+      enhancedQuery = `
+# UNIFIED MULTI-METRIC SQL GENERATION
 
-${formulaExplanation}
-
-## USER REQUIREMENTS:
-- Description: ${dataRequirements.description}
-- Expected Volume: ${dataRequirements.expectedDataVolume}
-- Companies: ${querySpecification.companies}
-- Time Range: ${querySpecification.timeRange}
-- Output Fields: ${expectedOutput.sqlFields}
-
-**CRITICAL TIME DIMENSION REQUIREMENTS**:
-- ALWAYS include fiscalyear, period, and date fields in SELECT clause
-- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering  
-- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
-- Never return only quarter without fiscal year context
-
-## TEMPLATE GUIDANCE:
-Template Selected: ${template.name}
-Use Cases: ${template.useCases.join(', ')}
-
-
-
-**CRITICAL FIELD RESTRICTIONS**:
-🚫 **STRICTLY FORBIDDEN**: You MUST ONLY use fields that are explicitly defined in the LaTeX formula. 
-🚫 **NO FIELD CALCULATIONS**: Do NOT calculate or derive fields from other fields (e.g., DO NOT use "revenue - operatingExpenses" when "operatingIncome" exists)
-🚫 **NO FIELD SUBSTITUTIONS**: Do NOT substitute similar fields (e.g., use exact field names from formula only)
-
-✅ **ALLOWED**: Only use the exact field names that appear in the LaTeX formula: ${metric.latexFormula}
-✅ **FIELD MAPPING**: Map LaTeX variables to exact database field names only
-
-**CRITICAL EXECUTION REQUIREMENTS**:
-1. The relative_quarter approach for time series
-2. The NULL handling for missing previous period data  
-3. The proper Q4→Q1 cross-year handling
-4. The exclusion of FY data for quarterly analysis
-5. **ONLY use fields explicitly defined in the LaTeX formula**
-
-Generate the final SQL now, following this proven pattern and STRICT FIELD USAGE:
-`;
-      } else {
-        // Fallback to general CTE approach
-        enhancedQuery = `
-# GENERAL CTE-BASED SQL GENERATION
-
-**CRITICAL**: Generate SQL using step-by-step WITH clauses (CTEs). Use financial time series best practices.
+Generate a SINGLE SQL query that calculates ALL requested metrics together for data consistency and performance.
 
 ## Analysis Requirements: ${dataRequirements.description}
-## LaTeX Formula: ${metric.latexFormula}
+
+## All LaTeX Formulas:
+${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 
 **🚫 CRITICAL FIELD RESTRICTIONS - MUST FOLLOW**:
-🚫 **STRICTLY FORBIDDEN**: You MUST ONLY use fields that are explicitly defined in the LaTeX formula above
-🚫 **NO FIELD CALCULATIONS**: Do NOT calculate or derive fields from other fields (e.g., DO NOT use "revenue - operatingExpenses" when "operatingIncome" exists)
-🚫 **NO FIELD SUBSTITUTIONS**: Do NOT substitute similar fields - use exact field names from formula only
-🚫 **NO ASSUMPTIONS**: Do NOT assume field relationships or use fields not in the formula
+🚫 **STRICTLY FORBIDDEN**: You MUST ONLY use fields that are explicitly defined in the LaTeX formulas above
+🚫 **NO FIELD CALCULATIONS**: Do NOT calculate or derive fields from other fields 
+🚫 **NO FIELD SUBSTITUTIONS**: Do NOT substitute similar fields - use exact field names from formulas only
+🚫 **NO ASSUMPTIONS**: Do NOT assume field relationships or use fields not in the formulas
 
-✅ **ALLOWED**: Only use the exact field names that appear in the LaTeX formula: ${metric.latexFormula}
-✅ **FIELD MAPPING**: Map LaTeX variables to exact database field names only (e.g., NetIncome → netIncome, EBIT → operatingIncome)
+✅ **ALLOWED**: Only use the exact field names that appear in the LaTeX formulas above
+✅ **FIELD MAPPING**: Map LaTeX variables to exact database field names only
 
 ## FINANCIAL TIME SERIES RULES:
 1. For quarterly data: Use relative_quarter approach, NOT simple LAG()
 2. Handle Q4→Q1 transitions properly across years
 3. Return NULL if previous period data missing (no COALESCE fallbacks)
 4. Filter out FY data: WHERE period IN ('Q1', 'Q2', 'Q3', 'Q4')
-5. **ONLY use fields explicitly defined in the LaTeX formula**
-
-## Data Specifications:
-- Expected Volume: ${dataRequirements.expectedDataVolume}
-- Row Definition: ${dataRequirements.rowDefinition}
-- Column Requirements: ${dataRequirements.columnRequirements}
+5. **ONLY use fields explicitly defined in the LaTeX formulas**
 
 ## Query Parameters:
 - Companies: ${querySpecification.companies}
@@ -346,17 +260,14 @@ Generate the final SQL now, following this proven pattern and STRICT FIELD USAGE
 - Sort/Limit: ${querySpecification.sortAndLimit}
 - Output Fields: ${expectedOutput.sqlFields}
 
-**REMINDER**: Before writing any SQL, identify ONLY the fields that exist in the LaTeX formula and map them to exact database field names. Do not use any other fields.
-
 **CRITICAL TIME DIMENSION REQUIREMENTS**:
 - ALWAYS include fiscalyear, period, and date fields in SELECT clause
 - For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
 - For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
 - Never return only quarter without fiscal year context
 
-Generate SQL following proven financial time series patterns and STRICT FIELD USAGE:
+Generate ONE comprehensive SQL query that calculates ALL metrics together:
 `;
-      }
       
       const request: LaTeXCalculationRequest = {
         metricDefinition: unifiedMetricDefinition,
