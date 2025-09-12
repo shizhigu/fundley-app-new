@@ -151,17 +151,40 @@ export const getUserLatexMetrics = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    // 获取当前用户信息
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || !user.clerkOrganizationId) {
+      return [];
+    }
+
     let metrics;
     
     if (args.userId) {
+      // 验证请求的用户是否在同一组织内
+      const targetUser = await ctx.db.get(args.userId);
+      if (!targetUser || targetUser.clerkOrganizationId !== user.clerkOrganizationId) {
+        return []; // 不允许查看其他组织用户的指标
+      }
+      
       metrics = await ctx.db
         .query("latexMetrics")
         .withIndex("by_creator", (q) => q.eq("createdBy", args.userId!))
         .order("desc")
         .take(args.limit || 50);
     } else {
+      // 只返回用户组织内的指标
       metrics = await ctx.db
         .query("latexMetrics")
+        .withIndex("by_organization", (q) => q.eq("clerkOrganizationId", user.clerkOrganizationId))
         .order("desc")
         .take(args.limit || 50);
     }
@@ -182,11 +205,30 @@ export const getPopularLatexMetrics = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    // 获取当前用户信息
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || !user.clerkOrganizationId) {
+      return [];
+    }
+
+    // 只返回用户组织内的热门指标
+    const metrics = await ctx.db
       .query("latexMetrics")
-      .withIndex("by_usage")
-      .order("desc")
-      .take(args.limit || 20);
+      .withIndex("by_organization", (q) => q.eq("clerkOrganizationId", user.clerkOrganizationId))
+      .collect();
+
+    return metrics
+      .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+      .slice(0, args.limit || 20);
   },
 });
 
@@ -200,6 +242,22 @@ export const searchLatexMetrics = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    // 获取当前用户信息
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || !user.clerkOrganizationId) {
+      return [];
+    }
+
+    // 只查询用户组织内的指标
     let allMetrics;
     
     if (args.category) {
@@ -207,9 +265,18 @@ export const searchLatexMetrics = query({
         .query("latexMetrics")
         .withIndex("by_category", (q) => q.eq("category", args.category!))
         .collect();
+      // 按组织过滤
+      allMetrics = allMetrics.filter(metric => 
+        metric.clerkOrganizationId === user.clerkOrganizationId
+      );
     } else {
-      allMetrics = await ctx.db.query("latexMetrics").collect();
+      // 直接按组织查询
+      allMetrics = await ctx.db
+        .query("latexMetrics")
+        .withIndex("by_organization", (q) => q.eq("clerkOrganizationId", user.clerkOrganizationId))
+        .collect();
     }
+    
     const searchTerm = args.searchTerm.toLowerCase();
     
     // 简单的文本搜索
@@ -299,7 +366,26 @@ export const deleteLatexMetric = mutation({
  */
 export const getLatexMetricCategories = query({
   handler: async (ctx) => {
-    const metrics = await ctx.db.query("latexMetrics").collect();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    // 获取当前用户信息
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .unique();
+
+    if (!user || !user.clerkOrganizationId) {
+      return [];
+    }
+
+    // 只统计用户组织内的指标分类
+    const metrics = await ctx.db
+      .query("latexMetrics")
+      .withIndex("by_organization", (q) => q.eq("clerkOrganizationId", user.clerkOrganizationId))
+      .collect();
     
     const categories = metrics.reduce((acc: Record<string, number>, metric) => {
       acc[metric.category] = (acc[metric.category] || 0) + 1;

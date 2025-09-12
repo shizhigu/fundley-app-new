@@ -119,7 +119,8 @@ export async function POST(request: Request) {
         name: metric.name,
         description: metric.description
       }));
-      console.log(`📊 Loaded ${customMetrics.length} LaTeX metrics for user`);
+      console.log(`📊 Loaded ${customMetrics.length} LaTeX metrics for user:`, 
+        customMetrics.map(m => ({ id: m.id, name: m.name })));
     } catch (error) {
       console.warn('Failed to load LaTeX metrics for prompt:', error);
     }
