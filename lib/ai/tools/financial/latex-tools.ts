@@ -255,6 +255,14 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 🚫 **NO FIELD DERIVATION**: Do NOT calculate or derive fields from other fields
 🚫 **NO FIELD SUBSTITUTION**: Use exact field names from formulas only
 🚫 **NO ASSUMPTIONS**: Do NOT assume field relationships or use unmapped fields
+🚫 **NO FIELD MODIFICATION**: Do NOT modify, rename, or change field names in any way
+
+**✅ FIELD NAME REQUIREMENTS**:
+✅ **EXACT MATCH**: Use the EXACT field names as defined in the LaTeX formula - no modifications allowed
+✅ **NO REASONING**: Do NOT try to "improve" or "correct" field names - they are already correct
+✅ **TRUST DEFINITIONS**: All field names in formulas are verified and correct - use them as-is
+✅ **NO SUBSTITUTIONS**: Even if a field name looks "wrong", use it exactly as specified
+✅ **FORMULA AUTHORITY**: The LaTeX formula definition is the authoritative source for field names
 
 **✅ ALLOWED OPERATIONS**:
 ✅ **Formula fields only**: Map LaTeX variables to exact database field names
