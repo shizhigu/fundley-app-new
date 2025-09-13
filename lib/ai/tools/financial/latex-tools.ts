@@ -73,25 +73,26 @@ export const createLatexMetric = (convex: ConvexHttpClient) => tool({
  * 计算LaTeX财务指标工具 (工厂函数)
  */
 export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
-  description: `Enhanced LaTeX financial metric calculation tool with structured query specification.
+  description: `LaTeX financial metric calculation tool with unified SQL generation.
   
-  This tool requires detailed, structured input to generate precise SQL queries using proven financial time series patterns.
+  This tool takes LaTeX mathematical formulas and generates a single unified SQL query to calculate all requested metrics together.
   
   🎯 **Key Features:**
-  - Uses proven SQL templates for common financial metrics (ROCE, ROE, ROA)
-  - Handles complex quarterly time series with proper Q4→Q1 transitions
-  - Validates SQL against financial domain best practices
-  - Returns NULL for missing previous period data (no fallbacks)
+  - Converts LaTeX formulas directly to SQL using LLM intelligence
+  - Generates unified SQL for multiple metrics in one query
+  - Uses unified financial_statements table for consistent data access
+  - Handles time series data with proper quarterly transitions
+  - Returns comprehensive results with all metrics in structured format
   
-  📋 **Enhanced Processing:**
-  - Auto-detects metric type from LaTeX formula
-  - Selects appropriate SQL template 
-  - Validates generated SQL patterns
-  - Provides detailed formula explanations to LLM
+  📋 **Processing Approach:**
+  - Analyzes all LaTeX formulas together
+  - Generates single SQL query with all metrics as columns
+  - Uses financial_statements table as primary data source
+  - Joins company_profiles only when company data needed
+  - Maintains data consistency across all calculated metrics
   
   **Example Usage:**
-  Instead of: "Get AAPL ROCE data"
-  Provide: Complete structured requirements for precise SQL generation`,
+  Multiple metrics like ROE, ROCE, ROA calculated together in one SQL query for data alignment and performance.`,
   
   inputSchema: z.object({
     metricIds: z.array(z.string()).describe('LaTeX metric IDs from database (supports batch calculation of multiple metrics)'),
@@ -136,33 +137,28 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
       console.log(`🔍 Query Specification:`, querySpecification);
       console.log(`📋 Expected Output:`, expectedOutput);
       
-      // Fetch all metrics concurrently
-      const metricsPromises = metricIds.map(async (metricId) => {
+      // Fetch all metrics in a single batch (no concurrency needed for metadata)
+      const metrics: any[] = [];
+      for (const metricId of metricIds) {
         const metric = await convex.query(api.latexMetrics.getLatexMetric, { 
           id: metricId as any 
         });
-        return { metricId, metric };
-      });
-      
-      const metricsResults = await Promise.all(metricsPromises);
-      
-      // Check for missing metrics
-      const missingMetrics = metricsResults.filter(({ metric }) => !metric);
-      if (missingMetrics.length > 0) {
-        const missingIds = missingMetrics.map(({ metricId }) => metricId);
-        return {
-          success: false,
-          error: 'Metrics not found',
-          message: `❌ LaTeX metrics not found: ${missingIds.join(', ')}`
-        };
+        if (!metric) {
+          return {
+            success: false,
+            error: 'Metric not found',
+            message: `❌ LaTeX metric not found: ${metricId}`
+          };
+        }
+        metrics.push(metric);
       }
 
       // Build unified metric definitions for all requested metrics
-      const allMetricDefinitions = metricsResults.map(({ metric }) => ({
-        name: metric!.name,
-        description: metric!.description,
-        category: metric!.category,
-        latexFormula: metric!.latexFormula
+      const allMetricDefinitions = metrics.map((metric) => ({
+        name: metric.name,
+        description: metric.description,
+        category: metric.category,
+        latexFormula: metric.latexFormula
       }));
 
       // Create LaTeX engine for unified calculation
@@ -237,34 +233,81 @@ Generate a SINGLE SQL query that calculates ALL requested metrics together for d
 ## All LaTeX Formulas:
 ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 
-**🚫 CRITICAL FIELD RESTRICTIONS - MUST FOLLOW**:
-🚫 **STRICTLY FORBIDDEN**: You MUST ONLY use fields that are explicitly defined in the LaTeX formulas above
-🚫 **NO FIELD CALCULATIONS**: Do NOT calculate or derive fields from other fields 
-🚫 **NO FIELD SUBSTITUTIONS**: Do NOT substitute similar fields - use exact field names from formulas only
-🚫 **NO ASSUMPTIONS**: Do NOT assume field relationships or use fields not in the formulas
+## DATABASE SCHEMA:
 
-✅ **ALLOWED**: Only use the exact field names that appear in the LaTeX formulas above
-✅ **FIELD MAPPING**: Map LaTeX variables to exact database field names only
+### Core Financial Data Table:
+**\`financial_statements\`** - Unified table containing all financial statement data:
+- **Income Statement fields**: revenue, netIncome, operatingIncome, ebit, incomeTaxExpense, etc.
+- **Balance Sheet fields**: totalAssets, totalLiabilities, totalShareholderEquity, inventory_balance, accountsreceivables_balance, etc.
+- **Cash Flow fields**: operatingCashFlow, capitalExpenditure, freeCashFlow, inventory_change, accountsreceivables_change, etc.
+- **Meta fields**: symbol, fiscalyear, period, date
+
+### Supplementary Tables (use ONLY when needed):
+**\`company_profiles\`** - Company information and market data:
+- **Company info**: companyName, sector, industry, country, marketCap, etc.
+- **Market data**: price, beta, volAvg, mktCap, lastDiv, range, etc.
+- **Key field**: symbol (for joining with financial_statements)
+
+## FIELD USAGE RULES:
+
+**🚫 CRITICAL RESTRICTIONS**:
+🚫 **FIELD SCOPE**: ONLY use fields explicitly mentioned in the LaTeX formulas above
+🚫 **NO FIELD DERIVATION**: Do NOT calculate or derive fields from other fields
+🚫 **NO FIELD SUBSTITUTION**: Use exact field names from formulas only
+🚫 **NO ASSUMPTIONS**: Do NOT assume field relationships or use unmapped fields
+
+**✅ ALLOWED OPERATIONS**:
+✅ **Formula fields only**: Map LaTeX variables to exact database field names
+✅ **Smart table selection**: Use financial_statements for financial metrics, company_profiles for company info
+✅ **Minimal joins**: JOIN company_profiles ONLY if formula requires company/market data
+
+## TABLE SELECTION STRATEGY:
+
+1. **Primary source**: \`financial_statements\` (contains 95% of financial metrics)
+2. **Secondary source**: \`company_profiles\` (for company info like marketCap, sector, industry)
+3. **Join logic**: 
+   \`\`\`sql
+   FROM financial_statements fs
+   LEFT JOIN company_profiles cp ON fs.symbol = cp.symbol
+   \`\`\`
 
 ## FINANCIAL TIME SERIES RULES:
-1. For quarterly data: Use relative_quarter approach, NOT simple LAG()
-2. Handle Q4→Q1 transitions properly across years
-3. Return NULL if previous period data missing (no COALESCE fallbacks)
-4. Filter out FY data: WHERE period IN ('Q1', 'Q2', 'Q3', 'Q4')
-5. **ONLY use fields explicitly defined in the LaTeX formulas**
+1. **Quarterly data**: Use relative_quarter approach for previous period comparisons
+2. **Year transitions**: Handle Q4→Q1 properly across fiscal years
+3. **Missing data**: Return NULL if previous period unavailable (no COALESCE)
+4. **Period filter**: \`WHERE period IN ('Q1', 'Q2', 'Q3', 'Q4')\` for quarterly analysis
+5. **Field consistency**: Only use fields that exist in the LaTeX formulas
 
 ## Query Parameters:
-- Companies: ${querySpecification.companies}
-- Time Range: ${querySpecification.timeRange}
-- Filters: ${querySpecification.filterCriteria}
-- Sort/Limit: ${querySpecification.sortAndLimit}
-- Output Fields: ${expectedOutput.sqlFields}
+- **Companies**: ${querySpecification.companies}
+- **Time Range**: ${querySpecification.timeRange}
+- **Filters**: ${querySpecification.filterCriteria}
+- **Sort/Limit**: ${querySpecification.sortAndLimit}
+- **Output Fields**: ${expectedOutput.sqlFields}
 
-**CRITICAL TIME DIMENSION REQUIREMENTS**:
-- ALWAYS include fiscalyear, period, and date fields in SELECT clause
-- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
-- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
-- Never return only quarter without fiscal year context
+## CRITICAL REQUIREMENTS:
+- **Time dimensions**: ALWAYS include fiscalyear, period, date in SELECT
+- **Quarterly ordering**: Include both quarter and fiscal year for proper time series
+- **Multi-period calculations**: Use proper time ordering (ORDER BY date or fiscalyear, period)
+- **Context preservation**: Never return period without fiscal year context
+
+## SQL FRAMEWORK EXAMPLES:
+\`\`\`sql
+-- Example 1: Pure financial metrics (most common)
+SELECT symbol, fiscalyear, period, date, 
+       [metric1_calculation] as metric1_name,
+       [metric2_calculation] as metric2_name
+FROM financial_statements 
+WHERE symbol = 'COMPANY' AND period IN ('Q1', 'Q2', 'Q3', 'Q4')
+
+-- Example 2: When company market data needed (e.g., Market Cap)
+SELECT fs.symbol, fs.fiscalyear, fs.period, fs.date,
+       [metric_calculation] as metric_name,
+       cp.mktcap as market_cap
+FROM financial_statements fs
+LEFT JOIN company_profiles cp ON fs.symbol = cp.symbol
+WHERE fs.symbol = 'COMPANY' AND fs.period IN ('Q1', 'Q2', 'Q3', 'Q4')
+\`\`\`
 
 Generate ONE comprehensive SQL query that calculates ALL metrics together:
 `;

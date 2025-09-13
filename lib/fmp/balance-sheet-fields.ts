@@ -79,11 +79,11 @@ export const balanceSheetFields: FieldMetadata[] = [
   },
   
   {
-    field: "accountsReceivables",
-    name: "Accounts Receivable",
-    description: "Money owed to the company by customers for goods or services delivered",
+    field: "accountsreceivables_balance", 
+    name: "Accounts Receivable Balance",
+    description: "Money owed to the company by customers for goods or services delivered (Balance Sheet)",
     category: "Current Assets",
-    aliases: ["receivables", "trade receivables", "customer receivables", "应收账款"],
+    aliases: ["receivables", "trade receivables", "customer receivables", "应收账款", "accountsReceivables"],
     useCases: ["Working capital analysis", "Collection efficiency", "Revenue quality"],
     dataSource: {
       endpoint: "/balance-sheet-statement",
@@ -117,11 +117,11 @@ export const balanceSheetFields: FieldMetadata[] = [
   },
   
   {
-    field: "inventory",
-    name: "Inventory",
-    description: "Value of goods held for sale or raw materials for production",
+    field: "inventory_balance",
+    name: "Inventory Balance", 
+    description: "Value of goods held for sale or raw materials for production (Balance Sheet)",
     category: "Current Assets",
-    aliases: ["stock", "goods inventory", "raw materials", "存货"],
+    aliases: ["stock", "goods inventory", "raw materials", "存货", "inventory"],
     useCases: ["Working capital analysis", "Inventory management", "Operational efficiency"],
     dataSource: {
       endpoint: "/balance-sheet-statement",

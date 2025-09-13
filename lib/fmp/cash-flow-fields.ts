@@ -79,11 +79,11 @@ export const cashFlowFields: FieldMetadata[] = [
   },
   
   {
-    field: "accountsReceivables",
-    name: "Accounts Receivables Change",
-    description: "Cash impact from changes in customer receivables",
+    field: "accountsreceivables_change",
+    name: "Accounts Receivables Change", 
+    description: "Cash impact from changes in customer receivables (Cash Flow)",
     category: "Operating Activities",
-    aliases: ["receivables change", "AR change", "应收账款变化"],
+    aliases: ["receivables change", "AR change", "应收账款变化", "accountsReceivables"],
     useCases: ["Collection efficiency", "Revenue quality", "Cash conversion"],
     dataSource: {
       endpoint: "/cash-flow-statement",
@@ -98,11 +98,11 @@ export const cashFlowFields: FieldMetadata[] = [
   },
   
   {
-    field: "inventory",
+    field: "inventory_change",
     name: "Inventory Change",
-    description: "Cash impact from changes in inventory levels",
+    description: "Cash impact from changes in inventory levels (Cash Flow)",
     category: "Operating Activities",
-    aliases: ["inventory change", "stock change", "存货变化"],
+    aliases: ["inventory change", "stock change", "存货变化", "inventory"],
     useCases: ["Inventory management", "Demand forecasting", "Cash optimization"],
     dataSource: {
       endpoint: "/cash-flow-statement",
