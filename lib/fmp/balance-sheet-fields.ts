@@ -79,7 +79,7 @@ export const balanceSheetFields: FieldMetadata[] = [
   },
   
   {
-    field: "accountsreceivables_balance", 
+    field: "accountsreceivablesbalance", 
     name: "Accounts Receivable Balance",
     description: "Money owed to the company by customers for goods or services delivered (Balance Sheet)",
     category: "Current Assets",
@@ -117,7 +117,7 @@ export const balanceSheetFields: FieldMetadata[] = [
   },
   
   {
-    field: "inventory_balance",
+    field: "inventorybalance",
     name: "Inventory Balance", 
     description: "Value of goods held for sale or raw materials for production (Balance Sheet)",
     category: "Current Assets",

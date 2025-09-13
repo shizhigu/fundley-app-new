@@ -195,12 +195,12 @@ export const incomeStatementFields: FieldMetadata[] = [
   },
 
   {
-    field: "depreciationAndAmortization",
-    name: "Depreciation and Amortization",
-    description: "Non-cash charges for asset depreciation and intangible amortization",
+    field: "depreciationandamortizationaccounting",
+    name: "Depreciation and Amortization (Accounting)",
+    description: "Non-cash charges for asset depreciation and intangible amortization from accounting perspective",
     category: "Operating Expenses",
-    aliases: ["D&A", "depreciation", "amortization", "折旧摊销"],
-    useCases: ["Asset utilization", "Non-cash expenses", "EBITDA calculation"],
+    aliases: ["accounting D&A", "income statement depreciation", "accounting depreciation", "会计折旧摊销"],
+    useCases: ["Asset utilization", "Non-cash expenses", "EBITDA calculation", "Accounting depreciation"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",
@@ -465,12 +465,12 @@ export const incomeStatementFields: FieldMetadata[] = [
   },
 
   {
-    field: "netIncome",
-    name: "Net Income",
-    description: "Total net income after all items",
+    field: "netincomeaccounting",
+    name: "Net Income (Accounting)",
+    description: "Total net income after all items from accounting perspective",
     category: "Net Profitability",
-    aliases: ["net profit", "total earnings", "净利润", "净收益"],
-    useCases: ["Overall profitability", "EPS calculation", "Dividend capacity", "ROE calculation"],
+    aliases: ["accounting net profit", "income statement earnings", "accounting earnings", "会计净利润"],
+    useCases: ["Overall profitability", "EPS calculation", "Dividend capacity", "ROE calculation", "Accounting profit"],
     dataSource: {
       endpoint: "/income-statement",
       dataType: "getIncomeStatement",

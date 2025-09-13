@@ -3,12 +3,12 @@ import type { FieldMetadata } from './field-metadata'
 export const cashFlowFields: FieldMetadata[] = [
   // Operating Activities
   {
-    field: "netIncome",
-    name: "Net Income",
-    description: "Starting point for operating cash flow calculation",
+    field: "netincomecashflow",
+    name: "Net Income (Cash Flow)",
+    description: "Starting point for operating cash flow calculation from cash flow perspective",
     category: "Operating Activities",
-    aliases: ["net profit", "bottom line", "净利润"],
-    useCases: ["Cash flow analysis", "Quality of earnings", "Profitability assessment"],
+    aliases: ["cash flow starting point", "operating cash flow base", "现金流净利润"],
+    useCases: ["Cash flow analysis", "Quality of earnings", "Profitability assessment", "Cash conversion"],
     dataSource: {
       endpoint: "/cash-flow-statement",
       dataType: "getCashFlow",
@@ -22,12 +22,12 @@ export const cashFlowFields: FieldMetadata[] = [
   },
   
   {
-    field: "depreciationAndAmortization",
-    name: "Depreciation and Amortization",
-    description: "Non-cash charges for asset deterioration and intangible asset amortization",
+    field: "depreciationandamortizationcashflow",
+    name: "Depreciation and Amortization (Cash Flow Statement)",
+    description: "Non-cash charges for asset deterioration and intangible asset amortization - cash flow perspective",
     category: "Operating Activities",
-    aliases: ["D&A", "depreciation", "amortization", "折旧摊销"],
-    useCases: ["Cash flow quality", "Capital intensity", "Non-cash expenses"],
+    aliases: ["D&A cashflow", "cash flow depreciation", "现金流折旧摊销"],
+    useCases: ["Cash flow quality", "Capital intensity", "Non-cash expenses", "Free cash flow calculation"],
     dataSource: {
       endpoint: "/cash-flow-statement",
       dataType: "getCashFlow",
@@ -79,7 +79,7 @@ export const cashFlowFields: FieldMetadata[] = [
   },
   
   {
-    field: "accountsreceivables_change",
+    field: "accountsreceivableschange",
     name: "Accounts Receivables Change", 
     description: "Cash impact from changes in customer receivables (Cash Flow)",
     category: "Operating Activities",
@@ -98,7 +98,7 @@ export const cashFlowFields: FieldMetadata[] = [
   },
   
   {
-    field: "inventory_change",
+    field: "inventorychange",
     name: "Inventory Change",
     description: "Cash impact from changes in inventory levels (Cash Flow)",
     category: "Operating Activities",

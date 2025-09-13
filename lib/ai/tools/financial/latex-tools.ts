@@ -261,6 +261,7 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 ✅ **Smart table selection**: Use financial_statements for financial metrics, company_profiles for company info
 ✅ **Minimal joins**: JOIN company_profiles ONLY if formula requires company/market data
 
+
 ## TABLE SELECTION STRATEGY:
 
 1. **Primary source**: \`financial_statements\` (contains 95% of financial metrics)
