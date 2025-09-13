@@ -185,6 +185,9 @@ export async function POST(request: Request) {
         const enhancedSystemPrompt = memoryContext 
           ? `${systemPromptText}\n\n## Relevant Context from Previous Conversations:\n${memoryContext}`
           : systemPromptText;
+        
+        // 🐛 DEBUG: Print complete system prompt for debugging
+        console.log('🤖 COMPLETE SYSTEM PROMPT:', enhancedSystemPrompt);
 
         const result = streamText({
           model,

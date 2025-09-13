@@ -369,7 +369,6 @@ const PurePreviewMessage = ({
               containsRealData: result.containsRealData,
               verificationMessage: result.verificationMessage
             });
-            console.log('✅ Got suggestions:', result.suggestions);
           }
         })
         .catch(error => {
