@@ -32,16 +32,16 @@ export function VisualizationMessage({
   const [outputImage, setOutputImage] = useState<string | null>(cachedImage || null);
   
   // Debug logging
-  console.log('🎨 VisualizationMessage render:', {
-    id,
-    title,
-    hasCachedHtml: !!cachedHtml,
-    hasCachedImage: !!cachedImage,
-    hasOutputHtml: !!outputHtml,
-    hasOutputImage: !!outputImage,
-    isLoading,
-    error
-  });
+  // console.log('🎨 VisualizationMessage render:', {
+  //   id,
+  //   title,
+  //   hasCachedHtml: !!cachedHtml,
+  //   hasCachedImage: !!cachedImage,
+  //   hasOutputHtml: !!outputHtml,
+  //   hasOutputImage: !!outputImage,
+  //   isLoading,
+  //   error
+  // });
   const executionAbortController = useRef<AbortController | null>(null);
 
 
