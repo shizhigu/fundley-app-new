@@ -130,7 +130,7 @@ export class LaTeXFinancialEngine {
           sqlGenerationTimeMs: sqlGenerationTime,
           duckdbExecutionTimeMs: duckdbExecutionTime,
           ...(processedResults.hasOverflow && {
-            warning: `Results limited to 50 rows (${rawResults.length} total rows available)`
+            warning: `Results limited to 200 rows (${rawResults.length} total rows available)`
           })
         }
       };
@@ -475,9 +475,9 @@ Generate SQL based on user query complexity and optimization mode:
     displayedRows: number;
     hasOverflow: boolean;
   } {
-    // Limit results to 50 rows to prevent overwhelming the agent
-    const limitedResults = results.slice(0, 50);
-    const hasOverflow = results.length > 50;
+    // Limit results to 200 rows to prevent overwhelming the agent
+    const limitedResults = results.slice(0, 200);
+    const hasOverflow = results.length > 200;
     
     // Process all rows, preserving all fields and handling BigInt values
     const processedRows = limitedResults.map(row => {
