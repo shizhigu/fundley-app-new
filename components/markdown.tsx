@@ -16,10 +16,17 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
   }, [children]);
 
   return (
-    <div className="prose prose-sm max-w-none dark:prose-invert">
-      <Streamdown 
+    <div
+      className="prose prose-sm dark:prose-invert mobile-responsive-prose"
+      style={{
+        maxWidth: 'none',
+        width: '100%',
+        minWidth: 0 // 确保可以收缩
+      }}
+    >
+      <Streamdown
         parseIncompleteMarkdown={true}
-        className="streamdown-content"
+        className="streamdown-content mobile-responsive-content"
         shikiTheme={["github-light", "github-dark"]}
         components={{
           code: ({ children, className, ...props }) => {
@@ -38,12 +45,13 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
             return <code {...props}>{children}</code>;
           },
           pre: ({ children, ...props }) => (
-            <pre 
-              className="!bg-gray-900 !text-gray-100 !p-4 !rounded-lg !border-0 !shadow-none overflow-x-auto font-mono text-sm leading-relaxed"
+            <pre
+              className="!bg-gray-900 !text-gray-100 !p-4 !rounded-lg !border-0 !shadow-none overflow-x-auto font-mono text-sm leading-relaxed w-full max-w-full"
               style={{
                 background: '#1a1a1a !important',
                 border: 'none !important',
-                boxShadow: 'none !important'
+                boxShadow: 'none !important',
+                maxWidth: '100% !important'
               }}
               {...props}
             >

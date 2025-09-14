@@ -124,12 +124,19 @@ IMPORTANT GUIDELINES:
    ) subquery
    GROUP BY symbol;
 
-4. MONETARY VALUES:
+4. FIELD NAMES - CRITICAL REQUIREMENT:
+   - Use EXACT field names as specified in the database schema above
+   - If a formula references specific field names, use those EXACT names in SQL
+   - Do NOT rename, abbreviate, or modify field names
+   - Examples: Use 'revenue' not 'total_revenue'
+   - Field names are case-sensitive and must match schema exactly
+
+5. MONETARY VALUES:
    - All monetary fields are stored in CENTS (divide by 100.0 for dollars)
    - Use CAST(field AS NUMERIC) / 100.0 for dollar amounts
    - For ratios, keep as raw values to avoid rounding errors
 
-5. JOIN PATTERNS:
+6. JOIN PATTERNS:
    - Always join on: symbol = symbol AND fiscalYear = fiscalYear AND period = period
    - Use table aliases (i, c, b for income, cashflow, balance)
 
@@ -144,6 +151,14 @@ ${params.timeRange ? `Time Range: ${JSON.stringify(params.timeRange)}` : 'Time R
 ${params.analysisType ? `Analysis Type: ${params.analysisType}` : 'Analysis Type: Not specified'}
 ${params.metricName ? `Metric Name: ${params.metricName}` : ''}
 
+CRITICAL: DATA SUFFICIENCY ANALYSIS
+===================================
+<thinking>
+Based on the formula and user requirements, determine how much historical data is needed to perform this calculation properly. Consider what periods are required and ensure the SQL fetches enough data.
+</thinking>
+
+Ensure the SQL query fetches sufficient historical data for the requested calculation.
+
 RESPONSE FORMAT:
 ================
 Respond with JSON only:
@@ -156,6 +171,7 @@ Respond with JSON only:
 Generate a precise, efficient SQL query that addresses the user's request. Focus on:
 - Correct field names and table joins
 - Proper period handling for TTM and multi-period analysis
+- Sufficient data range for the requested calculation
 - Efficient query structure
 - Clear, descriptive field aliases`;
 }

@@ -15,7 +15,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  maximumScale: 1,
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5, // 允许用户放大到5倍
+  minimumScale: 1,
+  userScalable: true,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'hsl(210, 20%, 98%)' },
     { media: '(prefers-color-scheme: dark)', color: 'hsl(210, 40%, 2%)' },

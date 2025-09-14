@@ -1,10 +1,16 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createXai } from '@ai-sdk/xai';
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai';
 import type { ModelId } from './models';
 
 // Configure OpenRouter with API key
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+// Configure xAI with direct API key
+const xai = createXai({
+  apiKey: process.env.XAI_API_KEY,
 });
 
 // Model mappings - just change these strings to switch models
@@ -30,5 +36,5 @@ export const titleModel = openrouter('google/gemini-2.5-flash-lite'); // Lightwe
 export const artifactModel = openrouter('google/gemini-2.5-pro'); // Full model for artifacts
 
 // Sub-agent models - optimized for specific tasks
-export const financialFieldsModel = openrouter('anthropic/claude-opus-4.1'); // More powerful for complex SQL generation
+export const financialFieldsModel = xai('grok-code-fast'); // Direct xAI connection for fast code generation
 export const subAgentModel = openrouter('google/gemini-2.5-flash'); // General purpose sub-agent model

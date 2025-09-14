@@ -141,7 +141,7 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col h-screen w-full max-w-full relative" style={{ background: 'transparent !important' }}>
+      <div className="flex flex-col h-full w-full max-w-full relative" style={{ background: 'transparent !important' }}>
         {/* ChatHeader moved to floating DevTools only */}
         <ChatHeader
           chatId={id}

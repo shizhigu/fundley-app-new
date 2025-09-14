@@ -3,6 +3,142 @@
 /* KaTeX CSS - 必须在Tailwind之前加载 */
 @import 'katex/dist/katex.min.css';
 
+/* KaTeX responsive fixes for split-screen layout */
+.katex-display {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+.katex {
+  font-size: 0.9em !important; /* Slightly smaller for split screen */
+  max-width: 100% !important;
+}
+
+/* 强制所有KaTeX子元素遵守容器宽度 */
+.katex-display * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.katex-display .katex {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+
+/* Mobile optimizations */
+.mobile-responsive-prose {
+  /* 强制移除prose的所有宽度约束 */
+  max-width: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-responsive-content {
+  /* 确保内容容器完全响应式 */
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 1024px) {
+  /* 确保消息在移动端正确换行 */
+  .professional-messages-container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* 强制KaTeX适应容器宽度 */
+  .mobile-responsive-prose .katex-display {
+    font-size: 0.8em !important;
+    margin: 0.5em 0 !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: block !important;
+    width: 100% !important;
+    contain: layout style !important; /* CSS containment */
+    padding-right: 10px !important; /* 防止滚动条遮挡 */
+  }
+
+  .mobile-responsive-prose .katex {
+    font-size: 0.75em !important;
+    max-width: 100% !important;
+    transform: scale(0.9) !important; /* 直接缩小10% */
+    transform-origin: left center !important;
+    display: inline-block !important;
+  }
+
+  /* 确保所有KaTeX元素都受限制 */
+  .mobile-responsive-prose .katex-display > .katex {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* 针对KaTeX的具体元素 */
+  .mobile-responsive-prose .katex-display .katex .base {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+
+  /* 确保markdown内容不溢出 */
+  .mobile-responsive-content {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-responsive-content pre {
+    font-size: 0.75rem !important;
+    padding: 0.75rem !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-responsive-content table {
+    font-size: 0.8rem !important;
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .professional-messages-container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    gap: 1rem !important;
+  }
+
+  /* 手机端更严格的KaTeX限制 */
+  .mobile-responsive-prose .katex-display {
+    font-size: 0.75em !important;
+    transform: scale(0.9);
+    transform-origin: left top;
+  }
+
+  .mobile-responsive-prose .katex {
+    font-size: 0.7em !important;
+  }
+
+  /* 针对KaTeX内部元素的强制限制 */
+  .mobile-responsive-prose .katex-display .katex > .katex-html {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+
+  .mobile-responsive-prose .katex-display .base {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

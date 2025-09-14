@@ -10,6 +10,61 @@ import { api } from '@/convex/_generated/api';
 import { LaTeXFinancialEngine } from '@/lib/latex-financial/engine';
 import type { LaTeXMetricDefinition, LaTeXCalculationRequest } from '@/lib/latex-financial/types';
 
+/**
+ * 根据名字解析LaTeX metrics，支持精确匹配和包含匹配
+ */
+async function resolveMetricNames(metricNames: string[], convex: ConvexHttpClient): Promise<Array<{id: string, name: string, matchType: 'exact' | 'partial'}>> {
+  const results: Array<{id: string, name: string, matchType: 'exact' | 'partial'}> = [];
+
+  // 获取所有可用的metrics进行匹配
+  const allMetrics = await convex.query(api.latexMetrics.getAccessibleLatexMetrics, {
+    limit: 1000 // 获取足够多的metrics进行匹配
+  });
+  if (!allMetrics || allMetrics.length === 0) {
+    console.warn('No LaTeX metrics found in database');
+    return results;
+  }
+
+  for (const inputName of metricNames) {
+    const trimmedInput = inputName.trim();
+    let found = false;
+
+    // 1. 精确匹配（不区分大小写）
+    for (const metric of allMetrics) {
+      if (metric.name.toLowerCase() === trimmedInput.toLowerCase()) {
+        results.push({
+          id: metric._id,
+          name: metric.name,
+          matchType: 'exact'
+        });
+        found = true;
+        break;
+      }
+    }
+
+    // 2. 如果没找到精确匹配，尝试包含匹配
+    if (!found) {
+      for (const metric of allMetrics) {
+        if (metric.name.toLowerCase().includes(trimmedInput.toLowerCase())) {
+          results.push({
+            id: metric._id,
+            name: metric.name,
+            matchType: 'partial'
+          });
+          found = true;
+          break; // 只取第一个匹配结果，避免重复
+        }
+      }
+    }
+
+    if (!found) {
+      console.warn(`No metric found matching: "${inputName}"`);
+    }
+  }
+
+  return results;
+}
+
 
 /**
  * 创建LaTeX财务指标工具 (工厂函数)
@@ -73,29 +128,29 @@ export const createLatexMetric = (convex: ConvexHttpClient) => tool({
  * 计算LaTeX财务指标工具 (工厂函数)
  */
 export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
-  description: `LaTeX financial metric calculation tool with unified SQL generation.
-  
-  This tool takes LaTeX mathematical formulas and generates a single unified SQL query to calculate all requested metrics together.
-  
+  description: `LaTeX financial metric calculation tool with intelligent name matching.
+
+  This tool takes metric names (not IDs) and generates unified SQL queries to calculate all requested metrics together.
+
   🎯 **Key Features:**
+  - Smart name matching: Use exact names like "ROE" or partial names like "Return"
+  - No more ID confusion: Simply use metric names instead of database IDs
   - Converts LaTeX formulas directly to SQL using LLM intelligence
   - Generates unified SQL for multiple metrics in one query
   - Uses unified financial_statements table for consistent data access
   - Handles time series data with proper quarterly transitions
-  - Returns comprehensive results with all metrics in structured format
-  
-  📋 **Processing Approach:**
-  - Analyzes all LaTeX formulas together
-  - Generates single SQL query with all metrics as columns
-  - Uses financial_statements table as primary data source
-  - Joins company_profiles only when company data needed
-  - Maintains data consistency across all calculated metrics
-  
-  **Example Usage:**
-  Multiple metrics like ROE, ROCE, ROA calculated together in one SQL query for data alignment and performance.`,
+
+  📝 **Name Matching:**
+  - Exact match: "ROE" matches "ROE"
+  - Partial match: "Return" matches "Return on Equity"
+  - Case insensitive: "roe" matches "ROE"
+  - Multiple metrics: ["ROE", "ROCE", "Custom Profitability"]
+
+  **Example Input:**
+  metricNames: ["ROE", "Return on Assets", "Custom ROCE"]`,
   
   inputSchema: z.object({
-    metricIds: z.array(z.string()).describe('LaTeX metric IDs from database (supports batch calculation of multiple metrics)'),
+    metricNames: z.array(z.string()).describe('LaTeX metric names (supports exact names and partial matching). Examples: ["ROE", "Return on Equity", "Custom ROCE"]'),
     
     // Data requirements specification
     dataRequirements: z.object({
@@ -126,31 +181,46 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
   }),
 
   execute: async ({
-    metricIds,
+    metricNames,
     dataRequirements,
     querySpecification,
     expectedOutput
   }) => {
     try {
-      console.log(`🧮 Calculating ${metricIds.length} LaTeX metric(s): ${metricIds.join(', ')}`);
+      console.log(`🧮 Calculating ${metricNames.length} LaTeX metric(s): ${metricNames.join(', ')}`);
       console.log(`📊 Data Requirements:`, dataRequirements);
       console.log(`🔍 Query Specification:`, querySpecification);
       console.log(`📋 Expected Output:`, expectedOutput);
-      
-      // Fetch all metrics in a single batch (no concurrency needed for metadata)
+
+      // Step 1: Resolve metric names to IDs
+      const resolvedMetrics = await resolveMetricNames(metricNames, convex);
+      if (resolvedMetrics.length === 0) {
+        return {
+          success: false,
+          error: 'No metrics found',
+          message: `❌ No LaTeX metrics found matching: ${metricNames.join(', ')}`
+        };
+      }
+
+      // Step 2: Fetch full metric definitions
       const metrics: any[] = [];
-      for (const metricId of metricIds) {
-        const metric = await convex.query(api.latexMetrics.getLatexMetric, { 
-          id: metricId as any 
+      for (const resolvedMetric of resolvedMetrics) {
+        const metric = await convex.query(api.latexMetrics.getLatexMetric, {
+          id: resolvedMetric.id as any
         });
         if (!metric) {
-          return {
-            success: false,
-            error: 'Metric not found',
-            message: `❌ LaTeX metric not found: ${metricId}`
-          };
+          console.warn(`Metric not found for ID: ${resolvedMetric.id}`);
+          continue;
         }
         metrics.push(metric);
+      }
+
+      if (metrics.length === 0) {
+        return {
+          success: false,
+          error: 'No metrics found after resolution',
+          message: `❌ No valid LaTeX metrics found after resolving names: ${metricNames.join(', ')}`
+        };
       }
 
       // Build unified metric definitions for all requested metrics
@@ -237,10 +307,6 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 
 ### Core Financial Data Table:
 **\`financial_statements\`** - Unified table containing all financial statement data:
-- **Income Statement fields**: revenue, netIncome, operatingIncome, ebit, incomeTaxExpense, etc.
-- **Balance Sheet fields**: totalAssets, totalLiabilities, totalShareholderEquity, inventory_balance, accountsreceivables_balance, etc.
-- **Cash Flow fields**: operatingCashFlow, capitalExpenditure, freeCashFlow, inventory_change, accountsreceivables_change, etc.
-- **Meta fields**: symbol, fiscalyear, period, date
 
 ### Supplementary Tables (use ONLY when needed):
 **\`company_profiles\`** - Company information and market data:
@@ -294,7 +360,17 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 - **Sort/Limit**: ${querySpecification.sortAndLimit}
 - **Output Fields**: ${expectedOutput.sqlFields}
 
+## DATA SUFFICIENCY ANALYSIS:
+<thinking>
+Based on the LaTeX formulas and analysis requirements, determine how much historical data is needed to perform these calculations properly. Consider:
+- What periods are required for each metric?
+- Do any formulas need previous period data?
+- Are there any trend or growth calculations that need multiple periods?
+- What's the minimum data range needed for meaningful results?
+</thinking>
+
 ## CRITICAL REQUIREMENTS:
+- **Data sufficiency**: Ensure SQL fetches enough historical periods for all calculations
 - **Time dimensions**: ALWAYS include fiscalyear, period, date in SELECT
 - **Quarterly ordering**: Include both quarter and fiscal year for proper time series
 - **Multi-period calculations**: Use proper time ordering (ORDER BY date or fiscalyear, period)
@@ -330,26 +406,26 @@ Generate ONE comprehensive SQL query that calculates ALL metrics together:
       
       // Log to Convex for the unified calculation (single entry)
       await convex.mutation(api.latexMetrics.updateMetricUsage, {
-        metricId: metricIds[0] as any, // Primary metric for logging
+        metricId: resolvedMetrics[0].id as any, // Primary metric for logging
         executionTimeMs: result.metadata?.executionTimeMs,
         sql: result.metadata?.generatedSQL
       });
-      
+
       // Clean up and close connection
       await engine.close();
-      
+
       // Return unified results with metadata about all metrics
       return {
         ...result,
         unifiedAnalysis: {
-          totalMetrics: metricIds.length,
+          totalMetrics: resolvedMetrics.length,
           metrics: allMetricDefinitions.map(m => ({
             name: m.name,
             formula: m.latexFormula,
             category: m.category
           })),
           calculationMethod: 'unified_sql',
-          message: `✅ Unified analysis completed for ${metricIds.length} metrics: ${allMetricDefinitions.map(m => m.name).join(', ')}`
+          message: `✅ Unified analysis completed for ${resolvedMetrics.length} metrics: ${allMetricDefinitions.map(m => m.name).join(', ')}`
         }
       };
       
