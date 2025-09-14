@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { createChart, IChartApi, LineSeries, CandlestickSeries, ISeriesApi } from 'lightweight-charts';
 
 interface TradingChartProps {
@@ -14,39 +14,63 @@ interface ChartData {
   high: number;
   low: number;
   close: number;
-  value?: number;
+  volume?: number;
+  adjClose?: number;
+}
+
+interface ChartApiResponse {
+  success: boolean;
+  symbol: string;
+  period: string;
+  data: ChartData[];
+  count: number;
+  latestPrice: number;
+  error?: string;
 }
 
 export function TradingChart({ symbol = 'AAPL', className = '' }: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const [currentPeriod, setCurrentPeriod] = useState('3M');
+  const [isLoading, setIsLoading] = useState(false);
+  const [latestPrice, setLatestPrice] = useState<number>(0);
+  const [priceChange, setPriceChange] = useState<number>(0);
 
-  // Generate sample data for demonstration
-  const generateSampleData = useCallback((): ChartData[] => {
-    const data: ChartData[] = [];
-    const now = Math.floor(Date.now() / 1000);
-    const oneDay = 24 * 60 * 60;
-    
-    for (let i = 100; i >= 0; i--) {
-      const time = now - (i * oneDay);
-      const basePrice = 150 + Math.sin(i / 10) * 20;
-      const open = basePrice + (Math.random() - 0.5) * 10;
-      const close = open + (Math.random() - 0.5) * 20;
-      const high = Math.max(open, close) + Math.random() * 10;
-      const low = Math.min(open, close) - Math.random() * 10;
-      
-      data.push({
-        time: new Date(time * 1000).toISOString().split('T')[0],
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
-        value: Number(close.toFixed(2))
-      });
+  // 从API获取真实股票数据
+  const fetchChartData = useCallback(async (stockSymbol: string, period: string): Promise<ChartData[]> => {
+    setIsLoading(true);
+    try {
+      console.log(`📊 Fetching chart data for ${stockSymbol}, period: ${period}`);
+
+      const response = await fetch(`/api/stock/chart-data?symbol=${stockSymbol}&period=${period}`);
+      const result: ChartApiResponse = await response.json();
+
+      if (!result.success) {
+        console.error('❌ API Error:', result.error);
+        return [];
+      }
+
+      console.log(`✅ Loaded ${result.count} data points for ${stockSymbol}`);
+
+      // 更新价格信息
+      setLatestPrice(result.latestPrice);
+
+      // 计算涨跌幅
+      if (result.data.length > 1) {
+        const firstPrice = result.data[0].close;
+        const change = ((result.latestPrice - firstPrice) / firstPrice) * 100;
+        setPriceChange(change);
+      }
+
+      return result.data;
+
+    } catch (error) {
+      console.error('❌ Chart data fetch failed:', error);
+      return [];
+    } finally {
+      setIsLoading(false);
     }
-    
-    return data;
   }, []);
 
   // Initialize chart
@@ -84,13 +108,6 @@ export function TradingChart({ symbol = 'AAPL', className = '' }: TradingChartPr
       wickDownColor: '#ef5350',
     });
 
-    // Set sample data
-    const sampleData = generateSampleData();
-    candlestickSeries.setData(sampleData);
-
-    // Fit content to screen
-    chart.timeScale().fitContent();
-
     // Store references
     chartRef.current = chart;
     candlestickSeriesRef.current = candlestickSeries;
@@ -114,15 +131,26 @@ export function TradingChart({ symbol = 'AAPL', className = '' }: TradingChartPr
         chartRef.current = null;
       }
     };
-  }, [generateSampleData]);
+  }, []);
 
-  // Update data when symbol changes
+  // 加载股票数据的独立effect
   useEffect(() => {
-    if (candlestickSeriesRef.current) {
-      const newData = generateSampleData();
-      candlestickSeriesRef.current.setData(newData);
-    }
-  }, [symbol, generateSampleData]);
+    const loadChartData = async () => {
+      const data = await fetchChartData(symbol, currentPeriod);
+      if (data.length > 0 && candlestickSeriesRef.current) {
+        candlestickSeriesRef.current.setData(data);
+        // Fit content after data is loaded
+        chartRef.current?.timeScale().fitContent();
+      }
+    };
+
+    loadChartData();
+  }, [symbol, currentPeriod, fetchChartData]);
+
+  // 时间周期按钮点击处理
+  const handlePeriodChange = (period: string) => {
+    setCurrentPeriod(period);
+  };
 
   return (
     <div className={`w-full h-full ${className}`}>
@@ -130,26 +158,39 @@ export function TradingChart({ symbol = 'AAPL', className = '' }: TradingChartPr
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center space-x-4">
           <h2 className="text-xl font-semibold">{symbol}</h2>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-              ↗ +2.45%
-            </span>
-            <span>$156.78</span>
-          </div>
+          {isLoading ? (
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <span className={`px-2 py-1 rounded ${
+                priceChange >= 0
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {priceChange >= 0 ? '↗' : '↘'} {priceChange.toFixed(2)}%
+              </span>
+              <span>${latestPrice.toFixed(2)}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-2">
-          <button className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">
-            1D
-          </button>
-          <button className="px-3 py-1 text-sm bg-blue-500 text-white rounded">
-            1W
-          </button>
-          <button className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">
-            1M
-          </button>
-          <button className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">
-            1Y
-          </button>
+          {['1W', '1M', '3M', '6M', '1Y', '5Y'].map((period) => (
+            <button
+              key={period}
+              onClick={() => handlePeriodChange(period)}
+              disabled={isLoading}
+              className={`px-3 py-1 text-sm rounded transition-colors ${
+                currentPeriod === period
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 disabled:opacity-50'
+              }`}
+            >
+              {period}
+            </button>
+          ))}
         </div>
       </div>
       
