@@ -58,7 +58,7 @@ export function TradingChart({ symbol = 'AAPL', className = '' }: TradingChartPr
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { color: 'transparent' },
         textColor: '#333',
       },
       grid: {
