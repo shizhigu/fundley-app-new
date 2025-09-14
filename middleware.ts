@@ -13,6 +13,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks(.*)',  // For Clerk webhooks
   '/api/metadata',  // For metadata extraction
   '/api/formula-builder/test',  // For formula builder testing
+  '/api/stock/chart-data',  // For TradingView chart data
+  '/api/motherduck-proxy',  // For DuckDB queries (internal use)
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

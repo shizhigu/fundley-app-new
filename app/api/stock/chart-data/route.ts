@@ -30,17 +30,17 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔍 DuckDB Query: ${query}`);
 
-    // 调用MotherDuck代理
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/motherduck-proxy`, {
+    // 直接调用MotherDuck API (避免内部HTTP调用)
+    const renderUrl = process.env.MOTHERDUCK_API_URL || 'https://fundley-backend.onrender.com';
+
+    const response = await fetch(`${renderUrl}/query`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql: query }),
     });
 
     if (!response.ok) {
-      throw new Error(`MotherDuck query failed: ${response.statusText}`);
+      throw new Error(`MotherDuck API failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 转换为TradingView格式
-    const chartData = data.results.map((row: any) => ({
+    const chartData = data.data.map((row: any) => ({
       time: row.date, // DuckDB DATE format: YYYY-MM-DD
       open: parseFloat(row.open),
       high: parseFloat(row.high),
