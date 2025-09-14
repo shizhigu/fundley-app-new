@@ -27,8 +27,8 @@ export function JSVisualizationMessage({
 }: JSVisualizationMessageProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Generate stable iframe key for consistent rendering
-  const iframeKey = `js-viz-iframe-${id}`;
+  // Generate truly unique iframe key using creation timestamp to force independence
+  const iframeKey = `js-viz-iframe-${id}-${cachedHtml?.length || 0}`;
 
   console.log(`🎨 Rendering JSVisualizationMessage:`, {
     id,
@@ -73,14 +73,16 @@ export function JSVisualizationMessage({
         )}
       >
         {cachedHtml ? (
-          <div className="w-full min-h-[500px] max-h-[700px] bg-white overflow-auto">
+          <div className="w-full min-h-[500px] max-h-[700px] bg-white overflow-auto" key={`container-${iframeKey}`}>
             <iframe
               key={iframeKey}
               srcDoc={cachedHtml}
               className="w-full min-h-[500px] border-0"
               title={`Interactive Chart - ${title}`}
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
               style={{ height: '100%' }}
+              // Force iframe isolation with unique name
+              name={`viz-frame-${id}`}
             />
           </div>
         ) : (

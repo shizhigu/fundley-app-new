@@ -628,8 +628,9 @@ const PurePreviewMessage = ({
                   });
 
                   return (
-                    <div key={uniqueKey}>
+                    <div key={uniqueKey} data-viz-id={output.id} data-tool-call={toolCallId}>
                       <JSVisualizationMessage
+                        key={uniqueKey} // Force unique component instance
                         id={output.id}
                         title={output.title}
                         description={output.description}
