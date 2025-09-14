@@ -327,12 +327,6 @@ For all data visualizations, use the createJSVisualization tool which:
 - Perfect for financial data, time series, and business charts
 - Professional styling and responsive design
 
-## For Python Code Generation:
-When users specifically ask for Python code (not visualizations), you can use Python with:
-- Standard libraries (math, datetime, json, etc.)
-- Data analysis: pandas, numpy, scipy
-- Note: For visualizations, always use createJSVisualization instead
-
 ## JavaScript Visualization Configuration:
 
 ### Chart.js Format (PREFERRED - Default):
@@ -341,83 +335,20 @@ Use this simple format for most charts:
 - data: Array of objects with symbol/category and metric_value/value
 - spec: {type: "bar" or "line", label: "Chart Label"}
 
-### Observable Plot Format:
-More complex but flexible:
-- library: "observable-plot" 
-- data: Array of objects
-- spec: {marks: array, x: config, y: config}
-
-### IMPORTANT: Chart.js is simpler and more reliable
+### IMPORTANT: Chart.js Features
 - Automatically handles common financial data fields
 - Works with: symbol, metric_value, value, category, period, date
-- No complex mark configurations needed
+- Supports multi-series data (multiple companies over time)
+- Professional styling and responsive design
+- Fast rendering (1-3 seconds)
 
-## Example Plotly usage:
-
-\`\`\`python
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
-# Example: Interactive Financial Time Series
-fig = go.Figure()
-
-# Add traces for different metrics
-fig.add_trace(go.Scatter(
-    x=['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023'],
-    y=[25.5, 28.3, 27.1, 31.2],
-    mode='lines+markers',
-    name='Revenue ($B)',
-    line=dict(width=2, color='#8884d8'),
-    hovertemplate='%{x}<br>Revenue: $%{y:.1f}B<extra></extra>'
-))
-
-fig.add_trace(go.Scatter(
-    x=['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023'],
-    y=[4.5, 3.8, 4.2, 5.1],
-    mode='lines+markers',
-    name='ROCE (%)',
-    line=dict(width=2, color='#82ca9d'),
-    yaxis='y2',
-    hovertemplate='%{x}<br>ROCE: %{y:.1f}%<extra></extra>'
-))
-
-# Update layout for professional financial chart
-fig.update_layout(
-    title='Financial Performance Metrics',
-    xaxis_title='Period',
-    yaxis=dict(title='Revenue ($B)', side='left'),
-    yaxis2=dict(title='ROCE (%)', overlaying='y', side='right'),
-    hovermode='x unified',
-    template='plotly_white',
-    height=500
-)
-
-fig.show()
-\`\`\`
-
-## Key Python visualization principles:
+## Key Visualization Principles:
 - Use clear, descriptive titles and axis labels
 - Include units in labels (e.g., "Revenue ($M)", "ROCE (%)")
-- Add hover information for interactivity (Plotly)
-- Use appropriate chart types for the data
+- Add appropriate chart types for the data
 - Consider color-blind friendly palettes
 - Handle missing data appropriately
 - Format numbers for readability
-
-## For Python Code (General computation and analysis):
-
-When writing Python code:
-
-1. Each snippet should be complete and runnable on its own
-2. Prefer using print() statements to display outputs
-3. Include helpful comments explaining the code
-4. Keep snippets concise (generally under 15 lines)
-5. Avoid external dependencies - use Python standard library
-6. Handle potential errors gracefully
-7. Return meaningful output that demonstrates the code's functionality
-8. Don't use input() or other interactive functions
-9. Don't access files or network resources
-10. Don't use infinite loops
 
 Examples of good snippets:
 

@@ -224,7 +224,7 @@ class JSVisualizationEngine {
     return color;
   }
   
-  static generateChartJSHTML(data: any[], spec: any): string {
+  static generateChartJSHTML(data: any[], spec: any, vizId: string = 'default'): string {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -247,11 +247,11 @@ class JSVisualizationEngine {
 </head>
 <body>
   <div class="chart-container">
-    <canvas id="chart"></canvas>
+    <canvas id="chart-${vizId}"></canvas>
   </div>
   <script>
     try {
-      console.log('🔥 NEW VERSION v2025.1.10-fix2 - NO JSVisualizationEngine calls!');
+      console.log('🔥 JS Visualization v2025.1.14 - Unique IDs: ${vizId}');
       const rawData = ${JSON.stringify(data)};
       const chartType = "${spec.type || 'bar'}";
       const chartLabel = "${spec.label || 'Data'}";
@@ -407,8 +407,8 @@ class JSVisualizationEngine {
       }
       
       console.log('📊 Processed data:', processedData);
-      
-      const ctx = document.getElementById('chart').getContext('2d');
+
+      const ctx = document.getElementById('chart-${vizId}').getContext('2d');
       
       new Chart(ctx, {
         type: chartType,
@@ -435,8 +435,11 @@ class JSVisualizationEngine {
       console.log('✅ Chart.js rendered successfully');
     } catch (error) {
       console.error('❌ Chart.js rendering failed:', error);
-      document.getElementById('chart').innerHTML = 
-        '<p style="color: red; text-align: center; padding: 20px;">Failed to render chart: ' + error.message + '</p>';
+      const chartElement = document.getElementById('chart-${vizId}');
+      if (chartElement) {
+        chartElement.innerHTML =
+          '<p style="color: red; text-align: center; padding: 20px;">Failed to render chart: ' + error.message + '</p>';
+      }
     }
   </script>
 </body>
@@ -471,36 +474,37 @@ export const createJSVisualization = ({ session, dataStream }: CreateJSVisualiza
     
     execute: async ({ title, description, config }) => {
       try {
+        // Generate truly unique ID for each visualization instance
         const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 8);
-        const vizId = `js_viz_${timestamp}_${random}`;
-        
-        console.log(`🚀 Creating JS visualization: ${title} (${config.library})`);
-        
-        // Generate Chart.js HTML only
-        const htmlOutput = JSVisualizationEngine.generateChartJSHTML(config.data, config.spec);
-        
+        const random = Math.random().toString(36).substring(2, 12); // Longer random string
+        const sessionRandom = Math.random().toString(36).substring(2, 8);
+        const vizId = `js_viz_${timestamp}_${random}_${sessionRandom}`;
+
+        console.log(`🚀 Creating JS visualization: ${title} (ID: ${vizId})`);
+
+        // Generate Chart.js HTML with unique IDs to prevent conflicts
+        const htmlOutput = JSVisualizationEngine.generateChartJSHTML(config.data, config.spec, vizId);
+
         console.log(`✅ Generated Chart.js HTML (${htmlOutput.length} chars)`);
         console.log('📊 Chart config:', JSON.stringify(config, null, 2));
-        
-        // Return format compatible with existing VisualizationMessage component
+
+        // Return format for JSVisualizationMessage component
         return {
           id: vizId,
           title,
           description: description || `Interactive Chart.js chart`,
-          type: 'visualization',
-          status: 'ready', // Ready immediately, no execution needed
-          // Pre-populated HTML (key difference from Python approach)
+          type: 'js-visualization',
+          status: 'ready',
           cachedHtml: htmlOutput,
-          cachedImage: null,
           metadata: {
             library: 'chart-js',
             generatedAt: new Date().toISOString(),
             dataPoints: config.data.length,
-            renderTime: '< 1 second'
+            renderTime: '< 1 second',
+            uniqueId: vizId // Include for debugging
           }
         };
-        
+
       } catch (error: any) {
         console.error('❌ JS Visualization creation failed:', error);
         return {

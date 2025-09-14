@@ -15,7 +15,7 @@ import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
-import { VisualizationMessage } from './visualization-message';
+import { JSVisualizationMessage } from './js-visualization-message';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
@@ -587,20 +587,19 @@ const PurePreviewMessage = ({
 
 
 
-              // Support both old and new visualization tools
-              if (type === 'tool-createVisualization' as any || type === 'tool-createJSVisualization' as any) {
+              // Support only createJSVisualization tool (Python visualization removed)
+              if (type === 'tool-createJSVisualization' as any) {
                 const { toolCallId, state } = part as any;
 
                 if (state === 'input-available') {
                   const { input } = part as any;
-                  const toolName = type === 'tool-createJSVisualization' ? 'JS visualization' : 'visualization';
                   return (
                     <div key={toolCallId} className="skeleton">
                       <div className="flex items-center gap-2 p-2 text-sm">
                         <div className="animate-spin size-fit">
                           <LoaderIcon />
                         </div>
-                        <span>Creating {toolName}: {input?.title}</span>
+                        <span>Creating visualization: {input?.title}</span>
                       </div>
                     </div>
                   );
@@ -608,7 +607,7 @@ const PurePreviewMessage = ({
 
                 if (state === 'output-available') {
                   const { output } = part as any;
-                  
+
                   if ('error' in output) {
                     return (
                       <div key={toolCallId} className="text-red-500 p-2 border rounded">
@@ -616,26 +615,26 @@ const PurePreviewMessage = ({
                       </div>
                     );
                   }
-                  
-                  // Render the visualization directly in the message  
-                  // console.log(`🎨 Rendering VisualizationMessage:`, {
-                  //   toolCallId,
-                  //   vizId: output.id,
-                  //   title: output.title,
-                  //   messageId: actualConvexId,
-                  //   isValidConvexId,
-                  //   key: `viz-${toolCallId}-${output.id}` // More unique key
-                  // });
+
+                  // Generate unique key for each visualization instance
+                  const uniqueKey = `js-viz-${toolCallId}-${output.id}-${Date.now()}`;
+
+                  console.log(`🎨 Rendering JS Visualization:`, {
+                    toolCallId,
+                    vizId: output.id,
+                    title: output.title,
+                    uniqueKey,
+                    hasHtml: !!output.cachedHtml
+                  });
+
                   return (
-                    <div key={`viz-${toolCallId}-${output.id}`}>
-                      <VisualizationMessage
+                    <div key={uniqueKey}>
+                      <JSVisualizationMessage
                         id={output.id}
-                        messageId={(message as any)._id || message.id} // Pass message ID for caching
                         title={output.title}
-                        code={output.code || ''} // For old tool compatibility
                         description={output.description}
-                        cachedHtml={output.cachedHtml} // Pass cached HTML if available
-                        cachedImage={output.cachedImage} // Pass cached image if available
+                        cachedHtml={output.cachedHtml}
+                        metadata={output.metadata}
                       />
                     </div>
                   );
