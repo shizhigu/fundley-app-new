@@ -616,8 +616,8 @@ const PurePreviewMessage = ({
                     );
                   }
 
-                  // Generate unique key for each visualization instance
-                  const uniqueKey = `js-viz-${toolCallId}-${output.id}-${Date.now()}`;
+                  // Generate stable key for each visualization instance
+                  const uniqueKey = `js-viz-${toolCallId}-${output.id}`;
 
                   console.log(`🎨 Rendering JS Visualization:`, {
                     toolCallId,
