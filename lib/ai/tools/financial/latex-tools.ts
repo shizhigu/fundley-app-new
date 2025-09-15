@@ -131,6 +131,7 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
   description: `LaTeX financial metric calculation tool with intelligent name matching.
 
   This tool takes metric names (not IDs) and generates unified SQL queries to calculate all requested metrics together.
+  Returns quarterly data with filingdate field for seamless chart integration.
 
   🎯 **Key Features:**
   - Smart name matching: Use exact names like "ROE" or partial names like "Return"
@@ -138,7 +139,7 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
   - Converts LaTeX formulas directly to SQL using LLM intelligence
   - Generates unified SQL for multiple metrics in one query
   - Uses unified financial_statements table for consistent data access
-  - Handles time series data with proper quarterly transitions
+  - Handles time series data with proper quarterly transitions and filingdate alignment
 
   📝 **Name Matching:**
   - Exact match: "ROE" matches "ROE"
@@ -271,9 +272,9 @@ ${metricsInfo}
 6. Handle time-series data consistently across all metrics
 
 **CRITICAL TIME DIMENSION REQUIREMENTS**:
-- ALWAYS include fiscalyear, period, and date fields in SELECT clause
+- ALWAYS include fiscalyear, period, and filingdate fields in SELECT clause
 - For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
-- For multi-period calculations: Ensure proper time ordering with ORDER BY date or fiscalyear, period
+- For multi-period calculations: Ensure proper time ordering with ORDER BY filingdate or fiscalyear, period
 - Never return only quarter without fiscal year context
 
 **FIELD REQUIREMENTS FOR EACH METRIC**:
@@ -371,22 +372,22 @@ Based on the LaTeX formulas and analysis requirements, determine how much histor
 
 ## CRITICAL REQUIREMENTS:
 - **Data sufficiency**: Ensure SQL fetches enough historical periods for all calculations
-- **Time dimensions**: ALWAYS include fiscalyear, period, date in SELECT
+- **Time dimensions**: ALWAYS include fiscalyear, period, filingdate in SELECT
 - **Quarterly ordering**: Include both quarter and fiscal year for proper time series
-- **Multi-period calculations**: Use proper time ordering (ORDER BY date or fiscalyear, period)
+- **Multi-period calculations**: Use proper time ordering (ORDER BY filingdate or fiscalyear, period)
 - **Context preservation**: Never return period without fiscal year context
 
 ## SQL FRAMEWORK EXAMPLES:
 \`\`\`sql
 -- Example 1: Pure financial metrics (most common)
-SELECT symbol, fiscalyear, period, date, 
+SELECT symbol, fiscalyear, period, filingdate,
        [metric1_calculation] as metric1_name,
        [metric2_calculation] as metric2_name
-FROM financial_statements 
+FROM financial_statements
 WHERE symbol = 'COMPANY' AND period IN ('Q1', 'Q2', 'Q3', 'Q4')
 
 -- Example 2: When company market data needed (e.g., Market Cap)
-SELECT fs.symbol, fs.fiscalyear, fs.period, fs.date,
+SELECT fs.symbol, fs.fiscalyear, fs.period, fs.filingdate,
        [metric_calculation] as metric_name,
        cp.mktcap as market_cap
 FROM financial_statements fs

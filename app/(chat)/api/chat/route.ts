@@ -23,12 +23,15 @@ import {
 import { webSearch } from '@/lib/ai/tools/search/perplexity-search';
 import { scanMarket, scanTopCompanies } from '@/lib/ai/tools/financial/market-scanner';
 // 全新的LaTeX财务指标工具
-import { 
-  createLatexMetric, 
-  calculateLatexMetric, 
+import {
+  createLatexMetric,
+  calculateLatexMetric,
   searchLatexMetrics,
-  getPopularLatexMetrics 
+  getPopularLatexMetrics
 } from '@/lib/ai/tools/financial/latex-tools';
+// 图表指标工具
+import { addChartIndicator } from '@/lib/ai/tools/chart/add-chart-indicator';
+import { addFundamentalData } from '@/lib/ai/tools/chart/add-fundamental-data';
 // Removed old tool imports - using inline implementations with Convex access
 import { 
   getRelevantMemories, 
@@ -631,6 +634,10 @@ export async function POST(request: Request) {
             calculateLatexMetric: calculateLatexMetric(convex),
             searchLatexMetrics: searchLatexMetrics(convex),
             getPopularLatexMetrics: getPopularLatexMetrics(convex),
+            // 图表指标工具 - 为TradingView图表添加技术指标
+            addChartIndicator,
+            // 基本面数据工具 - 添加季度基本面数据到图表子面板
+            addFundamentalData: addFundamentalData({ dataStream }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

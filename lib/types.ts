@@ -67,7 +67,37 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   error: string;
+  chartIndicator: ChartIndicator;
 };
+
+export interface ChartIndicator {
+  id: string;
+  name: string;
+  type: 'line' | 'histogram' | 'area' | 'step-line';
+  data: IndicatorData[];
+  color?: string;
+  paneHeight?: number;
+  markers?: Array<{
+    time: string;
+    position: 'aboveBar' | 'belowBar';
+    color: string;
+    shape: 'circle' | 'square' | 'arrowUp' | 'arrowDown';
+    text: string;
+    size: number;
+  }>;
+  metadata?: {
+    dataType?: string;
+    quarters?: string[];
+    filingDates?: string[];
+    unit?: string;
+    dataPoints?: number;
+  };
+}
+
+export interface IndicatorData {
+  time: string;
+  value: number;
+}
 
 export type ChatMessage = UIMessage<
   MessageMetadata,

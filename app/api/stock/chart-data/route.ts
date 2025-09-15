@@ -4,29 +4,16 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const symbol = searchParams.get('symbol')?.toUpperCase() || 'AAPL';
   const period = searchParams.get('period') || '1M';
+  const interval = searchParams.get('interval') || 'daily'; // 新增：daily, weekly, monthly
 
   try {
-    console.log(`📊 Fetching chart data for ${symbol}, period: ${period}`);
+    console.log(`📊 Fetching chart data for ${symbol}, period: ${period}, interval: ${interval}`);
 
     // 根据时间周期确定数据范围
     const dateCondition = getDateCondition(period);
 
-    const query = `
-      SELECT
-        symbol,
-        date,
-        open,
-        high,
-        low,
-        close,
-        adjclose,
-        volume
-      FROM eod_data
-      WHERE symbol = '${symbol}'
-        AND ${dateCondition}
-      ORDER BY date ASC
-      LIMIT 1000
-    `;
+    // 根据间隔类型生成查询
+    const query = generateQuery(symbol, dateCondition, interval);
 
     console.log(`🔍 DuckDB Query: ${query}`);
 
@@ -86,7 +73,80 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 根据时间周期生成SQL WHERE条件 (只支持日线数据)
+// 根据间隔类型生成查询
+function generateQuery(symbol: string, dateCondition: string, interval: string): string {
+  if (interval === 'daily') {
+    // 日线数据 - 原有逻辑
+    return `
+      SELECT * FROM (
+        SELECT
+          symbol,
+          date,
+          open,
+          high,
+          low,
+          close,
+          adjclose,
+          volume
+        FROM eod_data
+        WHERE symbol = '${symbol}'
+          AND ${dateCondition}
+        ORDER BY date DESC
+        LIMIT 2500
+      ) AS recent_data
+      ORDER BY date ASC
+    `;
+  } else if (interval === 'weekly') {
+    // 周线数据 - 按周聚合
+    return `
+      SELECT * FROM (
+        SELECT
+          symbol,
+          DATE_TRUNC('week', date) as date,  -- 每周的第一天
+          FIRST(open ORDER BY date) as open,  -- 周开盘价（第一天的开盘价）
+          MAX(high) as high,                  -- 周最高价
+          MIN(low) as low,                    -- 周最低价
+          LAST(close ORDER BY date) as close, -- 周收盘价（最后一天的收盘价）
+          LAST(adjclose ORDER BY date) as adjclose,
+          SUM(volume) as volume               -- 周成交量（累计）
+        FROM eod_data
+        WHERE symbol = '${symbol}'
+          AND ${dateCondition}
+        GROUP BY symbol, DATE_TRUNC('week', date)
+        ORDER BY date DESC
+        LIMIT 500
+      ) AS recent_data
+      ORDER BY date ASC
+    `;
+  } else if (interval === 'monthly') {
+    // 月线数据 - 按月聚合
+    return `
+      SELECT * FROM (
+        SELECT
+          symbol,
+          DATE_TRUNC('month', date) as date,  -- 每月的第一天
+          FIRST(open ORDER BY date) as open,  -- 月开盘价
+          MAX(high) as high,                  -- 月最高价
+          MIN(low) as low,                    -- 月最低价
+          LAST(close ORDER BY date) as close, -- 月收盘价
+          LAST(adjclose ORDER BY date) as adjclose,
+          SUM(volume) as volume               -- 月成交量
+        FROM eod_data
+        WHERE symbol = '${symbol}'
+          AND ${dateCondition}
+        GROUP BY symbol, DATE_TRUNC('month', date)
+        ORDER BY date DESC
+        LIMIT 120
+      ) AS recent_data
+      ORDER BY date ASC
+    `;
+  }
+
+  // 默认返回日线
+  return generateQuery(symbol, dateCondition, 'daily');
+}
+
+// 根据时间周期生成SQL WHERE条件
 function getDateCondition(period: string): string {
   const now = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 

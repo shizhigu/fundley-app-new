@@ -15,10 +15,6 @@ export default async function Layout({
 
   return (
     <>
-      <Script
-        src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
-        strategy="beforeInteractive"
-      />
       <DataStreamProvider>
         <ChatLayoutProvider user={session?.user || null}>
           <div className="flex-1 overflow-hidden max-w-full min-w-0">
