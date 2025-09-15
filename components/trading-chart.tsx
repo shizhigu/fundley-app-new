@@ -185,8 +185,8 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
         borderColor: '#D1D4DC',
         timeVisible: true,
         secondsVisible: false,
-        tickMarkFormatter: (time) => {
-          const date = new Date(time);
+        tickMarkFormatter: (time: any) => {
+          const date = new Date(time * 1000); // TradingView time is in seconds
           return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
         },
       },
