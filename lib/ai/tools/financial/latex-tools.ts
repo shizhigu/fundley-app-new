@@ -304,6 +304,11 @@ Generate a SINGLE SQL query that calculates ALL requested metrics together for d
 ## All LaTeX Formulas:
 ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 
+
+<thinking>
+The FIRST priority is to make sure the LaTeX formulas are translated into correct SQL queries. We have to make sure the formulas are 100 percent understood and calculated correctly.
+</thinking>
+
 ## DATABASE SCHEMA:
 
 ### Core Financial Data Table:
@@ -311,8 +316,9 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 
 ### Supplementary Tables (use ONLY when needed):
 **\`company_profiles\`** - Company information and market data:
-- **Company info**: companyName, sector, industry, country, marketCap, etc.
-- **Market data**: price, beta, volAvg, mktCap, lastDiv, range, etc.
+- **Company info**: companyName, sector, industry, country, marketcap, etc.
+- **Market data**: price, beta, exchange, isactivelytrading (IMPORTANT: Always use isactivelytrading = true, user will not want to fetch data for inactive stocks)
+- **Exchange**: exchange (When user wants to fetch data for US stocks market, then use exchange = 'NASDAQ' and exchange = 'NYSE')
 - **Key field**: symbol (for joining with financial_statements)
 
 ## FIELD USAGE RULES:
@@ -340,7 +346,7 @@ ${allMetricDefinitions.map(m => `**${m.name}**: ${m.latexFormula}`).join('\n')}
 ## TABLE SELECTION STRATEGY:
 
 1. **Primary source**: \`financial_statements\` (contains 95% of financial metrics)
-2. **Secondary source**: \`company_profiles\` (for company info like marketCap, sector, industry)
+2. **Secondary source**: \`company_profiles\` (for company info like marketcap, sector, industry)
 3. **Join logic**: 
    \`\`\`sql
    FROM financial_statements fs
