@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const { symbols, metricIds, quarters }: FinancialDataRequest = await request.json();
 
     // 初始化Convex客户端
-    const convex = new ConvexHttpClient(process.env.CONVEX_URL!);
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
     // 验证输入参数
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
