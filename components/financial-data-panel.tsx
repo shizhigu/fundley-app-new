@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // LaTeX指标接口类型
 interface LaTeXMetric {
@@ -327,43 +328,43 @@ export function FinancialDataPanel() {
     );
   }
 
-  // 表格视图（原有的表格）
+  // 表格视图（使用原生HTML table以确保sticky正常工作）
   function TableView() {
     const metricToFieldMapping = getMetricToFieldMapping();
 
     return (
-      <div className="rounded-md border border-border h-full overflow-x-auto overflow-y-auto">
-        <Table className="min-w-max">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] sticky top-0 z-20">股票代码</TableHead>
-              <TableHead className="sticky left-[100px] bg-background text-foreground font-medium min-w-[120px] sticky top-0 z-20">季度</TableHead>
+      <div className="rounded-md border border-border h-full overflow-auto">
+        <table className="w-full min-w-max border-collapse">
+          <thead className="sticky top-0 z-10 bg-background shadow-sm">
+            <tr className="border-b">
+              <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">股票代码</th>
+              <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[120px] z-20 border-r p-3 text-left">季度</th>
               {selectedMetrics.map(metricId => (
-                <TableHead key={metricId} className="text-foreground font-medium text-right min-w-[200px] sticky top-0 z-10 bg-background">
+                <th key={metricId} className="text-foreground font-medium min-w-[200px] bg-background p-3 text-right">
                   {getMetricDisplayName(metricId)}
-                </TableHead>
+                </th>
               ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+            </tr>
+          </thead>
+          <tbody>
             {tableData.map((row, index) => {
               // 检查是否是新的symbol组的开始
               const isNewSymbolGroup = index === 0 || tableData[index - 1].symbol !== row.symbol;
 
               return (
-                <TableRow
+                <tr
                   key={index}
-                  className={`hover:bg-secondary/50 ${
+                  className={`border-b hover:bg-secondary/50 ${
                     isNewSymbolGroup ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600' : ''
                   }`}
                 >
-                  <TableCell className="sticky left-0 bg-background font-medium text-foreground">{row.symbol}</TableCell>
-                  <TableCell className="sticky left-[100px] bg-background text-muted-foreground">{row.period} {row.fiscalYear}</TableCell>
+                  <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">{row.symbol}</td>
+                  <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">{row.period} {row.fiscalYear}</td>
                   {selectedMetrics.map(metricId => {
                     const fieldName = metricToFieldMapping[metricId];
                     const metricData = row.metrics[fieldName];
                     return (
-                      <TableCell key={metricId} className="text-right">
+                      <td key={metricId} className="p-3 text-right">
                         <div className="space-y-1">
                           <div className="font-medium text-foreground">
                             {formatValue(metricData?.value, metricId)}
@@ -373,14 +374,14 @@ export function FinancialDataPanel() {
                             <TrendIndicator trend={metricData?.yoy} label="YoY" />
                           </div>
                         </div>
-                      </TableCell>
+                      </td>
                     );
                   })}
-                </TableRow>
+                </tr>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     );
   }
