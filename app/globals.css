@@ -646,16 +646,16 @@
 
     .glass-input-wrapper {
         @apply relative overflow-hidden;
-        background: rgba(255, 255, 255, 0.11);
+        background: hsl(var(--background) / 0.95);
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid hsl(var(--border));
         box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.5),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-            inset 0 0 34px 17px rgba(255, 255, 255, 1.7);
+            0 8px 32px hsl(var(--foreground) / 0.1),
+            inset 0 1px 0 hsl(var(--border) / 0.5),
+            inset 0 -1px 0 hsl(var(--border) / 0.3),
+            inset 0 0 34px 17px hsl(var(--background) / 0.7);
     }
 
 
@@ -687,15 +687,15 @@
     }
 
     .dark .glass-input-wrapper {
-        background: rgba(20, 20, 25, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: hsl(var(--background) / 0.95);
+        border: 1px solid hsl(var(--border));
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-            inset 0 0 24px 12px rgba(0, 0, 0, 0.3);
+            0 8px 32px hsl(var(--foreground) / 0.4),
+            inset 0 1px 0 hsl(var(--border) / 0.4),
+            inset 0 -1px 0 hsl(var(--border) / 0.2),
+            inset 0 0 24px 12px hsl(var(--background) / 0.3);
     }
 
     .glass-header-container {
@@ -749,24 +749,24 @@
         color: hsl(var(--foreground));
         font-family: var(--font-inter);
         line-height: 1.5;
-        background: rgba(255, 255, 255, 0.68) !important;
+        background: hsl(var(--background) / 0.8) !important; /* 使用CSS变量，支持主题切换 */
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         border: none;
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.5),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-            inset 0 0 34px 17px rgba(255, 255, 255, 1.7);
+            inset 0 1px 0 hsl(var(--border) / 0.5),
+            inset 0 -1px 0 hsl(var(--border) / 0.3),
+            inset 0 0 34px 17px hsl(var(--background) / 0.5);
     }
 
     .dark .professional-input {
-        background: rgba(20, 20, 25, 0.1) !important;
+        background: hsl(var(--background) / 0.9) !important; /* 使用CSS变量，正确响应dark模式 */
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.2),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-            inset 0 0 24px 12px rgba(0, 0, 0, 0.3);
+            inset 0 1px 0 hsl(var(--border) / 0.4),
+            inset 0 -1px 0 hsl(var(--border) / 0.2),
+            inset 0 0 24px 12px hsl(var(--background) / 0.3);
     }
 
     .professional-input::placeholder {

@@ -15,9 +15,9 @@ export default async function Page() {
   return (
     <>
       {/* 桌面端分屏布局 */}
-      <div className="hidden lg:flex h-screen bg-gray-50">
+      <div className="hidden lg:flex h-screen bg-transparent">
         {/* 左侧聊天面板 */}
-        <div className="flex-1 min-w-0 border-r border-gray-200">
+        <div className="flex-1 min-w-0 border-r border-border">
           <PersistentChat
             initialChatModel={DEFAULT_MODEL}
             user={session.user}
@@ -26,7 +26,7 @@ export default async function Page() {
         </div>
 
         {/* 右侧图表面板 */}
-        <div className="flex-1 min-w-0 bg-white">
+        <div className="flex-1 min-w-0 bg-transparent">
           <TradingChart />
         </div>
       </div>

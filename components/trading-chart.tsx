@@ -507,24 +507,24 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
   return (
     <div className={`w-full h-full ${className}`}>
       {/* Chart Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold">{symbol}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{symbol}</h2>
           {isLoading ? (
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
               <span>Loading...</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <span className={`px-2 py-1 rounded ${
                 priceChange >= 0
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
               }`}>
                 {priceChange >= 0 ? '↗' : '↘'} {priceChange.toFixed(2)}%
               </span>
-              <span>${latestPrice.toFixed(2)}</span>
+              <span className="text-foreground">${latestPrice.toFixed(2)}</span>
             </div>
           )}
 
@@ -532,7 +532,7 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
         <div className="flex items-center space-x-4">
           {/* 时间间隔选择器 */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">间隔:</span>
+            <span className="text-sm text-muted-foreground">间隔:</span>
             {[
               { value: 'daily', label: 'D' },
               { value: 'weekly', label: 'W' },
@@ -545,7 +545,7 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
                 className={`px-2 py-1 text-xs rounded transition-colors ${
                   currentInterval === interval.value
                     ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 disabled:opacity-50'
+                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground disabled:opacity-50'
                 }`}
               >
                 {interval.label}
@@ -563,7 +563,7 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
                 className={`px-3 py-1 text-sm rounded transition-colors ${
                   currentPeriod === period
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 disabled:opacity-50'
+                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground disabled:opacity-50'
                 }`}
               >
                 {period}
