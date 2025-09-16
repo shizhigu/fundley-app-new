@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import { Download } from 'lucide-react';
 import {
   Select,
@@ -63,6 +64,30 @@ export function FinancialDataPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+
+  // 财务数据store
+  const { updateFinancialData, clearFinancialData } = useFinancialDataStore();
+
+  // 监听tableData变化，更新全局财务数据状态
+  useEffect(() => {
+    if (tableData.length > 0) {
+      // 转换财务数据格式以适配store
+      const financialDataRows = tableData.map(row => ({
+        symbol: row.symbol,
+        fiscalYear: row.fiscalYear,
+        period: row.period,
+        date: row.date,
+        ...row.metrics, // 展开所有指标数据
+      }));
+
+      updateFinancialData(financialDataRows);
+      console.log('📊 Updated financial data store with', financialDataRows.length, 'rows');
+    } else {
+      clearFinancialData();
+      console.log('📊 Cleared financial data store');
+    }
+  }, [tableData, updateFinancialData, clearFinancialData]);
+
   // 从Convex获取用户组织的LaTeX指标
   const latexMetrics = useQuery(api.latexMetrics.getAccessibleLatexMetrics, {
     limit: 100

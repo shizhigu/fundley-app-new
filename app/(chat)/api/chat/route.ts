@@ -66,7 +66,8 @@ export async function POST(request: Request) {
       requestBody = {
         message: lastMessage,
         selectedChatModel: json.selectedChatModel || 'grok-3', // Use selected model or default
-        chatId: json.id // Pass chatId from useChat
+        chatId: json.id, // Pass chatId from useChat
+        currentFinancialData: json.currentFinancialData // Pass financial data from useChat
       };
       console.log('📨 Converted useChat format to:', JSON.stringify(requestBody, null, 2));
     } else {
@@ -83,10 +84,12 @@ export async function POST(request: Request) {
       message,
       selectedChatModel,
       chatId: requestChatId,
+      currentFinancialData,
     }: {
       message: PostRequestBody['message'];
       selectedChatModel: ModelId;
       chatId?: string;
+      currentFinancialData?: PostRequestBody['currentFinancialData'];
     } = requestBody;
 
     // Get auth info and create authenticated Convex client
@@ -183,11 +186,28 @@ export async function POST(request: Request) {
         // Temporarily disable mem0 to test basic functionality
         const model = getLanguageModel(selectedChatModel);
           
-        // Build system prompt with memory context and custom metrics
+        // Build system prompt with memory context, custom metrics, and financial data
         const systemPromptText = systemPrompt({ requestHints, customMetrics });
-        const enhancedSystemPrompt = memoryContext 
-          ? `${systemPromptText}\n\n## Relevant Context from Previous Conversations:\n${memoryContext}`
-          : systemPromptText;
+
+        // Add financial data context if available
+        console.log('📊 API Route: Checking financial data');
+        console.log('📊 currentFinancialData:', currentFinancialData);
+        console.log('📊 isActive:', currentFinancialData?.isActive);
+        console.log('📊 data length:', currentFinancialData?.currentData?.length);
+
+        let financialDataContext = '';
+        if (currentFinancialData?.isActive && currentFinancialData.currentData.length > 0) {
+          console.log('✅ API Route: Adding financial data to system prompt');
+          financialDataContext = `\n\n## Current Financial Data Context\n\n用户当前正在查看以下财务数据（右侧面板数据）：\n\n\`\`\`json\n${JSON.stringify(currentFinancialData.currentData, null, 2)}\`\`\`\n\n**重要分析指导**：\n- 请基于上述具体数据进行分析和回答\n- 引用具体的数值、时期和趋势\n- 比较不同公司或时期的表现\n- 解释数据背后的含义和影响\n- 数据最后更新时间：${currentFinancialData.lastUpdated}`;
+        } else {
+          console.log('❌ API Route: No financial data to include in system prompt');
+        }
+
+        const enhancedSystemPrompt = [
+          systemPromptText,
+          memoryContext ? `\n\n## Relevant Context from Previous Conversations:\n${memoryContext}` : '',
+          financialDataContext
+        ].filter(Boolean).join('');
         
         // 🐛 DEBUG: Print complete system prompt for debugging
         console.log('🤖 COMPLETE SYSTEM PROMPT:', enhancedSystemPrompt);

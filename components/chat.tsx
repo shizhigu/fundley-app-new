@@ -23,6 +23,7 @@ import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { useArtifact } from '@/hooks/use-artifact';
+import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 
 export function Chat({
   id,
@@ -51,27 +52,43 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  // const { financialData } = useFinancialDataStore(); // 不再需要响应式hook，改用getState()
 
   const [input, setInput] = useState<string>('');
 
-  // 简化transport - 模型参数现在直接通过sendMessage传递
+  // 简化transport - 每次发送时实时获取最新数据
   const transport = useMemo(
     () => new DefaultChatTransport({
       api: '/api/chat',
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest({ messages, id, body }) {
+        // 每次发送时实时获取最新的财务数据
+        const currentFinancialData = useFinancialDataStore.getState().financialData;
+
+        console.log('💬 Chat: prepareSendMessagesRequest called');
+        console.log('📊 Real-time financialData state:', {
+          isActive: currentFinancialData.isActive,
+          dataLength: currentFinancialData.currentData.length,
+          lastUpdated: currentFinancialData.lastUpdated
+        });
+
+        const requestBody = {
+          id,
+          message: messages.at(-1),
+          selectedChatModel: selectedModel, // 添加当前选择的模型
+          selectedVisibilityType: visibilityType,
+          currentFinancialData: currentFinancialData.isActive ? currentFinancialData : null, // 添加当前财务数据
+          ...body, // body中可能包含其他参数
+        };
+
+        console.log('🚀 Chat: Sending request with financialData:', requestBody.currentFinancialData ? 'INCLUDED' : 'NOT INCLUDED');
+
         return {
-          body: {
-            id,
-            message: messages.at(-1),
-            selectedChatModel: selectedModel, // 添加当前选择的模型
-            selectedVisibilityType: visibilityType,
-            ...body, // body中可能包含其他参数
-          },
+          body: requestBody,
         };
       },
     }),
-    [visibilityType, selectedModel]
+    [visibilityType, selectedModel] // 移除 financialData 依赖
   );
 
   const {

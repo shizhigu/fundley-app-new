@@ -41,6 +41,11 @@ export const postRequestBodySchema = z.object({
   }),
   selectedChatModel: z.enum(['grok-3', 'gemini-2.5-pro', 'gpt-5', 'Fast']),
   chatId: z.string().optional(), // Support dynamic chat selection
+  currentFinancialData: z.object({
+    currentData: z.array(z.any()),
+    lastUpdated: z.string().nullable(),
+    isActive: z.boolean(),
+  }).nullable().optional(), // Financial data from right panel
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

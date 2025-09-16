@@ -116,7 +116,8 @@
     "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.1.0",
     "xlsx": "^0.18.5",
-    "zod": "^3"
+    "zod": "^3",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
