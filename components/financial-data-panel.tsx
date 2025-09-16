@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Download } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -147,6 +149,79 @@ export function FinancialDataPanel() {
 
   const getMetricDisplayName = (metricId: string) => {
     return availableMetrics.find(m => m._id === metricId)?.name || metricId;
+  };
+
+  // 导出Excel功能
+  const exportToExcel = () => {
+    if (tableData.length === 0) {
+      alert('没有数据可以导出');
+      return;
+    }
+
+    const metricToFieldMapping = getMetricToFieldMapping();
+
+    // 准备Excel数据
+    const excelData = tableData.map(row => {
+      const excelRow: any = {
+        '股票代码': row.symbol,
+        '季度': `${row.period} ${row.fiscalYear}`,
+        '日期': row.date || ''
+      };
+
+      // 添加每个指标的数据
+      selectedMetrics.forEach(metricId => {
+        const fieldName = metricToFieldMapping[metricId];
+        const metricData = row.metrics[fieldName];
+        const metricName = getMetricDisplayName(metricId);
+
+        if (metricData) {
+          // 主要数值
+          excelRow[metricName] = formatValue(metricData.value, metricId);
+
+          // QoQ趋势
+          if (metricData.qoq?.value !== null && metricData.qoq?.value !== undefined) {
+            excelRow[`${metricName} - QoQ`] = `${metricData.qoq.value.toFixed(1)}%`;
+          }
+
+          // YoY趋势
+          if (metricData.yoy?.value !== null && metricData.yoy?.value !== undefined) {
+            excelRow[`${metricName} - YoY`] = `${metricData.yoy.value.toFixed(1)}%`;
+          }
+        }
+      });
+
+      return excelRow;
+    });
+
+    // 创建工作簿
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    // 设置列宽
+    const colWidths = [
+      { wch: 12 }, // 股票代码
+      { wch: 15 }, // 季度
+      { wch: 12 }, // 日期
+    ];
+
+    // 为每个指标添加列宽
+    selectedMetrics.forEach(() => {
+      colWidths.push({ wch: 18 }); // 主要数值
+      colWidths.push({ wch: 12 }); // QoQ
+      colWidths.push({ wch: 12 }); // YoY
+    });
+
+    ws['!cols'] = colWidths;
+
+    // 添加工作表到工作簿
+    XLSX.utils.book_append_sheet(wb, ws, '财务数据');
+
+    // 生成文件名
+    const symbols = [...new Set(tableData.map(row => row.symbol))].join('_');
+    const fileName = `财务数据_${symbols}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    // 下载文件
+    XLSX.writeFile(wb, fileName);
   };
 
   const formatValue = (value: number | null, metricId: string) => {
@@ -342,6 +417,19 @@ export function FinancialDataPanel() {
                   📋 表格
                 </button>
               </div>
+            )}
+
+            {/* 导出Excel按钮 - 只在有数据时显示 */}
+            {tableData.length > 0 && (
+              <Button
+                onClick={exportToExcel}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 text-sm font-medium hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-950 dark:hover:text-green-400 transition-colors"
+              >
+                <Download size={16} />
+                导出Excel
+              </Button>
             )}
 
             {/* 折叠/展开按钮 */}
