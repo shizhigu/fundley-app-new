@@ -3,12 +3,56 @@
  * 全新的LaTeX-first财务指标AI工具
  */
 
-import { tool } from 'ai';
+import { tool, generateText } from 'ai';
 import { z } from 'zod';
 import type { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 import { LaTeXFinancialEngine } from '@/lib/latex-financial/engine';
-import type { LaTeXMetricDefinition, LaTeXCalculationRequest } from '@/lib/latex-financial/types';
+import type { LaTeXMetricDefinition } from '@/lib/latex-financial/types';
+import { financialFieldsModel } from '@/lib/ai/providers';
+
+/**
+ * 从LLM响应中解析JSON
+ */
+function parseJSONFromResponse(response: string): { sql: string; explanation: string } {
+  try {
+    // 首先尝试直接解析
+    const parsed = JSON.parse(response);
+    if (parsed.sql && parsed.explanation) {
+      return parsed;
+    }
+  } catch (error) {
+    // 如果直接解析失败，尝试从响应中提取JSON
+  }
+
+  // 尝试从markdown代码块中提取JSON
+  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (parsed.sql && parsed.explanation) {
+        return parsed;
+      }
+    } catch (error) {
+      // 继续尝试其他方法
+    }
+  }
+
+  // 尝试查找任何看起来像JSON的内容
+  const possibleJsonMatch = response.match(/\{[\s\S]*\}/);
+  if (possibleJsonMatch) {
+    try {
+      const parsed = JSON.parse(possibleJsonMatch[0]);
+      if (parsed.sql && parsed.explanation) {
+        return parsed;
+      }
+    } catch (error) {
+      // 继续
+    }
+  }
+
+  throw new Error(`Could not parse JSON from response: ${response}`);
+}
 
 /**
  * 根据名字解析LaTeX metrics，支持精确匹配和包含匹配
@@ -401,15 +445,40 @@ LEFT JOIN company_profiles cp ON fs.symbol = cp.symbol
 WHERE fs.symbol = 'COMPANY' AND fs.period IN ('Q1', 'Q2', 'Q3', 'Q4')
 \`\`\`
 
-Generate ONE comprehensive SQL query that calculates ALL metrics together:
-`;
-      
-      const request: LaTeXCalculationRequest = {
-        metricDefinition: unifiedMetricDefinition,
-        query: enhancedQuery
-      };
+Generate ONE comprehensive SQL query that calculates ALL metrics together.
 
-      const result = await engine.calculateMetric(request);
+**CRITICAL: Output must be in strict JSON format:**
+
+\`\`\`json
+{
+  "sql": "Complete DuckDB SQL query statement",
+  "explanation": "Brief explanation of calculation logic and field mapping"
+}
+\`\`\`
+
+**Important Rules:**
+1. Return only JSON, no additional text, explanations, or markdown
+2. sql field must be a directly executable complete SQL statement
+3. All field names use lowercase format
+4. Ensure SQL syntax is completely correct
+`;
+
+      // Generate SQL directly using LLM
+      const { text: response } = await generateText({
+        model: financialFieldsModel,
+        prompt: enhancedQuery,
+        temperature: 0.1,
+      });
+
+      console.log('🔍 Raw LLM response:', response);
+
+      // Parse JSON response to extract SQL
+      const jsonResult = parseJSONFromResponse(response);
+      console.log('🧠 Generated SQL:', jsonResult.sql);
+      console.log('💡 Explanation:', jsonResult.explanation);
+
+      // Execute SQL using engine
+      const result = await engine.executeSQL(jsonResult.sql, unifiedMetricDefinition.name);
       
       // Log to Convex for the unified calculation (single entry)
       await convex.mutation(api.latexMetrics.updateMetricUsage, {
