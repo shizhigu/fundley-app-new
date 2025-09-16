@@ -149,10 +149,13 @@ export default defineSchema({
     name: v.string(),                    // 指标名称，如 "ROCE", "Custom ROE"
     description: v.string(),             // 指标描述
     category: v.string(),                // 分类：profitability, liquidity, efficiency等
-    
+
     // 核心：LaTeX公式定义
     latexFormula: v.string(),            // LaTeX数学公式，如 "ROCE = \\frac{EBIT}{\\overline{Assets - Liab}}"
-    
+
+    // SQL公式定义（新增字段）
+    sqlFormula: v.optional(v.string()),  // 完整的SQL表达式，如 "(ebit*100 / NULLIF(...)) AS roce_value"
+
     // 变量到数据源的映射
     variableMapping: v.any(), // 灵活的对象结构，支持任意变量映射
     

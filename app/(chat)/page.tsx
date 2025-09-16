@@ -1,5 +1,5 @@
 import { PersistentChat } from '@/components/persistent-chat';
-import { TradingChart } from '@/components/trading-chart';
+import { RightPanelTabs } from '@/components/right-panel-tabs';
 import { MobileTabs } from '@/components/mobile-tabs';
 import { auth } from '@/lib/auth/clerk';
 import { redirect } from 'next/navigation';
@@ -25,9 +25,9 @@ export default async function Page() {
           />
         </div>
 
-        {/* 右侧图表面板 */}
+        {/* 右侧标签页面板 */}
         <div className="flex-1 min-w-0 bg-transparent">
-          <TradingChart />
+          <RightPanelTabs />
         </div>
       </div>
 

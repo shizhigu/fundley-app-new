@@ -68,7 +68,8 @@
       "Bash(pip install:*)",
       "Bash(nslookup:*)",
       "WebFetch(domain:tradingview.github.io)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": [],

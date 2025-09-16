@@ -16,6 +16,7 @@ export const createLatexMetric = mutation({
     description: v.string(),
     category: v.string(),
     latexFormula: v.string(),
+    sqlFormula: v.optional(v.string()),
     variableMapping: v.object({}),
     exampleResult: v.optional(v.object({
       symbol: v.string(),
@@ -46,6 +47,7 @@ export const createLatexMetric = mutation({
       description: args.description,
       category: args.category,
       latexFormula: args.latexFormula,
+      sqlFormula: args.sqlFormula,
       variableMapping: args.variableMapping,
       exampleResult: args.exampleResult,
       createdBy: user._id,
@@ -386,7 +388,7 @@ export const getLatexMetricCategories = query({
       .query("latexMetrics")
       .withIndex("by_organization", (q) => q.eq("clerkOrganizationId", user.clerkOrganizationId))
       .collect();
-    
+
     const categories = metrics.reduce((acc: Record<string, number>, metric) => {
       acc[metric.category] = (acc[metric.category] || 0) + 1;
       return acc;
@@ -395,3 +397,4 @@ export const getLatexMetricCategories = query({
     return Object.entries(categories).map(([name, count]) => ({ name, count }));
   },
 });
+

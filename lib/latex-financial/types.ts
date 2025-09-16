@@ -88,4 +88,5 @@ export interface BuiltInMetricTemplate {
   variableMapping: Record<string, VariableMapping>;
   category: string;
   description: string;
+  sqlFormula?: string; // 对应的完整SQL表达式
 }

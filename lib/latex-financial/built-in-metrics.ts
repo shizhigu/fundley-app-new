@@ -44,6 +44,7 @@ export const BUILTIN_LATEX_METRICS: BuiltInMetricTemplate[] = [
     },
     category: 'profitability',
     description: 'Percentage of revenue retained after direct costs',
+    sqlFormula: `((grossprofit / NULLIF(revenue, 0)) * 100)::NUMERIC AS gross_profit_margin`
   },
 
   // 2. 高级ROCE（您的复杂示例）
@@ -60,6 +61,7 @@ export const BUILTIN_LATEX_METRICS: BuiltInMetricTemplate[] = [
     },
     category: 'profitability',
     description: 'EBIT divided by average capital employed (current + previous period average)',
+    sqlFormula: `(ebit*100 / NULLIF(((totalassets + LAG(totalassets, 1) OVER (PARTITION BY symbol ORDER BY fiscalyear, period)) / 2.0) - ((totalcurrentliabilities + LAG(totalcurrentliabilities, 1) OVER (PARTITION BY symbol ORDER BY fiscalyear, period)) / 2.0), 0))::NUMERIC AS roce_value`
   },
 
   // 3. 流动性指标
