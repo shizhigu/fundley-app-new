@@ -57,27 +57,93 @@ interface FinancialDataResponse {
 }
 
 export function FinancialDataPanel() {
-  const [symbolInput, setSymbolInput] = useState('NVDA,AAPL,MSFT');
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
-  const [selectedQuarters, setSelectedQuarters] = useState('5');
+  // 本地状态（只保留非持久化的状态）
   const [tableData, setTableData] = useState<FinancialDataResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
 
-  // 财务数据store
-  const { updateFinancialData, clearFinancialData } = useFinancialDataStore();
+  // 从 Zustand store 获取状态和方法
+  const {
+    analysisForm,
+    viewMode,
+    isPanelCollapsed,
+    updateFinancialData,
+    clearFinancialData,
+    updateAnalysisForm,
+    setViewMode,
+    setPanelCollapsed,
+  } = useFinancialDataStore();
+
+  // 解构表单状态，转换 periods 为字符串以兼容现有UI
+  const { symbols: symbolInput, selectedMetrics, periods } = analysisForm;
+  const selectedQuarters = periods.toString();
+
+  // 表单更新函数
+  const setSymbolInput = (symbols: string) => {
+    updateAnalysisForm({ symbols });
+  };
+
+  const setSelectedMetrics = (metrics: string[]) => {
+    updateAnalysisForm({ selectedMetrics: metrics });
+  };
+
+  const setSelectedQuarters = (periods: string) => {
+    updateAnalysisForm({ periods: Number(periods) });
+  };
+
+  // 页面加载时，从持久化数据中恢复tableData
+  useEffect(() => {
+    const persistedData = useFinancialDataStore.getState().financialData;
+    if (persistedData.isActive && persistedData.currentData.length > 0) {
+      // 检查是否有保存的原始tableData
+      const hasRawData = persistedData.currentData.some(row => '__rawTableData' in row);
+
+      if (hasRawData) {
+        // 使用保存的原始数据（包含完整的qoq/yoy信息）
+        const restoredTableData: FinancialDataResponse[] = persistedData.currentData
+          .filter(row => '__rawTableData' in row)
+          .map(row => (row as any).__rawTableData);
+
+        setTableData(restoredTableData);
+        console.log('🔄 Restored table data from raw persistence:', restoredTableData.length, 'rows');
+      } else {
+        // 向后兼容：没有原始数据时使用简化恢复
+        const restoredTableData: FinancialDataResponse[] = persistedData.currentData.map(row => ({
+          symbol: row.symbol,
+          fiscalYear: row.fiscalYear,
+          period: row.period,
+          date: row.date,
+          metrics: Object.fromEntries(
+            Object.entries(row).filter(([key]) =>
+              !['symbol', 'fiscalYear', 'period', 'date'].includes(key)
+            ).map(([key, value]) => [key, {
+              value: typeof value === 'object' && value !== null && 'value' in value
+                ? (value as any).value
+                : value as number | null,
+              qoq: { value: null, direction: 'up' as const },
+              yoy: { value: null, direction: 'up' as const }
+            }])
+          )
+        }));
+
+        setTableData(restoredTableData);
+        console.log('🔄 Restored table data from basic persistence:', restoredTableData.length, 'rows');
+      }
+    }
+  }, []); // 只在组件挂载时执行一次
 
   // 监听tableData变化，更新全局财务数据状态
   useEffect(() => {
     if (tableData.length > 0) {
-      // 转换财务数据格式以适配store
+      // 保存完整的tableData，而不是转换格式
       const financialDataRows = tableData.map(row => ({
         symbol: row.symbol,
         fiscalYear: row.fiscalYear,
         period: row.period,
         date: row.date,
-        ...row.metrics, // 展开所有指标数据
+        __rawTableData: row, // 保存原始tableData
+        ...Object.fromEntries(
+          Object.entries(row.metrics).map(([key, value]) => [key, value.value])
+        ), // 展开指标的value用于聊天上下文
       }));
 
       updateFinancialData(financialDataRows);
@@ -97,11 +163,10 @@ export function FinancialDataPanel() {
   const availableMetrics = latexMetrics?.filter(metric => metric.sqlFormula) || [];
 
   const handleMetricToggle = (metricId: string) => {
-    setSelectedMetrics(prev =>
-      prev.includes(metricId)
-        ? prev.filter(id => id !== metricId)
-        : [...prev, metricId]
-    );
+    const newMetrics = selectedMetrics.includes(metricId)
+      ? selectedMetrics.filter(id => id !== metricId)
+      : [...selectedMetrics, metricId];
+    setSelectedMetrics(newMetrics);
   };
 
   // 从SQL公式中提取字段名（AS后面的部分）
@@ -161,7 +226,7 @@ export function FinancialDataPanel() {
 
       // 自动折叠控制面板以展示更多数据空间
       if (data.length > 0) {
-        setIsPanelCollapsed(true);
+        setPanelCollapsed(true);
       }
 
     } catch (error) {
@@ -301,6 +366,17 @@ export function FinancialDataPanel() {
     const fieldName = metricToFieldMapping[metricId];
     const metricName = getMetricDisplayName(metricId);
 
+    // 检查是否有任何有效数据
+    const hasValidData = data.some(row => {
+      const metricData = row.metrics[fieldName];
+      return metricData && metricData.value !== null && metricData.value !== undefined;
+    });
+
+    // 如果没有任何有效数据，不渲染此卡片
+    if (!hasValidData) {
+      return null;
+    }
+
     // 按symbol分组数据
     const groupedData = data.reduce((acc, row) => {
       if (!acc[row.symbol]) acc[row.symbol] = [];
@@ -316,7 +392,7 @@ export function FinancialDataPanel() {
           <div key={symbol} className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">{symbol}</h4>
             <div className="grid grid-cols-1 gap-2">
-              {symbolData.slice(0, 3).map((row, index) => {
+              {symbolData.slice(0, 4).map((row, index) => {
                 const metricData = row.metrics[fieldName];
                 return (
                   <div key={index} className="flex items-center justify-between p-2 bg-secondary/50 rounded">
@@ -460,7 +536,7 @@ export function FinancialDataPanel() {
 
             {/* 折叠/展开按钮 */}
             <button
-              onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
+              onClick={() => setPanelCollapsed(!isPanelCollapsed)}
               className="p-2 hover:bg-secondary rounded transition-colors"
               title={isPanelCollapsed ? "展开控制面板" : "收起控制面板"}
             >

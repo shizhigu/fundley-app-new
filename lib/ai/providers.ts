@@ -17,8 +17,8 @@ const xai = createXai({
 const MODEL_MAPPINGS: Record<ModelId, string> = {
   'grok-3': 'x-ai/grok-3',
   'gemini-2.5-pro': 'google/gemini-2.5-pro', 
-  'gpt-5': 'openai/gpt-5',
-  'Fast': 'google/gemini-2.5-flash',
+  'gpt-5': 'openai/gpt-5-chat',
+  'Fast': 'openai/gpt-5-nano',
 };
 
 // Main model function - this is what everything uses
