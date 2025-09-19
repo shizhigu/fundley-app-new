@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
-import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { MenuIcon } from 'lucide-react';
 import { Messages } from '@/components/messages';
@@ -19,7 +17,7 @@ import type { Attachment, ChatMessage } from '@/lib/types';
 import type { VisibilityType } from '@/components/visibility-selector';
 
 interface ChatViewProps {
-  chatId: Id<"chats">;
+  chatId: string;
   initialChatModel: string;
   user: AuthSession['user'];
   onToggleSidebar: () => void;
@@ -32,13 +30,15 @@ export function ChatView({
   onToggleSidebar,
 }: ChatViewProps) {
   // Get messages for this specific chat
-  const messagesFromDb = useQuery(api.messages.list, { chatId });
-  
+  const { data: messagesData, loading: messagesLoading } = useSQLQuery<{ messages: any[] }>(`/api/chats/${chatId}/messages`);
+  const messagesFromDb = messagesData?.messages;
+
   // Get chat info for title
-  const chat = useQuery(api.chats.get, { id: chatId });
+  const { data: chatData, loading: chatLoading } = useSQLQuery<{ chat: any }>(`/api/chats/${chatId}`);
+  const chat = chatData?.chat;
 
   // Show loading until all data is ready
-  if (messagesFromDb === undefined || chat === undefined) {
+  if (messagesLoading || chatLoading || !messagesFromDb || !chat) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-muted-foreground">Loading chat...</div>

@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSQLMutation } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
-import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -27,18 +25,16 @@ import { PlusIcon, MessageSquare, ChevronLeftIcon, ChevronRightIcon, EditIcon, T
 import { cn } from '@/lib/utils';
 
 interface Chat {
-  _id: Id<"chats">;
+  id: string;
   title: string;
-  userId: Id<"users">;
-  visibility: "private" | "public";
   createdAt: number;
   updatedAt: number;
 }
 
 interface ChatSidebarProps {
   chats: Chat[];
-  selectedChatId: Id<"chats"> | null;
-  onChatSelect: (chatId: Id<"chats">) => void;
+  selectedChatId: string | null;
+  onChatSelect: (chatId: string) => void;
   isOpen: boolean;
   onToggle: () => void;
   user: AuthSession['user'];
@@ -52,262 +48,191 @@ export function ChatSidebar({
   onToggle,
   user,
 }: ChatSidebarProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [renameDialog, setRenameDialog] = useState<{ open: boolean; chat: Chat | null }>({ open: false, chat: null });
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; chat: Chat | null }>({ open: false, chat: null });
-  const [newTitle, setNewTitle] = useState('');
-  
-  const createChat = useMutation(api.chats.create);
-  const updateChat = useMutation(api.chats.update);
-  const deleteChat = useMutation(api.chats.remove);
+  const [isRenaming, setIsRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
-  const handleCreateChat = async () => {
-    if (!user || isCreating) return;
-    
-    setIsCreating(true);
+  const { mutate: createChat } = useSQLMutation<{ chat: Chat }, { title: string }>('/api/chats');
+  const { mutate: updateChatMutation } = useSQLMutation<{ chat: Chat }, { title: string }>('/api/chats/:id', { method: 'PUT' });
+  const { mutate: deleteChatMutation } = useSQLMutation<{ success: boolean }, {}>('/api/chats/:id', { method: 'DELETE' });
+
+  const handleNewChat = async () => {
     try {
-      const newChatId = await createChat({
-        title: 'New Chat',
-        visibility: 'private'
-      });
-      onChatSelect(newChatId);
+      const result = await createChat({ title: 'New Chat' });
+      onChatSelect(result.chat.id);
     } catch (error) {
-      console.error('Failed to create new chat:', error);
-    } finally {
-      setIsCreating(false);
+      console.error('Failed to create chat:', error);
     }
   };
 
   const handleRename = (chat: Chat) => {
-    setNewTitle(chat.title);
-    setRenameDialog({ open: true, chat });
-  };
-
-  const handleDelete = (chat: Chat) => {
-    setDeleteDialog({ open: true, chat });
+    setIsRenaming(chat.id);
+    setRenameValue(chat.title);
   };
 
   const confirmRename = async () => {
-    if (!renameDialog.chat || !newTitle.trim()) return;
-    
+    if (!isRenaming || !renameValue.trim()) return;
+
     try {
-      await updateChat({
-        id: renameDialog.chat._id,
-        title: newTitle.trim(),
-      });
-      setRenameDialog({ open: false, chat: null });
-      setNewTitle('');
+      // Create URL with specific chat ID
+      const endpoint = `/api/chats/${isRenaming}`;
+      const { mutate } = useSQLMutation<{ chat: Chat }, { title: string }>(endpoint, { method: 'PUT' });
+      await mutate({ title: renameValue.trim() });
+
+      setIsRenaming(null);
+      setRenameValue('');
+      // Trigger refetch by parent component
     } catch (error) {
       console.error('Failed to rename chat:', error);
     }
   };
 
+  const handleDelete = (chat: Chat) => {
+    setChatToDelete(chat);
+    setIsDeleteDialogOpen(true);
+  };
+
   const confirmDelete = async () => {
-    if (!deleteDialog.chat) return;
-    
+    if (!chatToDelete) return;
+
     try {
-      await deleteChat({ id: deleteDialog.chat._id });
-      setDeleteDialog({ open: false, chat: null });
-      // If deleted chat was selected, clear selection
-      if (selectedChatId === deleteDialog.chat._id) {
-        // Select first available chat or null
-        const remainingChats = chats.filter(c => c._id !== deleteDialog.chat!._id);
-        if (remainingChats.length > 0) {
-          onChatSelect(remainingChats[0]._id);
-        }
+      const endpoint = `/api/chats/${chatToDelete.id}`;
+      const { mutate } = useSQLMutation<{ success: boolean }, {}>(endpoint, { method: 'DELETE' });
+      await mutate({});
+
+      if (selectedChatId === chatToDelete.id) {
+        onChatSelect('');
       }
+      setIsDeleteDialogOpen(false);
+      setChatToDelete(null);
+      // Trigger refetch by parent component
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    } else if (diffInHours < 24 * 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    }
-  };
-
   return (
     <>
-      {/* Toggle button for collapsed state */}
-      {!isOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="fixed left-4 top-4 z-50 h-10 w-10"
-        >
-          <ChevronRightIcon className="h-4 w-4" />
-        </Button>
-      )}
-      
-      {/* Sidebar */}
       <div className={cn(
-        "flex h-full flex-col border-r bg-muted/10 transition-all duration-300 ease-in-out",
-        isOpen ? "w-80" : "w-0 overflow-hidden"
+        'flex flex-col border-r bg-background transition-all duration-300',
+        isOpen ? 'w-80' : 'w-16'
       )}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b p-4">
-          <h2 className="text-lg font-semibold">Chats</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCreateChat}
-              disabled={isCreating}
-              className="h-8 w-8"
-            >
-              <PlusIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggle}
-              className="h-8 w-8"
-            >
+        <div className="flex items-center justify-between p-4 border-b">
+          {isOpen && (
+            <h2 className="text-lg font-semibold">Chats</h2>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            className="h-8 w-8 p-0"
+          >
+            {isOpen ? (
               <ChevronLeftIcon className="h-4 w-4" />
-            </Button>
-          </div>
+            ) : (
+              <ChevronRightIcon className="h-4 w-4" />
+            )}
+          </Button>
         </div>
 
-        {/* Chat list */}
+        {/* New Chat Button */}
+        <div className="p-4">
+          <Button
+            onClick={handleNewChat}
+            className="w-full justify-start"
+            variant="outline"
+          >
+            <PlusIcon className="h-4 w-4" />
+            {isOpen && <span className="ml-2">New Chat</span>}
+          </Button>
+        </div>
+
+        {/* Chat List */}
         <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {chats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <MessageSquare className="h-8 w-8 mb-2" />
-                <p className="text-sm text-center">No chats yet</p>
-                <p className="text-xs text-center mt-1">Create your first chat to get started</p>
-              </div>
-            ) : (
-              chats
-                .sort((a, b) => b.updatedAt - a.updatedAt)
-                .map((chat) => (
-                  <ContextMenu key={chat._id}>
-                    <ContextMenuTrigger asChild>
-                      <Button
-                        variant={selectedChatId === chat._id ? "secondary" : "ghost"}
-                        className={cn(
-                          "w-full justify-start text-left h-auto p-3",
-                          selectedChatId === chat._id && "bg-secondary"
+          <div className="space-y-1 p-2">
+            {chats.map((chat) => (
+              <ContextMenu key={chat.id}>
+                <ContextMenuTrigger>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      'group flex w-full items-center gap-2 rounded-lg p-3 text-left text-sm transition-colors hover:bg-accent',
+                      selectedChatId === chat.id
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground'
+                    )}
+                    onClick={() => onChatSelect(chat.id)}
+                  >
+                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                    {isOpen && (
+                      <>
+                        {isRenaming === chat.id ? (
+                          <Input
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={confirmRename}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                confirmRename();
+                              } else if (e.key === 'Escape') {
+                                setIsRenaming(null);
+                                setRenameValue('');
+                              }
+                            }}
+                            className="h-auto p-0 text-sm"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="flex-1 truncate">{chat.title}</span>
                         )}
-                        onClick={() => onChatSelect(chat._id)}
-                      >
-                        <div className="flex flex-col items-start w-full min-w-0">
-                          <div className="flex items-center justify-between w-full">
-                            <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {formatDate(chat.updatedAt)}
-                            </span>
-                          </div>
-                          <span className="text-sm font-medium truncate w-full mt-1">
-                            {chat.title}
-                          </span>
-                        </div>
-                      </Button>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-48">
-                      <ContextMenuItem onClick={() => handleRename(chat)}>
-                        <EditIcon className="h-4 w-4 mr-2" />
-                        Rename Chat
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem 
-                        onClick={() => handleDelete(chat)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <TrashIcon className="h-4 w-4 mr-2" />
-                        Delete Chat
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))
-            )}
+                      </>
+                    )}
+                  </Button>
+                </ContextMenuTrigger>
+                {isOpen && (
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => handleRename(chat)}>
+                      <EditIcon className="h-4 w-4 mr-2" />
+                      Rename
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onClick={() => handleDelete(chat)}
+                      className="text-red-600"
+                    >
+                      <TrashIcon className="h-4 w-4 mr-2" />
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                )}
+              </ContextMenu>
+            ))}
           </div>
         </ScrollArea>
-
-        {/* User info */}
-        {user && (
-          <div className="border-t p-4">
-            <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium">
-                  {user.email?.[0]?.toUpperCase() || 'U'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user.email}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {chats.length} chat{chats.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Rename Dialog */}
-      <Dialog open={renameDialog.open} onOpenChange={(open) => setRenameDialog({ open, chat: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Chat</DialogTitle>
-            <DialogDescription>
-              Enter a new name for this chat.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Chat name"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                confirmRename();
-              }
-            }}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameDialog({ open: false, chat: null })}>
-              Cancel
-            </Button>
-            <Button onClick={confirmRename} disabled={!newTitle.trim()}>
-              Rename
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, chat: null })}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Chat</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteDialog.chat?.title}"? This action cannot be undone.
+              Are you sure you want to delete "{chatToDelete?.title}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, chat: null })}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

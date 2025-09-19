@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import { Download } from 'lucide-react';
 import {
@@ -154,10 +153,9 @@ export function FinancialDataPanel() {
     }
   }, [tableData, updateFinancialData, clearFinancialData]);
 
-  // 从Convex获取用户组织的LaTeX指标
-  const latexMetrics = useQuery(api.latexMetrics.getAccessibleLatexMetrics, {
-    limit: 100
-  });
+  // 从PostgreSQL获取用户组织的LaTeX指标
+  const { data: latexMetricsData } = useSQLQuery<{ metrics: any[] }>('/api/latex-metrics?limit=100');
+  const latexMetrics = latexMetricsData?.metrics;
 
   // 过滤出有sqlFormula的指标
   const availableMetrics = latexMetrics?.filter(metric => metric.sqlFormula) || [];

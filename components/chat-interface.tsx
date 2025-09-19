@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSQLQuery, useSQLMutation } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
-import type { Id } from '@/convex/_generated/dataModel';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { ChatView } from '@/components/chat-view';
 
@@ -17,15 +15,16 @@ export function ChatInterface({
   initialChatModel,
   user,
 }: ChatInterfaceProps) {
-  const [selectedChatId, setSelectedChatId] = useState<Id<"chats"> | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isInitializing, setIsInitializing] = useState(false);
   
   // 获取用户的所有chats
-  const chats = useQuery(api.chats.list);
-  
+  const { data: chatsData } = useSQLQuery<{ chats: any[] }>('/api/chats');
+  const chats = chatsData?.chats;
+
   // 获取或创建默认chat的mutation
-  const getOrCreateDefault = useMutation(api.chats.getOrCreateDefault);
+  const { mutate: getOrCreateDefault } = useSQLMutation<{ chatId: string }, {}>('/api/chats/default');
 
   // 如果没有选中的chat，自动选择或创建默认chat
   useEffect(() => {
@@ -36,12 +35,12 @@ export function ChatInterface({
         // 如果没有，则选择最新的chat
         const chatHistory = chats.find((chat: any) => chat.title === "Chat History");
         const selectedChat = chatHistory || chats.sort((a: any, b: any) => b.updatedAt - a.updatedAt)[0];
-        setSelectedChatId(selectedChat._id);
+        setSelectedChatId(selectedChat.id);
         setIsInitializing(false);
       } else {
         // 创建默认chat
-        getOrCreateDefault().then((chatId) => {
-          setSelectedChatId(chatId);
+        getOrCreateDefault({}).then((result) => {
+          setSelectedChatId(result.chatId);
           setIsInitializing(false);
         }).catch((error) => {
           console.error('Failed to create default chat:', error);
