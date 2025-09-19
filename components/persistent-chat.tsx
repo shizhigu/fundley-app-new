@@ -1,17 +1,15 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
-import { Preloaded, usePreloadedQuery, useQuery } from 'convex/react';
-import { Chat } from '@/components/chat';
-import { convertToUIMessages } from '@/lib/utils';
-import { api } from '@/convex/_generated/api';
+import { useState } from 'react';
+import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
-import { useChatContext } from '@/components/chat-layout-provider';
+import { ChatSidebar } from '@/components/chat-sidebar';
+import { ChatView } from '@/components/chat-view';
 
 interface PersistentChatProps {
   initialChatModel: string;
   user: AuthSession['user'];
-  preloadedMessages: Preloaded<typeof api.messages.list> | null;
+  preloadedMessages: any;
 }
 
 export function PersistentChat({
@@ -19,67 +17,51 @@ export function PersistentChat({
   user,
   preloadedMessages,
 }: PersistentChatProps) {
-  // 使用Context获取选中的chatId
-  const { selectedChatId } = useChatContext();
-  // 获取选中chat的消息（如果提供了selectedChatId）
-  const selectedChatMessages = useQuery(
-    selectedChatId ? api.messages.list : ("skip" as any),
-    selectedChatId ? { chatId: selectedChatId as any } : ("skip" as any)
-  );
-  
-  // 🔄 实时更新（认证后） - 这是主要的数据源（默认chat）
-  const realtimeMessages = useQuery(
-    user && !selectedChatId ? api.messages.listForPersistentChat : ("skip" as any),
-    user && !selectedChatId ? {} : ("skip" as any)
-  );
-  
-  // 暂时简化：不使用预加载数据，只使用实时数据
-  // TODO: 重构预加载逻辑以符合React Hook规则
-  
-  // 优先使用选中chat的消息，回退到实时数据
-  const messages = selectedChatMessages ?? realtimeMessages;
-  
-  // 只在用户已认证但没有数据时显示加载状态
-  const isLoading = user && !messages;
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Convert messages once when data changes
-  const initialMessages = useMemo(() => {
-    if (messages && messages.length > 0) {
-      try {
-        return convertToUIMessages(messages);
-      } catch (error) {
-        console.error('❌ Error converting messages:', error);
-        return [];
-      }
-    }
-    return [];
-  }, [messages]);
+  // 获取用户的所有chats
+  const { data: chatsData } = useSQLQuery<{ chats: any[] }>('/api/chats');
+  const chats = chatsData?.chats || [];
 
-  // Debug: Component mount logging (development only)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 PersistentChat component mounted');
-    }
-  }, []);
+  const handleChatSelect = (chatId: string) => {
+    setSelectedChatId(chatId);
+  };
 
-  // Show loading only if we're still fetching and have no data
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading chat history...</div>
-      </div>
-    );
-  }
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   return (
-    <Chat 
-      id={selectedChatId || "main"}
-      initialMessages={initialMessages}
-      initialChatModel={initialChatModel}
-      initialVisibilityType="private"
-      isReadonly={false}
-      user={user}
-      autoResume={false}
-    />
+    <div className="flex h-screen">
+      {/* Chat Sidebar */}
+      <ChatSidebar
+        chats={chats}
+        selectedChatId={selectedChatId}
+        onChatSelect={handleChatSelect}
+        isOpen={isSidebarOpen}
+        onToggle={handleToggleSidebar}
+        user={user}
+      />
+
+      {/* Main Chat Area */}
+      <div className="flex-1">
+        {selectedChatId ? (
+          <ChatView
+            chatId={selectedChatId}
+            initialChatModel={initialChatModel}
+            user={user}
+            onToggleSidebar={handleToggleSidebar}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-2">Welcome to Fundley AI</h2>
+              <p className="text-muted-foreground">Select a chat or create a new one to get started</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

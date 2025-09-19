@@ -10,7 +10,7 @@ export default async function Layout({
   const session = await auth();
 
   return (
-    <div className="h-screen w-full">
+    <div className="flex-1 overflow-hidden max-w-full min-w-0">
       {children}
     </div>
   );
