@@ -212,7 +212,7 @@ export function NavigationSidebar({ user, selectedChatId, onChatSelect }: Naviga
                 {/* Hover Panel for Other Items */}
                 {hoveredItem === item.id && item.id !== 'chats' && (
                   <GlassmorphismPanel className="absolute left-full top-0 ml-2 w-80 z-50">
-                    <ComingSoon feature={item.label} />
+                    <ComingSoon feature={item.id} />
                   </GlassmorphismPanel>
                 )}
               </div>

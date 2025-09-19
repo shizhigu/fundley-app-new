@@ -1,9 +1,9 @@
 'use client';
 
-import { Briefcase, Layout } from 'lucide-react';
+import { Briefcase, Layout, Brain } from 'lucide-react';
 
 interface ComingSoonProps {
-  feature: 'portfolio' | 'spaces';
+  feature: 'portfolio' | 'spaces' | 'research';
 }
 
 export function ComingSoon({ feature }: ComingSoonProps) {
@@ -28,6 +28,17 @@ export function ComingSoon({ feature }: ComingSoonProps) {
         'Shared research workspace',
         'Real-time document editing',
         'Group decision tracking',
+      ],
+    },
+    research: {
+      icon: Brain,
+      title: 'AI Research Assistant',
+      description: 'Advanced financial research powered by AI with market analysis, company research, and intelligent insights generation.',
+      features: [
+        'AI-powered market research',
+        'Company deep-dive analysis',
+        'SEC filing intelligence',
+        'Automated research reports',
       ],
     },
   };
