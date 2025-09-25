@@ -1,6 +1,6 @@
 'use client';
 
-import { SimpleChatNew } from '@/components/simple-chat-new';
+import { ChatInterface } from '@/components/chat-interface';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
 
@@ -35,7 +35,7 @@ export function PersistentChat({
   }
 
   return (
-    <SimpleChatNew
+    <ChatInterface
       chatId={chatId}
       initialChatModel={initialChatModel}
       user={user}

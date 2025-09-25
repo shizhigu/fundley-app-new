@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatHeader } from '@/components/chat-header';
-import { Messages } from './messages';
 import { MultimodalInput } from './multimodal-input';
+import { PreviewMessage } from './message';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { toast } from './toast';
+import { Greeting } from './greeting';
+import { ChatLoading } from './chat-loading';
+import { usePathname } from 'next/navigation';
 
 interface Message {
   id: string;
@@ -17,24 +21,23 @@ interface Message {
   tool_args?: any;
   tool_result?: any;
   timestamp: string;
-  // 兼容现有Messages组件的格式
-  parts?: Array<{ type: 'text'; text: string }>;
+  parts?: Array<{ type: string; [key: string]: any }>;
 }
 
-interface SimpleChatProps {
+interface ChatInterfaceProps {
   chatId: string;
   initialChatModel: string;
   user: AuthSession['user'];
   isReadonly?: boolean;
 }
 
-export function SimpleChatNew({
+export function ChatInterface({
   chatId,
   initialChatModel,
   user,
   isReadonly = false,
-}: SimpleChatProps) {
-  console.log('🔥 SimpleChatNew render:', chatId);
+}: ChatInterfaceProps) {
+  console.log('🔥 ChatInterface render:', chatId);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +50,7 @@ export function SimpleChatNew({
     { enabled: !!chatId }
   );
 
-  // 转换消息格式以兼容Messages组件
+  // 转换消息格式，处理工具结果
   const convertMessage = (msg: any): Message => {
     let parts = msg.parts || [{ type: 'text', text: msg.content || '' }];
 
@@ -328,6 +331,49 @@ export function SimpleChatNew({
     };
   }, []);
 
+  const pathname = usePathname();
+  const isNewChatLoading = pathname.includes('/chat/') && !pathname.includes('/permanent') && messages.length === 0 && isLoading;
+
+  // 优化消息渲染以节省内存
+  const MAX_VISIBLE_MESSAGES = 100;
+
+  const { visibleMessages, hiddenCount } = useMemo(() => {
+    if (messages.length <= MAX_VISIBLE_MESSAGES) {
+      return { visibleMessages: messages, hiddenCount: 0 };
+    }
+
+    const hidden = messages.length - MAX_VISIBLE_MESSAGES;
+    const visible = messages.slice(-MAX_VISIBLE_MESSAGES);
+
+    return { visibleMessages: visible, hiddenCount: hidden };
+  }, [messages]);
+
+  // 显示加载状态
+  if (isNewChatLoading) {
+    return (
+      <div className="flex flex-col h-full w-full max-w-full relative">
+        <ChatHeader
+          chatId={chatId}
+          selectedModelId={initialChatModel}
+          selectedVisibilityType="private"
+          isReadonly={isReadonly}
+          user={user}
+        />
+        <div className="flex-1 min-h-0 max-w-full">
+          <div
+            ref={containerRef}
+            className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+          >
+            <div className="flex items-center justify-center h-full">
+              <ChatLoading />
+            </div>
+          </div>
+          <div ref={endRef} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full w-full max-w-full relative">
       <ChatHeader
@@ -339,12 +385,49 @@ export function SimpleChatNew({
       />
 
       <div className="flex-1 min-h-0 max-w-full">
-        <Messages
+        <div
           ref={containerRef}
-          messages={messages}
-          isLoading={isLoading}
-        />
-        <div ref={endRef} />
+          className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+        >
+          {hiddenCount > 0 && (
+            <div className="text-center text-sm text-muted-foreground py-2">
+              {hiddenCount} older messages hidden
+            </div>
+          )}
+
+          {visibleMessages.length === 0 && !isLoading && (
+            <div className="flex items-center justify-center h-full">
+              <Greeting user={user} />
+            </div>
+          )}
+
+          {visibleMessages.map((message, index) => {
+            const originalIndex = messages.indexOf(message);
+            return (
+              <AnimatePresence key={message.id}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full max-w-4xl mx-auto"
+                >
+                  <PreviewMessage
+                    message={message}
+                    isLoading={isLoading && messages.length - 1 === originalIndex}
+                    isLatest={originalIndex === messages.length - 1}
+                    vote={undefined}
+                    setMessages={() => {}}
+                    regenerate={() => {}}
+                    isReadonly={isReadonly}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            );
+          })}
+
+          <div ref={endRef} />
+        </div>
       </div>
 
       {!isReadonly && (
