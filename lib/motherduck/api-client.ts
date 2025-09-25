@@ -20,7 +20,7 @@ export class MotherDuckAPIClient {
     
     // 如果在服务器端，直接调用Render服务
     const apiUrl = typeof window === 'undefined' 
-      ? process.env.MOTHERDUCK_API_URL || 'https://fundley-backend.onrender.com'
+      ? process.env.MOTHERDUCK_API_URL || 'http://localhost:8000'
       : '/api/motherduck-proxy';
     
     const endpoint = typeof window === 'undefined' 

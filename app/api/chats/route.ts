@@ -10,18 +10,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clerkUserId = session.user.id;
+    const userId = session.user.id;
 
-    // Get user's chats
+    // Get user's chats with ADK session mapping
     const chats = await db`
       SELECT
         c.id,
         c.title,
+        c.langgraph_thread_id as "sessionId",
         c.created_at as "createdAt",
         c.updated_at as "updatedAt"
       FROM chats c
-      JOIN users u ON c.user_id = u.id
-      WHERE u.clerk_user_id = ${clerkUserId}
+      WHERE c.user_id = ${userId}
       ORDER BY c.updated_at DESC
     `;
 
@@ -45,25 +45,19 @@ export async function POST(request: NextRequest) {
     }
 
     const { title } = await request.json();
-    const clerkUserId = session.user.id;
+    const userId = session.user.id;
 
-    // Get or create user
-    let user = await db`
+    // Get user organization info if needed (using session.user data directly)
+    const user = await db`
       SELECT id, clerk_organization_id
       FROM users
-      WHERE clerk_user_id = ${clerkUserId}
+      WHERE id = ${userId}
     `;
 
+    // User should exist (created by auth system), but handle edge case
     if (user.length === 0) {
-      // Create user if doesn't exist
-      user = await db`
-        INSERT INTO users (email, clerk_user_id, clerk_organization_id)
-        VALUES (${session.user.emailAddresses[0]?.emailAddress || `user-${clerkUserId}@temp.com`}, ${clerkUserId}, ${session.user.organizationId})
-        RETURNING id, clerk_organization_id
-      `;
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-
-    const userId = user[0].id;
 
     // Get organization if user belongs to one
     let organizationId = null;
@@ -78,11 +72,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create new chat
+    // Generate unique ADK session ID
+    const adkSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create new chat with ADK session mapping
     const newChat = await db`
-      INSERT INTO chats (title, user_id, organization_id)
-      VALUES (${title || 'New Chat'}, ${userId}, ${organizationId})
-      RETURNING id, title, created_at as "createdAt", updated_at as "updatedAt"
+      INSERT INTO chats (id, title, user_id, organization_id, langgraph_thread_id, created_at, updated_at)
+      VALUES (uuid_generate_v4(), ${title || 'New Chat'}, ${userId}, ${organizationId}, ${adkSessionId}, NOW(), NOW())
+      RETURNING id, title, langgraph_thread_id as "sessionId", created_at as "createdAt", updated_at as "updatedAt"
     `;
 
     return NextResponse.json({ chat: newChat[0] });

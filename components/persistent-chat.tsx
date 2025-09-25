@@ -1,67 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { SimpleChatNew } from '@/components/simple-chat-new';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import type { AuthSession } from '@/lib/auth/clerk';
-import { ChatSidebar } from '@/components/chat-sidebar';
-import { ChatView } from '@/components/chat-view';
 
 interface PersistentChatProps {
   initialChatModel: string;
   user: AuthSession['user'];
   preloadedMessages: any;
+  chatId?: string; // Optional prop to override default chat
 }
 
 export function PersistentChat({
   initialChatModel,
   user,
   preloadedMessages,
+  chatId: propChatId,
 }: PersistentChatProps) {
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  console.log('🔄 PersistentChat render:', { propChatId });
 
-  // 获取用户的所有chats
-  const { data: chatsData } = useSQLQuery<{ chats: any[] }>('/api/chats');
-  const chats = chatsData?.chats || [];
+  // 获取默认聊天或创建一个（仅当没有提供chatId时）
+  const { data: defaultChatData } = useSQLQuery<{ chatId: string }>(
+    propChatId ? null : '/api/chats/default'
+  );
+  const chatId = propChatId || defaultChatData?.chatId || "main";
 
-  const handleChatSelect = (chatId: string) => {
-    setSelectedChatId(chatId);
-  };
-
-  const handleToggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  // Show loading only if we're still fetching chat ID
+  if (!chatId) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading chat...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen">
-      {/* Chat Sidebar */}
-      <ChatSidebar
-        chats={chats}
-        selectedChatId={selectedChatId}
-        onChatSelect={handleChatSelect}
-        isOpen={isSidebarOpen}
-        onToggle={handleToggleSidebar}
-        user={user}
-      />
-
-      {/* Main Chat Area */}
-      <div className="flex-1">
-        {selectedChatId ? (
-          <ChatView
-            chatId={selectedChatId}
-            initialChatModel={initialChatModel}
-            user={user}
-            onToggleSidebar={handleToggleSidebar}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Welcome to Fundley AI</h2>
-              <p className="text-muted-foreground">Select a chat or create a new one to get started</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <SimpleChatNew
+      chatId={chatId}
+      initialChatModel={initialChatModel}
+      user={user}
+      isReadonly={false}
+    />
   );
 }

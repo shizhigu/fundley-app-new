@@ -550,9 +550,10 @@ export const InfoIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const ArrowUpIcon = ({ size = 16 }: { size?: number }) => {
+export const ArrowUpIcon = ({ size = 16, className }: { size?: number; className?: string }) => {
   return (
     <svg
+      className={className}
       height={size}
       strokeLinejoin="round"
       viewBox="0 0 16 16"
@@ -781,8 +782,9 @@ export const SidebarLeftIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
-export const PlusIcon = ({ size = 16 }: { size?: number }) => (
+export const PlusIcon = ({ size = 16, className }: { size?: number; className?: string }) => (
   <svg
+    className={className}
     height={size}
     strokeLinejoin="round"
     viewBox="0 0 16 16"

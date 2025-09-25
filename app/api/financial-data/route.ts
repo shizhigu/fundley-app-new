@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '@/convex/_generated/api';
+import { db } from '@/lib/db/config';
 
 // 财务数据请求接口
 interface FinancialDataRequest {
   symbols: string[];           // ['NVDA', 'AAPL', 'MSFT']
-  metricIds: string[];        // LaTeX metric IDs from Convex
+  metricIds: string[];        // LaTeX metric IDs from PostgreSQL
   quarters: number;           // 5, 10, 20
 }
 
@@ -32,8 +31,6 @@ export async function POST(request: NextRequest) {
   try {
     const { symbols, metricIds, quarters }: FinancialDataRequest = await request.json();
 
-    // 初始化Convex客户端
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
     // 验证输入参数
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
@@ -61,31 +58,52 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Fetching SQL formulas for ${metricIds.length} metrics`);
     const sqlFormulas: { [metricId: string]: string } = {};
 
-    for (const metricId of metricIds) {
-      try {
-        const metric = await convex.query(api.latexMetrics.getLatexMetric, {
-          id: metricId as any
-        });
+    // 批量查询所有指标 - 修复UUID类型问题
+    // Convex IDs 不是 UUID 格式，改用文本比较
+    const metrics = await db`
+      SELECT id::text as id, name, formula->>'sql' as sql_formula
+      FROM latex_metrics
+      WHERE id::text = ANY(${metricIds})
+        AND is_active = true
+    `;
 
-        if (metric?.sqlFormula) {
-          sqlFormulas[metricId] = metric.sqlFormula;
-          console.log(`✅ Found SQL formula for ${metric.name}: ${metric.sqlFormula}`);
-        } else {
-          console.warn(`⚠️  No SQL formula found for metric ID: ${metricId}`);
-        }
-      } catch (error) {
-        console.error(`❌ Error fetching metric ${metricId}:`, error);
+    for (const metric of metrics) {
+      if (metric.sql_formula) {
+        sqlFormulas[metric.id] = metric.sql_formula;
+        console.log(`✅ Found SQL formula for ${metric.name}: ${metric.sql_formula}`);
+      } else {
+        console.warn(`⚠️  No SQL formula found for metric: ${metric.name}`);
       }
     }
 
+    // 检查是否有遗漏的指标
+    const foundMetricIds = metrics.map(m => m.id);
+    const missingMetricIds = metricIds.filter(id => !foundMetricIds.includes(id));
+    if (missingMetricIds.length > 0) {
+      console.warn(`⚠️  Missing metrics: ${missingMetricIds.join(', ')}`);
+    }
+
+    // 检查是否找到了任何SQL公式
+    if (Object.keys(sqlFormulas).length === 0) {
+      console.error(`❌ No SQL formulas found for any of the requested metrics: ${metricIds.join(', ')}`);
+      return NextResponse.json(
+        {
+          error: 'No SQL formulas found',
+          details: `None of the requested metrics (${metricIds.join(', ')}) have SQL formulas defined`,
+          suggestion: 'Please ensure the metrics exist in the database and have valid SQL formulas'
+        },
+        { status: 400 }
+      );
+    }
+
     // 获取Python微服务URL（从环境变量）
-    const pythonServiceUrl = process.env.MOTHERDUCK_API_URL || 'http://localhost:8000';
+    const pythonServiceUrl = process.env.ADK_SERVICE_URL || 'http://localhost:8012';
 
     console.log(`📊 Requesting financial data from ${pythonServiceUrl}`);
     console.log(`📋 Request: ${symbols.length} symbols, ${Object.keys(sqlFormulas).length} SQL formulas, ${quarters} quarters`);
 
     // 调用Python微服务，传递SQL公式而不是metric IDs
-    const response = await fetch(`${pythonServiceUrl}/financial-data`, {
+    const response = await fetch(`${pythonServiceUrl}/api/v1/financial-data`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -93,7 +111,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         symbols: symbols.map(s => s.trim().toUpperCase()),
-        sqlFormulas, // 传递SQL公式映射
+        sqlFormulas, // ADK服务期望的是sqlFormulas，不是metricIds
         quarters
       }),
     });
@@ -113,12 +131,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data: FinancialDataResponse[] = await response.json();
+    const adkResponse = await response.json();
 
-    console.log(`✅ Received ${data.length} records from Python service`);
+    console.log(`✅ Received response from ADK service:`, adkResponse);
 
-    // 返回处理后的数据
-    return NextResponse.json(data);
+    // ADK服务返回 {success: true, data: [...]} 格式
+    if (adkResponse.success) {
+      return NextResponse.json(adkResponse.data);
+    } else {
+      throw new Error(adkResponse.error || 'ADK service returned unsuccessful response');
+    }
 
   } catch (error) {
     console.error('❌ Financial data API error:', error);

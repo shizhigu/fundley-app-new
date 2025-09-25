@@ -1,12 +1,10 @@
 /**
- * LaTeX Financial Tools for AI Agent
- * 全新的LaTeX-first财务指标AI工具
+ * LaTeX Financial Tools for AI Agent - PostgreSQL Version
+ * 完全基于PostgreSQL API的LaTeX财务指标AI工具
  */
 
 import { tool, generateText } from 'ai';
 import { z } from 'zod';
-import type { ConvexHttpClient } from 'convex/browser';
-import { api } from '@/convex/_generated/api';
 import { LaTeXFinancialEngine } from '@/lib/latex-financial/engine';
 import type { LaTeXMetricDefinition } from '@/lib/latex-financial/types';
 import { financialFieldsModel } from '@/lib/ai/providers';
@@ -57,73 +55,82 @@ function parseJSONFromResponse(response: string): { sql: string; explanation: st
 /**
  * 根据名字解析LaTeX metrics，支持精确匹配和包含匹配
  */
-async function resolveMetricNames(metricNames: string[], convex: ConvexHttpClient): Promise<Array<{id: string, name: string, matchType: 'exact' | 'partial'}>> {
+async function resolveMetricNames(metricNames: string[]): Promise<Array<{id: string, name: string, matchType: 'exact' | 'partial'}>> {
   const results: Array<{id: string, name: string, matchType: 'exact' | 'partial'}> = [];
 
-  // 获取所有可用的metrics进行匹配
-  const allMetrics = await convex.query(api.latexMetrics.getAccessibleLatexMetrics, {
-    limit: 1000 // 获取足够多的metrics进行匹配
-  });
-  if (!allMetrics || allMetrics.length === 0) {
-    console.warn('No LaTeX metrics found in database');
-    return results;
-  }
-
-  for (const inputName of metricNames) {
-    const trimmedInput = inputName.trim();
-    let found = false;
-
-    // 1. 精确匹配（不区分大小写）
-    for (const metric of allMetrics) {
-      if (metric.name.toLowerCase() === trimmedInput.toLowerCase()) {
-        results.push({
-          id: metric._id,
-          name: metric.name,
-          matchType: 'exact'
-        });
-        found = true;
-        break;
-      }
+  try {
+    // 调用PostgreSQL API获取所有可用的metrics (使用新的custom-metrics API)
+    const response = await fetch('/api/custom-metrics?includePublic=true');
+    if (!response.ok) {
+      console.error('Failed to fetch metrics from API:', response.status);
+      return results;
     }
 
-    // 2. 如果没找到精确匹配，尝试包含匹配
-    if (!found) {
+    const allMetrics = await response.json();
+
+    if (allMetrics.length === 0) {
+      console.warn('No LaTeX metrics found in database');
+      return results;
+    }
+
+    for (const inputName of metricNames) {
+      const trimmedInput = inputName.trim();
+      let found = false;
+
+      // 1. 精确匹配（不区分大小写）
       for (const metric of allMetrics) {
-        if (metric.name.toLowerCase().includes(trimmedInput.toLowerCase())) {
+        if (metric.name.toLowerCase() === trimmedInput.toLowerCase()) {
           results.push({
             id: metric._id,
             name: metric.name,
-            matchType: 'partial'
+            matchType: 'exact'
           });
           found = true;
-          break; // 只取第一个匹配结果，避免重复
+          break;
         }
+      }
+
+      // 2. 如果没找到精确匹配，尝试包含匹配
+      if (!found) {
+        for (const metric of allMetrics) {
+          if (metric.name.toLowerCase().includes(trimmedInput.toLowerCase())) {
+            results.push({
+              id: metric._id,
+              name: metric.name,
+              matchType: 'partial'
+            });
+            found = true;
+            break; // 只取第一个匹配结果，避免重复
+          }
+        }
+      }
+
+      if (!found) {
+        console.warn(`No metric found matching: "${inputName}"`);
       }
     }
 
-    if (!found) {
-      console.warn(`No metric found matching: "${inputName}"`);
-    }
+    return results;
+  } catch (error) {
+    console.error('Error resolving metric names:', error);
+    return results;
   }
-
-  return results;
 }
 
-
 /**
- * 创建LaTeX财务指标工具 (工厂函数)
+ * 创建LaTeX财务指标工具
  */
-export const createLatexMetric = (convex: ConvexHttpClient) => tool({
-  description: `Create a custom financial metric using LaTeX mathematical notation. 
-  
-  Use this when users want to define new financial ratios or calculations. 
+export const createLatexMetric = tool({
+  description: `Create a custom financial metric using LaTeX mathematical notation.
+
+  Use this when users want to define new financial ratios or calculations.
   LaTeX formulas are more intuitive than complex JSON structures.
-  
+
   Examples:
   - Simple ratio: ROE = \\\\frac{NetIncome}{ShareholderEquity}
   - Cross-period: ROCE = \\\\frac{EBIT}{\\\\frac{Assets_t + Assets_{t-1}}{2}}
   - Time series: AvgROE = \\\\overline{ROE_{t-3:t}}`,
-  
+
   inputSchema: z.object({
     name: z.string().describe('Metric name (e.g., "Custom ROCE", "Modified ROE")'),
     description: z.string().describe('What this metric measures and why it is useful'),
@@ -133,30 +140,46 @@ export const createLatexMetric = (convex: ConvexHttpClient) => tool({
 
   execute: async ({
     name,
-    description, 
+    description,
     category,
     latexFormula
   }) => {
     try {
       console.log(`🧮 Creating LaTeX metric: ${name}`);
       console.log(`📐 Formula: ${latexFormula}`);
-      
-      const result = await convex.mutation(api.latexMetrics.createLatexMetric, {
-        name,
-        description,
-        category,
-        latexFormula,
-        variableMapping: {}, // LLM会自动处理变量映射
-        exampleResult: undefined
+
+      const response = await fetch('/api/custom-metrics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          category,
+          formula: {
+            latex: latexFormula
+          },
+          prompt: `Custom financial metric: ${name}`,
+          isPublic: false,
+          calculationType: 'latex'
+        }),
       });
-      
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create metric');
+      }
+
+      const result = await response.json();
+
       return {
         success: true,
         metricId: result.id,
         message: `✅ LaTeX metric "${name}" created successfully!`,
         formula: latexFormula
       };
-      
+
     } catch (error) {
       console.error('❌ Failed to create LaTeX metric:', error);
       return {
@@ -169,9 +192,9 @@ export const createLatexMetric = (convex: ConvexHttpClient) => tool({
 });
 
 /**
- * 计算LaTeX财务指标工具 (工厂函数)
+ * 计算LaTeX财务指标工具
  */
-export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
+export const calculateLatexMetric = tool({
   description: `LaTeX financial metric calculation tool with intelligent name matching.
 
   This tool takes metric names (not IDs) and generates unified SQL queries to calculate all requested metrics together.
@@ -193,32 +216,32 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
 
   **Example Input:**
   metricNames: ["ROE", "Return on Assets", "Custom ROCE"]`,
-  
+
   inputSchema: z.object({
     metricNames: z.array(z.string()).describe('LaTeX metric names (supports exact names and partial matching). Examples: ["ROE", "Return on Equity", "Custom ROCE"]'),
-    
+
     // Data requirements specification
     dataRequirements: z.object({
       description: z.string().describe('Detailed description of what financial data and analysis is needed (e.g., "Get AAPL and MSFT ROCE data for past 5 quarters for trend comparison analysis")'),
-      
+
       expectedDataVolume: z.string().describe('Rough estimate of expected data volume (e.g., "2 companies × 5 quarters = 10 rows", "Top 20 company ranking ≈ 20 rows", "Single company annual data ≈ 1 row")'),
-      
+
       rowDefinition: z.string().describe('What each row of data represents (e.g., "Each row represents a company\'s ROCE value for a specific quarter", "Each row represents a company\'s annual summary metrics", "Each row represents industry average for a time period")'),
-      
+
       columnRequirements: z.string().describe('What columns/fields need to be returned (e.g., "symbol(company ticker), period(time period), roce_value(ROCE value), market_cap(market cap), sector(industry)")')
     }),
-    
-    // Query specification  
+
+    // Query specification
     querySpecification: z.object({
       companies: z.string().describe('Scope of companies involved (e.g., "AAPL, MSFT", "All tech stocks", "Top 100 companies by market cap", "No company restrictions")'),
-      
+
       timeRange: z.string().describe('Time range requirements (e.g., "2023Q1-2024Q4", "Most recent 5 quarters", "2024 annual data", "Latest available data")'),
-      
+
       filterCriteria: z.string().describe('Filter conditions (e.g., "Market cap > $10B", "Exclude financial sector", "US stocks only", "No special filters")'),
-      
+
       sortAndLimit: z.string().describe('Sorting and quantity limits (e.g., "Sort by ROCE descending, take top 20", "Sort by time ascending", "Sort by company alphabetically", "No special sorting needed")')
     }),
-    
+
     // Expected output format
     expectedOutput: z.object({
       sqlFields: z.string().describe('Expected SQL query result field names (e.g., "symbol, company_name, period, roce_value, rank")')
@@ -238,7 +261,7 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
       console.log(`📋 Expected Output:`, expectedOutput);
 
       // Step 1: Resolve metric names to IDs
-      const resolvedMetrics = await resolveMetricNames(metricNames, convex);
+      const resolvedMetrics = await resolveMetricNames(metricNames);
       if (resolvedMetrics.length === 0) {
         return {
           success: false,
@@ -250,14 +273,20 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
       // Step 2: Fetch full metric definitions
       const metrics: any[] = [];
       for (const resolvedMetric of resolvedMetrics) {
-        const metric = await convex.query(api.latexMetrics.getLatexMetric, {
-          id: resolvedMetric.id as any
-        });
-        if (!metric) {
-          console.warn(`Metric not found for ID: ${resolvedMetric.id}`);
-          continue;
+        try {
+          const response = await fetch('/api/custom-metrics');
+          if (response.ok) {
+            const allMetrics = await response.json();
+            const metric = allMetrics.find((m: any) => m._id === resolvedMetric.id);
+            if (metric) {
+              metrics.push(metric);
+            }
+          } else {
+            console.warn(`Metric not found for ID: ${resolvedMetric.id}`);
+          }
+        } catch (error) {
+          console.warn(`Error fetching metric ${resolvedMetric.id}:`, error);
         }
-        metrics.push(metric);
       }
 
       if (metrics.length === 0) {
@@ -278,67 +307,14 @@ export const calculateLatexMetric = (convex: ConvexHttpClient) => tool({
 
       // Create LaTeX engine for unified calculation
       const engine = new LaTeXFinancialEngine();
-      
+
       // Build unified prompt with ALL metrics and requirements
-      const metricsInfo = allMetricDefinitions.map(metric => 
+      const metricsInfo = allMetricDefinitions.map(metric =>
         `**${metric.name}**: ${metric.latexFormula} (${metric.description})`
       ).join('\n');
-      
+
       // Create comprehensive unified query prompt
-      let enhancedQuery = `
-# UNIFIED MULTI-METRIC SQL GENERATION
-Generate a SINGLE SQL query that calculates ALL requested metrics together for comparison and analysis.
-
-## REQUESTED METRICS:
-${metricsInfo}
-
-## USER REQUIREMENTS:
-- Analysis Description: ${dataRequirements.description}
-- Expected Volume: ${dataRequirements.expectedDataVolume}
-- Row Definition: ${dataRequirements.rowDefinition}
-- Column Requirements: ${dataRequirements.columnRequirements}
-
-## QUERY SPECIFICATIONS:
-- Companies: ${querySpecification.companies}
-- Time Range: ${querySpecification.timeRange}
-- Filter Criteria: ${querySpecification.filterCriteria}
-- Sort/Limit: ${querySpecification.sortAndLimit}
-
-## OUTPUT REQUIREMENTS:
-- Expected Fields: ${expectedOutput.sqlFields}
-
-**CRITICAL UNIFIED CALCULATION STRATEGY**:
-1. Use WITH clauses (CTEs) to structure the calculation
-2. Calculate ALL metrics in the SAME query for consistent data alignment
-3. Include all metrics as separate columns in the final SELECT
-4. Apply cross-metric filtering if specified (e.g., "ROCE > 15% AND ROE > 20%")
-5. Ensure proper field mapping for each LaTeX formula
-6. Handle time-series data consistently across all metrics
-
-**CRITICAL TIME DIMENSION REQUIREMENTS**:
-- ALWAYS include fiscalyear, period, and filingdate fields in SELECT clause
-- For quarterly analysis: Include both quarter (Q1, Q2, Q3, Q4) and fiscal year for proper time series ordering
-- For multi-period calculations: Ensure proper time ordering with ORDER BY filingdate or fiscalyear, period
-- Never return only quarter without fiscal year context
-
-**FIELD REQUIREMENTS FOR EACH METRIC**:
-${allMetricDefinitions.map(metric => 
-  `- ${metric.name}: Extract fields from formula "${metric.latexFormula}"`
-).join('\n')}
-
-Generate a single comprehensive SQL query that calculates all metrics together with consistent data alignment:
-`;
-
-      // Create unified metric definition for the engine
-      const unifiedMetricDefinition: LaTeXMetricDefinition = {
-        name: `Unified Analysis: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
-        description: `Multi-metric analysis combining: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
-        category: 'unified',
-        latexFormula: allMetricDefinitions.map(m => `${m.name} = ${m.latexFormula}`).join(' | ')
-      };
-
-      // Use unified SQL generation approach
-      enhancedQuery = `
+      const enhancedQuery = `
 # UNIFIED MULTI-METRIC SQL GENERATION
 
 Generate a SINGLE SQL query that calculates ALL requested metrics together for data consistency and performance.
@@ -391,7 +367,7 @@ The FIRST priority is to make sure the LaTeX formulas are translated into correc
 
 1. **Primary source**: \`financial_statements\` (contains 95% of financial metrics)
 2. **Secondary source**: \`company_profiles\` (for company info like marketcap, sector, industry)
-3. **Join logic**: 
+3. **Join logic**:
    \`\`\`sql
    FROM financial_statements fs
    LEFT JOIN company_profiles cp ON fs.symbol = cp.symbol
@@ -477,15 +453,16 @@ Generate ONE comprehensive SQL query that calculates ALL metrics together.
       console.log('🧠 Generated SQL:', jsonResult.sql);
       console.log('💡 Explanation:', jsonResult.explanation);
 
+      // Create unified metric definition for the engine
+      const unifiedMetricDefinition: LaTeXMetricDefinition = {
+        name: `Unified Analysis: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
+        description: `Multi-metric analysis combining: ${allMetricDefinitions.map(m => m.name).join(', ')}`,
+        category: 'unified',
+        latexFormula: allMetricDefinitions.map(m => `${m.name} = ${m.latexFormula}`).join(' | ')
+      };
+
       // Execute SQL using engine
       const result = await engine.executeSQL(jsonResult.sql, unifiedMetricDefinition.name);
-      
-      // Log to Convex for the unified calculation (single entry)
-      await convex.mutation(api.latexMetrics.updateMetricUsage, {
-        metricId: resolvedMetrics[0].id as any, // Primary metric for logging
-        executionTimeMs: result.metadata?.executionTimeMs,
-        sql: result.metadata?.generatedSQL
-      });
 
       // Clean up and close connection
       await engine.close();
@@ -504,7 +481,7 @@ Generate ONE comprehensive SQL query that calculates ALL metrics together.
           message: `✅ Unified analysis completed for ${resolvedMetrics.length} metrics: ${allMetricDefinitions.map(m => m.name).join(', ')}`
         }
       };
-      
+
     } catch (error) {
       console.error('❌ LaTeX metric calculation failed:', error);
       return {
@@ -517,11 +494,11 @@ Generate ONE comprehensive SQL query that calculates ALL metrics together.
 });
 
 /**
- * 搜索LaTeX指标工具 (工厂函数)
+ * 搜索LaTeX指标工具
  */
-export const searchLatexMetrics = (convex: ConvexHttpClient) => tool({
+export const searchLatexMetrics = tool({
   description: 'Search for existing LaTeX financial metrics by name, description, or formula',
-  
+
   inputSchema: z.object({
     searchTerm: z.string().describe('Search term (name, description, or formula keywords)'),
     category: z.optional(z.string()).describe('Filter by category: profitability, liquidity, etc.'),
@@ -530,26 +507,45 @@ export const searchLatexMetrics = (convex: ConvexHttpClient) => tool({
 
   execute: async ({ searchTerm, category, limit }) => {
     try {
-      const results = await convex.query(api.latexMetrics.searchLatexMetrics, {
-        searchTerm,
-        category,
-        limit
+      const queryParams = new URLSearchParams({
+        search: searchTerm,
+        limit: limit.toString()
       });
+
+      if (category) {
+        queryParams.append('category', category);
+      }
+
+      const response = await fetch('/api/custom-metrics?includePublic=true');
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const allResults = await response.json();
+      // Filter results based on search term and category
+      const results = allResults.filter((metric: any) => {
+        const matchesSearch = !searchTerm ||
+          metric.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          metric.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          metric.latexFormula?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesCategory = !category || metric.category === category;
+
+        return matchesSearch && matchesCategory;
+      }).slice(0, limit);
 
       return {
         success: true,
-        results: results.map(metric => ({
+        results: results.map((metric: any) => ({
           id: metric._id,
           name: metric.name,
           description: metric.description,
           category: metric.category,
           latexFormula: metric.latexFormula,
-          usageCount: metric.usageCount,
-          avgExecutionTime: metric.avgExecutionTimeMs
         })),
         message: `Found ${results.length} LaTeX metrics matching "${searchTerm}"`
       };
-      
+
     } catch (error) {
       console.error('❌ LaTeX metric search failed:', error);
       return {
@@ -562,35 +558,40 @@ export const searchLatexMetrics = (convex: ConvexHttpClient) => tool({
 });
 
 /**
- * 获取热门LaTeX指标工具 (工厂函数)
+ * 获取热门LaTeX指标工具
  */
-export const getPopularLatexMetrics = (convex: ConvexHttpClient) => tool({
+export const getPopularLatexMetrics = tool({
   description: 'Get most popular LaTeX financial metrics based on usage',
-  
+
   inputSchema: z.object({
     limit: z.number().default(10).describe('Number of popular metrics to return')
   }),
 
   execute: async ({ limit }) => {
     try {
-      const results = await convex.query(api.latexMetrics.getPopularLatexMetrics, {
-        limit
-      });
+      const response = await fetch('/api/custom-metrics?includePublic=true');
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const allResults = await response.json();
+      // Sort by creation date as a proxy for popularity and take the limit
+      const results = allResults.sort((a: any, b: any) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      ).slice(0, limit);
 
       return {
         success: true,
-        metrics: results.map(metric => ({
+        metrics: results.map((metric: any) => ({
           id: metric._id,
           name: metric.name,
           description: metric.description,
           category: metric.category,
           latexFormula: metric.latexFormula,
-          usageCount: metric.usageCount,
-          avgExecutionTime: metric.avgExecutionTimeMs
         })),
         message: `Retrieved ${results.length} most popular LaTeX metrics`
       };
-      
+
     } catch (error) {
       console.error('❌ Failed to get popular metrics:', error);
       return {
@@ -600,4 +601,3 @@ export const getPopularLatexMetrics = (convex: ConvexHttpClient) => tool({
     }
   }
 });
-

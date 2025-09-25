@@ -15,13 +15,51 @@ export interface ToolStatusProps {
 
 // Map tool names to user-friendly descriptions and icons
 const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
-  financialFieldsAgent: { 
-    label: 'Analyzing financial fields', 
-    icon: Search 
+  // ADK Financial Agent Tools
+  financial_data_agent: {
+    label: 'Analyzing financial data',
+    icon: TrendingUp
   },
-  getFinancialData: { 
-    label: 'Retrieving financial data', 
-    icon: TrendingUp 
+  get_financial_data: {
+    label: 'Retrieving financial data',
+    icon: TrendingUp
+  },
+  get_company_profile: {
+    label: 'Fetching company profile',
+    icon: Briefcase
+  },
+  get_stock_quote: {
+    label: 'Getting stock quote',
+    icon: TrendingUp
+  },
+  web_search: {
+    label: 'Searching web for insights',
+    icon: Globe
+  },
+  sql_query: {
+    label: 'Querying financial database',
+    icon: Database
+  },
+  extract_mda: {
+    label: 'Extracting MD&A from SEC filings',
+    icon: FileText
+  },
+  extract_risk_factors: {
+    label: 'Extracting risk factors from 10-K',
+    icon: AlertTriangle
+  },
+  extract_business_overview: {
+    label: 'Extracting business overview',
+    icon: Briefcase
+  },
+  // Legacy tools
+  financialFieldsAgent: {
+    label: 'Analyzing financial fields',
+    icon: Search
+  },
+  getFinancialData: {
+    label: 'Retrieving financial data',
+    icon: TrendingUp
   },
   // Legacy tools (for backwards compatibility)
   getIncomeStatement: { 
@@ -70,6 +108,11 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   webSearch: {
     label: 'Searching web for insights',
     icon: Globe
+  },
+  // Data Visualization tools
+  create_visualization: {
+    label: 'Creating data visualization',
+    icon: TrendingUp
   },
 };
 

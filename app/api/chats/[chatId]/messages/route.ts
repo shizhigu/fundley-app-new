@@ -5,7 +5,7 @@ import { db } from '@/lib/db/config';
 // GET /api/chats/[chatId]/messages - Get messages for a chat
 export async function GET(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const session = await auth();
@@ -13,35 +13,77 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = params;
-    const clerkUserId = session.user.id;
+    const { chatId } = await params;
+    const userId = session.user.id;
 
     // Verify user owns this chat
     const chatCheck = await db`
       SELECT c.id
       FROM chats c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.id = ${chatId} AND u.clerk_user_id = ${clerkUserId}
+      WHERE c.id = ${chatId} AND c.user_id = ${userId}
     `;
 
     if (chatCheck.length === 0) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
     }
 
-    // Get messages
-    const messages = await db`
+    // Get messages from new simplified table
+    const rawMessages = await db`
       SELECT
         id,
         role,
         content,
-        metadata as parts,
-        created_at as "createdAt"
+        tool_name,
+        tool_args,
+        tool_result,
+        created_at as timestamp
       FROM messages
       WHERE chat_id = ${chatId}
       ORDER BY created_at ASC
     `;
 
-    return NextResponse.json({ messages });
+    // Parse JSON fields back to objects with error handling
+    const messages = rawMessages.map(msg => {
+      let parsedToolArgs = null;
+      let parsedToolResult = null;
+
+      // Safe JSON parsing for tool_args
+      if (msg.tool_args) {
+        if (typeof msg.tool_args === 'string') {
+          try {
+            parsedToolArgs = JSON.parse(msg.tool_args);
+          } catch (error) {
+            console.warn(`Invalid JSON in tool_args for message ${msg.id}:`, msg.tool_args);
+            parsedToolArgs = msg.tool_args; // Keep as string if parsing fails
+          }
+        } else {
+          parsedToolArgs = msg.tool_args;
+        }
+      }
+
+      // Safe JSON parsing for tool_result
+      if (msg.tool_result) {
+        if (typeof msg.tool_result === 'string') {
+          try {
+            parsedToolResult = JSON.parse(msg.tool_result);
+          } catch (error) {
+            console.warn(`Invalid JSON in tool_result for message ${msg.id}:`, msg.tool_result);
+            parsedToolResult = msg.tool_result; // Keep as string if parsing fails
+          }
+        } else {
+          parsedToolResult = msg.tool_result;
+        }
+      }
+
+      return {
+        ...msg,
+        tool_args: parsedToolArgs,
+        tool_result: parsedToolResult,
+      };
+    });
+
+    console.log('📤 Returning messages from database:', messages);
+    return NextResponse.json({ success: true, messages });
 
   } catch (error) {
     console.error('Error fetching messages:', error);
@@ -55,7 +97,7 @@ export async function GET(
 // POST /api/chats/[chatId]/messages - Create new message
 export async function POST(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const session = await auth();
@@ -63,29 +105,39 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = params;
-    const { role, content, parts, attachments = [] } = await request.json();
-    const clerkUserId = session.user.id;
+    const { chatId } = await params;
+    const {
+      role,
+      content,
+      tool_name,
+      tool_args,
+      tool_result
+    } = await request.json();
+    const userId = session.user.id;
 
     // Verify user owns this chat
     const chatCheck = await db`
       SELECT c.id
       FROM chats c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.id = ${chatId} AND u.clerk_user_id = ${clerkUserId}
+      WHERE c.id = ${chatId} AND c.user_id = ${userId}
     `;
 
     if (chatCheck.length === 0) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
     }
 
-    // Create message with parts format (v2 schema)
-    const metadata = parts || [{ type: 'text', text: content }];
-
+    // Create message with new simplified schema
     const newMessage = await db`
-      INSERT INTO messages (chat_id, role, content, metadata)
-      VALUES (${chatId}, ${role}, ${content}, ${JSON.stringify(metadata)})
-      RETURNING id, role, content, metadata as parts, created_at as "createdAt"
+      INSERT INTO messages (
+        chat_id, role, content, tool_name, tool_args, tool_result
+      )
+      VALUES (
+        ${chatId}, ${role}, ${content || null},
+        ${tool_name || null}, ${tool_args || null}, ${tool_result || null}
+      )
+      RETURNING
+        id, role, content, tool_name, tool_args, tool_result,
+        created_at as timestamp
     `;
 
     // Update chat's updated_at timestamp

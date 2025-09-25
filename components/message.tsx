@@ -16,7 +16,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
 import { JSVisualizationMessage } from './js-visualization-message';
-import type { UseChatHelpers } from '@ai-sdk/react';
+import { WebSearchResultCard } from './web-search-result-card';
+import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { ToolStatus } from './tool-status';
@@ -24,6 +25,53 @@ import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 // Removed direct import - now using API route
+
+// Chart.js visualization engine for frontend execution
+const JSVisualizationEngine = {
+  generateChartJSHTML: (data: any[], chartConfig: any, vizId: string = 'default'): string => {
+    // Use the chartConfig directly as it's already a Chart.js config
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: white;
+    }
+    .chart-container {
+      width: 100%;
+      height: 400px;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="chart-container">
+    <canvas id="chart-${vizId}"></canvas>
+  </div>
+  <script>
+    try {
+      console.log('🔥 Chart.js Visualization - ID: ${vizId}');
+      const config = ${JSON.stringify(chartConfig)};
+
+      console.log('📊 Chart config:', config);
+
+      const ctx = document.getElementById('chart-${vizId}').getContext('2d');
+      new Chart(ctx, config);
+    } catch (error) {
+      console.error('Chart rendering error:', error);
+      document.body.innerHTML = '<div style="padding: 20px; color: red;">Chart rendering failed: ' + error.message + '</div>';
+    }
+  </script>
+</body>
+</html>`;
+  }
+};
 
 // Citation Card Component - handles metadata fetching
 const CitationCard = ({ citation }: { citation: any }) => {
@@ -322,7 +370,7 @@ const PurePreviewMessage = ({
   const [showFullVerification, setShowFullVerification] = useState(false);
 
   const attachmentsFromMessage = message.parts.filter(
-    (part) => part.type === 'file',
+    (part: any) => part.type === 'file',
   );
 
   useDataStream();
@@ -414,7 +462,7 @@ const PurePreviewMessage = ({
                 data-testid={`message-attachments`}
                 className="flex flex-row justify-end gap-2"
               >
-                {attachmentsFromMessage.map((attachment) => (
+                {attachmentsFromMessage.map((attachment: any) => (
                   <PreviewAttachment
                     key={attachment.url}
                     attachment={{
@@ -427,7 +475,7 @@ const PurePreviewMessage = ({
               </div>
             )}
 
-            {message.parts?.map((part, index) => {
+            {message.parts?.map((part: any, index: number) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
@@ -640,6 +688,57 @@ const PurePreviewMessage = ({
                     </div>
                   );
                 }
+              }
+
+              // Handle direct visualization parts from simple-chat-new
+              if (type === 'visualization') {
+                const { chartjsConfig, title, description } = part;
+                const vizId = `viz-${message.id}-${index}`;
+
+                if (chartjsConfig) {
+                  return (
+                    <div key={key} className="my-4">
+                      <JSVisualizationMessage
+                        id={vizId}
+                        title={title || 'Chart'}
+                        description={description || 'Generated visualization'}
+                        cachedHtml={JSVisualizationEngine.generateChartJSHTML([], chartjsConfig, vizId)}
+                        metadata={{}}
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              // Handle direct web_search parts from simple-chat-new
+              if (type === 'web_search') {
+                const { query, results, summary } = part;
+
+                return (
+                  <div key={key} className="my-4">
+                    <WebSearchResultCard
+                      query={query || 'Search results'}
+                      results={results || []}
+                      summary={summary}
+                    />
+                  </div>
+                );
+              }
+
+              // Handle direct tool_status parts from simple-chat-new
+              if (type === 'tool_status') {
+                const { name, status, displayResult, formattedData } = part;
+
+                return (
+                  <div key={key} className="my-4">
+                    <ToolStatus
+                      name={name}
+                      status={status}
+                      displayResult={displayResult}
+                      formattedData={formattedData}
+                    />
+                  </div>
+                );
               }
 
               if (type === 'tool-requestSuggestions') {

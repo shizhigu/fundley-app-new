@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clerkUserId = session.user.id;
+    const clerkUserId = session.user.clerkId;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
         lm.name,
         lm.description,
         lm.latex_code as "latexFormula",
-        lm.formula as "sqlFormula",
+        lm.formula->>'sql' as "sqlFormula",
+        lm.formula as "formula",
         lm.created_at as "createdAt",
         lm.updated_at as "updatedAt",
         o.name as "organizationName"
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       category = 'custom'
     } = await request.json();
 
-    const clerkUserId = session.user.id;
+    const clerkUserId = session.user.clerkId;
 
     // Get user and organization
     const user = await db`

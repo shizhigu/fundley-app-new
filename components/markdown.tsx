@@ -4,9 +4,12 @@ import { Streamdown } from 'streamdown';
 const NonMemoizedMarkdown = ({ children }: { children: string }) => {
   // Preprocess content to escape single dollar signs that are not part of math blocks
   const processedContent = React.useMemo(() => {
+    // Handle undefined or non-string children
+    if (!children || typeof children !== 'string') return children;
+
     // Don't process if no dollar signs
     if (!children.includes('$')) return children;
-    
+
     // Replace single $ that are not part of $$ with escaped version
     // This regex matches $ that are:
     // 1. Not preceded by another $

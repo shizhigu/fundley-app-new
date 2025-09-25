@@ -54,8 +54,6 @@ export function ChatSidebar({
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
   const { mutate: createChat } = useSQLMutation<{ chat: Chat }, { title: string }>('/api/chats');
-  const { mutate: updateChatMutation } = useSQLMutation<{ chat: Chat }, { title: string }>('/api/chats/:id', { method: 'PUT' });
-  const { mutate: deleteChatMutation } = useSQLMutation<{ success: boolean }, {}>('/api/chats/:id', { method: 'DELETE' });
 
   const handleNewChat = async () => {
     try {
@@ -75,10 +73,17 @@ export function ChatSidebar({
     if (!isRenaming || !renameValue.trim()) return;
 
     try {
-      // Create URL with specific chat ID
-      const endpoint = `/api/chats/${isRenaming}`;
-      const { mutate } = useSQLMutation<{ chat: Chat }, { title: string }>(endpoint, { method: 'PUT' });
-      await mutate({ title: renameValue.trim() });
+      const response = await fetch(`/api/chats/${isRenaming}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: renameValue.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to rename chat');
+      }
 
       setIsRenaming(null);
       setRenameValue('');
@@ -97,9 +102,16 @@ export function ChatSidebar({
     if (!chatToDelete) return;
 
     try {
-      const endpoint = `/api/chats/${chatToDelete.id}`;
-      const { mutate } = useSQLMutation<{ success: boolean }, {}>(endpoint, { method: 'DELETE' });
-      await mutate({});
+      const response = await fetch(`/api/chats/${chatToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete chat');
+      }
 
       if (selectedChatId === chatToDelete.id) {
         onChatSelect('');

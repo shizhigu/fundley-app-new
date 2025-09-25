@@ -8,7 +8,7 @@ interface UseQueryResult<T> {
 }
 
 export function useSQLQuery<T>(
-  endpoint: string,
+  endpoint: string | null,
   options: {
     enabled?: boolean;
     refetchOnMount?: boolean;
@@ -21,7 +21,10 @@ export function useSQLQuery<T>(
   const { enabled = true, refetchOnMount = true } = options;
 
   const fetchData = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || !endpoint) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);

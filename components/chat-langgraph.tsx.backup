@@ -1,0 +1,278 @@
+'use client';
+
+import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
+import { ChatHeader } from '@/components/chat-header';
+import { MultimodalInput } from './multimodal-input';
+import { SimpleMessages } from './simple-message';
+import type { VisibilityType } from './visibility-selector';
+import { useArtifactSelector } from '@/hooks/use-artifact';
+import { useArtifactPersistence } from '@/hooks/use-artifact-persistence';
+import { toast } from './toast';
+import type { AuthSession } from '@/lib/auth/clerk';
+import { useSearchParams } from 'next/navigation';
+import { useChatVisibility } from '@/hooks/use-chat-visibility';
+import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
+import type { Attachment } from '@/lib/types';
+import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
+import { useCustomMetricsStore } from '@/lib/stores/custom-metrics-store';
+import { useAgentOSStream, type AgentOSMessage } from '@/lib/hooks/use-agentsos-stream';
+
+// 简化的消息类型
+interface SimpleMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  tool_name?: string;
+  tool_args?: any;
+  tool_result?: any;
+  timestamp: string;
+}
+
+interface ChatProps {
+  id: string;
+  initialMessages: any[];
+  initialChatModel: string;
+  initialVisibilityType: VisibilityType;
+  isReadonly: boolean;
+  user: AuthSession['user'];
+  autoResume: boolean;
+}
+
+type ChatStatus = 'idle' | 'loading' | 'streaming' | 'error';
+
+export function ChatLangGraph({
+  id,
+  initialMessages,
+  initialChatModel,
+  initialVisibilityType,
+  isReadonly,
+  user,
+}: ChatProps) {
+  console.log('🔥🔥🔥 CHATLANGRAPH RENDER - ID:', id, 'TIME:', Date.now());
+
+  const [selectedModel, setSelectedModel] = useState(initialChatModel);
+  const [input, setInput] = useState<string>('');
+  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+
+  // Convert AgentOS messages to SimpleMessage format
+  const convertToSimpleMessage = (agentOSMessage: AgentOSMessage): SimpleMessage => ({
+    id: agentOSMessage.id,
+    role: agentOSMessage.role,
+    content: agentOSMessage.content,
+    tool_name: agentOSMessage.tool_name,
+    tool_args: agentOSMessage.tool_args,
+    tool_result: agentOSMessage.tool_result,
+    timestamp: agentOSMessage.createdAt?.toISOString() || new Date().toISOString(),
+  });
+
+  // Use AgentOS streaming hook
+  const {
+    messages: agentOSMessages,
+    isLoading,
+    sendMessage: sendAgentOSMessage,
+    clearMessages
+  } = useAgentOSStream({
+    onError: (error) => {
+      console.error('AgentOS error:', error);
+      toast({
+        type: 'error',
+        description: error.message || 'Failed to send message',
+      });
+    },
+  });
+
+  // Convert initial messages to SimpleMessage format
+  const convertInitialMessage = useCallback((msg: any): SimpleMessage => {
+    console.log('🔍 Converting initial message:', msg);
+
+    // Handle different message formats
+    let content = '';
+
+    // New PostgreSQL format with direct content field
+    if (msg.content) {
+      content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    }
+    // Old Convex format with parts array
+    else if (msg.parts && Array.isArray(msg.parts) && msg.parts.length > 0) {
+      content = msg.parts.map((part: any) => part.text || '').join('');
+    }
+    // Fallback: empty content but log it
+    else {
+      console.warn('⚠️ Message has no content or parts:', msg);
+      content = `[${msg.role || 'unknown'} message - no content]`;
+    }
+
+    return {
+      id: msg.id || Date.now().toString(),
+      role: msg.role || 'assistant',
+      content: content,
+      tool_name: msg.tool_name,
+      tool_args: msg.tool_args,
+      tool_result: msg.tool_result,
+      timestamp: msg.timestamp || msg.createdAt || new Date().toISOString(),
+    }
+  }, []);
+
+  // Combine initial messages with AgentOS messages
+  const initialSimpleMessages: SimpleMessage[] = useMemo(() =>
+    (initialMessages || []).map(convertInitialMessage),
+    [initialMessages, convertInitialMessage]
+  );
+
+  const agentOSSimpleMessages: SimpleMessage[] = agentOSMessages.map(convertToSimpleMessage);
+
+  // 简化消息合并：初始消息 + 当前会话消息
+  const messages: SimpleMessage[] = useMemo(() => {
+    console.log('🔄 Combining messages:', {
+      initialCount: initialSimpleMessages.length,
+      agentOSCount: agentOSSimpleMessages.length
+    });
+
+    return [...initialSimpleMessages, ...agentOSSimpleMessages];
+  }, [initialSimpleMessages, agentOSSimpleMessages]);
+
+  const status: ChatStatus = isLoading ? 'streaming' : 'idle';
+
+  console.log('💬 ChatLangGraph final messages:', {
+    initialCount: initialSimpleMessages.length,
+    agentOSCount: agentOSSimpleMessages.length,
+    finalCount: messages.length,
+    initialMessages: initialMessages?.length || 0,
+    sampleInitialMessage: initialMessages?.[0]
+  });
+
+  // Memoized suggestion click handler to prevent re-renders
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setInput(suggestion);
+  }, []);
+
+  const { visibilityType } = useChatVisibility({
+    chatId: id,
+    initialVisibilityType,
+  });
+
+  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+
+  // Get scroll functionality from useScrollToBottom hook
+  const { containerRef, endRef, isAtBottom, scrollToBottom } = useScrollToBottom();
+
+  // Enable artifact persistence per chat
+  useArtifactPersistence(id);
+
+  const searchParams = useSearchParams();
+  const query = searchParams.get('query');
+
+  // Simplified sendMessage function using AgentOS
+  const sendMessage = useCallback(async (content: string, attachmentFiles?: Attachment[]) => {
+    console.log('🎯 FRONTEND: sendMessage called with AgentOS', content);
+
+    if (!content.trim() && (!attachmentFiles || attachmentFiles.length === 0)) {
+      return;
+    }
+
+    setInput('');
+    setAttachments([]);
+
+    // Call AgentOS with the financial team and current chat ID
+    await sendAgentOSMessage(content, id, 'financial-team');
+  }, [sendAgentOSMessage, id]);
+
+  // Auto-send query from URL
+  useEffect(() => {
+    if (query && messages.length === 0) {
+      sendMessage(query);
+    }
+  }, [query, messages.length, sendMessage]);
+
+  // Keep the custom metrics loading (simplified)
+  useEffect(() => {
+    const loadCustomMetrics = async () => {
+      try {
+        const response = await fetch('/api/custom-metrics');
+        if (response.ok) {
+          const metrics = await response.json();
+          useCustomMetricsStore.getState().updateCustomMetrics(metrics || []);
+        }
+      } catch (error) {
+        console.error('Error loading custom metrics:', error);
+      }
+    };
+
+    loadCustomMetrics();
+  }, []);
+
+  // Simplified stop and regenerate functions
+  const stop = () => {
+    // AgentOS hook handles stopping internally
+  };
+
+  const regenerate = () => {
+    const lastUserMessage = messages.findLast(msg => msg.role === 'user');
+    if (lastUserMessage && lastUserMessage.content) {
+      sendMessage(lastUserMessage.content);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-col h-full w-full max-w-full relative" style={{ background: 'transparent !important' }}>
+        <ChatHeader
+          chatId={id}
+          selectedModelId={selectedModel}
+          selectedVisibilityType={initialVisibilityType}
+          isReadonly={isReadonly}
+          user={user}
+        />
+
+        <div className="flex-1 min-h-0 max-w-full">
+          <MemoizedSimpleMessages
+            ref={containerRef}
+            messages={messages}
+            onSuggestionClick={handleSuggestionClick}
+            endRef={endRef}
+          />
+        </div>
+
+        {!isReadonly && (
+          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4" style={{ background: 'transparent !important' }}>
+            <MultimodalInput
+              input={input}
+              setInput={setInput}
+              status={status === 'idle' ? 'ready' : status}
+              stop={stop}
+              attachments={attachments}
+              setAttachments={setAttachments}
+              messages={[]} // 不需要传递复杂的messages格式
+              setMessages={() => {}} // 空函数
+              sendMessage={(message: any) => {
+                if (typeof message === 'string') {
+                  sendMessage(message);
+                } else {
+                  sendMessage(message.parts?.[0]?.text || '',
+                    message.parts?.filter((p: any) => p.type === 'file').map((p: any) => ({
+                      url: p.url,
+                      name: p.name,
+                      contentType: p.mediaType || '',
+                    }))
+                  );
+                }
+              }}
+              selectedVisibilityType={visibilityType}
+              user={user}
+              selectedModelId={selectedModel}
+              setSelectedModelId={setSelectedModel}
+              isAtBottom={isAtBottom}
+              scrollToBottom={scrollToBottom}
+            />
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Memoized SimpleMessages component to prevent re-renders on input changes
+const MemoizedSimpleMessages = memo(SimpleMessages, (prevProps, nextProps) => {
+  // Only re-render if messages actually change
+  return prevProps.messages === nextProps.messages;
+});

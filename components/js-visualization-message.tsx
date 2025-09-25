@@ -27,8 +27,8 @@ export function JSVisualizationMessage({
 }: JSVisualizationMessageProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Generate truly unique iframe key using creation timestamp to force independence
-  const iframeKey = `js-viz-iframe-${id}-${cachedHtml?.length || 0}`;
+  // Generate stable iframe key based on content to prevent unnecessary re-renders
+  const iframeKey = `js-viz-iframe-${id}`;
 
   console.log(`🎨 Rendering JSVisualizationMessage:`, {
     id,

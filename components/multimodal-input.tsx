@@ -1,6 +1,6 @@
 'use client';
 
-import type { UIMessage } from 'ai';
+import type { UIMessage } from '@/lib/ai-sdk-types';
 import cx from 'classnames';
 import type React from 'react';
 import {
@@ -21,10 +21,9 @@ import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import equal from 'fast-deep-equal';
-import type { UseChatHelpers } from '@ai-sdk/react';
+import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
-import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -53,6 +52,8 @@ function PureMultimodalInput({
   user,
   selectedModelId,
   setSelectedModelId,
+  isAtBottom,
+  scrollToBottom,
 }: {
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
@@ -68,6 +69,8 @@ function PureMultimodalInput({
   user: AuthSession['user'];
   selectedModelId: string;
   setSelectedModelId?: (modelId: string) => void;
+  isAtBottom?: boolean;
+  scrollToBottom?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -124,26 +127,15 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    sendMessage({
-      role: 'user',
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: 'file' as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-        })),
-        {
-          type: 'text',
-          text: input,
-        },
-      ],
-    }, {
-      body: {
-        selectedChatModel: selectedModelId,
-        selectedVisibilityType: selectedVisibilityType,
-      },
-    });
+    // 防止重复提交 - 如果状态不是 ready，直接返回
+    if (status !== 'ready' || !input.trim()) {
+      return;
+    }
+
+    // Call sendMessage with AgentOS format: (content, attachments)
+    sendMessage(input, attachments.length > 0 ? attachments : undefined);
+
+    console.log('🎯 FRONTEND STEP 3: sendMessage called successfully');
 
     setAttachments([]);
     setLocalStorageInput('');
@@ -155,6 +147,7 @@ function PureMultimodalInput({
     }
   }, [
     input,
+    status,
     setInput,
     attachments,
     sendMessage,
@@ -216,18 +209,17 @@ function PureMultimodalInput({
     [setAttachments],
   );
 
-  const { isAtBottom, scrollToBottom } = useScrollToBottom();
-
   useEffect(() => {
-    if (status === 'submitted') {
+    if (status === 'submitted' && scrollToBottom) {
       scrollToBottom();
     }
   }, [status, scrollToBottom]);
 
+
   return (
     <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4 bg-transparent">
       <AnimatePresence>
-        {!isAtBottom && (
+        {scrollToBottom && isAtBottom === false && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -347,6 +339,7 @@ export const MultimodalInput = memo(
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
     if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
+    if (prevProps.isAtBottom !== nextProps.isAtBottom) return false;
 
     return true;
   },
@@ -481,7 +474,7 @@ function PureStopButton({
       onClick={(event) => {
         event.preventDefault();
         stop();
-        setMessages((messages) => messages);
+        // setMessages removed during AgentOS migration
       }}
     >
       <StopIcon size={16} />
@@ -505,6 +498,7 @@ function PureSendButton({
       data-testid="send-button"
       className="glass-send-button rounded-full p-3 h-fit bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-white [&_svg]:fill-white"
       onClick={(event) => {
+        console.log('🎯 FRONTEND STEP 0: Send button clicked');
         event.preventDefault();
         submitForm();
       }}

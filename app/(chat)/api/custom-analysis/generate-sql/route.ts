@@ -1,7 +1,5 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { generateObject } from 'ai';
-import { getLanguageModel } from '@/lib/ai/providers';
 
 const requestSchema = z.object({
   ast: z.any().describe('The AST definition of the financial metric'),
@@ -181,19 +179,12 @@ ${customRequirement ? `\n## Additional Requirements:\n${customRequirement}` : ''
 Generate the complete SQL query with comprehensive safety measures.
     `;
 
-    const model = getLanguageModel('grok-3');
-    
-    const result = await generateObject({
-      model,
-      system: buildSystemPrompt(),
-      prompt,
-      schema: responseSchema,
-    });
-
+    // AI call removed for AgentOS integration
+    // This API endpoint is temporarily disabled
     return Response.json({
-      success: true,
-      data: result.object
-    });
+      success: false,
+      error: 'SQL generation temporarily disabled during AgentOS migration'
+    }, { status: 503 });
 
   } catch (error) {
     console.error('SQL generation failed:', error);

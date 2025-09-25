@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
-import { Download } from 'lucide-react';
+import { Download, GripVertical } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -59,6 +59,11 @@ export function FinancialDataPanel() {
   // 本地状态（只保留非持久化的状态）
   const [tableData, setTableData] = useState<FinancialDataResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 拖拽状态
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [orderedMetrics, setOrderedMetrics] = useState<any[]>([]);
 
   // 从 Zustand store 获取状态和方法
   const {
@@ -160,11 +165,68 @@ export function FinancialDataPanel() {
   // 过滤出有sqlFormula的指标
   const availableMetrics = latexMetrics?.filter(metric => metric.sqlFormula) || [];
 
+  // 初始化指标顺序
+  useEffect(() => {
+    if (availableMetrics.length > 0 && orderedMetrics.length === 0) {
+      const savedOrder = localStorage.getItem('metric-selection-order');
+      if (savedOrder) {
+        try {
+          const savedIds = JSON.parse(savedOrder);
+          const ordered: any[] = [];
+          const metricMap = new Map(availableMetrics.map(m => [m._id, m]));
+
+          // 按保存顺序添加
+          savedIds.forEach((id: string) => {
+            const metric = metricMap.get(id);
+            if (metric) {
+              ordered.push(metric);
+              metricMap.delete(id);
+            }
+          });
+
+          // 添加新指标
+          metricMap.forEach(metric => ordered.push(metric));
+          setOrderedMetrics(ordered);
+        } catch {
+          setOrderedMetrics(availableMetrics);
+        }
+      } else {
+        setOrderedMetrics(availableMetrics);
+      }
+    }
+  }, [availableMetrics]);
+
   const handleMetricToggle = (metricId: string) => {
     const newMetrics = selectedMetrics.includes(metricId)
       ? selectedMetrics.filter(id => id !== metricId)
       : [...selectedMetrics, metricId];
     setSelectedMetrics(newMetrics);
+  };
+
+  // 拖拽处理函数
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      const newOrder = [...orderedMetrics];
+      const [draggedItem] = newOrder.splice(draggedIndex, 1);
+      newOrder.splice(dragOverIndex, 0, draggedItem);
+
+      setOrderedMetrics(newOrder);
+
+      // 保存到 localStorage
+      const orderIds = newOrder.map(m => m._id);
+      localStorage.setItem('metric-selection-order', JSON.stringify(orderIds));
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   // 从SQL公式中提取字段名（AS后面的部分）
@@ -571,7 +633,7 @@ export function FinancialDataPanel() {
 
         {/* 指标选择 */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">选择财务指标</Label>
+          <Label className="text-sm font-medium text-foreground">选择财务指标 (可拖拽调整顺序)</Label>
           {latexMetrics === undefined ? (
             <div className="text-sm text-muted-foreground">加载指标中...</div>
           ) : availableMetrics.length === 0 ? (
@@ -580,12 +642,26 @@ export function FinancialDataPanel() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-              {availableMetrics.map((metric) => (
-                <div key={metric._id} className="flex items-center space-x-2">
+              {orderedMetrics.map((metric, index) => (
+                <div
+                  key={metric._id}
+                  className={`flex items-center space-x-2 p-2 rounded-md border-2 transition-all cursor-move ${
+                    dragOverIndex === index
+                      ? 'bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-600'
+                      : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+                  } ${draggedIndex === index ? 'opacity-50 scale-95' : ''}`}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  title="拖拽调整指标顺序"
+                >
+                  <GripVertical className="w-4 h-4 text-blue-500 opacity-60 hover:opacity-100 transition-opacity flex-shrink-0" />
                   <Checkbox
                     id={metric._id}
                     checked={selectedMetrics.includes(metric._id)}
                     onCheckedChange={() => handleMetricToggle(metric._id)}
+                    className="flex-shrink-0"
                   />
                   <Label
                     htmlFor={metric._id}

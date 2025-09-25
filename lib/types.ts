@@ -34,10 +34,10 @@ type getFinancialDataTool = InferUITool<typeof getFinancialData>;
 type extractMDATool = InferUITool<typeof extractMDA>;
 type extractRiskFactorsTool = InferUITool<typeof extractRiskFactors>;
 type extractBusinessOverviewTool = InferUITool<typeof extractBusinessOverview>;
-type createLatexMetricTool = InferUITool<ReturnType<typeof createLatexMetric>>;
-type calculateLatexMetricTool = InferUITool<ReturnType<typeof calculateLatexMetric>>;
-type searchLatexMetricsTool = InferUITool<ReturnType<typeof searchLatexMetrics>>;
-type getPopularLatexMetricsTool = InferUITool<ReturnType<typeof getPopularLatexMetrics>>;
+type createLatexMetricTool = InferUITool<typeof createLatexMetric>;
+type calculateLatexMetricTool = InferUITool<typeof calculateLatexMetric>;
+type searchLatexMetricsTool = InferUITool<typeof searchLatexMetrics>;
+type getPopularLatexMetricsTool = InferUITool<typeof getPopularLatexMetrics>;
 
 export type ChatTools = {
   getWeather: weatherTool;
@@ -99,11 +99,33 @@ export interface IndicatorData {
   value: number;
 }
 
+// Tool data for ADK integration
+export interface ToolData {
+  toolName: string;
+  status: 'running' | 'completed' | 'failed';
+  args?: any;
+  result?: any;
+  callId?: string;
+}
+
+export type MessageType = 'text' | 'tool_call' | 'tool_result';
+
+// Extended ChatMessage to support tool messages
+export interface ExtendedChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  parts: any[];
+  createdAt: Date;
+  messageType?: MessageType;
+  toolData?: ToolData;
+}
+
 export type ChatMessage = UIMessage<
   MessageMetadata,
   CustomUIDataTypes,
   ChatTools
->;
+> | ExtendedChatMessage;
 
 export interface Attachment {
   name: string;

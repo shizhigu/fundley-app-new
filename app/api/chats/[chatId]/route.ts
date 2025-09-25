@@ -5,7 +5,7 @@ import { db } from '@/lib/db/config';
 // GET /api/chats/[chatId] - Get specific chat
 export async function GET(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const session = await auth();
@@ -13,8 +13,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = params;
-    const clerkUserId = session.user.id;
+    const { chatId } = await params;
+    const userId = session.user.id;
 
     // Get chat with user verification
     const chat = await db`
@@ -24,8 +24,7 @@ export async function GET(
         c.created_at as "createdAt",
         c.updated_at as "updatedAt"
       FROM chats c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.id = ${chatId} AND u.clerk_user_id = ${clerkUserId}
+      WHERE c.id = ${chatId} AND c.user_id = ${userId}
     `;
 
     if (chat.length === 0) {
@@ -46,7 +45,7 @@ export async function GET(
 // DELETE /api/chats/[chatId] - Delete chat
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const session = await auth();
@@ -54,17 +53,38 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = params;
-    const clerkUserId = session.user.id;
+    const { chatId } = await params;
+    const userId = session.user.id;
 
-    // Verify user owns this chat and delete it
-    const result = await db`
-      DELETE FROM chats
-      WHERE id = ${chatId} AND user_id = (
-        SELECT id FROM users WHERE clerk_user_id = ${clerkUserId}
+    console.log(`🗑️ Deleting chat ${chatId} for user ${userId}`);
+
+    // First, delete associated messages
+    console.log('🗑️ Deleting messages...');
+    const messagesDeleted = await db`
+      DELETE FROM messages
+      WHERE chat_id = ${chatId} AND EXISTS (
+        SELECT 1 FROM chats c
+        WHERE c.id = ${chatId} AND c.user_id = ${userId}
       )
     `;
+    console.log(`🗑️ Deleted ${messagesDeleted.length} messages`);
 
+    // Then delete the chat
+    console.log('🗑️ Deleting chat...');
+    const result = await db`
+      DELETE FROM chats
+      WHERE id = ${chatId} AND user_id = ${userId}
+      RETURNING id
+    `;
+
+    console.log('🗑️ Delete result:', result);
+
+    if (result.length === 0) {
+      console.log('❌ Chat not found or permission denied');
+      return NextResponse.json({ error: 'Chat not found or permission denied' }, { status: 404 });
+    }
+
+    console.log('✅ Chat deleted successfully');
     return NextResponse.json({ success: true });
 
   } catch (error) {
@@ -79,7 +99,7 @@ export async function DELETE(
 // PUT /api/chats/[chatId] - Update chat
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const session = await auth();
@@ -87,17 +107,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = params;
+    const { chatId } = await params;
     const { title } = await request.json();
-    const clerkUserId = session.user.id;
+    const userId = session.user.id;
 
     // Update chat title
     const result = await db`
       UPDATE chats
       SET title = ${title}, updated_at = NOW()
-      WHERE id = ${chatId} AND user_id = (
-        SELECT id FROM users WHERE clerk_user_id = ${clerkUserId}
-      )
+      WHERE id = ${chatId} AND user_id = ${userId}
       RETURNING id, title, created_at as "createdAt", updated_at as "updatedAt"
     `;
 

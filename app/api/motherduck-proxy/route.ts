@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 [Proxy] SQL:', sql);
     
-    const renderUrl = process.env.MOTHERDUCK_API_URL || 'https://fundley-backend.onrender.com';
+    const renderUrl = process.env.MOTHERDUCK_API_URL || 'http://localhost:8000';
     
     const response = await fetch(`${renderUrl}/query`, {
       method: 'POST',

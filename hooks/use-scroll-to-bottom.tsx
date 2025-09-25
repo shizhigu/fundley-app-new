@@ -1,49 +1,60 @@
-import useSWR from 'swr';
-import { useRef, useEffect, useCallback } from 'react';
-
-type ScrollFlag = ScrollBehavior | false;
+import { useRef, useEffect, useCallback, useState } from 'react';
 
 export function useScrollToBottom() {
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-
-  const { data: isAtBottom = false, mutate: setIsAtBottom } = useSWR(
-    'messages:is-at-bottom',
-    null,
-    { fallbackData: false },
-  );
-
-  const { data: scrollBehavior = false, mutate: setScrollBehavior } =
-    useSWR<ScrollFlag>('messages:should-scroll', null, { fallbackData: false });
+  const [isAtBottom, setIsAtBottom] = useState(false); // Start as false so button shows initially
 
   useEffect(() => {
-    if (scrollBehavior) {
-      endRef.current?.scrollIntoView({ behavior: scrollBehavior });
-      setScrollBehavior(false);
+    const containerElement = containerRef.current;
+
+
+    if (!containerElement) return;
+
+    const checkScrollPosition = () => {
+      const { scrollTop, scrollHeight, clientHeight } = containerElement;
+      // Hide button when scrolled to 90% or more
+      const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+      const isNearBottom = scrollPercentage >= 0.9;
+
+      setIsAtBottom(isNearBottom);
+    };
+
+    // Use scroll listener as primary detection method
+    containerElement.addEventListener('scroll', checkScrollPosition, { passive: true });
+
+    // Initial check after a short delay to ensure content is loaded
+    const timer = setTimeout(checkScrollPosition, 100);
+
+    return () => {
+      clearTimeout(timer);
+      containerElement.removeEventListener('scroll', checkScrollPosition);
+    };
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const containerElement = containerRef.current;
+    if (containerElement) {
+      // Scroll to the very bottom using scrollTop
+      containerElement.scrollTo({
+        top: containerElement.scrollHeight,
+        behavior: 'smooth'
+      });
+
+      // Force update isAtBottom state after scroll completes
+      setTimeout(() => {
+        const { scrollTop, scrollHeight, clientHeight } = containerElement;
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        const isNearBottom = scrollPercentage >= 0.9;
+        setIsAtBottom(isNearBottom);
+      }, 500);
     }
-  }, [setScrollBehavior, scrollBehavior]);
-
-  const scrollToBottom = useCallback(
-    (scrollBehavior: ScrollBehavior = 'smooth') => {
-      setScrollBehavior(scrollBehavior);
-    },
-    [setScrollBehavior],
-  );
-
-  function onViewportEnter() {
-    setIsAtBottom(true);
-  }
-
-  function onViewportLeave() {
-    setIsAtBottom(false);
-  }
+  }, []);
 
   return {
     containerRef,
     endRef,
     isAtBottom,
     scrollToBottom,
-    onViewportEnter,
-    onViewportLeave,
   };
 }

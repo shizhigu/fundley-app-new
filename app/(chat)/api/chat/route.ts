@@ -8,15 +8,16 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const { messages, chatId } = await request.json();
-    const clerkUserId = session.user.id;
+    const { messages, id: chatId, state_delta } = await request.json();
+    const userId = session.user.id; // PostgreSQL user ID
+
+    console.log('🔍 Next.js API received:', { chatId, userId, hasStateDelta: !!state_delta });
 
     // Verify user owns this chat
     const chatCheck = await db`
       SELECT c.id
       FROM chats c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.id = ${chatId} AND u.clerk_user_id = ${clerkUserId}
+      WHERE c.id = ${chatId} AND c.user_id = ${userId}
     `;
 
     if (chatCheck.length === 0) {
@@ -29,29 +30,33 @@ export async function POST(request: Request) {
       return new Response('Invalid message format', { status: 400 });
     }
 
+    // Extract content from parts-based message format
+    const userContent = userMessage.content || userMessage.parts?.[0]?.text || '';
+
     // Save user message to database
     await db`
       INSERT INTO messages (chat_id, role, content, metadata)
-      VALUES (${chatId}, 'user', ${userMessage.content}, ${JSON.stringify([{ type: 'text', text: userMessage.content }])})
+      VALUES (${chatId}, 'user', ${userContent}, ${JSON.stringify([{ type: 'text', text: userContent }])})
     `;
 
-    // Convert messages to format expected by Python backend
-    const formattedMessages = messages.map((msg: any) => ({
-      role: msg.role,
-      content: msg.content || msg.parts?.[0]?.text || ''
-    }));
+    // Call ADK service with state_delta support
+    const pythonServiceUrl = process.env.ADK_SERVICE_URL || 'http://localhost:8012';
 
-    // Call Python LangGraph backend
-    const pythonResponse = await fetch('http://localhost:8000/api/v1/chat/stream', {
+    console.log('🚀 Next.js API: Forwarding to ADK service with state_delta:', state_delta ? 'INCLUDED' : 'NOT_INCLUDED');
+
+    const pythonResponse = await fetch(`${pythonServiceUrl}/api/v1/chat/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        content: userMessage.content,
-        model: 'grok-3', // Default model
-        conversation_id: chatId,
-        messages: formattedMessages.slice(0, -1) // Exclude the current message
+        message: userContent,
+        session_id: chatId,
+        user_id: userId,
+        context: {
+          messages: messages.slice(0, -1) // Previous messages for context
+        },
+        state_delta: state_delta // Forward state_delta to ADK service
       }),
     });
 
