@@ -9,6 +9,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import { Download, GripVertical } from 'lucide-react';
+import { toast } from './toast';
+import type {
+  FinancialDataPoint,
+  LaTeXMetric,
+  FinancialAnalysisRequest,
+  ExcelDataRow
+} from '@/lib/types/financial-data';
 import {
   Select,
   SelectContent,
@@ -26,39 +33,11 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// LaTeX指标接口类型
-interface LaTeXMetric {
-  _id: string;
-  name: string;
-  description: string;
-  category: string;
-  latexFormula: string;
-  sqlFormula?: string;
-}
-
-// 财务数据接口类型定义
-interface FinancialDataResponse {
-  symbol: string;
-  fiscalYear: number;
-  period: string;
-  date: string | null;
-  metrics: Record<string, {
-    value: number | null;
-    qoq: {
-      value: number | null;
-      direction: 'up' | 'down';
-    };
-    yoy: {
-      value: number | null;
-      direction: 'up' | 'down';
-    };
-  }>;
-}
+// 移除重复的类型定义，使用统一的类型
 
 function FinancialDataPanelComponent() {
   // 本地状态（只保留非持久化的状态）
-  const [tableData, setTableData] = useState<FinancialDataResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [tableData, setTableData] = useState<FinancialDataPoint[]>([]);
 
   // 拖拽状态
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -67,15 +46,20 @@ function FinancialDataPanelComponent() {
 
   // 从 Zustand store 获取状态和方法
   const {
+    data: storedData,
     analysisForm,
     viewMode,
     isPanelCollapsed,
+    isLoading,
+    error,
     updateFinancialData,
     clearFinancialData,
     updateAnalysisForm,
     updateAvailableMetrics,
     setViewMode,
     setPanelCollapsed,
+    setLoading,
+    setError,
   } = useFinancialDataStore();
 
   // 解构表单状态，转换 periods 为字符串以兼容现有UI
@@ -97,63 +81,15 @@ function FinancialDataPanelComponent() {
 
   // 页面加载时，从持久化数据中恢复tableData
   useEffect(() => {
-    const persistedData = useFinancialDataStore.getState().financialData;
-    if (persistedData.isActive && persistedData.currentData.length > 0) {
-      // 检查是否有保存的原始tableData
-      const hasRawData = persistedData.currentData.some(row => '__rawTableData' in row);
-
-      if (hasRawData) {
-        // 使用保存的原始数据（包含完整的qoq/yoy信息）
-        const restoredTableData: FinancialDataResponse[] = persistedData.currentData
-          .filter(row => '__rawTableData' in row)
-          .map(row => (row as any).__rawTableData);
-
-        setTableData(restoredTableData);
-      } else {
-        // 向后兼容：没有原始数据时使用简化恢复
-        const restoredTableData: FinancialDataResponse[] = persistedData.currentData.map(row => ({
-          symbol: row.symbol,
-          fiscalYear: row.fiscalYear,
-          period: row.period,
-          date: row.date,
-          metrics: Object.fromEntries(
-            Object.entries(row).filter(([key]) =>
-              !['symbol', 'fiscalYear', 'period', 'date'].includes(key)
-            ).map(([key, value]) => [key, {
-              value: typeof value === 'object' && value !== null && 'value' in value
-                ? (value as any).value
-                : value as number | null,
-              qoq: { value: null, direction: 'up' as const },
-              yoy: { value: null, direction: 'up' as const }
-            }])
-          )
-        }));
-
-        setTableData(restoredTableData);
-      }
+    console.log('🔄 Component mounted, checking stored data:', storedData.length, 'records');
+    if (storedData.length > 0) {
+      setTableData(storedData);
+      console.log('📊 Restored financial data from store:', storedData.length, 'records');
     }
-  }, []); // 只在组件挂载时执行一次
+  }, [storedData.length]); // 监听数据长度变化，避免无限循环
 
-  // 监听tableData变化，更新全局财务数据状态
-  useEffect(() => {
-    if (tableData.length > 0) {
-      // 保存完整的tableData，而不是转换格式
-      const financialDataRows = tableData.map(row => ({
-        symbol: row.symbol,
-        fiscalYear: row.fiscalYear,
-        period: row.period,
-        date: row.date,
-        __rawTableData: row, // 保存原始tableData
-        ...Object.fromEntries(
-          Object.entries(row.metrics).map(([key, value]) => [key, value.value])
-        ), // 展开指标的value用于聊天上下文
-      }));
-
-      updateFinancialData(financialDataRows);
-    } else {
-      clearFinancialData();
-    }
-  }, [tableData, updateFinancialData, clearFinancialData]);
+  // 使用localStorage store中的数据，而不是本地tableData状态
+  // 移除这个useEffect以避免循环依赖
 
   // 从PostgreSQL获取用户组织的LaTeX指标
   const { data: latexMetricsData } = useSQLQuery<{ metrics: any[] }>('/api/latex-metrics?limit=100');
@@ -264,7 +200,8 @@ function FinancialDataPanelComponent() {
   };
 
   const handleAnalyze = async () => {
-    setIsLoading(true);
+    setLoading(true);
+    setError(null);
 
     try {
       const symbols = symbolInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
@@ -275,16 +212,18 @@ function FinancialDataPanelComponent() {
         quarters: parseInt(selectedQuarters)
       });
 
+      const requestBody: FinancialAnalysisRequest = {
+        symbols,
+        metricIds: selectedMetrics,
+        quarters: parseInt(selectedQuarters)
+      };
+
       const response = await fetch('/api/financial-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          symbols,
-          metricIds: selectedMetrics, // 传递metric IDs而不是字段名
-          quarters: parseInt(selectedQuarters)
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -293,10 +232,12 @@ function FinancialDataPanelComponent() {
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data: FinancialDataResponse[] = await response.json();
+      const data: FinancialDataPoint[] = await response.json();
       console.log('✅ Received data:', data);
 
+      // 同时更新本地状态和持久化store
       setTableData(data);
+      updateFinancialData(data);
 
       // 自动折叠控制面板以展示更多数据空间
       if (data.length > 0) {
@@ -305,10 +246,10 @@ function FinancialDataPanelComponent() {
 
     } catch (error) {
       console.error('❌ Error fetching financial data:', error);
-      // 显示错误提示，但保持界面可用
-      alert(`获取财务数据失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      setError({ message: `获取财务数据失败: ${errorMessage}` });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -319,15 +260,18 @@ function FinancialDataPanelComponent() {
   // 导出Excel功能
   const exportToExcel = () => {
     if (tableData.length === 0) {
-      alert('没有数据可以导出');
+      toast({
+        type: 'error',
+        description: '没有数据可以导出',
+      });
       return;
     }
 
     const metricToFieldMapping = getMetricToFieldMapping();
 
     // 准备Excel数据
-    const excelData = tableData.map(row => {
-      const excelRow: any = {
+    const excelData: ExcelDataRow[] = tableData.map(row => {
+      const excelRow: ExcelDataRow = {
         '股票代码': row.symbol,
         '季度': `${row.period} ${row.fiscalYear}`,
         '日期': row.date || ''
@@ -387,6 +331,12 @@ function FinancialDataPanelComponent() {
 
     // 下载文件
     XLSX.writeFile(wb, fileName);
+
+    // 显示成功提示
+    toast({
+      type: 'success',
+      description: `Excel文件已成功导出: ${fileName}`,
+    });
   };
 
   const formatValue = (value: number | null, metricId: string) => {
@@ -435,7 +385,7 @@ function FinancialDataPanelComponent() {
   }
 
   // 卡片视图组件
-  function MetricCard({ metricId, data }: { metricId: string, data: FinancialDataResponse[] }) {
+  function MetricCard({ metricId, data }: { metricId: string, data: FinancialDataPoint[] }) {
     const metricToFieldMapping = getMetricToFieldMapping();
     const fieldName = metricToFieldMapping[metricId];
     const metricName = getMetricDisplayName(metricId);
@@ -456,7 +406,7 @@ function FinancialDataPanelComponent() {
       if (!acc[row.symbol]) acc[row.symbol] = [];
       acc[row.symbol].push(row);
       return acc;
-    }, {} as Record<string, FinancialDataResponse[]>);
+    }, {} as Record<string, FinancialDataPoint[]>);
 
     return (
       <div className="bg-card border border-border rounded-lg p-4 space-y-4">
@@ -726,7 +676,23 @@ function FinancialDataPanelComponent() {
 
       {/* 数据显示区域 */}
       <div className="flex-1 p-4 overflow-auto">
-        {tableData.length > 0 ? (
+        {error ? (
+          <div className="flex items-center justify-center h-full text-red-500">
+            <div className="text-center max-w-md">
+              <p className="text-lg mb-2">❌</p>
+              <p className="font-medium mb-2">获取数据时出错</p>
+              <p className="text-sm text-muted-foreground">{error.message}</p>
+              <Button
+                onClick={() => setError(null)}
+                variant="outline"
+                size="sm"
+                className="mt-4"
+              >
+                重试
+              </Button>
+            </div>
+          </div>
+        ) : tableData.length > 0 ? (
           viewMode === 'cards' ? <CardsView /> : <TableView />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">

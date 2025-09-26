@@ -1,35 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/config';
 
-// 财务数据请求接口
-interface FinancialDataRequest {
-  symbols: string[];           // ['NVDA', 'AAPL', 'MSFT']
-  metricIds: string[];        // LaTeX metric IDs from PostgreSQL
-  quarters: number;           // 5, 10, 20
-}
-
-// 财务数据响应接口
-interface FinancialDataResponse {
-  symbol: string;
-  fiscalYear: number;
-  period: string;
-  date: string | null;
-  metrics: Record<string, {
-    value: number | null;
-    qoq: {
-      value: number | null;
-      direction: 'up' | 'down';
-    };
-    yoy: {
-      value: number | null;
-      direction: 'up' | 'down';
-    };
-  }>;
-}
+import type {
+  FinancialAnalysisRequest,
+  FinancialAnalysisResponse
+} from '@/lib/types/financial-data';
 
 export async function POST(request: NextRequest) {
   try {
-    const { symbols, metricIds, quarters }: FinancialDataRequest = await request.json();
+    const { symbols, metricIds, quarters }: FinancialAnalysisRequest = await request.json();
 
 
     // 验证输入参数
@@ -131,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data: FinancialDataResponse[] = await response.json();
+    const data: FinancialAnalysisResponse[] = await response.json();
 
     console.log(`✅ Received ${data.length} records from Python service`);
 

@@ -88,6 +88,13 @@ export async function POST(
       const body = await request.json();
       message = body.message;
       sessionState = body.sessionState || {};
+
+      console.log('📨 Received JSON request with sessionState keys:', Object.keys(sessionState));
+      if (sessionState['financial metrics data']) {
+        console.log('📊 Financial data found in sessionState:', sessionState['financial metrics data'].length, 'records');
+      } else {
+        console.log('❌ No financial data found in sessionState');
+      }
     } else {
       // FormData格式（文件上传）
       const formData = await request.formData();

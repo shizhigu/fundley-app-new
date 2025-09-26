@@ -1,51 +1,35 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type {
+  FinancialDataPoint,
+  AvailableMetric,
+  FinancialAnalysisForm,
+  ViewMode,
+  FinancialDataError
+} from '@/lib/types/financial-data';
 
-export interface FinancialDataRow {
-  symbol: string;
-  fiscalYear: number;
-  period: string;
-  date: string | null;
-  [key: string]: any; // 允许动态的财务指标字段
-}
+interface FinancialDataStore {
+  // 核心数据
+  data: FinancialDataPoint[];
+  availableMetrics: AvailableMetric[];
 
-// 可用指标定义
-export interface AvailableMetric {
-  name: string;
-  latex: string;
-  sql: string;
-}
-
-export interface FinancialDataState {
-  currentData: FinancialDataRow[];
-  lastUpdated: string | null;
-  isActive: boolean; // 是否有有效的财务数据
-  availableMetrics: AvailableMetric[]; // 可用的指标定义
-}
-
-// 财务分析表单状态
-export interface FinancialAnalysisForm {
-  symbols: string; // 股票代码，逗号分隔
-  selectedMetrics: string[]; // 选中的财务指标
-  periods: number; // 历史季度数
-}
-
-// 完整的财务数据状态
-export interface FullFinancialState {
-  // 当前显示的数据
-  financialData: FinancialDataState;
-
-  // 表单状态（持久化）
+  // 表单状态
   analysisForm: FinancialAnalysisForm;
 
-  // UI 状态（持久化）
-  viewMode: 'cards' | 'table';
+  // UI状态
+  viewMode: ViewMode;
   isPanelCollapsed: boolean;
-}
 
-interface FinancialDataStore extends FullFinancialState {
+  // 加载状态
+  isLoading: boolean;
+  error: FinancialDataError | null;
+
+  // 元数据
+  lastUpdated: string | null;
+  isActive: boolean;
+
   // 数据更新方法
-  updateFinancialData: (data: FinancialDataRow[]) => void;
+  updateFinancialData: (data: FinancialDataPoint[]) => void;
   clearFinancialData: () => void;
   setActive: (active: boolean) => void;
   updateAvailableMetrics: (metrics: AvailableMetric[]) => void;
@@ -54,21 +38,21 @@ interface FinancialDataStore extends FullFinancialState {
   updateAnalysisForm: (form: Partial<FinancialAnalysisForm>) => void;
   resetAnalysisForm: () => void;
 
-  // UI 状态更新方法
-  setViewMode: (mode: 'cards' | 'table') => void;
+  // UI状态更新方法
+  setViewMode: (mode: ViewMode) => void;
   setPanelCollapsed: (collapsed: boolean) => void;
+
+  // 加载状态方法
+  setLoading: (loading: boolean) => void;
+  setError: (error: FinancialDataError | null) => void;
 }
 
 export const useFinancialDataStore = create<FinancialDataStore>()(
   persist(
     (set, get) => ({
       // 初始状态
-      financialData: {
-        currentData: [],
-        lastUpdated: null,
-        isActive: false,
-        availableMetrics: [],
-      },
+      data: [],
+      availableMetrics: [],
 
       analysisForm: {
         symbols: 'NVDA,AAPL,MSFT', // 默认值
@@ -79,49 +63,43 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
       viewMode: 'cards', // 默认卡片视图
       isPanelCollapsed: false,
 
+      // 加载状态
+      isLoading: false,
+      error: null,
+
+      // 元数据
+      lastUpdated: null,
+      isActive: false,
+
       // 数据更新方法
-      updateFinancialData: (data: FinancialDataRow[]) => {
+      updateFinancialData: (data: FinancialDataPoint[]) => {
         const timestamp = new Date().toISOString();
         console.log('🔄 Zustand Store: updateFinancialData called with', data.length, 'rows at', timestamp);
         console.log('📝 Sample data:', data.slice(0, 2));
 
-        set((state) => ({
-          financialData: {
-            currentData: data,
-            lastUpdated: timestamp,
-            isActive: data.length > 0,
-          },
-        }));
+        set({
+          data,
+          lastUpdated: timestamp,
+          isActive: data.length > 0,
+        });
 
         console.log('✅ Zustand Store: Financial data updated successfully');
       },
 
       clearFinancialData: () => {
-        set((state) => ({
-          financialData: {
-            currentData: [],
-            lastUpdated: null,
-            isActive: false,
-          },
-        }));
+        set({
+          data: [],
+          lastUpdated: null,
+          isActive: false,
+        });
       },
 
       setActive: (active: boolean) => {
-        set((state) => ({
-          financialData: {
-            ...state.financialData,
-            isActive: active,
-          },
-        }));
+        set({ isActive: active });
       },
 
       updateAvailableMetrics: (metrics: AvailableMetric[]) => {
-        set((state) => ({
-          financialData: {
-            ...state.financialData,
-            availableMetrics: metrics,
-          },
-        }));
+        set({ availableMetrics: metrics });
         console.log('📊 Available metrics updated:', metrics.length, 'metrics');
       },
 
@@ -146,8 +124,8 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
         });
       },
 
-      // UI 状态更新方法
-      setViewMode: (mode: 'cards' | 'table') => {
+      // UI状态更新方法
+      setViewMode: (mode: ViewMode) => {
         set({ viewMode: mode });
         console.log('👁️ View mode changed to:', mode);
       },
@@ -156,15 +134,27 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
         set({ isPanelCollapsed: collapsed });
         console.log('📂 Panel collapsed:', collapsed);
       },
+
+      // 加载状态方法
+      setLoading: (loading: boolean) => {
+        set({ isLoading: loading });
+      },
+
+      setError: (error: FinancialDataError | null) => {
+        set({ error });
+      },
     }),
     {
       name: 'financial-data-storage', // localStorage key
-      // 持久化表单、UI状态和财务数据
+      // 持久化表单、UI状态和财务数据（不持久化加载状态和错误）
       partialize: (state) => ({
         analysisForm: state.analysisForm,
         viewMode: state.viewMode,
         isPanelCollapsed: state.isPanelCollapsed,
-        financialData: state.financialData, // 也保存财务数据
+        data: state.data, // 持久化财务数据
+        availableMetrics: state.availableMetrics,
+        lastUpdated: state.lastUpdated,
+        isActive: state.isActive,
       }),
     }
   )

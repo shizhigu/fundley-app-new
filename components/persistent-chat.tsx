@@ -19,16 +19,25 @@ export function PersistentChat({
 }: PersistentChatProps) {
 
   // 获取默认聊天或创建一个（仅当没有提供chatId时）
-  const { data: defaultChatData } = useSQLQuery<{ chatId: string }>(
+  const { data: defaultChatData, loading: defaultChatLoading } = useSQLQuery<{ chatId: string }>(
     propChatId ? null : '/api/chats/default'
   );
-  const chatId = propChatId || defaultChatData?.chatId || "main";
+  const chatId = propChatId || defaultChatData?.chatId;
 
-  // Show loading only if we're still fetching chat ID
-  if (!chatId) {
+  // Show loading while fetching default chat (only if no propChatId provided)
+  if (!propChatId && defaultChatLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading chat...</div>
+      </div>
+    );
+  }
+
+  // If we still don't have a chatId after loading, show error
+  if (!chatId) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-red-500">Failed to load chat. Please refresh the page.</div>
       </div>
     );
   }

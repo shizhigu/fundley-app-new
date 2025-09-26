@@ -50,8 +50,9 @@ export function ChatInterface({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  // 获取available metrics from store (精确订阅，避免不必要的重渲染)
-  const financialData = useFinancialDataStore((state) => state.financialData);
+  // 获取财务数据 from store (精确订阅，避免不必要的重渲染)
+  const financialData = useFinancialDataStore((state) => state.data);
+  const availableMetrics = useFinancialDataStore((state) => state.availableMetrics);
 
   // 获取历史消息
   const { data: messagesData } = useSQLQuery<{ messages: Message[] }>(
@@ -202,22 +203,42 @@ export function ChatInterface({
       let sessionState = {};
       try {
         const storedData = localStorage.getItem('financial-data-storage');
+        console.log('🔍 Chat: Raw localStorage data:', storedData);
+
         if (storedData) {
           const parsedData = JSON.parse(storedData);
-          // 构建JSON格式的session_state
-          if (parsedData.state?.financialData?.currentData) {
+          console.log('📊 Chat: Parsed localStorage data structure:', {
+            hasData: !!parsedData.data,
+            dataLength: parsedData.data?.length || 0,
+            hasState: !!parsedData.state,
+            stateKeys: parsedData.state ? Object.keys(parsedData.state) : [],
+            fullStructure: parsedData
+          });
+
+          // 检查Zustand的persist结构：通常是 { state: { data: [...], availableMetrics: [...] }, version: 0 }
+          const actualData = parsedData.state?.data || parsedData.data;
+          const actualMetrics = parsedData.state?.availableMetrics || parsedData.availableMetrics;
+
+          if (actualData && actualData.length > 0) {
             sessionState = {
-              "financial metrics data": parsedData.state.financialData.currentData
+              "financial metrics data": actualData
             };
+            console.log('📊 Chat: Added financial data to session:', actualData.length, 'records');
+            console.log('📊 Chat: Sample data record:', actualData[0]);
           }
 
           // 添加available metrics到session_state
-          if (financialData.availableMetrics && financialData.availableMetrics.length > 0) {
+          if (actualMetrics && actualMetrics.length > 0) {
             sessionState = {
               ...sessionState,
-              "available metrics": financialData.availableMetrics
+              "available metrics": actualMetrics
             };
+            console.log('📊 Chat: Added available metrics:', actualMetrics.length, 'metrics');
           }
+
+          console.log('📊 Chat: Final sessionState:', sessionState);
+        } else {
+          console.log('📊 Chat: No financial data found in localStorage');
         }
       } catch (e) {
         console.warn('Failed to read financial data from localStorage:', e);
