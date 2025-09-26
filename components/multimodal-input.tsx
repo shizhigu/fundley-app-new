@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon, QuantumIcon, } from './icons';
-import { PreviewAttachment } from './preview-attachment';
+import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import equal from 'fast-deep-equal';
@@ -218,21 +218,23 @@ function PureMultimodalInput({
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
         ref={fileInputRef}
         multiple
-        accept="image/*,application/pdf,.txt,.doc,.docx"
+        accept="image/*,application/pdf,.txt,.doc,.docx,.csv,application/json"
         onChange={handleFileChange}
         tabIndex={-1}
       />
 
       {attachments.length > 0 && (
-        <div
+        <EnhancedAttachmentPreview
           data-testid="attachments-preview"
-          className="flex flex-row gap-2 overflow-x-scroll items-end mb-4 p-2 border border-border rounded-md bg-muted/20"
-        >
-          <div className="text-xs text-muted-foreground">附件预览 ({attachments.length}):</div>
-          {attachments.map((attachment, index) => (
-            <PreviewAttachment key={attachment.name + index} attachment={attachment} />
-          ))}
-        </div>
+          attachments={attachments}
+          onRemove={(index) => {
+            const newAttachments = [...attachments];
+            newAttachments.splice(index, 1);
+            setAttachments(newAttachments);
+          }}
+          isUploading={status === 'streaming'}
+          className="mb-4"
+        />
       )}
 
       <Textarea

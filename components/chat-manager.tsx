@@ -67,6 +67,8 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
           onDeleteChat={handleDeleteChat}
           isLoading={chat.isLoading}
           user={user}
+          onToggleSidebar={handleSidebarToggle}
+          isSidebarOpen={isSidebarOpen}
         />
       </div>
 
@@ -103,8 +105,6 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
             isLoading={chat.isLoading}
             error={chat.error}
             onSendMessage={chat.sendMessage}
-            onToggleSidebar={handleSidebarToggle}
-            isSidebarOpen={isSidebarOpen}
           />
         ) : (
           <div className="flex h-full items-center justify-center">

@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChatHeader } from '@/components/chat-header';
 import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
@@ -26,8 +25,6 @@ interface NewChatInterfaceProps {
   isLoading: boolean;
   error: string | null;
   onSendMessage: (content: string, files?: File[]) => Promise<void>;
-  onToggleSidebar: () => void;
-  isSidebarOpen: boolean;
   isReadonly?: boolean;
 }
 
@@ -43,8 +40,6 @@ export function NewChatInterface({
   isLoading,
   error,
   onSendMessage,
-  onToggleSidebar,
-  isSidebarOpen,
   isReadonly = false,
 }: NewChatInterfaceProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -74,15 +69,6 @@ export function NewChatInterface({
   if (error) {
     return (
       <div className="flex flex-col h-full w-full max-w-full relative">
-        <ChatHeader
-          chatId={chatId}
-          selectedModelId={initialChatModel}
-          selectedVisibilityType="private"
-          isReadonly={isReadonly}
-          user={user}
-          onToggleSidebar={onToggleSidebar}
-          isSidebarOpen={isSidebarOpen}
-        />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-500 mb-2">Error</div>
@@ -97,15 +83,6 @@ export function NewChatInterface({
   if (messages.length === 0 && isLoading) {
     return (
       <div className="flex flex-col h-full w-full max-w-full relative">
-        <ChatHeader
-          chatId={chatId}
-          selectedModelId={initialChatModel}
-          selectedVisibilityType="private"
-          isReadonly={isReadonly}
-          user={user}
-          onToggleSidebar={onToggleSidebar}
-          isSidebarOpen={isSidebarOpen}
-        />
         <div className="flex-1 min-h-0 max-w-full">
           <div
             ref={containerRef}
@@ -123,16 +100,6 @@ export function NewChatInterface({
 
   return (
     <div className="flex flex-col h-full w-full max-w-full relative">
-      <ChatHeader
-        chatId={chatId}
-        selectedModelId={initialChatModel}
-        selectedVisibilityType="private"
-        isReadonly={isReadonly}
-        user={user}
-        onToggleSidebar={onToggleSidebar}
-        isSidebarOpen={isSidebarOpen}
-      />
-
       <div className="flex-1 min-h-0 max-w-full">
         <div
           ref={containerRef}

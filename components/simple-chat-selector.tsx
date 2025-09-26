@@ -14,6 +14,8 @@ interface SimpleChatSelectorProps {
   onDeleteChat: (chatId: string) => void;
   isLoading?: boolean;
   user?: AuthSession['user'];
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
 export function SimpleChatSelector({
@@ -23,7 +25,9 @@ export function SimpleChatSelector({
   onNewChat,
   onDeleteChat,
   isLoading = false,
-  user
+  user,
+  onToggleSidebar,
+  isSidebarOpen
 }: SimpleChatSelectorProps) {
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
 
@@ -33,6 +37,28 @@ export function SimpleChatSelector({
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Chats</h2>
+
+          {/* 收起侧边栏按钮 */}
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="p-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              title="收起聊天列表"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* 新建聊天按钮 */}

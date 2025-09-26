@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
     }
 
-    // Get messages from new simplified table
+    // Get messages from new simplified table including attachments
     const rawMessages = await db`
       SELECT
         id,
@@ -36,6 +36,7 @@ export async function GET(
         tool_name,
         tool_args,
         tool_result,
+        attachments,
         created_at as timestamp
       FROM messages
       WHERE chat_id = ${chatId}
@@ -46,6 +47,7 @@ export async function GET(
     const messages = rawMessages.map(msg => {
       let parsedToolArgs = null;
       let parsedToolResult = null;
+      let parsedAttachments = [];
 
       // Safe JSON parsing for tool_args
       if (msg.tool_args) {
@@ -75,10 +77,25 @@ export async function GET(
         }
       }
 
+      // Safe JSON parsing for attachments
+      if (msg.attachments) {
+        if (typeof msg.attachments === 'string') {
+          try {
+            parsedAttachments = JSON.parse(msg.attachments);
+          } catch (error) {
+            console.warn(`Invalid JSON in attachments for message ${msg.id}:`, msg.attachments);
+            parsedAttachments = []; // Default to empty array if parsing fails
+          }
+        } else if (Array.isArray(msg.attachments)) {
+          parsedAttachments = msg.attachments;
+        }
+      }
+
       return {
         ...msg,
         tool_args: parsedToolArgs,
         tool_result: parsedToolResult,
+        attachments: parsedAttachments,
       };
     });
 

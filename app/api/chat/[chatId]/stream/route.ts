@@ -10,10 +10,11 @@ async function saveMessage(
   toolName?: string,
   toolArgs?: any,
   toolResult?: any,
+  attachments?: any[]
 ) {
   try {
     const [newMessage] = await db`
-      INSERT INTO messages (chat_id, role, content, tool_name, tool_args, tool_result, created_at)
+      INSERT INTO messages (chat_id, role, content, tool_name, tool_args, tool_result, attachments, created_at)
       VALUES (
         ${chatId},
         ${role},
@@ -21,9 +22,10 @@ async function saveMessage(
         ${toolName || null},
         ${toolArgs ? JSON.stringify(toolArgs) : null},
         ${toolResult ? JSON.stringify(toolResult) : null},
+        ${attachments ? JSON.stringify(attachments) : '[]'},
         NOW()
       )
-      RETURNING id, role, content, tool_name, tool_args, tool_result, created_at as timestamp
+      RETURNING id, role, content, tool_name, tool_args, tool_result, attachments, created_at as timestamp
     `;
 
     console.log(`✅ Saved ${role} message:`, content.substring(0, 50));
@@ -34,6 +36,7 @@ async function saveMessage(
       tool_name: newMessage.tool_name,
       tool_args: newMessage.tool_args,
       tool_result: newMessage.tool_result,
+      attachments: newMessage.attachments,
       timestamp: newMessage.timestamp.toISOString(),
     };
   } catch (error) {
@@ -133,8 +136,17 @@ export async function POST(
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // 1. 立即保存用户消息
-          const userMessage = await saveMessage(chatId, 'user', message);
+          // 1. 立即保存用户消息（包括附件）
+          // 将文件转换为附件格式
+          const attachments = files.map(file => ({
+            name: file.name,
+            contentType: file.type,
+            size: file.size,
+            // 注意：这里我们不保存实际的文件内容，只保存元数据
+            // 在真实应用中，你可能需要将文件上传到存储服务（如S3）并保存URL
+          }));
+
+          const userMessage = await saveMessage(chatId, 'user', message, undefined, undefined, undefined, attachments);
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({

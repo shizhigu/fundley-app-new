@@ -7,7 +7,7 @@ import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
 import { Shield } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
-import { PreviewAttachment } from './preview-attachment';
+import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
 import { Weather } from './weather';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
@@ -369,9 +369,25 @@ const PurePreviewMessage = ({
   const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
   const [showFullVerification, setShowFullVerification] = useState(false);
 
-  const attachmentsFromMessage = message.parts.filter(
+  // 从两个地方收集附件：新的attachments字段和旧的parts中的file类型
+  const attachmentsFromParts = message.parts?.filter(
     (part: any) => part.type === 'file',
-  );
+  ) || [];
+
+  // 从数据库的attachments字段获取附件
+  const attachmentsFromDB = (message as any).attachments || [];
+
+  // 合并两种类型的附件
+  const allAttachments = [
+    // 将parts中的file转换为Attachment格式
+    ...attachmentsFromParts.map((part: any) => ({
+      name: part.filename ?? 'file',
+      contentType: part.mediaType,
+      url: part.url,
+    })),
+    // 直接使用数据库中的attachments
+    ...attachmentsFromDB
+  ];
 
   useDataStream();
 
@@ -457,21 +473,17 @@ const PurePreviewMessage = ({
               'min-h-96': message.role === 'assistant' && requiresScrollPadding,
             })}
           >
-            {attachmentsFromMessage.length > 0 && (
+            {allAttachments.length > 0 && (
               <div
                 data-testid={`message-attachments`}
-                className="flex flex-row justify-end gap-2"
+                className="mb-4"
               >
-                {attachmentsFromMessage.map((attachment: any) => (
-                  <PreviewAttachment
-                    key={attachment.url}
-                    attachment={{
-                      name: attachment.filename ?? 'file',
-                      contentType: attachment.mediaType,
-                      url: attachment.url,
-                    }}
-                  />
-                ))}
+                <EnhancedAttachmentPreview
+                  attachments={allAttachments}
+                  onRemove={() => {}} // 消息中的附件不允许删除
+                  isUploading={false}
+                  showRemoveButton={false} // 消息中不显示删除按钮
+                />
               </div>
             )}
 

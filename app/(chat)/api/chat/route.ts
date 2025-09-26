@@ -33,10 +33,25 @@ export async function POST(request: Request) {
     // Extract content from parts-based message format
     const userContent = userMessage.content || userMessage.parts?.[0]?.text || '';
 
-    // Save user message to database
+    // Extract attachments from the user message
+    const userAttachments = userMessage.attachments || [];
+
+    console.log('💾 Saving user message with attachments:', {
+      chatId,
+      content: userContent.substring(0, 50) + '...',
+      attachmentCount: userAttachments.length
+    });
+
+    // Save user message to database with attachments
     await db`
-      INSERT INTO messages (chat_id, role, content, metadata)
-      VALUES (${chatId}, 'user', ${userContent}, ${JSON.stringify([{ type: 'text', text: userContent }])})
+      INSERT INTO messages (chat_id, role, content, metadata, attachments)
+      VALUES (
+        ${chatId},
+        'user',
+        ${userContent},
+        ${JSON.stringify([{ type: 'text', text: userContent }])},
+        ${JSON.stringify(userAttachments)}
+      )
     `;
 
     // Call ADK service with state_delta support

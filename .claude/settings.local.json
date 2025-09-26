@@ -103,7 +103,10 @@
       "Bash(git show:*)",
       "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"SELECT COUNT(*) as total_metrics FROM latex_metrics WHERE is_active = true;\")",
       "Bash(PORT=3009 pnpm dev)",
-      "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"SELECT id, tool_name, tool_result FROM messages WHERE tool_name = ''create_visualization'' ORDER BY created_at DESC LIMIT 3;\")"
+      "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"SELECT id, tool_name, tool_result FROM messages WHERE tool_name = ''create_visualization'' ORDER BY created_at DESC LIMIT 3;\")",
+      "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"\\d messages\")",
+      "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"\\d messages;\")",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d messages\")"
     ],
     "deny": [],
     "ask": [],
