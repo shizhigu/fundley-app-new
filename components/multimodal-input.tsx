@@ -38,8 +38,6 @@ import { startTransition, useOptimistic } from 'react';
 import { cn } from '@/lib/utils';
 
 function PureMultimodalInput({
-  input,
-  setInput,
   status,
   stop,
   attachments,
@@ -55,8 +53,6 @@ function PureMultimodalInput({
   isAtBottom,
   scrollToBottom,
 }: {
-  input: string;
-  setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>['status'];
   stop: () => void;
   attachments: Array<Attachment>;
@@ -72,6 +68,9 @@ function PureMultimodalInput({
   isAtBottom?: boolean;
   scrollToBottom?: () => void;
 }) {
+  // 内部input状态管理
+  const [input, setInput] = useState('');
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
 
@@ -124,7 +123,6 @@ function PureMultimodalInput({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
     // 防止重复提交 - 如果状态不是 ready，直接返回
@@ -134,8 +132,6 @@ function PureMultimodalInput({
 
     // Call sendMessage with AgentOS format: (content, attachments)
     sendMessage(input, attachments.length > 0 ? attachments : undefined);
-
-    console.log('🎯 FRONTEND STEP 3: sendMessage called successfully');
 
     setAttachments([]);
     setLocalStorageInput('');
@@ -156,55 +152,28 @@ function PureMultimodalInput({
     width,
   ]);
 
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const { url, pathname, contentType } = data;
-
-        return {
-          url,
-          name: pathname,
-          contentType: contentType,
-        };
-      }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (error) {
-      toast.error('Failed to upload file, please try again!');
-    }
+  // 直接将File对象添加到attachments，不上传到blob
+  const addFileToAttachments = (file: File) => {
+    return {
+      file: file, // 保存原始File对象
+      name: file.name,
+      contentType: file.type,
+    };
   };
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
 
-      setUploadQueue(files.map((file) => file.name));
+      // 直接添加File对象到attachments，无需上传
+      const newAttachments = files.map(addFileToAttachments);
 
-      try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined,
-        );
+      setAttachments((currentAttachments) => {
+        const updated = [...currentAttachments, ...newAttachments];
+        return updated;
+      });
 
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
-      } catch (error) {
-        console.error('Error uploading files!', error);
-      } finally {
-        setUploadQueue([]);
-      }
+      toast.success(`Added ${files.length} file(s)`);
     },
     [setAttachments],
   );
@@ -249,29 +218,19 @@ function PureMultimodalInput({
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
         ref={fileInputRef}
         multiple
+        accept="image/*,application/pdf,.txt,.doc,.docx"
         onChange={handleFileChange}
         tabIndex={-1}
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
+      {attachments.length > 0 && (
         <div
           data-testid="attachments-preview"
-          className="flex flex-row gap-2 overflow-x-scroll items-end"
+          className="flex flex-row gap-2 overflow-x-scroll items-end mb-4 p-2 border border-border rounded-md bg-muted/20"
         >
-          {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
-          ))}
-
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: '',
-                name: filename,
-                contentType: '',
-              }}
-              isUploading={true}
-            />
+          <div className="text-xs text-muted-foreground">附件预览 ({attachments.length}):</div>
+          {attachments.map((attachment, index) => (
+            <PreviewAttachment key={attachment.name + index} attachment={attachment} />
           ))}
         </div>
       )}
@@ -322,7 +281,6 @@ function PureMultimodalInput({
           <SendButton
             input={input}
             submitForm={submitForm}
-            uploadQueue={uploadQueue}
           />
         )}
       </div>
@@ -333,7 +291,6 @@ function PureMultimodalInput({
 export const MultimodalInput = memo(
   PureMultimodalInput,
   (prevProps, nextProps) => {
-    if (prevProps.input !== nextProps.input) return false;
     if (prevProps.status !== nextProps.status) return false;
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
@@ -487,22 +444,19 @@ const StopButton = memo(PureStopButton);
 function PureSendButton({
   submitForm,
   input,
-  uploadQueue,
 }: {
   submitForm: () => void;
   input: string;
-  uploadQueue: Array<string>;
 }) {
   return (
     <Button
       data-testid="send-button"
       className="glass-send-button rounded-full p-3 h-fit bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-white [&_svg]:fill-white"
       onClick={(event) => {
-        console.log('🎯 FRONTEND STEP 0: Send button clicked');
         event.preventDefault();
         submitForm();
       }}
-      disabled={(input?.length || 0) === 0 || (uploadQueue?.length || 0) > 0}
+      disabled={(input?.length || 0) === 0}
     >
       <ArrowUpIcon size={16} />
     </Button>
@@ -510,8 +464,6 @@ function PureSendButton({
 }
 
 const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
-  if ((prevProps.uploadQueue?.length || 0) !== (nextProps.uploadQueue?.length || 0))
-    return false;
   if (prevProps.input !== nextProps.input) return false;
   return true;
 });

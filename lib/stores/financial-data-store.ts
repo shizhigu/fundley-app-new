@@ -9,10 +9,18 @@ export interface FinancialDataRow {
   [key: string]: any; // 允许动态的财务指标字段
 }
 
+// 可用指标定义
+export interface AvailableMetric {
+  name: string;
+  latex: string;
+  sql: string;
+}
+
 export interface FinancialDataState {
   currentData: FinancialDataRow[];
   lastUpdated: string | null;
   isActive: boolean; // 是否有有效的财务数据
+  availableMetrics: AvailableMetric[]; // 可用的指标定义
 }
 
 // 财务分析表单状态
@@ -40,6 +48,7 @@ interface FinancialDataStore extends FullFinancialState {
   updateFinancialData: (data: FinancialDataRow[]) => void;
   clearFinancialData: () => void;
   setActive: (active: boolean) => void;
+  updateAvailableMetrics: (metrics: AvailableMetric[]) => void;
 
   // 表单状态更新方法
   updateAnalysisForm: (form: Partial<FinancialAnalysisForm>) => void;
@@ -58,6 +67,7 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
         currentData: [],
         lastUpdated: null,
         isActive: false,
+        availableMetrics: [],
       },
 
       analysisForm: {
@@ -103,6 +113,16 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
             isActive: active,
           },
         }));
+      },
+
+      updateAvailableMetrics: (metrics: AvailableMetric[]) => {
+        set((state) => ({
+          financialData: {
+            ...state.financialData,
+            availableMetrics: metrics,
+          },
+        }));
+        console.log('📊 Available metrics updated:', metrics.length, 'metrics');
       },
 
       // 表单状态更新方法

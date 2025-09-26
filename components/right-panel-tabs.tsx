@@ -1,17 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
+import { ResearchPanel } from './research-panel';
 import { Button } from './ui/button';
-import { TrendingUp, BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart3, FileText } from 'lucide-react';
 
-type TabType = 'chart' | 'data';
+type TabType = 'research' | 'data' | 'chart';
 
-export function RightPanelTabs() {
+function RightPanelTabsComponent() {
   const [activeTab, setActiveTab] = useState<TabType>('data');
 
   const tabs = [
+    {
+      id: 'research' as TabType,
+      name: '调研报告',
+      icon: FileText,
+      component: ResearchPanel
+    },
     {
       id: 'data' as TabType,
       name: '财务数据',
@@ -59,3 +66,5 @@ export function RightPanelTabs() {
     </div>
   );
 }
+
+export { RightPanelTabsComponent as RightPanelTabs };

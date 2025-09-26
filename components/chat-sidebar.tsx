@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { PlusIcon, MessageSquare, ChevronLeftIcon, ChevronRightIcon, EditIcon, TrashIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SidebarUserNav } from '@/components/sidebar-user-nav';
 
 interface Chat {
   id: string;
@@ -223,6 +224,13 @@ export function ChatSidebar({
             ))}
           </div>
         </ScrollArea>
+
+        {/* User Settings */}
+        {isOpen && (
+          <div className="border-t p-4">
+            <SidebarUserNav user={user} />
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

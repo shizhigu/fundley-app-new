@@ -17,7 +17,6 @@ export function PersistentChat({
   preloadedMessages,
   chatId: propChatId,
 }: PersistentChatProps) {
-  console.log('🔄 PersistentChat render:', { propChatId });
 
   // 获取默认聊天或创建一个（仅当没有提供chatId时）
   const { data: defaultChatData } = useSQLQuery<{ chatId: string }>(

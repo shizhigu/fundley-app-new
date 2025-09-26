@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取Python微服务URL（从环境变量）
-    const pythonServiceUrl = process.env.ADK_SERVICE_URL || 'http://localhost:8012';
+    const pythonServiceUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8012';
 
     console.log(`📊 Requesting financial data from ${pythonServiceUrl}`);
     console.log(`📋 Request: ${symbols.length} symbols, ${Object.keys(sqlFormulas).length} SQL formulas, ${quarters} quarters`);
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         symbols: symbols.map(s => s.trim().toUpperCase()),
-        sqlFormulas, // ADK服务期望的是sqlFormulas，不是metricIds
+        sqlFormulas, // 传递SQL公式映射
         quarters
       }),
     });
@@ -131,16 +131,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const adkResponse = await response.json();
+    const data: FinancialDataResponse[] = await response.json();
 
-    console.log(`✅ Received response from ADK service:`, adkResponse);
+    console.log(`✅ Received ${data.length} records from Python service`);
 
-    // ADK服务返回 {success: true, data: [...]} 格式
-    if (adkResponse.success) {
-      return NextResponse.json(adkResponse.data);
-    } else {
-      throw new Error(adkResponse.error || 'ADK service returned unsuccessful response');
-    }
+    // 返回处理后的数据
+    return NextResponse.json(data);
 
   } catch (error) {
     console.error('❌ Financial data API error:', error);
@@ -151,7 +147,7 @@ export async function POST(request: NextRequest) {
         {
           error: 'Unable to connect to financial data service',
           details: 'Please ensure the Python microservice is running',
-          suggestion: 'Check if MOTHERDUCK_API_URL environment variable is set correctly'
+          suggestion: 'Check if AGENTSOS_API_URL environment variable is set correctly'
         },
         { status: 503 }
       );

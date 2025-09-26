@@ -7,11 +7,18 @@ import { MultimodalInput } from './multimodal-input';
 import { PreviewMessage } from './message';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
+import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { toast } from './toast';
 import { Greeting } from './greeting';
 import { ChatLoading } from './chat-loading';
 import { usePathname } from 'next/navigation';
+
+interface Attachment {
+  url: string;
+  name: string;
+  contentType: string;
+}
 
 interface Message {
   id: string;
@@ -37,12 +44,14 @@ export function ChatInterface({
   user,
   isReadonly = false,
 }: ChatInterfaceProps) {
-  console.log('🔥 ChatInterface render:', chatId);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // 获取available metrics from store (精确订阅，避免不必要的重渲染)
+  const financialData = useFinancialDataStore((state) => state.financialData);
 
   // 获取历史消息
   const { data: messagesData } = useSQLQuery<{ messages: Message[] }>(
@@ -67,7 +76,6 @@ export function ChatInterface({
 
       // 检查是否是frontend_visualization类型
       if (toolResult && toolResult.type === 'frontend_visualization' && toolResult.chartjsConfig) {
-        console.log('🎨 Found frontend_visualization in tool_result:', toolResult);
 
         // 只显示可视化，不显示工具完成的文字
         parts = [
@@ -81,7 +89,6 @@ export function ChatInterface({
       }
       // 检查是否是web_search工具
       else if (msg.tool_name === 'web_search' && toolResult) {
-        console.log('🔍 Found web_search in tool_result:', toolResult);
 
         // 构造WebSearchResultCard需要的数据格式
         const query = msg.tool_args?.query || 'Search results';
@@ -109,7 +116,6 @@ export function ChatInterface({
       }
       // 其他工具使用通用ToolStatus显示
       else if (msg.role === 'tool' && msg.tool_name) {
-        console.log('🔧 Found other tool result:', msg.tool_name);
 
         // 只显示工具结果，不显示工具完成的文字
         parts = [
@@ -133,7 +139,6 @@ export function ChatInterface({
   // 初始化历史消息
   useEffect(() => {
     if (messagesData?.messages) {
-      console.log('📤 Loading historical messages:', messagesData.messages.length);
 
       // 过滤掉工具开始状态的消息，只保留有结果的工具消息
       const filteredMessages = messagesData.messages.filter(msg => {
@@ -149,16 +154,10 @@ export function ChatInterface({
 
           // 跳过开始状态消息，保留完成状态消息
           if (isStartMessage && !hasResult) {
-            console.log('🚫 Filtered out tool start message:', msg.tool_name);
             return false;
           }
 
           if (hasResult) {
-            console.log('✅ Keeping tool complete message:', {
-              tool_name: msg.tool_name,
-              has_result: true,
-              tool_result: msg.tool_result
-            });
             return true;
           }
         }
@@ -166,7 +165,6 @@ export function ChatInterface({
         return false;
       });
 
-      console.log(`📊 Filtered ${messagesData.messages.length} → ${filteredMessages.length} messages`);
 
       const convertedMessages = filteredMessages.map(convertMessage);
       setMessages(convertedMessages);
@@ -177,11 +175,11 @@ export function ChatInterface({
   const { containerRef, endRef, isAtBottom, scrollToBottom } = useScrollToBottom();
 
   // 发送消息
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, attachments?: Attachment[]) => {
     if (!content.trim() || isLoading) return;
 
     console.log('🎯 Sending message:', content);
-    setInput('');
+    console.log('📎 Attachments:', attachments);
     setIsLoading(true);
 
     // 关闭之前的EventSource
@@ -190,12 +188,76 @@ export function ChatInterface({
     }
 
     try {
-      // 发起流式请求
-      const response = await fetch(`/api/chat/${chatId}/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content }),
-      });
+      console.log('📎 Attachments received:', attachments);
+
+      // 检查是否有文件
+      const hasFiles = attachments && attachments.length > 0;
+      const files = hasFiles ? attachments.map(attachment => attachment.file).filter(Boolean) : [];
+
+      console.log('📎 Has files:', hasFiles, 'File count:', files.length);
+
+      let response: Response;
+
+      // 读取localStorage中的财务数据作为session_state
+      let sessionState = {};
+      try {
+        const storedData = localStorage.getItem('financial-data-storage');
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          // 构建JSON格式的session_state
+          if (parsedData.state?.financialData?.currentData) {
+            sessionState = {
+              "financial metrics data": parsedData.state.financialData.currentData
+            };
+          }
+
+          // 添加available metrics到session_state
+          if (financialData.availableMetrics && financialData.availableMetrics.length > 0) {
+            sessionState = {
+              ...sessionState,
+              "available metrics": financialData.availableMetrics
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to read financial data from localStorage:', e);
+      }
+
+      if (hasFiles && files.length > 0) {
+        // 有文件时使用FormData
+        const formData = new FormData();
+        formData.append('message', content);
+
+        // 添加sessionState到FormData
+        if (Object.keys(sessionState).length > 0) {
+          formData.append('sessionState', JSON.stringify(sessionState));
+        }
+
+        files.forEach((file) => {
+          if (file) {
+            formData.append('files', file);
+            console.log('📎 Adding file:', file.name, file.type, file.size);
+          }
+        });
+
+        response = await fetch(`/api/chat/${chatId}/stream`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // 没有文件时使用JSON
+        console.log('📨 Sending text-only message');
+        console.log('📊 Sending session_state:', sessionState);
+
+        response = await fetch(`/api/chat/${chatId}/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: content,
+            sessionState: sessionState
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -433,20 +495,16 @@ export function ChatInterface({
       {!isReadonly && (
         <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4">
           <MultimodalInput
-            input={input}
-            setInput={setInput}
             status={isLoading ? 'streaming' : 'ready'}
             stop={() => setIsLoading(false)}
-            attachments={[]}
-            setAttachments={() => {}}
+            attachments={attachments}
+            setAttachments={setAttachments}
             messages={[]}
             setMessages={() => {}}
-            sendMessage={(message: any) => {
-              if (typeof message === 'string') {
-                sendMessage(message);
-              } else {
-                sendMessage(message.parts?.[0]?.text || '');
-              }
+            sendMessage={(message: string, messageAttachments?: Attachment[]) => {
+              sendMessage(message, messageAttachments);
+              // 发送后清空attachments
+              setAttachments([]);
             }}
             selectedVisibilityType="private"
             user={user}

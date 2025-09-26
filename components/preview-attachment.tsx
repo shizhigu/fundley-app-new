@@ -8,7 +8,8 @@ export const PreviewAttachment = ({
   attachment: Attachment;
   isUploading?: boolean;
 }) => {
-  const { name, url, contentType } = attachment;
+  const { name, contentType, file } = attachment;
+  const url = file ? URL.createObjectURL(file) : attachment.url;
 
   return (
     <div data-testid="input-attachment-preview" className="flex flex-col gap-2">

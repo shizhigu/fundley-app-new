@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +55,7 @@ interface FinancialDataResponse {
   }>;
 }
 
-export function FinancialDataPanel() {
+function FinancialDataPanelComponent() {
   // 本地状态（只保留非持久化的状态）
   const [tableData, setTableData] = useState<FinancialDataResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,6 +73,7 @@ export function FinancialDataPanel() {
     updateFinancialData,
     clearFinancialData,
     updateAnalysisForm,
+    updateAvailableMetrics,
     setViewMode,
     setPanelCollapsed,
   } = useFinancialDataStore();
@@ -108,7 +109,6 @@ export function FinancialDataPanel() {
           .map(row => (row as any).__rawTableData);
 
         setTableData(restoredTableData);
-        console.log('🔄 Restored table data from raw persistence:', restoredTableData.length, 'rows');
       } else {
         // 向后兼容：没有原始数据时使用简化恢复
         const restoredTableData: FinancialDataResponse[] = persistedData.currentData.map(row => ({
@@ -130,7 +130,6 @@ export function FinancialDataPanel() {
         }));
 
         setTableData(restoredTableData);
-        console.log('🔄 Restored table data from basic persistence:', restoredTableData.length, 'rows');
       }
     }
   }, []); // 只在组件挂载时执行一次
@@ -151,10 +150,8 @@ export function FinancialDataPanel() {
       }));
 
       updateFinancialData(financialDataRows);
-      console.log('📊 Updated financial data store with', financialDataRows.length, 'rows');
     } else {
       clearFinancialData();
-      console.log('📊 Cleared financial data store');
     }
   }, [tableData, updateFinancialData, clearFinancialData]);
 
@@ -162,8 +159,10 @@ export function FinancialDataPanel() {
   const { data: latexMetricsData } = useSQLQuery<{ metrics: any[] }>('/api/latex-metrics?limit=100');
   const latexMetrics = latexMetricsData?.metrics;
 
-  // 过滤出有sqlFormula的指标
-  const availableMetrics = latexMetrics?.filter(metric => metric.sqlFormula) || [];
+  // 过滤出有sqlFormula的指标 (使用useMemo稳定引用)
+  const availableMetrics = useMemo(() => {
+    return latexMetrics?.filter(metric => metric.sqlFormula) || [];
+  }, [latexMetrics]);
 
   // 初始化指标顺序
   useEffect(() => {
@@ -196,24 +195,39 @@ export function FinancialDataPanel() {
     }
   }, [availableMetrics]);
 
-  const handleMetricToggle = (metricId: string) => {
+  // 更新store中的可用指标
+  const metricsForStore = useMemo(() => {
+    return availableMetrics.map(metric => ({
+      name: metric.name,
+      latex: metric.latexFormula,
+      sql: metric.sqlFormula
+    }));
+  }, [availableMetrics]);
+
+  useEffect(() => {
+    if (metricsForStore.length > 0) {
+      updateAvailableMetrics(metricsForStore);
+    }
+  }, [metricsForStore, updateAvailableMetrics]);
+
+  const handleMetricToggle = useCallback((metricId: string) => {
     const newMetrics = selectedMetrics.includes(metricId)
       ? selectedMetrics.filter(id => id !== metricId)
       : [...selectedMetrics, metricId];
     setSelectedMetrics(newMetrics);
-  };
+  }, [selectedMetrics, setSelectedMetrics]);
 
   // 拖拽处理函数
-  const handleDragStart = (index: number) => {
+  const handleDragStart = useCallback((index: number) => {
     setDraggedIndex(index);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOverIndex(index);
-  };
+  }, []);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
       const newOrder = [...orderedMetrics];
       const [draggedItem] = newOrder.splice(draggedIndex, 1);
@@ -227,7 +241,7 @@ export function FinancialDataPanel() {
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
-  };
+  }, [draggedIndex, dragOverIndex, orderedMetrics]);
 
   // 从SQL公式中提取字段名（AS后面的部分）
   const extractFieldName = (sqlFormula: string): string => {
@@ -641,7 +655,7 @@ export function FinancialDataPanel() {
               暂无可用指标，请先在LaTeX metrics中创建包含SQL公式的指标
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+            <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
               {orderedMetrics.map((metric, index) => (
                 <div
                   key={metric._id}
@@ -726,3 +740,5 @@ export function FinancialDataPanel() {
     </div>
   );
 }
+
+export { FinancialDataPanelComponent as FinancialDataPanel };

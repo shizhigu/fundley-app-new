@@ -36,20 +36,12 @@ export function ChatWithSidebar({
 
   // Set default chat ID when it's available
   useEffect(() => {
-    console.log('🔄 ChatWithSidebar state:', {
-      selectedChatId,
-      chatsCount: chats.length,
-      chatsLoading,
-      defaultChatData
-    });
     if (!selectedChatId && defaultChatData?.chatId) {
-      console.log('🔄 Setting default chat ID:', defaultChatData.chatId);
       setSelectedChatId(defaultChatData.chatId);
     }
-  }, [selectedChatId, defaultChatData?.chatId, chats.length, chatsLoading]);
+  }, [selectedChatId, defaultChatData?.chatId]);
 
   const handleChatSelect = (chatId: string) => {
-    console.log('🔄 ChatWithSidebar: Chat selected:', chatId);
     setSelectedChatId(chatId);
   };
 

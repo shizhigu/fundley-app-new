@@ -129,6 +129,7 @@ export type ChatMessage = UIMessage<
 
 export interface Attachment {
   name: string;
-  url: string;
+  url?: string; // 可选，因为我们现在直接使用File对象
   contentType: string;
+  file?: File; // 新增File对象属性
 }
