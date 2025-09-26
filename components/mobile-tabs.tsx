@@ -1,17 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { PersistentChat } from '@/components/persistent-chat';
+import { ChatManager } from '@/components/chat-manager';
 import { TradingChart } from '@/components/trading-chart';
 import type { AuthSession } from '@/lib/auth/clerk';
 
 interface MobileTabsProps {
   initialChatModel: string;
   user: AuthSession['user'];
-  preloadedMessages: any;
 }
 
-export function MobileTabs({ initialChatModel, user, preloadedMessages }: MobileTabsProps) {
+export function MobileTabs({ initialChatModel, user }: MobileTabsProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'chart'>('chat');
 
   return (
@@ -45,10 +44,9 @@ export function MobileTabs({ initialChatModel, user, preloadedMessages }: Mobile
         <div className="flex-1 min-h-0">
           {/* 聊天面板 */}
           <div className={`h-full ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
-            <PersistentChat
-              initialChatModel={initialChatModel}
+            <ChatManager
               user={user}
-              preloadedMessages={preloadedMessages}
+              initialChatModel={initialChatModel}
             />
           </div>
 
