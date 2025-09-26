@@ -7,7 +7,9 @@ export async function GET(request: NextRequest) {
   const interval = searchParams.get('interval') || 'daily'; // 新增：daily, weekly, monthly
 
   try {
-    console.log(`📊 Fetching chart data for ${symbol}, period: ${period}, interval: ${interval}`);
+    console.log(
+      `📊 Fetching chart data for ${symbol}, period: ${period}, interval: ${interval}`,
+    );
 
     // 根据时间周期确定数据范围
     const dateCondition = getDateCondition(period);
@@ -20,14 +22,16 @@ export async function GET(request: NextRequest) {
     // 直接调用MotherDuck API (避免内部HTTP调用)
     const renderUrl = process.env.MOTHERDUCK_API_URL || 'http://localhost:8000';
 
-    const response = await fetch(`${renderUrl}/query`, {
+    const response = await fetch(`${renderUrl}/api/v1/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql: query }),
     });
 
     if (!response.ok) {
-      throw new Error(`MotherDuck API failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `MotherDuck API failed: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -45,10 +49,12 @@ export async function GET(request: NextRequest) {
       close: parseFloat(row.close),
       // 额外信息
       volume: parseInt(row.volume),
-      adjClose: parseFloat(row.adjclose)
+      adjClose: parseFloat(row.adjclose),
     }));
 
-    console.log(`✅ Chart data prepared: ${chartData.length} points for ${symbol}`);
+    console.log(
+      `✅ Chart data prepared: ${chartData.length} points for ${symbol}`,
+    );
 
     return Response.json({
       success: true,
@@ -56,9 +62,8 @@ export async function GET(request: NextRequest) {
       period,
       data: chartData,
       count: chartData.length,
-      latestPrice: chartData[chartData.length - 1]?.close || 0
+      latestPrice: chartData[chartData.length - 1]?.close || 0,
     });
-
   } catch (error) {
     console.error('❌ Chart data fetch error:', error);
     return Response.json(
@@ -66,15 +71,19 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         symbol,
-        period
+        period,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 // 根据间隔类型生成查询
-function generateQuery(symbol: string, dateCondition: string, interval: string): string {
+function generateQuery(
+  symbol: string,
+  dateCondition: string,
+  interval: string,
+): string {
   if (interval === 'daily') {
     // 日线数据 - 原有逻辑
     return `
