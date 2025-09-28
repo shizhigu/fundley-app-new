@@ -8,6 +8,7 @@ import { InvocationGroup } from '@/components/invocation-group';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import { Greeting } from '@/components/greeting';
 import { ChatLoading } from '@/components/chat-loading';
+import { InlineLoadingBar } from '@/components/loading-bar';
 import type { ChatMessage } from '@/lib/types/chat';
 import type { MessageInvocation, Attachment } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -97,6 +98,9 @@ export function NewChatInterface({
 
   return (
     <div className="flex flex-col h-full w-full max-w-full relative">
+      {/* Loading Bar - 在聊天区域顶部显示 */}
+      <InlineLoadingBar isLoading={isLoading} className="mx-4 mt-2" />
+
       <div className="flex-1 min-h-0 max-w-full">
         <div
           ref={containerRef}

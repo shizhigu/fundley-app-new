@@ -188,6 +188,52 @@ function PureMultimodalInput({
 
   return (
     <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4 bg-transparent">
+      {/* Modern Loading Indicator */}
+      <AnimatePresence>
+        {status === 'streaming' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="
+              relative px-6 py-3 rounded-2xl
+              bg-white/[0.03] dark:bg-white/[0.05]
+              backdrop-blur-xl backdrop-saturate-150
+              border border-white/[0.08] dark:border-white/[0.12]
+              shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]
+              before:absolute before:inset-0 before:rounded-2xl
+              before:bg-gradient-to-r before:from-violet-500/[0.08] before:via-blue-500/[0.08] before:to-cyan-500/[0.08]
+              before:opacity-50
+            "
+          >
+            <div className="relative flex items-center justify-center gap-3">
+              {/* Modern pulse animation */}
+              <div className="flex items-center gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
+                    animate={{
+                      scale: [1, 1.3, 1],
+                      opacity: [0.4, 1, 0.4],
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                      ease: [0.4, 0, 0.2, 1],
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-sm font-medium text-foreground/60 tracking-wide">
+                Processing...
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {scrollToBottom && isAtBottom === false && (
           <motion.div
@@ -241,20 +287,22 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder="Ask me anything about the market..."
+        placeholder={status === 'streaming' ? "AI is processing your request..." : "Ask me anything about the market..."}
         value={input}
         onChange={handleInput}
+        disabled={status === 'streaming'}
         className={cx(
           'professional-input min-h-[60px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
           'border-2 border-gray-400/80 dark:border-gray-500/80',
           'shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)]',
           'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
           'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
-          'transition-all duration-200',
+          'transition-all duration-300 ease-out',
+          status === 'streaming' && 'opacity-50 cursor-not-allowed backdrop-blur-[2px]',
           className,
         )}
         rows={2}
-        autoFocus
+        autoFocus={status !== 'streaming'}
         onKeyDown={(event) => {
           if (
             event.key === 'Enter' &&
