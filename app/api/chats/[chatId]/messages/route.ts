@@ -37,6 +37,7 @@ export async function GET(
         tool_args,
         tool_result,
         attachments,
+        invocation_id,
         created_at as timestamp
       FROM messages
       WHERE chat_id = ${chatId}

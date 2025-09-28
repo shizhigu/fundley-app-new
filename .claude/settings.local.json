@@ -106,7 +106,12 @@
       "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"SELECT id, tool_name, tool_result FROM messages WHERE tool_name = ''create_visualization'' ORDER BY created_at DESC LIMIT 3;\")",
       "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"\\d messages\")",
       "Bash(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d $DATABASE_NAME -c \"\\d messages;\")",
-      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d messages\")"
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d messages\")",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -f /Users/gushizhi/Projects/fundley-app/lib/db/migrations/002_add_tool_call_id.sql)",
+      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/add-tool-call-id.js)",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -f /Users/gushizhi/Projects/fundley-app/lib/db/migrations/003_add_invocation_id.sql)",
+      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/add-invocation-id.js)",
+      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/check-db-schema.js)"
     ],
     "deny": [],
     "ask": [],

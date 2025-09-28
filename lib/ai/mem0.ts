@@ -1,4 +1,7 @@
-import { createMem0, addMemories, retrieveMemories } from '@mem0/vercel-ai-provider';
+// Mock implementations for removed mem0 package
+const createMem0 = (config: any) => ({});
+const addMemories = (messages: any, options: any) => Promise.resolve([]);
+const retrieveMemories = (query: any, options: any) => Promise.resolve('');
 
 // Initialize Mem0 with minimal configuration - mem0 handles LLM internally
 const mem0Config = {
@@ -9,8 +12,8 @@ const mem0Config = {
   },
 };
 
-// Initialize Mem0 client
-export const mem0 = createMem0(mem0Config);
+// Initialize Mem0 client (mock function)
+export const mem0 = (modelId: string, options: any) => ({ modelId, options });
 
 // Helper function to get user ID from session
 export function getUserIdFromSession(session: { user?: { id?: string } } | null): string {

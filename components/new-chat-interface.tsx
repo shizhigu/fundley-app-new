@@ -4,24 +4,20 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
+import { InvocationGroup } from '@/components/invocation-group';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import { Greeting } from '@/components/greeting';
 import { ChatLoading } from '@/components/chat-loading';
 import type { ChatMessage } from '@/lib/types/chat';
+import type { MessageInvocation, Attachment } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
-
-interface Attachment {
-  url: string;
-  name: string;
-  contentType: string;
-  file?: File;
-}
 
 interface NewChatInterfaceProps {
   chatId: string;
   user: AuthSession['user'];
   initialChatModel: string;
   messages: ChatMessage[];
+  groupedMessages?: MessageInvocation[]; // Add grouped messages support
   isLoading: boolean;
   error: string | null;
   onSendMessage: (content: string, files?: File[]) => Promise<void>;
@@ -37,6 +33,7 @@ export function NewChatInterface({
   user,
   initialChatModel,
   messages,
+  groupedMessages = [],
   isLoading,
   error,
   onSendMessage,
@@ -108,13 +105,13 @@ export function NewChatInterface({
           {/* 欢迎界面（无消息时显示） */}
           {messages.length === 0 && !isLoading && (
             <div className="flex items-center justify-center h-full">
-              <Greeting user={user} />
+              <Greeting />
             </div>
           )}
 
-          {/* 消息列表 */}
-          {messages.map((message, index) => (
-            <AnimatePresence key={message.id}>
+          {/* 统一使用分组渲染（包括单独消息的伪分组） */}
+          {groupedMessages.map((invocation, index) => (
+            <AnimatePresence key={invocation.invocationId}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -122,15 +119,7 @@ export function NewChatInterface({
                 transition={{ duration: 0.3 }}
                 className="w-full max-w-4xl mx-auto"
               >
-                <PreviewMessage
-                  message={message}
-                  isLoading={isLoading && index === messages.length - 1}
-                  isLatest={index === messages.length - 1}
-                  vote={undefined}
-                  setMessages={() => {}} // 新架构中不需要直接修改消息
-                  regenerate={() => {}} // TODO: 实现重新生成功能
-                  isReadonly={isReadonly}
-                />
+                <InvocationGroup invocation={invocation} />
               </motion.div>
             </AnimatePresence>
           ))}

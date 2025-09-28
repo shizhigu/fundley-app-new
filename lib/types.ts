@@ -119,6 +119,7 @@ export interface ExtendedChatMessage {
   createdAt: Date;
   messageType?: MessageType;
   toolData?: ToolData;
+  invocation_id?: string; // Add invocation_id field
 }
 
 export type ChatMessage = UIMessage<
@@ -127,9 +128,19 @@ export type ChatMessage = UIMessage<
   ChatTools
 > | ExtendedChatMessage;
 
+// Invocation grouping types
+export interface MessageInvocation {
+  invocationId: string;
+  userMessage: ChatMessage;
+  assistantMessage?: ChatMessage;
+  toolMessages: ChatMessage[];
+  timestamp: Date; // Based on user message timestamp
+}
+
 export interface Attachment {
   name: string;
   url?: string; // 可选，因为我们现在直接使用File对象
   contentType: string;
   file?: File; // 新增File对象属性
+  size?: number; // 可选文件大小
 }

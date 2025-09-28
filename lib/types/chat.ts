@@ -59,6 +59,7 @@ export interface ChatState {
   currentChatId: string | null;
   chats: Chat[];
   messages: ChatMessage[];
+  groupedMessages: import('@/lib/types').MessageInvocation[]; // Add grouped messages
   isLoading: boolean;
   error: string | null;
 }
@@ -68,6 +69,7 @@ export interface ChatActions {
   createChat: () => Promise<string>;
   selectChat: (chatId: string) => void;
   deleteChat: (chatId: string) => void;
+  renameChat: (chatId: string, newTitle: string) => Promise<void>;
   refreshChats: () => void;
 
   // 消息管理

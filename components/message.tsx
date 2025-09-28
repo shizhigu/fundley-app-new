@@ -747,7 +747,6 @@ const PurePreviewMessage = ({
                       name={name}
                       status={status}
                       displayResult={displayResult}
-                      formattedData={formattedData}
                     />
                   </div>
                 );
@@ -960,7 +959,6 @@ const PurePreviewMessage = ({
                         status="completed"
                         displayAction={completedAction}
                         displayResult={output?.displayResult || 'Success'}
-                        formattedData={output?.formattedData}
                       />
                     </div>
                   );

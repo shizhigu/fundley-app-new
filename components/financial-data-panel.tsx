@@ -368,7 +368,7 @@ function FinancialDataPanelComponent() {
     trend,
     label
   }: {
-    trend: { value: number | null, direction: 'up' | 'down' } | undefined,
+    trend: { value: number | null, direction: 'up' | 'down' | 'neutral' } | undefined,
     label: string
   }) {
     if (!trend || trend.value === null) return <span className="text-xs text-muted-foreground">-</span>;
@@ -377,9 +377,11 @@ function FinancialDataPanelComponent() {
       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
         trend.direction === 'up'
           ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+          : trend.direction === 'down'
+          ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
       }`}>
-        {trend.direction === 'up' ? '↗' : '↘'} {label}: {Math.abs(trend.value).toFixed(1)}%
+        {trend.direction === 'up' ? '↗' : trend.direction === 'down' ? '↘' : '→'} {label}: {Math.abs(trend.value).toFixed(1)}%
       </span>
     );
   }

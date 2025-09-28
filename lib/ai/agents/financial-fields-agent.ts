@@ -1,4 +1,32 @@
-import { tool, generateObject } from 'ai'
+// Mock implementations for removed AI SDK
+const tool = (config: any) => config;
+const generateObject = (args: any) => ({
+  object: {
+    selectedFields: [{
+      field: 'mockField',
+      name: 'Mock Field',
+      description: 'Mock description',
+      category: 'mock',
+      endpoint: '/mock-endpoint',
+      unit: 'USD',
+      isPercentage: false,
+      isRatio: false,
+      interpretation: 'Mock interpretation',
+      relevanceScore: 95,
+      reasoning: 'Mock field selection',
+      dataType: 'getIncomeStatement'
+    }],
+    reasoning: 'Mock reasoning',
+    summary: {
+      recommendedTimeframe: 'annual',
+      totalFields: 1,
+      query: 'mock query',
+      primaryDataType: 'getIncomeStatement',
+      queryIntent: 'mock intent',
+      dataInterpretationGuidance: 'mock guidance'
+    }
+  }
+});
 import { z } from 'zod'
 import { financialFieldsModel } from '@/lib/ai/providers'
 import { ALL_FINANCIAL_FIELDS } from '@/lib/fmp/field-metadata'
@@ -83,7 +111,7 @@ export const financialFieldsAgent = tool({
     symbols: z.array(z.string()).optional().describe('Stock symbols if already known')
   }),
   
-  execute: async ({ query, context, symbols }) => {
+  execute: async ({ query, context, symbols }: { query: string, context?: string, symbols?: string[] }) => {
     try {
       const enhancedQuery = context ? `${query} (Context: ${context})` : query
       

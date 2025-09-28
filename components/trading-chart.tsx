@@ -92,7 +92,7 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
 
   const streamedIndicators = dataStream
     .filter(part => part.type === 'data-chartIndicator')
-    .map(part => part.data as ImportedChartIndicator);
+    .map(part => part.data as unknown as ImportedChartIndicator);
 
   // Combine indicators from props and data stream
   const allIndicators = useMemo(() =>

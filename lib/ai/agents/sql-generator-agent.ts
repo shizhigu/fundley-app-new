@@ -1,4 +1,5 @@
-import { generateText } from 'ai';
+// Mock implementation for removed AI SDK
+const generateText = (args: any) => ({ text: 'SELECT * FROM mock_table;' });
 import { financialFieldsModel } from '@/lib/ai/providers';
 
 interface SQLGenerationParams {

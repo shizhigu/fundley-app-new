@@ -1,4 +1,4 @@
-import { SimpleChat } from '@/components/simple-chat';
+import { ChatManager } from '@/components/chat-manager';
 import { auth } from '@/lib/auth/clerk';
 import { redirect } from 'next/navigation';
 
@@ -17,7 +17,7 @@ export default async function SimpleChatPage({
 
   return (
     <div className="h-screen">
-      <SimpleChat id={id} user={session.user} />
+      <ChatManager user={session.user} initialChatModel="gpt-4o" />
     </div>
   );
 }

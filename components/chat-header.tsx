@@ -56,7 +56,7 @@ function PureChatHeader({
       <div className="flex items-center gap-2">
         {user && (
           <div className="text-sm text-muted-foreground">
-            {user.firstName} {user.lastName}
+            {user.email}
           </div>
         )}
       </div>

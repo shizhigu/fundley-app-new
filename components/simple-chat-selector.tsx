@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, MessageSquare, X, MoreHorizontal } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Plus, MessageSquare, X, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import type { Chat } from '@/lib/types/chat';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -12,6 +12,7 @@ interface SimpleChatSelectorProps {
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
   onDeleteChat: (chatId: string) => void;
+  onRenameChat: (chatId: string, newTitle: string) => void;
   isLoading?: boolean;
   user?: AuthSession['user'];
   onToggleSidebar?: () => void;
@@ -24,12 +25,44 @@ export function SimpleChatSelector({
   onChatSelect,
   onNewChat,
   onDeleteChat,
+  onRenameChat,
   isLoading = false,
   user,
   onToggleSidebar,
   isSidebarOpen
 }: SimpleChatSelectorProps) {
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [showMenuChatId, setShowMenuChatId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingChatId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingChatId]);
+
+  const handleRename = (chatId: string, currentTitle: string) => {
+    setEditingChatId(chatId);
+    setEditTitle(currentTitle);
+    setShowMenuChatId(null);
+  };
+
+  const saveRename = () => {
+    if (editingChatId && editTitle.trim()) {
+      onRenameChat(editingChatId, editTitle.trim());
+    }
+    setEditingChatId(null);
+    setEditTitle('');
+  };
+
+  const cancelRename = () => {
+    setEditingChatId(null);
+    setEditTitle('');
+  };
 
   return (
     <div className="flex flex-col h-full bg-background border-r border-border">
@@ -94,30 +127,74 @@ export function SimpleChatSelector({
                 }`}
                 onMouseEnter={() => setHoveredChatId(chat.id)}
                 onMouseLeave={() => setHoveredChatId(null)}
-                onClick={() => onChatSelect(chat.id)}
+                onClick={() => editingChatId !== chat.id && onChatSelect(chat.id)}
               >
                 <MessageSquare className="w-4 h-4 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {chat.title}
-                  </div>
+                  {editingChatId === chat.id ? (
+                    <input
+                      ref={inputRef}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRename();
+                        if (e.key === 'Escape') cancelRename();
+                      }}
+                      onBlur={saveRename}
+                      className="w-full text-sm font-medium bg-transparent border-0 outline-none"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <div className="text-sm font-medium truncate">
+                      {chat.title}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {new Date(chat.createdAt).toLocaleDateString()}
                   </div>
                 </div>
 
-                {/* 删除按钮 */}
-                {hoveredChatId === chat.id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteChat(chat.id);
-                    }}
-                    className="p-1 rounded hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                    title="Delete chat"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                {/* 更多操作菜单 */}
+                {hoveredChatId === chat.id && editingChatId !== chat.id && (
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenuChatId(showMenuChatId === chat.id ? null : chat.id);
+                      }}
+                      className="p-1 rounded hover:bg-accent transition-colors"
+                      title="More options"
+                    >
+                      <MoreHorizontal className="w-3 h-3" />
+                    </button>
+
+                    {/* 下拉菜单 */}
+                    {showMenuChatId === chat.id && (
+                      <div className="absolute right-0 top-6 z-50 w-32 bg-popover border border-border rounded-md shadow-lg">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(chat.id, chat.title);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded-t-md"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteChat(chat.id);
+                            setShowMenuChatId(null);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-destructive hover:text-destructive-foreground rounded-b-md"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

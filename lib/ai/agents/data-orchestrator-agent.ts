@@ -1,4 +1,18 @@
-import { tool, generateObject } from 'ai';
+// Mock implementations for removed AI SDK
+const tool = (config: any) => config;
+const generateObject = (args: any) => ({
+  object: {
+    summary: 'Mock summary',
+    keyInsights: ['Mock insight 1', 'Mock insight 2'],
+    dataQuality: {
+      completenessScore: 80,
+      freshnessScore: 85,
+      reliabilityScore: 90,
+      confidence: 'high' as const
+    },
+    structuredData: {}
+  }
+});
 import { z } from 'zod';
 import { financialFieldsModel } from '@/lib/ai/providers';
 import { fmpApiTools } from '@/lib/ai/tools/financial/fmp-api-tools';
@@ -47,7 +61,7 @@ export const dataOrchestratorAgent = tool({
   description: 'Data orchestration agent that fetches clean financial data using FMP API tools. Returns structured clean data for main analysis.',
   inputSchema: DataRequestSchema,
   
-  execute: async ({ symbols, analysisType, parameters = {} }) => {
+  execute: async ({ symbols, analysisType, parameters = {} }: { symbols: string[], analysisType: 'institutional_analysis' | '13f_tracking', parameters?: any }) => {
     const startTime = Date.now();
     
     try {

@@ -12,6 +12,7 @@ export interface UseChatHelpers<T = any> {
   stop: () => void;
   regenerate: () => void;
   addToolResult?: (args: any) => void;
+  resumeStream?: () => void; // Added for backwards compatibility
 }
 
 export type DataUIPart<T = any> = {

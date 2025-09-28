@@ -1,16 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, FileText, File, Image as ImageIcon, Download, Eye } from 'lucide-react';
-import { LoaderIcon } from './icons';
-
-interface Attachment {
-  name: string;
-  contentType: string;
-  url: string;
-  file?: File;
-  size?: number;
-}
+import { X, FileText, File, Image as ImageIcon, Download, Eye, Loader2 } from 'lucide-react';
+import type { Attachment } from '@/lib/types';
 
 interface EnhancedAttachmentPreviewProps {
   attachments: Attachment[];
@@ -105,10 +97,10 @@ export function EnhancedAttachmentPreview({
                         src={url}
                         alt={name}
                         className="w-12 h-12 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setExpandedImage(url)}
+                        onClick={() => url && setExpandedImage(url)}
                       />
                       <button
-                        onClick={() => setExpandedImage(url)}
+                        onClick={() => url && setExpandedImage(url)}
                         className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded"
                       >
                         <Eye className="w-4 h-4 text-white" />
@@ -132,7 +124,7 @@ export function EnhancedAttachmentPreview({
                   </div>
                   {isUploading && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                      <LoaderIcon className="w-3 h-3 animate-spin" />
+                      <Loader2 className="w-3 h-3 animate-spin" />
                       Uploading...
                     </div>
                   )}

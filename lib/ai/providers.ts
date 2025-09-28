@@ -1,6 +1,12 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createXai } from '@ai-sdk/xai';
-import { extractReasoningMiddleware, wrapLanguageModel } from 'ai';
+// Mock implementations for removed AI SDK packages
+const createOpenRouter = (config: any) => ({
+  chat: (modelId: string) => ({ modelId, provider: 'openrouter' })
+});
+const createXai = (config: any) => ({
+  chat: (modelId: string) => ({ modelId, provider: 'xai' })
+});
+const extractReasoningMiddleware = () => ({});
+const wrapLanguageModel = (model: any, middleware: any) => model;
 import type { ModelId } from './models';
 
 // Configure OpenRouter with API key

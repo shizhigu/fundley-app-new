@@ -1,4 +1,4 @@
-import type { ArtifactKind } from '@/components/artifact';
+import type { ArtifactKind } from '@/lib/artifact-types';
 import type { Geo } from '@vercel/functions';
 import { astGenerationPrompt } from './prompts/ast-generation-prompt';
 

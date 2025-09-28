@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 DuckDB Query: ${query}`);
 
     // 直接调用MotherDuck API (避免内部HTTP调用)
-    const renderUrl = process.env.MOTHERDUCK_API_URL || 'http://localhost:8000';
+    const renderUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
 
     const response = await fetch(`${renderUrl}/api/v1/query`, {
       method: 'POST',

@@ -32,7 +32,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
   const [isResizing, setIsResizing] = useState(false);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const isArtifactVisible = false; // useArtifactSelector((state: any) => state.isVisible);
 
   const minHeight = 100;
   const maxHeight = 800;

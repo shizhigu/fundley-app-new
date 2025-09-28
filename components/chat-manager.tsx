@@ -55,6 +55,10 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
     chat.deleteChat(chatId);
   };
 
+  const handleRenameChat = (chatId: string, newTitle: string) => {
+    chat.renameChat(chatId, newTitle);
+  };
+
   return (
     <div className="flex h-full relative">
       {/* 聊天侧边栏 */}
@@ -65,6 +69,7 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
           onChatSelect={handleChatSelect}
           onNewChat={handleNewChat}
           onDeleteChat={handleDeleteChat}
+          onRenameChat={handleRenameChat}
           isLoading={chat.isLoading}
           user={user}
           onToggleSidebar={handleSidebarToggle}
@@ -102,6 +107,7 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
             user={user}
             initialChatModel={initialChatModel}
             messages={chat.messages}
+            groupedMessages={chat.groupedMessages}
             isLoading={chat.isLoading}
             error={chat.error}
             onSendMessage={chat.sendMessage}

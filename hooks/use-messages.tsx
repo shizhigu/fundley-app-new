@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollToBottom } from './use-scroll-to-bottom';
-import type { UseChatHelpers } from '@ai-sdk/react';
+import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import type { ChatMessage } from '@/lib/types';
 
 export function useMessages({
@@ -15,8 +15,6 @@ export function useMessages({
     endRef,
     isAtBottom,
     scrollToBottom,
-    onViewportEnter,
-    onViewportLeave,
   } = useScrollToBottom();
 
   const [hasSentMessage, setHasSentMessage] = useState(false);
@@ -29,8 +27,8 @@ export function useMessages({
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role === 'assistant' && Array.isArray(lastMessage.parts)) {
       return lastMessage.parts
-        .filter(part => part.type === 'text')
-        .map(part => (part as any).text || '')
+        .filter((part: any) => part.type === 'text')
+        .map((part: any) => part.text || '')
         .join('');
     }
     return Array.isArray(lastMessage.parts) && lastMessage.parts[0] 
@@ -40,7 +38,7 @@ export function useMessages({
 
   // Auto-scroll on messages load
   useEffect(() => {
-    scrollToBottom('instant');
+    scrollToBottom();
     setHasSentMessage(false);
     previousMessagesLength.current = messages?.length || 0;
     previousLastMessageContent.current = getLastMessageContent();
@@ -50,7 +48,7 @@ export function useMessages({
   useEffect(() => {
     if (status === 'submitted') {
       setHasSentMessage(true);
-      scrollToBottom('smooth');
+      scrollToBottom();
     }
   }, [status, scrollToBottom]);
 
@@ -62,16 +60,16 @@ export function useMessages({
     // New message added
     if (currentLength > previousMessagesLength.current) {
       if (isAtBottom || status === 'streaming') {
-        scrollToBottom('smooth');
+        scrollToBottom();
       }
       previousMessagesLength.current = currentLength;
     }
-    
+
     // Existing message content updated (streaming)
     if (currentLastContent !== previousLastMessageContent.current && currentLastContent.length > previousLastMessageContent.current.length) {
       if (isAtBottom || status === 'streaming') {
         // Use a slight delay to ensure DOM updates are complete
-        setTimeout(() => scrollToBottom('smooth'), 100);
+        setTimeout(() => scrollToBottom(), 100);
       }
       previousLastMessageContent.current = currentLastContent;
     }
@@ -82,8 +80,6 @@ export function useMessages({
     endRef,
     isAtBottom,
     scrollToBottom,
-    onViewportEnter,
-    onViewportLeave,
     hasSentMessage,
   };
 }
