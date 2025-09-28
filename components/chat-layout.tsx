@@ -3,6 +3,7 @@
 import { ChatManager } from '@/components/chat-manager';
 import { RightPanelTabs } from '@/components/right-panel-tabs';
 import { MobileTabs } from '@/components/mobile-tabs';
+import { ResizableSplitPanel } from '@/components/resizable-split-panel';
 import type { ChatLayoutProps } from '@/lib/types/chat';
 
 /**
@@ -12,20 +13,21 @@ import type { ChatLayoutProps } from '@/lib/types/chat';
 export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
   return (
     <>
-      {/* 桌面端分屏布局：左半边(聊天管理器) + 右半边(财务数据+交易图表) */}
-      <div className="hidden lg:flex h-screen bg-transparent">
-        {/* 左半边：聊天管理器 */}
-        <div className="flex-1 min-w-0 border-r border-border">
-          <ChatManager
-            user={user}
-            initialChatModel={initialChatModel}
-          />
-        </div>
-
-        {/* 右半边：财务数据 + 交易图表标签页 */}
-        <div className="flex-1 min-w-0 bg-transparent">
-          <RightPanelTabs />
-        </div>
+      {/* 桌面端分屏布局：可拖拽调整的左右分割面板 */}
+      <div className="hidden lg:block h-screen bg-transparent">
+        <ResizableSplitPanel
+          leftPanel={
+            <ChatManager
+              user={user}
+              initialChatModel={initialChatModel}
+            />
+          }
+          rightPanel={<RightPanelTabs />}
+          defaultLeftWidth={50}
+          minLeftWidth={30}
+          minRightWidth={25}
+          className="h-full"
+        />
       </div>
 
       {/* 移动端标签页布局 */}

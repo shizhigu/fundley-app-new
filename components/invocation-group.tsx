@@ -50,8 +50,8 @@ interface InvocationGroupProps {
 export function InvocationGroup({ invocation }: InvocationGroupProps) {
   const { userMessage, assistantMessage, toolMessages } = invocation;
 
-  // 分离特殊工具和普通工具
-  const specialTools = ['create_visualization', 'web_search'];
+  // 分离特殊工具和普通工具 - 只有 create_visualization 是特殊工具
+  const specialTools = ['create_visualization'];
   const specialToolMessages = toolMessages.filter(toolMsg =>
     specialTools.includes((toolMsg as any).tool_name?.toLowerCase() || '')
   );
@@ -59,13 +59,22 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
     !specialTools.includes((toolMsg as any).tool_name?.toLowerCase() || '')
   );
 
-  // 普通工具转换为ToolStatus格式
-  const toolStatuses = normalToolMessages.map(toolMsg => ({
-    name: (toolMsg as any).tool_name || 'Unknown Tool',
-    status: 'completed' as const,
-    displayAction: undefined,
-    displayResult: toolMsg.content || 'Tool completed'
-  }));
+  // 普通工具转换为ToolStatus格式，去重相同名称的工具
+  const uniqueTools = new Map<string, any>();
+
+  normalToolMessages.forEach(toolMsg => {
+    const toolName = (toolMsg as any).tool_name || 'Unknown Tool';
+    if (!uniqueTools.has(toolName)) {
+      uniqueTools.set(toolName, {
+        name: toolName,
+        status: 'completed' as const,
+        displayAction: undefined,
+        displayResult: toolMsg.content || 'Tool completed'
+      });
+    }
+  });
+
+  const toolStatuses = Array.from(uniqueTools.values());
 
   return (
     <div className="invocation-group mb-6">
@@ -131,17 +140,6 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
               }
             }
 
-            if (toolName === 'web_search') {
-              // 这里可以添加web_search的专属组件渲染
-              return (
-                <div key={`special-${toolMsg.id}-${index}`} className="mb-4">
-                  <div className="p-4 border rounded-lg bg-blue-50">
-                    <div className="text-sm font-medium text-blue-900">🔍 Web Search Results</div>
-                    <div className="text-xs text-blue-700 mt-1">{toolMsg.content}</div>
-                  </div>
-                </div>
-              );
-            }
 
             return null;
           })}

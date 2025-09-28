@@ -31,8 +31,8 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
     icon: TrendingUp
   },
   web_search: {
-    label: 'Searching web for insights',
-    icon: Globe
+    label: 'Web Search Results',
+    icon: Search
   },
   sql_query: {
     label: 'Querying financial database',
@@ -104,8 +104,8 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   },
   // Web Search tools
   webSearch: {
-    label: 'Searching web for insights',
-    icon: Globe
+    label: 'Web Search Results',
+    icon: Search
   },
   // Data Visualization tools
   create_visualization: {
@@ -171,11 +171,6 @@ export function ToolStatus({ name, status, displayAction, displayResult }: ToolS
         )}>
           {action}
         </span>
-        {status === 'completed' && displayResult && (
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 block truncate mt-0.5">
-            {displayResult}
-          </span>
-        )}
       </div>
     </motion.div>
   );
