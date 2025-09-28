@@ -197,39 +197,31 @@ function PureMultimodalInput({
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             className="
-              relative px-6 py-3 rounded-2xl
-              bg-white/[0.03] dark:bg-white/[0.05]
-              backdrop-blur-xl backdrop-saturate-150
-              border border-white/[0.08] dark:border-white/[0.12]
-              shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]
-              before:absolute before:inset-0 before:rounded-2xl
-              before:bg-gradient-to-r before:from-violet-500/[0.08] before:via-blue-500/[0.08] before:to-cyan-500/[0.08]
-              before:opacity-50
+              relative px-3 py-2 rounded-xl w-fit mx-auto
+              bg-white/[0.05] dark:bg-white/[0.08]
+              backdrop-blur-lg backdrop-saturate-150
+              border border-white/[0.12] dark:border-white/[0.16]
+              shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)]
             "
           >
-            <div className="relative flex items-center justify-center gap-3">
-              {/* Modern pulse animation */}
-              <div className="flex items-center gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
-                    animate={{
-                      scale: [1, 1.3, 1],
-                      opacity: [0.4, 1, 0.4],
-                    }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      delay: i * 0.2,
-                      ease: [0.4, 0, 0.2, 1],
-                    }}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-medium text-foreground/60 tracking-wide">
-                Processing...
-              </span>
+            {/* Compact pulse animation */}
+            <div className="flex items-center gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.4, 1, 0.4],
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: i * 0.15,
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                />
+              ))}
             </div>
           </motion.div>
         )}
