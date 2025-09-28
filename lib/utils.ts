@@ -1,9 +1,8 @@
-import type {
-  CoreAssistantMessage,
-  CoreToolMessage,
-  UIMessage,
-  UIMessagePart,
-} from 'ai';
+// Mock types to replace AI SDK imports
+type CoreAssistantMessage = { role: 'assistant', content: string };
+type CoreToolMessage = { role: 'tool', content: string };
+type UIMessage = { role: string, content?: string };
+type UIMessagePart = any;
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { Message, Document } from '@/lib/db/schema';
@@ -112,7 +111,7 @@ export function convertToUIMessages(
     try {
       
       // Get the parts
-      let parts = message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
+      let parts = message.parts as any[];
     
     // Inject cached data for createVisualization tool outputs
     if (vizCacheMap?.has(messageId)) {
@@ -140,6 +139,7 @@ export function convertToUIMessages(
       id: messageId,
       role: message.role as 'user' | 'assistant' | 'system',
       parts,
+      timestamp: new Date(message.createdAt || (message as any)._createdTime || Date.now()),
       extractedMetadata: message.extractedMetadata, // Include cached metadata
       _id: message._id, // Preserve Convex ID for metadata API
       metadata: {
@@ -161,6 +161,7 @@ export function convertToUIMessages(
         id: messageId,
         role: message.role,
         parts: [{ type: 'text', text: '[Error loading message]' }],
+        timestamp: new Date(message.createdAt || Date.now()),
         createdAt: new Date(message.createdAt || Date.now()),
       };
     }

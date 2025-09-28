@@ -158,6 +158,7 @@ function PureMultimodalInput({
       file: file, // 保存原始File对象
       name: file.name,
       contentType: file.type,
+      size: file.size,
     };
   };
 

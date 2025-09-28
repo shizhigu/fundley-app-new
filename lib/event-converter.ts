@@ -14,6 +14,7 @@ export function convertSingleEventToMessages(event: EventRecord): ChatMessage[] 
         role: 'user',
         content: textPart.text,
         parts: [{ type: 'text', text: textPart.text }],
+        timestamp: new Date(timestamp),
         createdAt: new Date(timestamp),
       });
     }
@@ -31,6 +32,7 @@ export function convertSingleEventToMessages(event: EventRecord): ChatMessage[] 
           role: 'assistant',
           content: textPart.text,
           parts: [{ type: 'text', text: textPart.text }],
+          timestamp: new Date(timestamp),
           createdAt: new Date(timestamp),
         });
       }
@@ -43,6 +45,7 @@ export function convertSingleEventToMessages(event: EventRecord): ChatMessage[] 
           role: 'tool',
           content: `Calling ${functionCall.function_call.name}`,
           parts: [{ type: 'text', text: `Calling ${functionCall.function_call.name}` }],
+          timestamp: new Date(timestamp),
           createdAt: new Date(timestamp),
           messageType: 'tool_call',
           toolData: {
@@ -64,6 +67,7 @@ export function convertSingleEventToMessages(event: EventRecord): ChatMessage[] 
           role: 'tool',
           content: `${functionResponse.function_response.name} completed`,
           parts: [{ type: 'text', text: `${functionResponse.function_response.name} completed` }],
+          timestamp: new Date(timestamp),
           createdAt: new Date(timestamp),
           messageType: 'tool_call',
           toolData: {
@@ -127,6 +131,7 @@ export function convertEventsToMessages(events: EventRecord[]): ChatMessage[] {
             role: 'user',
             content: textPart.text,
             parts: [{ type: 'text', text: textPart.text }],
+            timestamp: new Date(timestamp),
             createdAt: new Date(timestamp),
           };
         }
@@ -157,11 +162,11 @@ export function convertEventsToMessages(events: EventRecord[]): ChatMessage[] {
         if (content.role === 'user') {
           const functionResponse = content.parts.find(p => p.function_response);
           if (functionResponse?.function_response) {
-            const existingCall = toolCalls.find(call => call.id === functionResponse.function_response.id);
+            const existingCall = toolCalls.find(call => call.id === functionResponse.function_response?.id);
             if (existingCall) {
-              existingCall.result = typeof functionResponse.function_response.response === 'object'
-                ? functionResponse.function_response.response.content
-                : functionResponse.function_response.response;
+              existingCall.result = typeof functionResponse.function_response?.response === 'object'
+                ? functionResponse.function_response?.response?.content
+                : functionResponse.function_response?.response;
               existingCall.status = 'completed';
             }
           }
@@ -181,6 +186,7 @@ export function convertEventsToMessages(events: EventRecord[]): ChatMessage[] {
         role: 'assistant',
         content: assistantContent,
         parts: [{ type: 'text', text: assistantContent }],
+        timestamp: new Date(finalTimestamp),
         createdAt: new Date(finalTimestamp),
       };
 
@@ -197,5 +203,5 @@ export function convertEventsToMessages(events: EventRecord[]): ChatMessage[] {
     }
   }
 
-  return messages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  return messages.sort((a, b) => (a.createdAt || a.timestamp).getTime() - (b.createdAt || b.timestamp).getTime());
 }

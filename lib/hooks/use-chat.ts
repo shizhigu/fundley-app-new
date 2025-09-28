@@ -326,8 +326,8 @@ export function useChat(): ChatState & ChatActions {
             msg.id === event.messageId
               ? {
                   ...msg,
-                  content: msg.content + event.content,
-                  parts: [{ type: 'text', text: msg.content + event.content }]
+                  content: (msg.content || '') + event.content,
+                  parts: [{ type: 'text', text: (msg.content || '') + event.content }]
                 }
               : msg
           ));
@@ -357,11 +357,13 @@ export function useChat(): ChatState & ChatActions {
 
       if (!invocations.has(invocationId)) {
         invocations.set(invocationId, {
+          id: invocationId,
           invocationId,
           userMessage: null as any,
           assistantMessage: undefined,
           toolMessages: [],
-          timestamp: new Date()
+          timestamp: new Date(),
+          status: 'pending'
         });
       }
 
@@ -384,11 +386,13 @@ export function useChat(): ChatState & ChatActions {
 
     // 为兼容旧消息，将没有invocation_id的消息也转换为"伪invocation"
     const ungroupedInvocations = ungroupedMessages.map(msg => ({
+      id: `single-${msg.id}`,
       invocationId: `single-${msg.id}`, // 给每个单独消息一个唯一ID
       userMessage: msg.role === 'user' ? msg : null as any,
       assistantMessage: msg.role === 'assistant' ? msg : undefined,
       toolMessages: msg.role === 'tool' ? [msg] : [],
-      timestamp: new Date(msg.timestamp || Date.now())
+      timestamp: new Date(msg.timestamp || Date.now()),
+      status: 'completed' as const
     })).filter(inv => inv.userMessage || inv.assistantMessage || inv.toolMessages.length > 0);
 
     // 合并分组消息和单独消息，按时间排序

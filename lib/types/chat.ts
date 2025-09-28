@@ -16,13 +16,17 @@ export interface Chat {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content?: string;
+  parts: any[];
+  timestamp: Date;
+  createdAt?: Date;
+  attachments?: any[];
+  invocation_id?: string;
   tool_name?: string;
-  tool_args?: any;
   tool_result?: any;
-  timestamp: string;
-  parts?: MessagePart[];
+  messageType?: string;
+  toolData?: any;
 }
 
 export interface MessagePart {
@@ -68,6 +72,7 @@ export interface ChatActions {
   // 聊天管理
   createChat: () => Promise<string>;
   selectChat: (chatId: string) => void;
+  selectFirstAvailableChat: () => void;
   deleteChat: (chatId: string) => void;
   renameChat: (chatId: string, newTitle: string) => Promise<void>;
   refreshChats: () => void;
