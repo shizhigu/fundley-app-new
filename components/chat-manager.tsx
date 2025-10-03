@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChat } from '@/lib/hooks/use-chat';
+import { useChatContext } from '@/lib/contexts/chat-context';
 import { SimpleChatSelector } from '@/components/simple-chat-selector';
 import { NewChatInterface } from '@/components/new-chat-interface';
 import type { ChatManagerProps } from '@/lib/types/chat';
 
 /**
  * 聊天管理器组件
- * 整合聊天侧边栏和聊天界面，使用统一的useChat hook
+ * 整合聊天侧边栏和聊天界面，使用统一的聊天Context
  */
 export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
   // 在桌面端默认展开侧边栏，移动端默认收起
@@ -19,8 +19,8 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
     return true; // 服务端渲染时默认展开
   });
 
-  // 使用统一的聊天状态管理
-  const chat = useChat();
+  // 使用全局聊天Context（共享状态）
+  const chat = useChatContext();
 
   // 监听窗口大小变化，在移动端自动收起侧边栏
   useEffect(() => {

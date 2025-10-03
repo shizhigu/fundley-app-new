@@ -64,44 +64,7 @@ export const convexQueries = {
     return 0;
   },
 
-  // Document queries
-  async saveDocument(data: {
-    title: string;
-    content?: string;
-    kind: 'text' | 'code' | 'sheet';
-    userId: string;
-  }) {
-    return await convexClient.mutation(api.documents.create, {
-      title: data.title,
-      content: data.content,
-      kind: data.kind,
-    });
-  },
-
-  async getDocumentsById({ id }: { id: string }) {
-    return await convexClient.query(api.documents.get, { id: id as any });
-  },
-
-  async getDocumentsByUserId({ userId }: { userId: string }) {
-    return await convexClient.query(api.documents.list);
-  },
-
-  async updateDocumentById(
-    { id }: { id: string },
-    updates: {
-      title?: string;
-      content?: string;
-    }
-  ) {
-    return await convexClient.mutation(api.documents.update, {
-      id: id as any,
-      ...updates,
-    });
-  },
-
-  async deleteDocumentById({ id }: { id: string }) {
-    return await convexClient.mutation(api.documents.remove, { id: id as any });
-  },
+  // Document functions removed (Vercel AI SDK legacy feature)
 
   // Stream queries for permanent chat
   async createStreamId({ streamId }: { streamId: string }) {
@@ -110,23 +73,7 @@ export const convexQueries = {
     });
   },
 
-  // Vote queries for permanent chat
-  async voteMessage({ 
-    messageId, 
-    isUpvote 
-  }: { 
-    messageId: string; 
-    isUpvote: boolean; 
-  }) {
-    return await convexClient.mutation(api.votes.create, {
-      messageId: messageId as any,
-      isUpvoted: isUpvote,
-    });
-  },
-
-  async getVotesByUserId() {
-    return await convexClient.query(api.votes.listByUser);
-  },
+  // Vote functionality removed
 
   // Organization queries
   async getOrganizations() {

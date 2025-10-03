@@ -48,30 +48,6 @@ export default defineSchema({
     .index("by_chat_id", ["chatId"])
     .index("by_created_at", ["createdAt"]),
 
-  // Document artifacts
-  documents: defineTable({
-    title: v.string(),
-    content: v.string(),
-    kind: v.union(v.literal("text"), v.literal("code"), v.literal("sheet")),
-    userId: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user_id", ["userId"])
-    .index("by_kind", ["kind"]),
-
-  // Message voting (supports chat-based messages)
-  votes: defineTable({
-    messageId: v.id("messages"),
-    chatId: v.id("chats"), // Required after migration
-    userId: v.id("users"),
-    isUpvoted: v.boolean(),
-    createdAt: v.number(),
-  })
-    .index("by_message_id", ["messageId"])
-    .index("by_chat_id", ["chatId"])
-    .index("by_user_id", ["userId"]),
-
   // Stream tracking for real-time updates (simplified for permanent chat)
   streams: defineTable({
     userId: v.id("users"),

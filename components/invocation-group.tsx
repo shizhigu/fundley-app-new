@@ -84,7 +84,6 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
           message={userMessage}
           isLoading={false}
           isLatest={false}
-          vote={undefined}
           setMessages={() => {}}
           regenerate={() => {}}
           isReadonly={false}
@@ -157,7 +156,6 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
           message={assistantMessage}
           isLoading={false}
           isLatest={false}
-          vote={undefined}
           setMessages={() => {}}
           regenerate={() => {}}
           isReadonly={false}

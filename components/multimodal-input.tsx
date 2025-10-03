@@ -24,16 +24,16 @@ import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
-import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
+
+type VisibilityType = 'private' | 'public';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { chatModels } from '@/lib/ai/models';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { DISPLAY_MODELS } from '@/lib/config/chat-models';
 import { startTransition, useOptimistic } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -383,22 +383,13 @@ function PureCompactModelSelector({
   const [open, setOpen] = useState(false);
   const [optimisticModelId, setOptimisticModelId] = useOptimistic(selectedModelId);
 
-  const userType = user?.type ?? 'guest';
-  const { availableChatModelIds } = entitlementsByUserType[userType];
-
-  const availableChatModels = chatModels.filter((chatModel) =>
-    availableChatModelIds.includes(chatModel.id),
-  );
+  // 简化：直接使用所有展示模型（无权限逻辑）
+  const availableChatModels = DISPLAY_MODELS;
 
   // Get simple model name
   const getSimpleModelName = (modelId: string) => {
-    const names = {
-      'grok-3': 'Grok',
-      'gemini-2.5-pro': 'Gemini', 
-      'gpt-5': 'GPT',
-      'Fast': 'Fast'
-    };
-    return names[modelId as keyof typeof names] || modelId;
+    const model = DISPLAY_MODELS.find(m => m.id === modelId);
+    return model?.name || modelId;
   };
 
   return (

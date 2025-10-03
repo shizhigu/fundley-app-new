@@ -40,23 +40,6 @@ export interface Message {
   createdAt: number;
 }
 
-export interface Document {
-  _id: string;
-  title: string;
-  content: string;
-  kind: 'text' | 'code' | 'sheet';
-  userId: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface Vote {
-  _id: string;
-  chatId: string;
-  messageId: string;
-  isUpvoted: boolean;
-}
-
 export interface Stream {
   _id: string;
   chatId: string;

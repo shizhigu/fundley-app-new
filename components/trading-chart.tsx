@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { createChart, IChartApi, LineSeries, CandlestickSeries, HistogramSeries, AreaSeries, ISeriesApi, createSeriesMarkers } from 'lightweight-charts';
-import { useDataStream } from './data-stream-provider';
 import type { ChartIndicator as ImportedChartIndicator } from '@/lib/types';
 
 interface TradingChartProps {
@@ -79,26 +78,8 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
 
   const [paneInfo, setPaneInfo] = useState<Map<any, { indicators: string[], position: { top: number, left: number } }>>(new Map());
 
-  // Get chart indicators from data stream
-  const { dataStream } = useDataStream();
-
-  // Debug: Log chart indicator data (simplified)
-  useEffect(() => {
-    const chartIndicatorParts = dataStream.filter(part => part.type === 'data-chartIndicator');
-    if (chartIndicatorParts.length > 0) {
-      console.log('📊 Chart indicator received:', chartIndicatorParts.length);
-    }
-  }, [dataStream]);
-
-  const streamedIndicators = dataStream
-    .filter(part => part.type === 'data-chartIndicator')
-    .map(part => part.data as unknown as ImportedChartIndicator);
-
-  // Combine indicators from props and data stream
-  const allIndicators = useMemo(() =>
-    [...indicators, ...streamedIndicators],
-    [indicators, streamedIndicators]
-  );
+  // Use indicators from props only (data stream removed)
+  const allIndicators = useMemo(() => indicators, [indicators]);
 
   // Debug: Log indicators loaded (simplified to avoid loops)
   useEffect(() => {

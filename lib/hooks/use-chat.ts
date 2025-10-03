@@ -106,7 +106,7 @@ export function useChat(): ChatState & ChatActions {
       localStorage.setItem('lastSelectedChatId', chatId);
     }
     setMessages([]); // 清空当前消息，等待加载
-    loadMessages(chatId);
+    // loadMessages 会被 useEffect 自动触发，不需要在这里重复调用
   }, []);
 
   // 聊天选择的唯一逻辑 - 优先选择最新的聊天
@@ -179,10 +179,7 @@ export function useChat(): ChatState & ChatActions {
   // ============ 消息管理操作 ============
 
   const loadMessages = useCallback(async (chatId: string) => {
-    if (!chatId) {
-      console.warn('loadMessages called with empty chatId');
-      return;
-    }
+    if (!chatId) return;
 
     try {
       setIsLoading(true);

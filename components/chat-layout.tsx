@@ -4,6 +4,7 @@ import { ChatManager } from '@/components/chat-manager';
 import { RightPanelTabs } from '@/components/right-panel-tabs';
 import { MobileTabs } from '@/components/mobile-tabs';
 import { ResizableSplitPanel } from '@/components/resizable-split-panel';
+import { ChatProvider } from '@/lib/contexts/chat-context';
 import type { ChatLayoutProps } from '@/lib/types/chat';
 
 /**
@@ -12,7 +13,7 @@ import type { ChatLayoutProps } from '@/lib/types/chat';
  */
 export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
   return (
-    <>
+    <ChatProvider>
       {/* 桌面端分屏布局：可拖拽调整的左右分割面板 */}
       <div className="hidden lg:block h-screen bg-transparent">
         <ResizableSplitPanel
@@ -37,6 +38,6 @@ export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
           initialChatModel={initialChatModel}
         />
       </div>
-    </>
+    </ChatProvider>
   );
 }

@@ -2,13 +2,11 @@
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
-import type { Vote } from '@/lib/db/schema';
 import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
 import { Shield } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
-import { Weather } from './weather';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -19,7 +17,6 @@ import { JSVisualizationMessage } from './js-visualization-message';
 import { WebSearchResultCard } from './web-search-result-card';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import type { ChatMessage } from '@/lib/types';
-import { useDataStream } from './data-stream-provider';
 import { ToolStatus } from './tool-status';
 import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
@@ -340,7 +337,6 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
 
 const PurePreviewMessage = ({
   message,
-  vote,
   isLoading,
   isLatest,
   setMessages,
@@ -350,7 +346,6 @@ const PurePreviewMessage = ({
   requiresScrollPadding,
 }: {
   message: ChatMessage;
-  vote: Vote | undefined;
   isLoading: boolean;
   isLatest?: boolean;
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
@@ -388,8 +383,6 @@ const PurePreviewMessage = ({
     // 直接使用数据库中的attachments
     ...attachmentsFromDB
   ];
-
-  useDataStream();
 
   // 🎯 SIMPLIFIED: Only extract suggestions for the latest assistant message
   useEffect(() => {
@@ -623,29 +616,6 @@ const PurePreviewMessage = ({
                   );
                 }
               }
-
-              if (type === 'tool-getWeather') {
-                const { toolCallId, state } = part;
-
-                if (state === 'input-available') {
-                  return (
-                    <div key={toolCallId} className="skeleton">
-                      <Weather />
-                    </div>
-                  );
-                }
-
-                if (state === 'output-available') {
-                  const { output } = part;
-                  return (
-                    <div key={toolCallId}>
-                      <Weather weatherAtLocation={output} />
-                    </div>
-                  );
-                }
-              }
-
-
 
               // Support only createJSVisualization tool (Python visualization removed)
               if (type === 'tool-createJSVisualization' as any) {
@@ -1138,7 +1108,6 @@ const PurePreviewMessage = ({
               <MessageActions
                 key={`action-${message.id}`}
                 message={message}
-                vote={vote}
                 isLoading={isLoading}
               />
             )}
@@ -1158,7 +1127,6 @@ export const PreviewMessage = memo(
     if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
       return false;
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
-    if (!equal(prevProps.vote, nextProps.vote)) return false;
 
     return false;
   },

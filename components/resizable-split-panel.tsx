@@ -162,27 +162,39 @@ export function ResizableSplitPanel({
         </div>
       )}
 
-      {/* 展开/收起按钮 */}
-      <Button
-        variant="outline"
-        size="sm"
-        className={`
-          absolute top-4 z-10 h-8 w-8 p-0 bg-background/80 backdrop-blur-sm border
-          hover:bg-background/90 transition-all duration-200
-          ${isRightPanelCollapsed
-            ? 'right-4'
-            : 'right-4 translate-x-0'
-          }
-        `}
-        onClick={toggleRightPanel}
-        title={isRightPanelCollapsed ? '展开右侧面板' : '收起右侧面板'}
-      >
-        {isRightPanelCollapsed ? (
-          <ChevronLeft className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
-      </Button>
+      {/* 展开/收起按钮 - 放在分割线上 */}
+      {!isRightPanelCollapsed && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute top-1/2 -translate-y-1/2 z-20 h-8 w-6 p-0 bg-background/90 backdrop-blur-sm border border-gray-200 hover:bg-background hover:border-gray-300 hover:shadow-md transition-all duration-300 ease-in-out hover:scale-110 rounded-md shadow-sm"
+          style={{
+            left: `${leftWidth}%`,
+            transform: 'translate(-50%, -50%)'
+          }}
+          onClick={toggleRightPanel}
+          title="收起右侧面板"
+        >
+          <div className="transition-transform duration-200 ease-in-out">
+            <ChevronRight className="h-4 w-4" />
+          </div>
+        </Button>
+      )}
+
+      {/* 展开按钮 - 右侧面板收起时显示 */}
+      {isRightPanelCollapsed && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute top-1/2 right-4 -translate-y-1/2 z-10 h-8 w-6 p-0 bg-background/90 backdrop-blur-sm border border-gray-200 hover:bg-background hover:border-gray-300 hover:shadow-md transition-all duration-300 ease-in-out hover:scale-110 rounded-md shadow-sm"
+          onClick={toggleRightPanel}
+          title="展开右侧面板"
+        >
+          <div className="transition-transform duration-200 ease-in-out">
+            <ChevronLeft className="h-4 w-4" />
+          </div>
+        </Button>
+      )}
     </div>
   );
 }

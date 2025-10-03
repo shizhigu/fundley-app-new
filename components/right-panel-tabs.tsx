@@ -1,43 +1,46 @@
 'use client';
 
-import { useState, useMemo, memo } from 'react';
+import { useState } from 'react';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
-import { ResearchPanel } from './research-panel';
+import { AnalysisBlocksPanel } from './analysis-blocks-panel';
 import { Button } from './ui/button';
-import { TrendingUp, BarChart3, FileText } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers } from 'lucide-react';
+import { useChatContext } from '@/lib/contexts/chat-context';
 
-type TabType = 'research' | 'data' | 'chart';
+type TabType = 'data' | 'blocks' | 'chart';
 
 function RightPanelTabsComponent() {
   const [activeTab, setActiveTab] = useState<TabType>('data');
+  const { currentChatId } = useChatContext();
 
   const tabs = [
-    {
-      id: 'research' as TabType,
-      name: '调研报告',
-      icon: FileText,
-      component: ResearchPanel
-    },
-    {
-      id: 'data' as TabType,
-      name: '财务数据',
-      icon: BarChart3,
-      component: FinancialDataPanel
-    },
-    {
-      id: 'chart' as TabType,
-      name: '交易图表',
-      icon: TrendingUp,
-      component: TradingChart
-    }
+    { id: 'data' as TabType, name: '财务数据', icon: BarChart3 },
+    { id: 'blocks' as TabType, name: '分析块', icon: Layers },
+    { id: 'chart' as TabType, name: '交易图表', icon: TrendingUp }
   ];
 
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || FinancialDataPanel;
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'data':
+        return <FinancialDataPanel />;
+      case 'blocks':
+        return currentChatId ? (
+          <AnalysisBlocksPanel chatId={currentChatId} />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            请选择一个聊天会话
+          </div>
+        );
+      case 'chart':
+        return <TradingChart />;
+      default:
+        return <FinancialDataPanel />;
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-transparent">
-      {/* Tab Header */}
       <div className="flex border-b border-border bg-transparent">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -59,9 +62,8 @@ function RightPanelTabsComponent() {
         })}
       </div>
 
-      {/* Tab Content */}
       <div className="flex-1 overflow-hidden bg-transparent">
-        <ActiveComponent />
+        {renderTabContent()}
       </div>
     </div>
   );

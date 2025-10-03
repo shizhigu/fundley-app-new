@@ -170,15 +170,7 @@ export const remove = mutation({
       await ctx.db.delete(message._id);
     }
 
-    // Delete all votes for this chat
-    const votes = await ctx.db
-      .query("votes")
-      .withIndex("by_chat_id", (q) => q.eq("chatId", args.id))
-      .collect();
-
-    for (const vote of votes) {
-      await ctx.db.delete(vote._id);
-    }
+    // Votes table removed - no cleanup needed
 
     // Delete the chat
     await ctx.db.delete(args.id);

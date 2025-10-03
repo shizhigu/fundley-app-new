@@ -6,9 +6,6 @@ import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
 import { InvocationGroup } from '@/components/invocation-group';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
-import { Greeting } from '@/components/greeting';
-import { ChatLoading } from '@/components/chat-loading';
-import { InlineLoadingBar } from '@/components/loading-bar';
 import type { ChatMessage } from '@/lib/types/chat';
 import type { MessageInvocation, Attachment } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -87,7 +84,7 @@ export function NewChatInterface({
             className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
           >
             <div className="flex items-center justify-center h-full">
-              <ChatLoading />
+              <div className="text-muted-foreground">Loading chat...</div>
             </div>
           </div>
           <div ref={endRef} />
@@ -98,8 +95,6 @@ export function NewChatInterface({
 
   return (
     <div className="flex flex-col h-full w-full max-w-full relative">
-      {/* Loading Bar - 在聊天区域顶部显示 */}
-      <InlineLoadingBar isLoading={isLoading} className="mx-4 mt-2" />
 
       <div className="flex-1 min-h-0 max-w-full">
         <div
@@ -109,7 +104,10 @@ export function NewChatInterface({
           {/* 欢迎界面（无消息时显示） */}
           {messages.length === 0 && !isLoading && (
             <div className="flex items-center justify-center h-full">
-              <Greeting />
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-foreground mb-2">欢迎使用 Fundley</h2>
+                <p className="text-muted-foreground">开始对话以获取财务分析</p>
+              </div>
             </div>
           )}
 

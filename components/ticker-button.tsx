@@ -1,6 +1,5 @@
 'use client';
 import { cn } from '@/lib/utils';
-import { StockSymbol } from './stock-symbol';
 
 export interface TickerButtonProps {
   symbol: string;
@@ -8,23 +7,24 @@ export interface TickerButtonProps {
 }
 
 /**
- * Simple ticker button that directly shows TradingView widget on click
+ * Simple ticker button that shows stock symbol
  */
 export function TickerButton({ symbol, className }: TickerButtonProps) {
   return (
     <div className="inline-block">
-      <StockSymbol 
-        symbol={symbol}
+      <span
         className={cn(
           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md",
           "bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/40 dark:border-blue-800/20",
           "hover:bg-blue-100/60 dark:hover:bg-blue-900/30 hover:border-blue-300/50 dark:hover:border-blue-700/30",
           "transition-colors duration-200",
           "text-xs font-medium text-blue-600 dark:text-blue-400",
-          "focus:outline-none focus:ring-1 focus:ring-blue-500/30",
+          "cursor-default",
           className
         )}
-      />
+      >
+        {symbol}
+      </span>
     </div>
   );
 }

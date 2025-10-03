@@ -111,7 +111,12 @@
       "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/add-tool-call-id.js)",
       "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -f /Users/gushizhi/Projects/fundley-app/lib/db/migrations/003_add_invocation_id.sql)",
       "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/add-invocation-id.js)",
-      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/check-db-schema.js)"
+      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/check-db-schema.js)",
+      "Bash(NODE_OPTIONS=\"--env-file .env.local\" node scripts/run-migration-004.js)",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"SELECT id, chat_id, jsonb_pretty(content) as content, created_at FROM analysis_blocks ORDER BY created_at DESC LIMIT 2;\")",
+      "WebFetch(domain:e2b.dev)",
+      "Bash(for comp in \"auth-form\" \"chart-component\" \"chat-header\" \"code-editor\" \"console\" \"image-editor\" \"inline-visualization\" \"memo-system\" \"metric-result-card\" \"navigation-sidebar\" \"sheet-editor\" \"sign-out-form\" \"submit-button\" \"toolbar\" \"version-footer\")",
+      "Bash(do echo \"=== $comp ===\" grep -r \"$comp\" /Users/gushizhi/Projects/fundley-app/app /Users/gushizhi/Projects/fundley-app/components --include=\"*.tsx\" --include=\"*.ts\")"
     ],
     "deny": [],
     "ask": [],

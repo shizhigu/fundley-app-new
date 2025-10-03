@@ -5,7 +5,7 @@ import { db } from '@/lib/db/config';
 // GET /api/chats/[chatId]/messages - Get messages for a chat
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ chatId: string }> }
+  { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const session = await auth();
@@ -45,7 +45,7 @@ export async function GET(
     `;
 
     // Parse JSON fields back to objects with error handling
-    const messages = rawMessages.map(msg => {
+    const messages = rawMessages.map((msg) => {
       let parsedToolArgs = null;
       let parsedToolResult = null;
       let parsedAttachments = [];
@@ -56,7 +56,10 @@ export async function GET(
           try {
             parsedToolArgs = JSON.parse(msg.tool_args);
           } catch (error) {
-            console.warn(`Invalid JSON in tool_args for message ${msg.id}:`, msg.tool_args);
+            console.warn(
+              `Invalid JSON in tool_args for message ${msg.id}:`,
+              msg.tool_args,
+            );
             parsedToolArgs = msg.tool_args; // Keep as string if parsing fails
           }
         } else {
@@ -70,7 +73,10 @@ export async function GET(
           try {
             parsedToolResult = JSON.parse(msg.tool_result);
           } catch (error) {
-            console.warn(`Invalid JSON in tool_result for message ${msg.id}:`, msg.tool_result);
+            // console.warn(
+            //   `Invalid JSON in tool_result for message ${msg.id}:`,
+            //   msg.tool_result,
+            // );
             parsedToolResult = msg.tool_result; // Keep as string if parsing fails
           }
         } else {
@@ -84,7 +90,10 @@ export async function GET(
           try {
             parsedAttachments = JSON.parse(msg.attachments);
           } catch (error) {
-            console.warn(`Invalid JSON in attachments for message ${msg.id}:`, msg.attachments);
+            console.warn(
+              `Invalid JSON in attachments for message ${msg.id}:`,
+              msg.attachments,
+            );
             parsedAttachments = []; // Default to empty array if parsing fails
           }
         } else if (Array.isArray(msg.attachments)) {
@@ -100,14 +109,12 @@ export async function GET(
       };
     });
 
-    console.log('📤 Returning messages from database:', messages);
     return NextResponse.json({ success: true, messages });
-
   } catch (error) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
       { error: 'Failed to fetch messages' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -115,7 +122,7 @@ export async function GET(
 // POST /api/chats/[chatId]/messages - Create new message
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ chatId: string }> }
+  { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const session = await auth();
@@ -124,13 +131,8 @@ export async function POST(
     }
 
     const { chatId } = await params;
-    const {
-      role,
-      content,
-      tool_name,
-      tool_args,
-      tool_result
-    } = await request.json();
+    const { role, content, tool_name, tool_args, tool_result } =
+      await request.json();
     const userId = session.user.id;
 
     // Verify user owns this chat
@@ -166,12 +168,11 @@ export async function POST(
     `;
 
     return NextResponse.json({ message: newMessage[0] });
-
   } catch (error) {
     console.error('Error creating message:', error);
     return NextResponse.json(
       { error: 'Failed to create message' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

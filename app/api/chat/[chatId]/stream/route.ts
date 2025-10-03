@@ -3,24 +3,34 @@ import { auth } from '@/lib/auth/clerk';
 import { db } from '@/lib/db/config';
 
 // 自动命名聊天函数
-async function autoNameChat(chatId: string, firstMessage: string, userId: string) {
+async function autoNameChat(
+  chatId: string,
+  firstMessage: string,
+  userId: string,
+) {
   try {
     const agentosUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
     console.log('🤖 Calling conversation naming agent:', agentosUrl);
 
-    const response = await fetch(`${agentosUrl}/agents/conversation-naming-agent/runs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+    const response = await fetch(
+      `${agentosUrl}/agents/conversation-naming-agent/runs`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          message: firstMessage,
+          stream: 'false',
+        }).toString(),
       },
-      body: new URLSearchParams({
-        message: firstMessage,
-        stream: 'false'
-      }).toString()
-    });
+    );
 
     if (!response.ok) {
-      console.warn('Failed to get chat title from naming agent:', response.status);
+      console.warn(
+        'Failed to get chat title from naming agent:',
+        response.status,
+      );
       return;
     }
 
@@ -325,7 +335,7 @@ export async function POST(
             );
 
             agentResponse = await fetch(
-              `${agentosUrl}/teams/financial-team/runs`,
+              `${agentosUrl}/agents/financial-analyst/runs`,
               {
                 method: 'POST',
                 body: formData,
@@ -350,7 +360,7 @@ export async function POST(
             }
 
             agentResponse = await fetch(
-              `${agentosUrl}/teams/financial-team/runs`,
+              `${agentosUrl}/agents/financial-analyst/runs`,
               {
                 method: 'POST',
                 headers: {
@@ -402,7 +412,7 @@ export async function POST(
                   // 根据事件类型处理
                   if (
                     eventData.event === 'TeamRunContent' ||
-                    eventData.event === 'content'
+                    eventData.event === 'RunContent'
                   ) {
                     const content =
                       eventData.content || eventData.data?.content || '';
@@ -561,8 +571,8 @@ export async function POST(
           if (isFirstMessage) {
             console.log('🤖 Triggering auto-naming for first message...');
             // 异步调用，不等待结果，不影响流式响应
-            autoNameChat(chatId, message, userId).catch(err =>
-              console.warn('Auto-naming failed:', err)
+            autoNameChat(chatId, message, userId).catch((err) =>
+              console.warn('Auto-naming failed:', err),
             );
           }
 
