@@ -525,7 +525,11 @@ const PurePreviewMessage = ({
                           'user-message-gunmetal': message.role === 'user',
                         })}
                       >
-                        <Markdown>{parsedMessage.content}</Markdown>
+                        {message.role === 'user' ? (
+                          <div className="whitespace-pre-wrap">{parsedMessage.content}</div>
+                        ) : (
+                          <Markdown>{parsedMessage.content}</Markdown>
+                        )}
                         
                         {/* Render metadata components if available */}
                         {hasMetadata(parsedMessage.metadata) && (
