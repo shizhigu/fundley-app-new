@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X } from 'lucide-react'
+import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -75,6 +75,12 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
     return []
   }, [content.files])
 
+  const reports = React.useMemo(() => {
+    if (content.files?.reports) return content.files.reports // Multiple PDFs
+    if (content.files?.report) return [content.files.report] // Single PDF
+    return []
+  }, [content.files])
+
   // Fetch JSON data from backend
   const loadTableData = useCallback(async (filename: string) => {
     setDataLoading(true)
@@ -114,11 +120,21 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
     ? content.text.split('\n').find((line: string) => line.trim().length > 20)?.slice(0, 150) + '...'
     : 'Click to view analysis details'
 
+  // PDF download handler
+  const handleDownloadPDF = useCallback((filename: string) => {
+    const url = `/api/files/${filename}?session_id=${sessionId}`
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+  }, [sessionId])
+
   // Count available content types
   const hasText = !!content.text
   const hasChart = charts.length > 0
   const hasData = dataFiles.length > 0
-  const contentTypesCount = [hasText, hasChart, hasData].filter(Boolean).length
+  const hasReport = reports.length > 0
+  const contentTypesCount = [hasText, hasChart, hasData, hasReport].filter(Boolean).length
 
   // Dynamic table columns
   const columns = React.useMemo(() => {
@@ -287,6 +303,31 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* PDF Reports - Support multiple PDFs */}
+        {reports.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <FileText className="w-4 h-4" />
+              <span>Report{reports.length > 1 ? 's' : ''}</span>
+            </div>
+
+            <div className="space-y-2">
+              {reports.map((reportFile: string, index: number) => (
+                <Button
+                  key={index}
+                  onClick={() => handleDownloadPDF(reportFile)}
+                  variant="outline"
+                  className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="flex-1 text-left truncate">{reportFile}</span>
+                  <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">PDF</span>
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 

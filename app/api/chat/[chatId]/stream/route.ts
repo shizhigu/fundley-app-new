@@ -145,6 +145,11 @@ function shouldSaveTool(toolName: string): boolean {
     'team_coordination',
     'task_delegation',
     'member_assignment',
+    'create_new_sandbox',
+    'set_sandbox_timeout',
+    'get_sandbox_status',
+    'list_running_sandboxes',
+    'get_current_sandbox_id',
   ];
 
   return !skipTools.includes(toolName?.toLowerCase() || '');

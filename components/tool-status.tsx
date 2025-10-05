@@ -12,6 +12,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PythonIcon } from './icons';
 
 export interface ToolStatusProps {
   name: string;
@@ -71,6 +72,10 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   getFinancialData: {
     label: 'Data loaded',
     icon: TrendingUp,
+  },
+  run_python_code: {
+    label: 'Sophisticated analysis completed',
+    icon: PythonIcon,
   },
   // Legacy tools (for backwards compatibility)
   getIncomeStatement: {

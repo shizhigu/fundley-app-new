@@ -123,7 +123,10 @@
       "Bash(tools/causal_graph_builder.py )",
       "Bash(tools/causal_path_finder.py )",
       "Bash(test_phase2_causal_graph.py )",
-      "Bash(test_phase1_news_ingestion.py )"
+      "Bash(test_phase1_news_ingestion.py )",
+      "Bash(pip show:*)",
+      "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/e2b_code_interpreter/**)",
+      "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/**)"
     ],
     "deny": [],
     "ask": [],
