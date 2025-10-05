@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap');
 
 /* KaTeX CSS - 必须在Tailwind之前加载 */
 @import 'katex/dist/katex.min.css';
@@ -151,19 +151,19 @@
 
 @layer base {
     :root {
-        /* === FUNDLEY MODERN PROFESSIONAL DESIGN SYSTEM === */
+        /* === FUNDLEY FINTECH PURPLE DESIGN SYSTEM === */
 
-        /* Primary Brand Colors - Inspired by Stripe's professional palette */
-        --brand-primary: 210 40% 12%;
-        /* Deep navy blue */
-        --brand-primary-light: 210 35% 15%;
-        /* Lighter navy */
-        --brand-secondary: 210 20% 30%;
-        /* Medium gray-blue */
-        --brand-accent: 212 100% 47%;
-        /* Professional blue accent */
-        --brand-accent-light: 212 100% 87%;
-        /* Light blue for highlights */
+        /* Primary Brand Colors - Sophisticated Purple Palette */
+        --brand-primary: 270 70% 50%;
+        /* Deep Fintech Purple #7B3FF2 */
+        --brand-primary-light: 270 70% 60%;
+        /* Lighter Purple */
+        --brand-secondary: 220 15% 40%;
+        /* Cool Slate Gray */
+        --brand-accent: 270 70% 50%;
+        /* Purple accent */
+        --brand-accent-light: 270 70% 96%;
+        /* Light purple for highlights */
 
         /* Semantic Colors */
         --success: 142 76% 36%;
@@ -179,18 +179,18 @@
         --error-bg: 0 84% 95%;
         /* Light red background */
 
-        /* Neutral Grays - Carefully crafted for professional hierarchy */
-        --gray-50: 210 20% 98%;
-        --gray-100: 210 20% 95%;
-        --gray-200: 210 16% 90%;
-        --gray-300: 210 14% 83%;
-        --gray-400: 210 14% 66%;
-        --gray-500: 210 11% 49%;
-        --gray-600: 210 12% 34%;
-        --gray-700: 210 16% 24%;
-        --gray-800: 210 20% 14%;
-        --gray-900: 210 24% 9%;
-        --gray-950: 210 40% 2%;
+        /* Neutral Grays - Cool-toned to complement purple */
+        --gray-50: 240 15% 98%;
+        --gray-100: 240 15% 96%;
+        --gray-200: 240 12% 92%;
+        --gray-300: 240 10% 85%;
+        --gray-400: 240 8% 68%;
+        --gray-500: 240 6% 50%;
+        --gray-600: 240 8% 35%;
+        --gray-700: 240 10% 25%;
+        --gray-800: 240 12% 16%;
+        --gray-900: 240 15% 10%;
+        --gray-950: 240 18% 4%;
 
         /* Glass Morphism Variables */
         --glass-bg: 255 255 255 / 0.05;
@@ -200,13 +200,13 @@
         --glass-blur: 20px;
         --glass-blur-heavy: 40px;
 
-        /* Gradient Definitions - Inspired by Stripe's mesh gradients */
-        --gradient-primary: linear-gradient(135deg, hsl(var(--brand-accent)) 0%, hsl(212 100% 40%) 100%);
+        /* Gradient Definitions - Fintech Purple mesh gradients */
+        --gradient-primary: linear-gradient(135deg, hsl(270 70% 50%) 0%, hsl(270 70% 40%) 100%);
         --gradient-secondary: linear-gradient(135deg, hsl(var(--gray-100)) 0%, hsl(var(--gray-50)) 100%);
         --gradient-mesh:
-            radial-gradient(ellipse at 20% 0%, hsl(var(--brand-accent) / 0.15) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 50%, hsl(212 100% 60% / 0.1) 0%, transparent 50%),
-            radial-gradient(ellipse at 0% 100%, hsl(var(--brand-primary) / 0.1) 0%, transparent 50%);
+            radial-gradient(ellipse at 20% 0%, hsl(270 70% 50% / 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 50%, hsl(280 60% 60% / 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse at 0% 100%, hsl(260 50% 45% / 0.05) 0%, transparent 50%);
 
         /* Shadow System */
         --shadow-xs: 0 1px 2px 0 hsl(var(--gray-950) / 0.05);
@@ -321,10 +321,10 @@
     body {
         @apply text-foreground;
         background: transparent;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        font-variation-settings: 'wght' 400;
+        font-family: 'Montserrat', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+        font-weight: 400;
         line-height: 1.6;
-        letter-spacing: -0.011em;
+        letter-spacing: -0.015em;
     }
 
     /* 全局scrollbar样式 - 只在hover时显示 */

@@ -482,7 +482,7 @@ function PureSendButton({
   return (
     <Button
       data-testid="send-button"
-      className="glass-send-button rounded-full p-3 h-fit bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-white [&_svg]:fill-white"
+      className="glass-send-button rounded-full p-3 h-fit bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/50 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-primary-foreground [&_svg]:fill-primary-foreground"
       onClick={(event) => {
         event.preventDefault();
         submitForm();
