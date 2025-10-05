@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { AnalysisBlockRenderer } from './analysis-block-renderer'
 import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, BarChart3, Database, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -148,26 +147,28 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   }
 
   return (
-    <ScrollArea className={`h-full ${className}`}>
-      <div className="space-y-4 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+    <div className={`h-full ${className}`} style={{ width: '100%', overflow: 'auto' }}>
+      <div className="space-y-4 p-4" style={{ maxWidth: '100%' }}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
             Analysis Blocks
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {blocks.length} block{blocks.length !== 1 ? 's' : ''}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900">
+              <span className="text-sm font-medium text-foreground">
+                {blocks.length} block{blocks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
             {/* 实时指示器 - 仅在流式传输时显示 */}
             {isChatStreaming && (
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center gap-1"
+                className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30"
               >
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-xs text-muted-foreground">Live</span>
+                <div className="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
               </motion.div>
             )}
           </div>
@@ -212,6 +213,6 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
           ))}
         </AnimatePresence>
       </div>
-    </ScrollArea>
+    </div>
   )
 }

@@ -4,17 +4,17 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all duration-300 ease-out focus:outline-none",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+          "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-[3px_3px_6px_rgba(123,63,242,0.15),-2px_-2px_4px_rgba(255,255,255,0.1)] hover:shadow-[4px_4px_8px_rgba(123,63,242,0.2),-2px_-2px_6px_rgba(255,255,255,0.15)]",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "neuro-raised-sm bg-gradient-to-br from-gray-100 to-gray-200 text-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
+          "neuro-raised-sm bg-gradient-to-br from-red-500 to-red-600 text-white shadow-[3px_3px_6px_rgba(239,68,68,0.15),-2px_-2px_4px_rgba(255,255,255,0.1)]",
+        outline: "neuro-raised-sm bg-gradient-to-br from-white to-gray-50 text-foreground",
       },
     },
     defaultVariants: {

@@ -599,21 +599,19 @@ function FinancialDataPanelComponent() {
   return (
     <div className="w-full h-full flex flex-col bg-transparent">
       {/* 控制面板 */}
-      <div className="border-b border-border">
+      <div className="border-b border-border/50">
         {/* 标题栏 - 始终可见 */}
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-semibold text-foreground">
-            财务数据分析
-          </h2>
-          <div className="flex items-center space-x-2">
+          <h2 className="text-xl font-bold text-foreground">财务数据分析</h2>
+          <div className="flex items-center gap-2">
             {/* 视图切换 - 只在有数据时显示 */}
             {tableData.length > 0 && (
-              <div className="flex bg-secondary rounded-lg p-1">
+              <div className="flex gap-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                     viewMode === 'cards'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'neuro-pill-active text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -621,9 +619,9 @@ function FinancialDataPanelComponent() {
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                     viewMode === 'table'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'neuro-pill-active text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -636,9 +634,8 @@ function FinancialDataPanelComponent() {
             {tableData.length > 0 && (
               <Button
                 onClick={exportToExcel}
-                variant="outline"
                 size="sm"
-                className="flex items-center gap-2 text-sm font-medium hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-950 dark:hover:text-green-400 transition-colors"
+                className="neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center gap-2 text-sm font-medium border-0"
               >
                 <Download size={16} />
                 导出Excel
@@ -763,7 +760,7 @@ function FinancialDataPanelComponent() {
                 onValueChange={setSelectedQuarters}
               >
                 <SelectTrigger className="w-full bg-secondary">
-                  <SelectValue placeholder="选择季度数" />
+                  <SelectValue placeholder="Select number of quarters" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="5">5个季度</SelectItem>
@@ -782,10 +779,10 @@ function FinancialDataPanelComponent() {
               {isLoading ? (
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>分析中...</span>
+                  <span>Analyzing...</span>
                 </div>
               ) : (
-                '开始分析'
+                'Analyze'
               )}
             </Button>
           </div>
@@ -798,7 +795,7 @@ function FinancialDataPanelComponent() {
           <div className="flex items-center justify-center h-full text-red-500">
             <div className="text-center max-w-md">
               <p className="text-lg mb-2">❌</p>
-              <p className="font-medium mb-2">获取数据时出错</p>
+              <p className="font-medium mb-2">Error getting data</p>
               <p className="text-sm text-muted-foreground">{error.message}</p>
               <Button
                 onClick={() => setError(null)}
@@ -806,7 +803,7 @@ function FinancialDataPanelComponent() {
                 size="sm"
                 className="mt-4"
               >
-                重试
+                Retry
               </Button>
             </div>
           </div>
@@ -820,7 +817,9 @@ function FinancialDataPanelComponent() {
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <p className="text-lg mb-2">📊</p>
-              <p>选择股票代码和指标，点击"开始分析"查看数据</p>
+              <p>
+                Select stock symbols and metrics, click "Analyze" to view data
+              </p>
             </div>
           </div>
         )}

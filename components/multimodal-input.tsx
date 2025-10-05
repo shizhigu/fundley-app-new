@@ -16,14 +16,14 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon, QuantumIcon, } from './icons';
+import { ArrowUpIcon, StopIcon } from './icons';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Paperclip, Sparkles } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
 
@@ -70,8 +70,10 @@ function PureMultimodalInput({
 }) {
   // 内部input状态管理
   const [input, setInput] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const { width } = useWindowSize();
 
   useEffect(() => {
@@ -92,7 +94,7 @@ function PureMultimodalInput({
   const resetHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = '60px';
+      textareaRef.current.style.height = '100px';
     }
   };
 
@@ -179,11 +181,109 @@ function PureMultimodalInput({
     [setAttachments],
   );
 
+  // 拖拽上传处理
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 只有当离开整个drop zone时才取消dragging状态
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      const files = Array.from(e.dataTransfer.files);
+
+      // 过滤支持的文件类型
+      const supportedFiles = files.filter(file => {
+        const isImage = file.type.startsWith('image/');
+        const isPDF = file.type === 'application/pdf';
+        const isText = file.type === 'text/plain';
+        const isDoc = file.type.includes('document') || file.type.includes('word');
+        const isCSV = file.type === 'text/csv';
+        const isJSON = file.type === 'application/json';
+        return isImage || isPDF || isText || isDoc || isCSV || isJSON;
+      });
+
+      if (supportedFiles.length === 0) {
+        toast.error('No supported files found. Please upload images, PDFs, text, or documents.');
+        return;
+      }
+
+      if (supportedFiles.length < files.length) {
+        toast.error(`${files.length - supportedFiles.length} unsupported file(s) skipped`);
+      }
+
+      // 添加文件到attachments
+      const newAttachments = supportedFiles.map(addFileToAttachments);
+
+      setAttachments((currentAttachments) => {
+        const updated = [...currentAttachments, ...newAttachments];
+        return updated;
+      });
+
+      toast.success(`Added ${supportedFiles.length} file(s)`);
+    },
+    [setAttachments],
+  );
+
   useEffect(() => {
     if (status === 'submitted' && scrollToBottom) {
       scrollToBottom();
     }
   }, [status, scrollToBottom]);
+
+  // 粘贴图片处理
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const items = e.clipboardData.items;
+      const imageFiles: File[] = [];
+
+      // 遍历剪贴板项目，查找图片
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        // 检查是否是图片类型
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            imageFiles.push(file);
+          }
+        }
+      }
+
+      // 如果找到图片，添加到附件
+      if (imageFiles.length > 0) {
+        e.preventDefault(); // 阻止默认粘贴行为
+
+        const newAttachments = imageFiles.map(addFileToAttachments);
+
+        setAttachments((currentAttachments) => {
+          const updated = [...currentAttachments, ...newAttachments];
+          return updated;
+        });
+
+        toast.success(`Pasted ${imageFiles.length} image(s)`);
+      }
+    },
+    [setAttachments],
+  );
 
 
   return (
@@ -276,39 +376,66 @@ function PureMultimodalInput({
         />
       )}
 
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="Ask me anything about the market..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'professional-input min-h-[60px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
-          'border-2 border-gray-400/80 dark:border-gray-500/80',
-          'shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)]',
-          'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
-          'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
-          'transition-all duration-300 ease-out',
-          className,
-        )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
+      <div
+        ref={dropZoneRef}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className="relative"
+      >
+        {/* 拖拽覆盖层 */}
+        <AnimatePresence>
+          {isDragging && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 rounded-2xl bg-primary/10 dark:bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center pointer-events-none"
+            >
+              <div className="text-center">
+                <div className="text-primary text-lg font-semibold mb-1">Drop files here</div>
+                <div className="text-muted-foreground text-sm">Images, PDFs, documents supported</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            if (status !== 'ready') {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+        <Textarea
+          data-testid="multimodal-input"
+          ref={textareaRef}
+          placeholder="Ask me anything about the market..."
+          value={input}
+          onChange={handleInput}
+          onPaste={handlePaste}
+          className={cx(
+            'professional-input min-h-[100px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
+            'border-2 border-gray-400/80 dark:border-gray-500/80',
+            'shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)]',
+            'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
+            'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
+            'transition-all duration-300 ease-out',
+            className,
+          )}
+          rows={2}
+          autoFocus
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+
+              if (status !== 'ready') {
+                toast.error('Please wait for the model to finish its response!');
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
+      </div>
 
       <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
@@ -351,17 +478,17 @@ function PureAttachmentsButton({
   status: UseChatHelpers<ChatMessage>['status'];
 }) {
   return (
-    <Button
+    <button
       data-testid="attachments-button"
-      className="glass-input-button rounded-lg p-2 h-fit hover:bg-white/10 transition-all duration-200 border border-gray-200 dark:border-white/20"
+      className="neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-foreground hover:text-primary transition-all duration-300"
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
       }}
-      variant="ghost"
+      type="button"
     >
-      <PaperclipIcon size={16} />
-    </Button>
+      <Paperclip size={18} />
+    </button>
   );
 }
 
@@ -392,25 +519,22 @@ function PureCompactModelSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
+        <button
+          type="button"
           className={cn(
-            'h-8 w-8 p-0 transition-all duration-200 rounded-xl',
-            'bg-white/10 backdrop-blur-md border',
-            'border-gray-200 dark:border-white/20',
-            'hover:bg-white/20 hover:border-gray-300 dark:hover:border-white/30',
-            'text-foreground/80 hover:text-foreground',
-            open && 'bg-white/20 border-gray-300 dark:border-white/30'
+            'neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center transition-all duration-300',
+            'text-foreground hover:text-primary',
+            open && 'neuro-pill-active'
           )}
         >
-          <QuantumIcon size={16} />
-        </Button>
+          <Sparkles size={18} />
+        </button>
       </PopoverTrigger>
-      
-      <PopoverContent 
-        align="start" 
-        className="w-fit p-1 bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl"
-        sideOffset={4}
+
+      <PopoverContent
+        align="start"
+        className="w-fit p-2 neuro-card"
+        sideOffset={8}
       >
         <div className="space-y-1">
           {availableChatModels.map((chatModel) => {
@@ -430,10 +554,11 @@ function PureCompactModelSelector({
                   });
                 }}
                 className={cn(
-                  'w-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
-                  'flex items-center justify-center rounded-md whitespace-nowrap',
-                  'text-foreground/70 hover:text-foreground hover:bg-white/15',
-                  isSelected && 'bg-gray-900 text-white shadow-md font-semibold border border-gray-700'
+                  'w-full px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg',
+                  'flex items-center justify-center whitespace-nowrap',
+                  isSelected
+                    ? 'neuro-primary text-white font-semibold'
+                    : 'neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-foreground hover:text-primary'
                 )}
               >
                 {simpleName}
@@ -456,17 +581,17 @@ function PureStopButton({
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
 }) {
   return (
-    <Button
+    <button
       data-testid="stop-button"
-      className="glass-send-button rounded-full p-2 h-fit bg-error/10 border border-error/20 hover:bg-error/20 transition-all duration-200"
+      className="neuro-raised-sm w-12 h-12 rounded-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-red-600 hover:text-red-700 transition-all duration-300 shadow-[3px_3px_6px_rgba(239,68,68,0.15),-2px_-2px_4px_rgba(255,255,255,0.9)]"
       onClick={(event) => {
         event.preventDefault();
         stop();
-        // setMessages removed during AgentOS migration
       }}
+      type="button"
     >
-      <StopIcon size={16} />
-    </Button>
+      <StopIcon size={18} />
+    </button>
   );
 }
 
@@ -480,17 +605,18 @@ function PureSendButton({
   input: string;
 }) {
   return (
-    <Button
+    <button
       data-testid="send-button"
-      className="glass-send-button rounded-full p-3 h-fit bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/50 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed [&_svg]:text-primary-foreground [&_svg]:fill-primary-foreground"
+      className="neuro-primary w-12 h-12 rounded-full flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
       onClick={(event) => {
         event.preventDefault();
         submitForm();
       }}
       disabled={(input?.length || 0) === 0}
+      type="button"
     >
-      <ArrowUpIcon size={16} />
-    </Button>
+      <ArrowUpIcon size={18} className="text-white fill-white" />
+    </button>
   );
 }
 

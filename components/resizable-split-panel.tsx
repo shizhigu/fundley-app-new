@@ -122,7 +122,7 @@ export function ResizableSplitPanel({
     <div ref={containerRef} className={`flex h-full relative ${className}`}>
       {/* 左侧面板 */}
       <div
-        className="flex-shrink-0 min-w-0 border-r border-border"
+        className="flex-shrink-0 min-w-0 border-r border-border overflow-hidden"
         style={{ width: `${leftWidth}%` }}
       >
         {leftPanel}
@@ -155,7 +155,7 @@ export function ResizableSplitPanel({
       {/* 右侧面板 */}
       {!isRightPanelCollapsed && (
         <div
-          className="flex-shrink-0 min-w-0 bg-transparent"
+          className="flex-shrink-0 min-w-0 bg-transparent overflow-hidden"
           style={{ width: `${rightWidth}%` }}
         >
           {rightPanel}

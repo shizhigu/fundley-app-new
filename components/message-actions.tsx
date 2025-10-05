@@ -29,9 +29,8 @@ export function PureMessageActions({
       <div className="flex flex-row gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              className="py-1 px-2 h-fit text-muted-foreground"
-              variant="outline"
+            <button
+              className="neuro-raised-sm px-3 py-1.5 rounded-lg bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-muted-foreground hover:text-foreground transition-all duration-300"
               onClick={async () => {
                 const textFromParts = message.parts
                   ?.filter((part: any) => part.type === 'text')
@@ -47,9 +46,10 @@ export function PureMessageActions({
                 await copyToClipboard(textFromParts);
                 toast.success('Copied to clipboard!');
               }}
+              type="button"
             >
               <CopyIcon />
-            </Button>
+            </button>
           </TooltipTrigger>
           <TooltipContent>Copy</TooltipContent>
         </Tooltip>

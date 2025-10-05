@@ -2,8 +2,8 @@
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
-import { PencilEditIcon, SparklesIcon, LoaderIcon } from './icons';
-import { Shield } from 'lucide-react';
+import { PencilEditIcon, LoaderIcon } from './icons';
+import { Shield, Heart } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
@@ -454,10 +454,8 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === 'assistant' && (
-            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-              <div className="translate-y-px">
-                <SparklesIcon size={14} />
-              </div>
+            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40">
+              <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
             </div>
           )}
 
@@ -1152,8 +1150,8 @@ export const ThinkingMessage = () => {
           'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
         )}
       >
-        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-          <SparklesIcon size={14} />
+        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40">
+          <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
         </div>
 
         <div className="flex flex-col gap-2 w-full">

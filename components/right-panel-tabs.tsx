@@ -40,29 +40,28 @@ function RightPanelTabsComponent() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent">
-      <div className="flex border-b border-border bg-transparent">
+    <div className="flex flex-col h-full bg-transparent w-full" style={{ maxWidth: '100%' }}>
+      <div className="flex gap-1 p-2 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)] rounded-t-2xl" style={{ width: '100%' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
-            <Button
+            <button
               key={tab.id}
-              variant="ghost"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 rounded-none border-r border-border last:border-r-0 h-12 ${
+              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 ease-out ${
                 activeTab === tab.id
-                  ? 'bg-secondary text-foreground border-b-2 border-b-blue-500'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  ? 'neuro-pill-active text-foreground font-semibold'
+                  : 'neuro-pill text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon size={16} className="mr-2" />
+              <Icon size={16} />
               {tab.name}
-            </Button>
+            </button>
           );
         })}
       </div>
 
-      <div className="flex-1 overflow-hidden bg-transparent">
+      <div className="flex-1 bg-transparent" style={{ width: '100%', minWidth: 0, overflow: 'hidden' }}>
         {renderTabContent()}
       </div>
     </div>

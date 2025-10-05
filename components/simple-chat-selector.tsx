@@ -65,17 +65,17 @@ export function SimpleChatSelector({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border">
+    <div className="flex flex-col h-full bg-background border-r border-border/50">
       {/* 头部 */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Chats</h2>
+          <h2 className="text-lg font-semibold text-foreground">Chats</h2>
 
           {/* 收起侧边栏按钮 */}
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="p-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="收起聊天列表"
             >
               <svg
@@ -97,10 +97,10 @@ export function SimpleChatSelector({
         {/* 新建聊天按钮 */}
         <button
           onClick={onNewChat}
-          className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl neuro-primary text-white font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
-          <span>New Chat</span>
+          <span className="text-sm">New Chat</span>
         </button>
       </div>
 
@@ -115,14 +115,14 @@ export function SimpleChatSelector({
             No chats yet. Create your first chat!
           </div>
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="px-2 py-2 space-y-0.5">
             {chats.map((chat) => (
               <div
                 key={chat.id}
-                className={`group relative flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`group relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
                   selectedChatId === chat.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent/50'
+                    ? 'bg-accent/80 text-foreground border border-primary/20'
+                    : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
                 }`}
                 onMouseEnter={() => setHoveredChatId(chat.id)}
                 onMouseLeave={() => setHoveredChatId(null)}
@@ -140,7 +140,7 @@ export function SimpleChatSelector({
                         if (e.key === 'Escape') cancelRename();
                       }}
                       onBlur={saveRename}
-                      className="w-full text-sm font-medium bg-transparent border-0 outline-none"
+                      className="w-full text-sm font-medium bg-background border border-border rounded-md px-2 py-1 outline-none focus:border-primary"
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
@@ -148,7 +148,7 @@ export function SimpleChatSelector({
                       {chat.title}
                     </div>
                   )}
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     {new Date(chat.createdAt).toLocaleDateString()}
                   </div>
                 </div>
@@ -161,23 +161,23 @@ export function SimpleChatSelector({
                         e.stopPropagation();
                         setShowMenuChatId(showMenuChatId === chat.id ? null : chat.id);
                       }}
-                      className="p-1 rounded hover:bg-accent transition-colors"
+                      className="p-1 rounded-md hover:bg-background transition-colors"
                       title="More options"
                     >
-                      <MoreHorizontal className="w-3 h-3" />
+                      <MoreHorizontal className="w-3.5 h-3.5" />
                     </button>
 
                     {/* 下拉菜单 */}
                     {showMenuChatId === chat.id && (
-                      <div className="absolute right-0 top-6 z-50 w-32 bg-popover border border-border rounded-md shadow-lg">
+                      <div className="absolute right-0 top-7 z-50 w-32 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRename(chat.id, chat.title);
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded-t-md"
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
                         >
-                          <Edit2 className="w-3 h-3" />
+                          <Edit2 className="w-3.5 h-3.5" />
                           Rename
                         </button>
                         <button
@@ -186,9 +186,9 @@ export function SimpleChatSelector({
                             onDeleteChat(chat.id);
                             setShowMenuChatId(null);
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-destructive hover:text-destructive-foreground rounded-b-md"
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                           Delete
                         </button>
                       </div>
