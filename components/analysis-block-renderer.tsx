@@ -56,10 +56,24 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
   const [dataLoading, setDataLoading] = useState(false)
   const [tableData, setTableData] = useState<any[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
+  const [selectedDataIndex, setSelectedDataIndex] = useState(0) // Track which data table to show
 
-  // State for fullscreen/maximized view
-  const [isChartMaximized, setIsChartMaximized] = useState(false)
+  // State for fullscreen/maximized view - support multiple charts
+  const [maximizedChart, setMaximizedChart] = useState<string | null>(null)
   const [isDataMaximized, setIsDataMaximized] = useState(false)
+
+  // Normalize files to arrays (support both single file and multiple files)
+  const charts = React.useMemo(() => {
+    if (content.files?.charts) return content.files.charts // Multiple files
+    if (content.files?.chart) return [content.files.chart] // Single file (backward compatible)
+    return []
+  }, [content.files])
+
+  const dataFiles = React.useMemo(() => {
+    if (Array.isArray(content.files?.data)) return content.files.data // Multiple files
+    if (content.files?.data) return [content.files.data] // Single file (backward compatible)
+    return []
+  }, [content.files])
 
   // Fetch JSON data from backend
   const loadTableData = useCallback(async (filename: string) => {
@@ -86,12 +100,14 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
     }
   }, [sessionId])
 
-  // Load data when block is expanded and data file exists
+  // Load data when block is expanded or selected data index changes
   React.useEffect(() => {
-    if (isBlockExpanded && content.files?.data && tableData.length === 0) {
-      loadTableData(content.files.data)
+    if (isBlockExpanded && dataFiles.length > 0) {
+      // Load selected data file
+      const selectedFile = dataFiles[selectedDataIndex] || dataFiles[0]
+      loadTableData(selectedFile)
     }
-  }, [isBlockExpanded, content.files?.data, loadTableData, tableData.length])
+  }, [isBlockExpanded, dataFiles, selectedDataIndex, loadTableData])
 
   // Extract summary for collapsed view (first 150 chars of text content)
   const summary = content.text
@@ -100,8 +116,8 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
 
   // Count available content types
   const hasText = !!content.text
-  const hasChart = !!content.files?.chart
-  const hasData = !!content.files?.data
+  const hasChart = charts.length > 0
+  const hasData = dataFiles.length > 0
   const contentTypesCount = [hasText, hasChart, hasData].filter(Boolean).length
 
   // Dynamic table columns
@@ -224,55 +240,70 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
           </div>
         )}
 
-        {/* Visualization Chart (HTML) */}
-        {content.files?.chart && (
-          <div className="border rounded-lg overflow-hidden">
-            <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
-              <button
-                onClick={() => setIsChartExpanded(!isChartExpanded)}
-                className="flex items-center gap-2 flex-1"
-              >
+        {/* Visualization Charts (HTML) - Support multiple charts */}
+        {charts.length > 0 && (
+          <div className="space-y-4">
+            {charts.length > 1 && (
+              <div className="flex items-center gap-2">
                 <BarChart className="h-4 w-4" />
-                <span className="text-sm font-medium">Visualization</span>
-                {isChartExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-              </button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsChartMaximized(true)
-                }}
-                className="h-8 w-8 p-0"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {isChartExpanded && (
-              <div className="w-full h-[400px] bg-white overflow-hidden">
-                <iframe
-                  src={`/api/files/${content.files.chart}?session_id=${sessionId}`}
-                  className="w-full h-full border-0"
-                  title="Visualization"
-                  sandbox="allow-scripts allow-same-origin"
-                  style={{ maxWidth: '100%' }}
-                />
+                <span className="text-sm font-semibold">Visualizations ({charts.length})</span>
               </div>
             )}
+            {charts.map((chartFile: string, index: number) => (
+              <div key={chartFile} className="border rounded-lg overflow-hidden">
+                <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <button
+                    onClick={() => setIsChartExpanded(!isChartExpanded)}
+                    className="flex items-center gap-2 flex-1"
+                  >
+                    <BarChart className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {charts.length === 1 ? 'Visualization' : `Visualization ${index + 1}`}
+                    </span>
+                    {isChartExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMaximizedChart(chartFile)
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {isChartExpanded && (
+                  <div className="w-full h-[400px] bg-white overflow-hidden">
+                    <iframe
+                      src={`/api/files/${chartFile}?session_id=${sessionId}`}
+                      className="w-full h-full border-0"
+                      title={`Visualization ${index + 1}`}
+                      sandbox="allow-scripts allow-same-origin"
+                      style={{ maxWidth: '100%' }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Data Table (JSON) */}
-        {content.files?.data && (
+        {/* Data Table (JSON) - Support multiple data files */}
+        {dataFiles.length > 0 && (
           <div className="border rounded-lg overflow-hidden">
+            {/* Header with collapse button */}
             <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
               <button
                 onClick={() => setIsDataExpanded(!isDataExpanded)}
                 className="flex items-center gap-2 flex-1"
               >
                 <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">Data Table</span>
+                <span className="text-sm font-medium">
+                  {dataFiles.length === 1 ? 'Data Table' : `Data Tables (${dataFiles.length})`}
+                </span>
                 {tableData.length > 0 && (
                   <span className="text-xs text-muted-foreground">
                     ({tableData.length} rows)
@@ -292,6 +323,26 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* Tab navigation for multiple data files */}
+            {isDataExpanded && dataFiles.length > 1 && (
+              <div className="flex gap-1 px-3 py-2 bg-muted/50 border-t overflow-x-auto">
+                {dataFiles.map((file: string, index: number) => (
+                  <button
+                    key={file}
+                    onClick={() => setSelectedDataIndex(index)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap",
+                      selectedDataIndex === index
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    )}
+                  >
+                    Table {index + 1}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {isDataExpanded && (
               <div className="w-full">
@@ -387,18 +438,20 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
       </CardContent>
 
       {/* Maximized Chart Dialog */}
-      <Dialog open={isChartMaximized} onOpenChange={setIsChartMaximized}>
+      <Dialog open={!!maximizedChart} onOpenChange={(open) => !open && setMaximizedChart(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-4">
             <DialogTitle>Visualization - {title}</DialogTitle>
           </DialogHeader>
           <div className="w-full h-[calc(90vh-8rem)] bg-white">
-            <iframe
-              src={`/api/files/${content.files?.chart}?session_id=${sessionId}`}
-              className="w-full h-full border-0"
-              title="Visualization (Maximized)"
-              sandbox="allow-scripts allow-same-origin"
-            />
+            {maximizedChart && (
+              <iframe
+                src={`/api/files/${maximizedChart}?session_id=${sessionId}`}
+                className="w-full h-full border-0"
+                title="Visualization (Maximized)"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>

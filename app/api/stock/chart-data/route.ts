@@ -17,8 +17,6 @@ export async function GET(request: NextRequest) {
     // 根据间隔类型生成查询
     const query = generateQuery(symbol, dateCondition, interval);
 
-    console.log(`🔍 DuckDB Query: ${query}`);
-
     // 直接调用MotherDuck API (避免内部HTTP调用)
     const renderUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
 

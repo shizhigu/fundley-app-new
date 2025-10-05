@@ -97,8 +97,7 @@ export function SimpleChatSelector({
         {/* 新建聊天按钮 */}
         <button
           onClick={onNewChat}
-          disabled={isLoading}
-          className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>New Chat</span>

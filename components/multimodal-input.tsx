@@ -279,10 +279,9 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder={status === 'streaming' ? "AI is processing your request..." : "Ask me anything about the market..."}
+        placeholder="Ask me anything about the market..."
         value={input}
         onChange={handleInput}
-        disabled={status === 'streaming'}
         className={cx(
           'professional-input min-h-[60px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
           'border-2 border-gray-400/80 dark:border-gray-500/80',
@@ -290,11 +289,10 @@ function PureMultimodalInput({
           'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
           'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
           'transition-all duration-300 ease-out',
-          status === 'streaming' && 'opacity-50 cursor-not-allowed backdrop-blur-[2px]',
           className,
         )}
         rows={2}
-        autoFocus={status !== 'streaming'}
+        autoFocus
         onKeyDown={(event) => {
           if (
             event.key === 'Enter' &&
@@ -360,7 +358,6 @@ function PureAttachmentsButton({
         event.preventDefault();
         fileInputRef.current?.click();
       }}
-      disabled={status !== 'ready'}
       variant="ghost"
     >
       <PaperclipIcon size={16} />

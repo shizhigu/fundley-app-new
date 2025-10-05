@@ -116,7 +116,14 @@
       "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"SELECT id, chat_id, jsonb_pretty(content) as content, created_at FROM analysis_blocks ORDER BY created_at DESC LIMIT 2;\")",
       "WebFetch(domain:e2b.dev)",
       "Bash(for comp in \"auth-form\" \"chart-component\" \"chat-header\" \"code-editor\" \"console\" \"image-editor\" \"inline-visualization\" \"memo-system\" \"metric-result-card\" \"navigation-sidebar\" \"sheet-editor\" \"sign-out-form\" \"submit-button\" \"toolbar\" \"version-footer\")",
-      "Bash(do echo \"=== $comp ===\" grep -r \"$comp\" /Users/gushizhi/Projects/fundley-app/app /Users/gushizhi/Projects/fundley-app/components --include=\"*.tsx\" --include=\"*.ts\")"
+      "Bash(do echo \"=== $comp ===\" grep -r \"$comp\" /Users/gushizhi/Projects/fundley-app/app /Users/gushizhi/Projects/fundley-app/components --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(python3:*)",
+      "Bash(tools/causal_graph_schema.py )",
+      "Bash(tools/causality_judge.py:*)",
+      "Bash(tools/causal_graph_builder.py )",
+      "Bash(tools/causal_path_finder.py )",
+      "Bash(test_phase2_causal_graph.py )",
+      "Bash(test_phase1_news_ingestion.py )"
     ],
     "deny": [],
     "ask": [],
