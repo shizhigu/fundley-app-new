@@ -137,22 +137,28 @@ export async function POST(req: Request) {
 
   // User deleted
   if (eventType === 'user.deleted') {
+    const { id } = evt.data;
     // Note: We might want to soft delete instead of hard delete
     // For now, we'll keep the user record for data integrity
-    console.log(`User deletion webhook received for ${evt.data.id}`);
+    console.log(`User deletion webhook received for ${id}`);
 
     // PostgreSQL dual-write (soft delete - just logs for now)
-    try {
-      await deleteUser(evt.data.id);
-    } catch (error) {
-      console.error('❌ [PG] Error deleting user:', error);
+    if (id) {
+      try {
+        await deleteUser(id);
+      } catch (error) {
+        console.error('❌ [PG] Error deleting user:', error);
+      }
     }
   }
 
   // Organization events
   if (eventType === 'organization.created') {
     const { id, name, slug } = evt.data;
+    console.log(`📋 [Webhook] Organization created event received:`, { id, name, slug });
+
     if (id && name && slug) {
+      // Convex write
       try {
         await convex.mutation(api.organizations.createFromWebhook, {
           clerkOrganizationId: id,
@@ -160,20 +166,23 @@ export async function POST(req: Request) {
           slug,
           settings: {}
         });
-        console.log(`✅ Organization created: ${name} (${id})`);
+        console.log(`✅ [Convex] Organization created: ${name} (${id})`);
       } catch (error) {
-        console.error('Error creating organization:', error);
+        console.error('❌ [Convex] Error creating organization:', error);
       }
 
       // PostgreSQL dual-write
       try {
+        console.log(`🔄 [PG] Starting organization creation:`, { id, name, slug });
         await createOrUpdateOrganization({
           clerkOrganizationId: id,
           name,
           slug,
         });
+        console.log(`✅ [PG] Organization creation completed successfully`);
       } catch (error) {
         console.error('❌ [PG] Error creating organization:', error);
+        console.error('❌ [PG] Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       }
     } else {
       console.error('Organization creation webhook missing required fields:', { id, name, slug });

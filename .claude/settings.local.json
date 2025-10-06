@@ -127,7 +127,8 @@
       "Bash(pip show:*)",
       "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/e2b_code_interpreter/**)",
       "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/**)",
-      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\dt\")"
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\dt\")",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"SELECT * FROM organizations;\")"
     ],
     "deny": [],
     "ask": [],
