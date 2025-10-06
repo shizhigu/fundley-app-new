@@ -1671,28 +1671,35 @@
 /* Card Variants */
 .neuro-card {
     background: linear-gradient(145deg, #fafafa, #f0f0f0);
-    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.08),
-                -8px -8px 16px rgba(255, 255, 255, 0.9);
+    box-shadow: 10px 10px 24px rgba(0, 0, 0, 0.12),
+                -10px -10px 24px rgba(255, 255, 255, 1),
+                inset 0 1px 2px rgba(255, 255, 255, 0.8);
     border-radius: 16px;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.04);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark .neuro-card {
     background: linear-gradient(145deg, #27272a, #18181b);
-    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.5),
-                -8px -8px 16px rgba(255, 255, 255, 0.05);
+    box-shadow: 10px 10px 24px rgba(0, 0, 0, 0.7),
+                -10px -10px 24px rgba(255, 255, 255, 0.08),
+                inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .neuro-card:hover {
-    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.1),
-                -10px -10px 20px rgba(255, 255, 255, 0.9);
-    transform: translateY(-2px);
+    box-shadow: 12px 12px 28px rgba(0, 0, 0, 0.15),
+                -12px -12px 28px rgba(255, 255, 255, 1),
+                inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    transform: translateY(-3px) scale(1.01);
+    border-color: rgba(0, 0, 0, 0.06);
 }
 
 .dark .neuro-card:hover {
-    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.6),
-                -10px -10px 20px rgba(255, 255, 255, 0.08);
+    box-shadow: 12px 12px 32px rgba(0, 0, 0, 0.8),
+                -12px -12px 32px rgba(255, 255, 255, 0.12),
+                inset 0 1px 2px rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* Panel with subtle depth */
