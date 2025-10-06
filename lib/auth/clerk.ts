@@ -38,9 +38,12 @@ export async function auth(): Promise<AuthSession> {
   }
 
   try {
+    // Get user's current organization from Clerk
+    const clerkOrgId = clerkUser.organizationMemberships?.[0]?.organization?.id;
+
     // Look up user in PostgreSQL database
     const users = await db`
-      SELECT id, email, clerk_user_id, created_at, updated_at
+      SELECT id, email, clerk_user_id, clerk_organization_id, created_at, updated_at
       FROM users
       WHERE clerk_user_id = ${clerkUserId}
       LIMIT 1
@@ -51,13 +54,25 @@ export async function auth(): Promise<AuthSession> {
       // User doesn't exist in database, create them
       const email = clerkUser.emailAddresses[0]?.emailAddress || '';
       const insertedUsers = await db`
-        INSERT INTO users (id, email, clerk_user_id, created_at, updated_at)
-        VALUES (uuid_generate_v4(), ${email}, ${clerkUserId}, NOW(), NOW())
-        RETURNING id, email, clerk_user_id
+        INSERT INTO users (id, email, clerk_user_id, clerk_organization_id, created_at, updated_at)
+        VALUES (uuid_generate_v4(), ${email}, ${clerkUserId}, ${clerkOrgId}, NOW(), NOW())
+        RETURNING id, email, clerk_user_id, clerk_organization_id
       `;
       dbUser = insertedUsers[0];
+      console.log(`✅ [Auth] User created with org: ${email} (org: ${clerkOrgId})`);
     } else {
       dbUser = users[0];
+
+      // Sync organization if it changed in Clerk but not in our DB
+      if (clerkOrgId && dbUser.clerk_organization_id !== clerkOrgId) {
+        await db`
+          UPDATE users
+          SET clerk_organization_id = ${clerkOrgId}, updated_at = NOW()
+          WHERE clerk_user_id = ${clerkUserId}
+        `;
+        dbUser.clerk_organization_id = clerkOrgId;
+        console.log(`✅ [Auth] User org synced: ${dbUser.email} → org: ${clerkOrgId}`);
+      }
     }
 
     return {
