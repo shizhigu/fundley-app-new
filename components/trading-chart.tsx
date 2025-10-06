@@ -59,11 +59,21 @@ interface ChartApiResponse {
   error?: string;
 }
 
-export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] }: TradingChartProps) {
+export function TradingChart({ symbol: initialSymbol, className = '', indicators = [] }: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, { series: ISeriesApi<any>, pane?: any, markers?: any }>>(new Map());
+
+  // Load symbol from localStorage or use default
+  const [currentSymbol, setCurrentSymbol] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('trading-chart-symbol') || initialSymbol || 'AAPL';
+    }
+    return initialSymbol || 'AAPL';
+  });
+  const [symbolInput, setSymbolInput] = useState(currentSymbol);
+
   const [currentPeriod, setCurrentPeriod] = useState('1M');
   const [currentInterval, setCurrentInterval] = useState('daily');
   const [isLoading, setIsLoading] = useState(false);
@@ -312,10 +322,17 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
     };
   }, []); // 空依赖数组，避免重复订阅
 
+  // Save symbol to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('trading-chart-symbol', currentSymbol);
+    }
+  }, [currentSymbol]);
+
   // 加载股票数据的独立effect
   useEffect(() => {
     const loadChartData = async () => {
-      const data = await fetchChartData(symbol, currentPeriod, currentInterval);
+      const data = await fetchChartData(currentSymbol, currentPeriod, currentInterval);
       if (data.length > 0 && candlestickSeriesRef.current) {
         candlestickSeriesRef.current.setData(data);
         // Fit content after data is loaded
@@ -329,7 +346,7 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
     };
 
     loadChartData();
-  }, [symbol, currentPeriod, currentInterval, fetchChartData]);
+  }, [currentSymbol, currentPeriod, currentInterval, fetchChartData]);
 
 
   // 处理指标的函数
@@ -477,6 +494,20 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
     }
   };
 
+  // Handle symbol change
+  const handleSymbolSubmit = () => {
+    const trimmedSymbol = symbolInput.trim().toUpperCase();
+    if (trimmedSymbol && trimmedSymbol !== currentSymbol) {
+      setCurrentSymbol(trimmedSymbol);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSymbolSubmit();
+    }
+  };
+
   // 处理指标更新 - 只在指标数量变化时执行
   useEffect(() => {
     if (chartRef.current && candlestickSeriesRef.current && allIndicators.length > 0) {
@@ -490,7 +521,18 @@ export function TradingChart({ symbol = 'AAPL', className = '', indicators = [] 
       {/* Chart Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-foreground">{symbol}</h2>
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={symbolInput}
+              onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
+              onKeyPress={handleKeyPress}
+              onBlur={handleSymbolSubmit}
+              placeholder="股票代码"
+              className="w-24 px-2 py-1 text-sm border border-border rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <h2 className="text-xl font-semibold text-foreground">{currentSymbol}</h2>
+          </div>
           {isLoading ? (
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>

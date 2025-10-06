@@ -261,6 +261,30 @@ export async function POST(
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        // Track if controller is closed to prevent writing to closed stream
+        let isControllerClosed = false;
+
+        // Safe enqueue wrapper that checks if controller is still open
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!isControllerClosed) {
+            try {
+              controller.enqueue(data);
+            } catch (error) {
+              if (error instanceof TypeError && error.message.includes('Controller is already closed')) {
+                isControllerClosed = true;
+                console.warn('⚠️ Controller closed, stopping stream writes');
+              } else {
+                throw error;
+              }
+            }
+          }
+        };
+
+        // Keep-alive: Send heartbeat every 15 seconds to prevent timeout
+        const heartbeatInterval = setInterval(() => {
+          safeEnqueue(encoder.encode(': heartbeat\n\n'));
+        }, 15000);
+
         try {
           // 0. 检查是否是第一条消息（用于自动命名）
           const existingMessages = await db`
@@ -294,7 +318,7 @@ export async function POST(
             undefined,
             invocationId,
           );
-          controller.enqueue(
+          safeEnqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'user_saved',
@@ -439,7 +463,7 @@ export async function POST(
                         isFirstContent = false;
 
                         // 发送assistant_start事件
-                        controller.enqueue(
+                        safeEnqueue(
                           encoder.encode(
                             `data: ${JSON.stringify({
                               type: 'assistant_start',
@@ -461,7 +485,7 @@ export async function POST(
                         );
                       }
 
-                      controller.enqueue(
+                      safeEnqueue(
                         encoder.encode(
                           `data: ${JSON.stringify({
                             type: 'assistant_content',
@@ -507,7 +531,7 @@ export async function POST(
                       content,
                     );
 
-                    controller.enqueue(
+                    safeEnqueue(
                       encoder.encode(
                         `data: ${JSON.stringify({
                           type: 'tool_complete',
@@ -526,7 +550,7 @@ export async function POST(
           // 5. 完成assistant消息
           if (assistantMessage && assistantContent.trim()) {
             // 如果已经创建了assistant消息，则发送完成事件
-            controller.enqueue(
+            safeEnqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'assistant_complete',
@@ -557,7 +581,7 @@ export async function POST(
               undefined,
               invocationId,
             );
-            controller.enqueue(
+            safeEnqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'assistant_complete',
@@ -582,7 +606,7 @@ export async function POST(
           }
 
           // 7. 对话完成
-          controller.enqueue(
+          safeEnqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'conversation_complete',
@@ -591,7 +615,7 @@ export async function POST(
           );
         } catch (error) {
           console.error('Stream error:', error);
-          controller.enqueue(
+          safeEnqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'error',
@@ -600,7 +624,13 @@ export async function POST(
             ),
           );
         } finally {
-          controller.close();
+          // Clear heartbeat interval
+          clearInterval(heartbeatInterval);
+
+          if (!isControllerClosed) {
+            controller.close();
+            isControllerClosed = true;
+          }
         }
       },
     });
