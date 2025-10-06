@@ -36,6 +36,17 @@ const config: Config = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+          50: '#fff4ed',
+          100: '#ffe6d5',
+          200: '#fec9aa',
+          300: '#fda374',
+          400: '#fb723c',
+          500: '#f94d16',
+          600: '#ea330c',
+          700: '#c2230c',
+          800: '#9a1d12',
+          900: '#7c1b12',
+          950: '#430a07',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
