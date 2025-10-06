@@ -40,15 +40,21 @@ export function NewChatInterface({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   // 滚动控制
-  const { containerRef, endRef, isAtBottom, scrollToBottom } = useScrollToBottom();
+  const { containerRef, endRef, isAtBottom, scrollToBottom } =
+    useScrollToBottom();
 
   // 发送消息处理
-  const handleSendMessage = async (content: string, messageAttachments?: Attachment[]) => {
+  const handleSendMessage = async (
+    content: string,
+    messageAttachments?: Attachment[],
+  ) => {
     if (!content.trim() || isLoading) return;
 
     try {
       // 提取文件
-      const files = messageAttachments?.map(attachment => attachment.file).filter(Boolean) as File[];
+      const files = messageAttachments
+        ?.map((attachment) => attachment.file)
+        .filter(Boolean) as File[];
 
       // 调用外部的发送消息函数
       await onSendMessage(content, files);
@@ -95,7 +101,6 @@ export function NewChatInterface({
 
   return (
     <div className="flex flex-col h-full w-full max-w-full relative">
-
       <div className="flex-1 min-h-0 max-w-full">
         <div
           ref={containerRef}
@@ -105,7 +110,9 @@ export function NewChatInterface({
           {messages.length === 0 && !isLoading && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-foreground mb-2">欢迎使用 Fundley</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  欢迎使用
+                </h2>
                 <p className="text-muted-foreground">开始对话以获取财务分析</p>
               </div>
             </div>

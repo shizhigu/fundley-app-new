@@ -3,6 +3,8 @@ import { Webhook } from 'svix';
 import type { WebhookEvent } from '@clerk/nextjs/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
+import { createOrUpdateUser, deleteUser } from '@/lib/db/users';
+import { createOrUpdateOrganization, linkUserToOrganization, unlinkUserFromOrganization } from '@/lib/db/organizations';
 
 /**
  * Clerk Webhook Handler
@@ -86,6 +88,17 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Error creating user:', error);
       }
+
+      // PostgreSQL dual-write
+      try {
+        await createOrUpdateUser({
+          clerkUserId: id,
+          email,
+          clerkOrganizationId: organization_memberships?.[0]?.organization?.id,
+        });
+      } catch (error) {
+        console.error('❌ [PG] Error creating user:', error);
+      }
     } else {
       console.error('User creation webhook missing required fields:', { id, email });
     }
@@ -106,6 +119,17 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Error updating user:', error);
       }
+
+      // PostgreSQL dual-write
+      try {
+        await createOrUpdateUser({
+          clerkUserId: id,
+          email,
+          clerkOrganizationId: organization_memberships?.[0]?.organization?.id,
+        });
+      } catch (error) {
+        console.error('❌ [PG] Error updating user:', error);
+      }
     } else {
       console.error('User update webhook missing id');
     }
@@ -116,6 +140,13 @@ export async function POST(req: Request) {
     // Note: We might want to soft delete instead of hard delete
     // For now, we'll keep the user record for data integrity
     console.log(`User deletion webhook received for ${evt.data.id}`);
+
+    // PostgreSQL dual-write (soft delete - just logs for now)
+    try {
+      await deleteUser(evt.data.id);
+    } catch (error) {
+      console.error('❌ [PG] Error deleting user:', error);
+    }
   }
 
   // Organization events
@@ -132,6 +163,17 @@ export async function POST(req: Request) {
         console.log(`✅ Organization created: ${name} (${id})`);
       } catch (error) {
         console.error('Error creating organization:', error);
+      }
+
+      // PostgreSQL dual-write
+      try {
+        await createOrUpdateOrganization({
+          clerkOrganizationId: id,
+          name,
+          slug,
+        });
+      } catch (error) {
+        console.error('❌ [PG] Error creating organization:', error);
       }
     } else {
       console.error('Organization creation webhook missing required fields:', { id, name, slug });
@@ -150,6 +192,17 @@ export async function POST(req: Request) {
         console.log(`✅ Organization updated: ${name} (${id})`);
       } catch (error) {
         console.error('Error updating organization:', error);
+      }
+
+      // PostgreSQL dual-write
+      try {
+        await createOrUpdateOrganization({
+          clerkOrganizationId: id,
+          name,
+          slug,
+        });
+      } catch (error) {
+        console.error('❌ [PG] Error updating organization:', error);
       }
     } else {
       console.error('Organization update webhook missing id');
@@ -177,7 +230,7 @@ export async function POST(req: Request) {
     const { organization, public_user_data } = evt.data;
     const userId = public_user_data?.user_id;
     const orgId = organization?.id;
-    
+
     if (userId && orgId) {
       try {
         await convex.mutation(api.users.updateByClerkId, {
@@ -187,6 +240,13 @@ export async function POST(req: Request) {
         console.log(`✅ User ${userId} joined organization ${orgId}`);
       } catch (error) {
         console.error('Error handling membership created:', error);
+      }
+
+      // PostgreSQL dual-write
+      try {
+        await linkUserToOrganization(userId, orgId);
+      } catch (error) {
+        console.error('❌ [PG] Error linking user to organization:', error);
       }
     } else {
       console.error('Membership creation webhook missing required fields:', { userId, orgId });
@@ -206,7 +266,7 @@ export async function POST(req: Request) {
     const { organization, public_user_data } = evt.data;
     const userId = public_user_data?.user_id;
     const orgId = organization?.id;
-    
+
     if (userId && orgId && !ENFORCE_ORGANIZATION_MODE) {
       try {
         await convex.mutation(api.users.updateByClerkId, {
@@ -217,8 +277,22 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Error removing user from organization:', error);
       }
+
+      // PostgreSQL dual-write
+      try {
+        await unlinkUserFromOrganization(userId);
+      } catch (error) {
+        console.error('❌ [PG] Error unlinking user from organization:', error);
+      }
     } else if (userId && orgId) {
       console.warn(`⚠️ User ${userId} removed from org but ENFORCE_ORGANIZATION_MODE is true`);
+
+      // PostgreSQL dual-write (even when mode is enforced)
+      try {
+        await unlinkUserFromOrganization(userId);
+      } catch (error) {
+        console.error('❌ [PG] Error unlinking user from organization:', error);
+      }
     } else {
       console.error('Membership deletion webhook missing required fields:', { userId, orgId });
     }
