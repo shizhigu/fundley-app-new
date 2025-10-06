@@ -299,9 +299,9 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
             {content && (
               <div className="px-3 py-2">
                 <div className="flex items-start gap-2 mb-3">
-                  <div className="w-3 h-3 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0">✨</div>
+                  <div className="w-3 h-3 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0">✨</div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                    <h4 className="text-xs font-medium text-orange-700 dark:text-orange-300 mb-1">
                       Key Insights
                     </h4>
                     <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
@@ -454,7 +454,7 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === 'assistant' && (
-            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40">
+            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40">
               <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
             </div>
           )}
@@ -758,11 +758,11 @@ const PurePreviewMessage = ({
                   const metricName = input?.metricId || 'LaTeX Metric';
                   
                   return (
-                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/40 dark:bg-purple-900/40 backdrop-blur-md border border-purple-200/50 dark:border-purple-700/50 text-sm not-prose">
-                      <div className="animate-spin text-purple-600 dark:text-purple-400">
+                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/40 dark:bg-orange-900/40 backdrop-blur-md border border-orange-200/50 dark:border-orange-700/50 text-sm not-prose">
+                      <div className="animate-spin text-orange-600 dark:text-orange-400">
                         <LoaderIcon size={14} />
                       </div>
-                      <span className="text-purple-700 dark:text-purple-300 font-medium">
+                      <span className="text-orange-700 dark:text-orange-300 font-medium">
                         Computing LaTeX metric {metricName}...
                       </span>
                     </div>
@@ -778,13 +778,13 @@ const PurePreviewMessage = ({
                   
                   return (
                     <div key={toolCallId} className="not-prose">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/40 dark:bg-purple-900/40 backdrop-blur-md border border-purple-200/50 dark:border-purple-700/50 text-sm">
-                        <div className="w-3 h-3 bg-purple-500/70 rounded-full"></div>
-                        <span className="text-purple-700 dark:text-purple-300 font-medium">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/40 dark:bg-orange-900/40 backdrop-blur-md border border-orange-200/50 dark:border-orange-700/50 text-sm">
+                        <div className="w-3 h-3 bg-orange-500/70 rounded-full"></div>
+                        <span className="text-orange-700 dark:text-orange-300 font-medium">
                           LaTeX metric {metricName} calculated
                         </span>
                         {description && (
-                          <span className="text-purple-600/70 dark:text-purple-400/70 text-xs">
+                          <span className="text-orange-600/70 dark:text-orange-400/70 text-xs">
                             • {description.slice(0, 50)}{description.length > 50 ? '...' : ''}
                           </span>
                         )}
@@ -1150,7 +1150,7 @@ export const ThinkingMessage = () => {
           'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
         )}
       >
-        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40">
+        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40">
           <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
         </div>
 

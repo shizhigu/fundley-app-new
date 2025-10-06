@@ -181,7 +181,7 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
             {/* Icon indicator - neumorphic circle */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-full neuro-raised-sm bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 flex items-center justify-center">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full neuro-raised-sm bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 flex items-center justify-center">
               <BarChart className="h-5 w-5 text-primary" />
             </div>
 
@@ -211,7 +211,7 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
                   </span>
                 )}
                 {hasData && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 text-purple-700 dark:text-purple-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 text-orange-700 dark:text-orange-400 font-medium">
                     <FileText className="h-3 w-3" />
                     Data
                   </span>

@@ -151,19 +151,19 @@
 
 @layer base {
     :root {
-        /* === FUNDLEY FINTECH PURPLE DESIGN SYSTEM === */
+        /* === FUNDLEY FINTECH VIBRANT ORANGE DESIGN SYSTEM === */
 
-        /* Primary Brand Colors - Sophisticated Purple Palette */
-        --brand-primary: 270 70% 50%;
-        /* Deep Fintech Purple #7B3FF2 */
-        --brand-primary-light: 270 70% 60%;
-        /* Lighter Purple */
+        /* Primary Brand Colors - Energetic Orange Palette */
+        --brand-primary: 25 95% 53%;
+        /* Vibrant Orange #FF6B1A */
+        --brand-primary-light: 25 95% 63%;
+        /* Lighter Orange */
         --brand-secondary: 220 15% 40%;
         /* Cool Slate Gray */
-        --brand-accent: 270 70% 50%;
-        /* Purple accent */
-        --brand-accent-light: 270 70% 96%;
-        /* Light purple for highlights */
+        --brand-accent: 25 95% 53%;
+        /* Orange accent */
+        --brand-accent-light: 25 95% 96%;
+        /* Light orange for highlights */
 
         /* Semantic Colors */
         --success: 142 76% 36%;
@@ -179,7 +179,7 @@
         --error-bg: 0 84% 95%;
         /* Light red background */
 
-        /* Neutral Grays - Cool-toned to complement purple */
+        /* Neutral Grays - Cool-toned to complement orange */
         --gray-50: 240 15% 98%;
         --gray-100: 240 15% 96%;
         --gray-200: 240 12% 92%;
@@ -202,7 +202,7 @@
         /* Shadow System */
         --neuro-shadow-light: rgba(255, 255, 255, 0.9);
         --neuro-shadow-dark: rgba(0, 0, 0, 0.08);
-        --neuro-shadow-purple: rgba(123, 63, 242, 0.12);
+        --neuro-shadow-orange: rgba(255, 107, 26, 0.12);
 
         /* Neumorphic Shadows */
         --shadow-raised-sm: 3px 3px 6px var(--neuro-shadow-dark),
@@ -217,12 +217,12 @@
         --shadow-inset-md: inset 3px 3px 6px var(--neuro-shadow-dark),
                           inset -3px -3px 6px var(--neuro-shadow-light);
 
-        /* Purple Neumorphic Shadows (for primary elements) */
-        --shadow-purple-raised: 4px 4px 8px var(--neuro-shadow-purple),
+        /* Orange Neumorphic Shadows (for primary elements) */
+        --shadow-orange-raised: 4px 4px 8px var(--neuro-shadow-orange),
                                -2px -2px 6px rgba(255, 255, 255, 0.1);
-        --shadow-purple-hover: 6px 6px 12px var(--neuro-shadow-purple),
+        --shadow-orange-hover: 6px 6px 12px var(--neuro-shadow-orange),
                               -3px -3px 8px rgba(255, 255, 255, 0.15);
-        --shadow-purple-active: inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+        --shadow-orange-active: inset 2px 2px 4px rgba(0, 0, 0, 0.2),
                                inset -2px -2px 4px rgba(255, 255, 255, 0.1);
 
         /* Glass Morphism Variables */
@@ -233,13 +233,13 @@
         --glass-blur: 20px;
         --glass-blur-heavy: 40px;
 
-        /* Gradient Definitions - Fintech Purple mesh gradients */
-        --gradient-primary: linear-gradient(135deg, hsl(270 70% 50%) 0%, hsl(270 70% 40%) 100%);
+        /* Gradient Definitions - Fintech Orange mesh gradients */
+        --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%) 0%, hsl(25 95% 43%) 100%);
         --gradient-secondary: linear-gradient(135deg, hsl(var(--gray-100)) 0%, hsl(var(--gray-50)) 100%);
         --gradient-mesh:
-            radial-gradient(ellipse at 20% 0%, hsl(270 70% 50% / 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 50%, hsl(280 60% 60% / 0.06) 0%, transparent 50%),
-            radial-gradient(ellipse at 0% 100%, hsl(260 50% 45% / 0.05) 0%, transparent 50%);
+            radial-gradient(ellipse at 20% 0%, hsl(25 95% 53% / 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 50%, hsl(30 90% 60% / 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse at 0% 100%, hsl(20 85% 48% / 0.05) 0%, transparent 50%);
 
         /* Shadow System */
         --shadow-xs: 0 1px 2px 0 hsl(var(--gray-950) / 0.05);
@@ -341,7 +341,7 @@
         /* Shadow System - Dark (inverted) */
         --neuro-shadow-light: rgba(255, 255, 255, 0.05);
         --neuro-shadow-dark: rgba(0, 0, 0, 0.5);
-        --neuro-shadow-purple: rgba(123, 63, 242, 0.3);
+        --neuro-shadow-orange: rgba(255, 107, 26, 0.3);
 
         /* Neumorphic Shadows - Dark Mode (inverted direction) */
         --shadow-raised-sm: 3px 3px 6px var(--neuro-shadow-dark),
@@ -356,13 +356,13 @@
         --shadow-inset-md: inset 3px 3px 6px var(--neuro-shadow-dark),
                           inset -3px -3px 6px var(--neuro-shadow-light);
 
-        /* Purple Neumorphic Shadows - Dark Mode */
-        --shadow-purple-raised: 4px 4px 8px var(--neuro-shadow-purple),
-                               -2px -2px 6px rgba(123, 63, 242, 0.1);
-        --shadow-purple-hover: 6px 6px 12px var(--neuro-shadow-purple),
-                              -3px -3px 8px rgba(123, 63, 242, 0.15);
-        --shadow-purple-active: inset 2px 2px 4px rgba(0, 0, 0, 0.5),
-                               inset -2px -2px 4px rgba(123, 63, 242, 0.1);
+        /* Orange Neumorphic Shadows - Dark Mode */
+        --shadow-orange-raised: 4px 4px 8px var(--neuro-shadow-orange),
+                               -2px -2px 6px rgba(255, 107, 26, 0.1);
+        --shadow-orange-hover: 6px 6px 12px var(--neuro-shadow-orange),
+                              -3px -3px 8px rgba(255, 107, 26, 0.15);
+        --shadow-orange-active: inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+                               inset -2px -2px 4px rgba(255, 107, 26, 0.1);
 
         /* Dark mode glass adjustments */
         --glass-bg: 255 255 255 / 0.03;
@@ -1621,21 +1621,21 @@
                 0 0 0 2px hsl(var(--brand-primary) / 0.3);
 }
 
-/* Purple Primary Elements */
+/* Orange Primary Elements */
 .neuro-primary {
     background: linear-gradient(145deg, hsl(var(--brand-primary-light)), hsl(var(--brand-primary)));
-    box-shadow: var(--shadow-purple-raised);
+    box-shadow: var(--shadow-orange-raised);
     border: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .neuro-primary:hover {
-    box-shadow: var(--shadow-purple-hover);
+    box-shadow: var(--shadow-orange-hover);
     transform: translateY(-1px);
 }
 
 .neuro-primary:active {
-    box-shadow: var(--shadow-purple-active);
+    box-shadow: var(--shadow-orange-active);
     transform: translateY(1px);
 }
 

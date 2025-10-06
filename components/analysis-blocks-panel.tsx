@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef } from 'react'
 import { AnalysisBlockRenderer } from './analysis-block-renderer'
 import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, BarChart3, Database, Sparkles } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AlertCircle, BarChart3, Database } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useChatContext } from '@/lib/contexts/chat-context'
 
 interface AnalysisBlocksPanelProps {
@@ -174,44 +174,11 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
           </div>
         </div>
 
-        <AnimatePresence mode="popLayout">
-          {blocks.map((block, index) => (
-            <motion.div
-              key={block.id}
-              initial={index >= blocks.length - 1 ? { opacity: 0, y: 20 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              layout
-              layoutId={block.id}
-            >
-              {/* 新块的闪光效果 */}
-              {index === blocks.length - 1 && blocks.length > 1 && (
-                <motion.div
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: 0 }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                  className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg pointer-events-none"
-                />
-              )}
-
-              <AnalysisBlockRenderer block={block} />
-
-              {/* 新块标记 */}
-              {index === blocks.length - 1 && blocks.length > 1 && (
-                <motion.div
-                  initial={{ opacity: 1, scale: 1 }}
-                  animate={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 2, delay: 1 }}
-                  className="absolute -top-2 -right-2 flex items-center gap-1 bg-blue-500 text-white px-2 py-1 rounded-full text-xs"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  New
-                </motion.div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {blocks.map((block) => (
+          <div key={block.id}>
+            <AnalysisBlockRenderer block={block} />
+          </div>
+        ))}
       </div>
     </div>
   )

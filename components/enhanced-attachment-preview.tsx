@@ -29,7 +29,7 @@ const getFileIcon = (contentType: string) => {
     return <FileText className="w-4 h-4 text-orange-500" />;
   }
   if (contentType === 'application/json') {
-    return <FileText className="w-4 h-4 text-purple-500" />;
+    return <FileText className="w-4 h-4 text-orange-500" />;
   }
   return <File className="w-4 h-4" />;
 };

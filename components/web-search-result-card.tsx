@@ -112,11 +112,11 @@ export function WebSearchResultCard({
             {summary && (
               <div className="relative px-4 py-3 border-b border-gray-200/30 dark:border-gray-700/30">
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 rounded-md bg-purple-500/10 dark:bg-purple-500/20 mt-0.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <div className="p-1.5 rounded-md bg-orange-500/10 dark:bg-orange-500/20 mt-0.5">
+                    <Sparkles className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                    <h4 className="text-xs font-medium text-orange-700 dark:text-orange-300 mb-1">
                       Key Insights
                     </h4>
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
