@@ -38,8 +38,8 @@ export async function auth(): Promise<AuthSession> {
   }
 
   try {
-    // Get user's current organization from Clerk
-    const clerkOrgId = clerkUser.organizationMemberships?.[0]?.organization?.id;
+    // Get user's current organization from Clerk auth session
+    const { orgId: clerkOrgId } = await clerkAuth();
 
     // Look up user in PostgreSQL database
     const users = await db`
@@ -59,7 +59,7 @@ export async function auth(): Promise<AuthSession> {
         RETURNING id, email, clerk_user_id, clerk_organization_id
       `;
       dbUser = insertedUsers[0];
-      console.log(`✅ [Auth] User created with org: ${email} (org: ${clerkOrgId})`);
+      console.log(`✅ [Auth] User created with org: ${email} (org: ${clerkOrgId || 'none'})`);
     } else {
       dbUser = users[0];
 
