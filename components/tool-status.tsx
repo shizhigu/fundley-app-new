@@ -10,6 +10,8 @@ import {
   Briefcase,
   Calculator,
   Globe,
+  Download,
+  BarChart,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PythonIcon } from './icons';
@@ -76,6 +78,14 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
   run_python_code: {
     label: 'Sophisticated analysis completed',
     icon: PythonIcon,
+  },
+  download_file_from_sandbox: {
+    label: 'Artifact downloaded',
+    icon: Download,
+  },
+  create_analysis_block: {
+    label: 'Analysis block created',
+    icon: BarChart,
   },
   // Legacy tools (for backwards compatibility)
   getIncomeStatement: {

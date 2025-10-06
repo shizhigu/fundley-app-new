@@ -150,6 +150,8 @@ function shouldSaveTool(toolName: string): boolean {
     'get_sandbox_status',
     'list_running_sandboxes',
     'get_current_sandbox_id',
+    'get_chat_history',
+    'list_files',
   ];
 
   return !skipTools.includes(toolName?.toLowerCase() || '');
@@ -270,7 +272,10 @@ export async function POST(
             try {
               controller.enqueue(data);
             } catch (error) {
-              if (error instanceof TypeError && error.message.includes('Controller is already closed')) {
+              if (
+                error instanceof TypeError &&
+                error.message.includes('Controller is already closed')
+              ) {
                 isControllerClosed = true;
                 console.warn('⚠️ Controller closed, stopping stream writes');
               } else {
