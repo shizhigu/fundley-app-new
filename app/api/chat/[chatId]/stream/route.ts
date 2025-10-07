@@ -345,6 +345,9 @@ export async function POST(
           // 根据是否有文件决定请求格式
           let agentResponse: Response;
 
+          // Create AbortController with no timeout (infinite)
+          const abortController = new AbortController();
+
           if (files.length > 0) {
             // 有文件时使用FormData
             const formData = new FormData();
@@ -374,6 +377,10 @@ export async function POST(
               {
                 method: 'POST',
                 body: formData,
+                signal: abortController.signal,
+                // @ts-ignore - Next.js undici fetch extensions
+                bodyTimeout: 0, // Disable body timeout
+                headersTimeout: 0, // Disable headers timeout
               },
             );
           } else {
@@ -402,6 +409,10 @@ export async function POST(
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams(requestParams).toString(),
+                signal: abortController.signal,
+                // @ts-ignore - Next.js undici fetch extensions
+                bodyTimeout: 0, // Disable body timeout
+                headersTimeout: 0, // Disable headers timeout
               },
             );
           }

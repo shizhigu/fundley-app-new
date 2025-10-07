@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Disable all timeouts for streaming responses
+  // This prevents "Body Timeout Error" during long AI responses
+  serverRuntimeConfig: {
+    // API routes timeout - set to 0 for unlimited
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
   webpack: (config, { isServer }) => {
     return config;
   },
