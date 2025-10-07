@@ -38,6 +38,10 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
     label: 'Profile loaded',
     icon: Briefcase,
   },
+  get_earnings: {
+    label: 'Earnings loaded',
+    icon: Briefcase,
+  },
   get_stock_quote: {
     label: 'Quote loaded',
     icon: TrendingUp,

@@ -285,10 +285,11 @@ export async function POST(
           }
         };
 
-        // Keep-alive: Send heartbeat every 15 seconds to prevent timeout
+        // Keep-alive: Send heartbeat every 5 seconds to prevent timeout
+        // Shorter interval prevents connection drops during long processing
         const heartbeatInterval = setInterval(() => {
           safeEnqueue(encoder.encode(': heartbeat\n\n'));
-        }, 15000);
+        }, 5000);
 
         try {
           // 0. 检查是否是第一条消息（用于自动命名）
@@ -417,6 +418,7 @@ export async function POST(
           const decoder = new TextDecoder();
           let buffer = '';
           let assistantContent = '';
+          let lastDbUpdateLength = 0; // Track last DB update to reduce frequency
 
           // 4. 处理AgentOS的流式响应
           while (true) {
@@ -482,12 +484,24 @@ export async function POST(
                           content.substring(0, 50),
                         );
                       } else {
-                        // 后续内容累加并更新
+                        // 后续内容累加
                         assistantContent += content;
-                        await updateMessage(
-                          assistantMessage.id,
-                          assistantContent,
-                        );
+
+                        // 批量更新数据库：每500字符更新一次，减少DB操作频率
+                        const updateThreshold = 500;
+                        if (
+                          assistantContent.length - lastDbUpdateLength >=
+                          updateThreshold
+                        ) {
+                          await updateMessage(
+                            assistantMessage.id,
+                            assistantContent,
+                          );
+                          lastDbUpdateLength = assistantContent.length;
+                          console.log(
+                            `📝 Batch DB update at ${assistantContent.length} chars`,
+                          );
+                        }
                       }
 
                       safeEnqueue(
@@ -554,7 +568,15 @@ export async function POST(
 
           // 5. 完成assistant消息
           if (assistantMessage && assistantContent.trim()) {
-            // 如果已经创建了assistant消息，则发送完成事件
+            // 最终更新：确保所有内容都保存到数据库
+            if (assistantContent.length !== lastDbUpdateLength) {
+              await updateMessage(assistantMessage.id, assistantContent.trim());
+              console.log(
+                `📝 Final DB update at ${assistantContent.length} chars`,
+              );
+            }
+
+            // 发送完成事件
             safeEnqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
