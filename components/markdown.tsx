@@ -2,22 +2,6 @@ import React, { memo } from 'react';
 import { Streamdown } from 'streamdown';
 
 const NonMemoizedMarkdown = ({ children }: { children: string }) => {
-  // Preprocess content to escape single dollar signs that are not part of math blocks
-  const processedContent = React.useMemo(() => {
-    // Handle undefined or non-string children
-    if (!children || typeof children !== 'string') return children;
-
-    // Don't process if no dollar signs
-    if (!children.includes('$')) return children;
-
-    // Replace single $ that are not part of $$ with escaped version
-    // This regex matches $ that are:
-    // 1. Not preceded by another $
-    // 2. Not followed by another $
-    // 3. Likely part of currency (followed by digits)
-    return children.replace(/(?<!\$)\$(?!\$)(?=\d)/g, '\\$');
-  }, [children]);
-
   return (
     <div
       className="prose prose-sm dark:prose-invert mobile-responsive-prose"
@@ -31,7 +15,10 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
         parseIncompleteMarkdown={true}
         className="streamdown-content mobile-responsive-content"
         shikiTheme={["github-light", "github-dark"]}
+        remarkPlugins={[]}
         components={{
+          del: ({ children }) => <>{children}</>, // 禁用删除线，直接显示原文
+          s: ({ children }) => <>{children}</>,   // 禁用 <s> 标签
           code: ({ children, className, ...props }) => {
             const isInlineCode = !className;
             if (isInlineCode) {
@@ -63,7 +50,7 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
           )
         }}
       >
-        {processedContent}
+        {children}
       </Streamdown>
     </div>
   );
