@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d latex_metrics\")"
     ],
     "deny": [],
     "ask": [],

@@ -39,6 +39,9 @@ function FinancialDataPanelComponent() {
   // 本地状态（只保留非持久化的状态）
   const [tableData, setTableData] = useState<FinancialDataPoint[]>([]);
 
+  // 表格布局模式：'original' = 原始布局(股票代码+季度为行), 'relative' = 转置布局(相对季度Q-0, Q-1...)
+  const [tableAlignMode, setTableAlignMode] = useState<'original' | 'relative'>('relative');
+
   // 拖拽状态
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -518,82 +521,247 @@ function FinancialDataPanelComponent() {
     );
   }
 
-  // 表格视图（使用原生HTML table以确保sticky正常工作）
+  // 表格视图（转置：股票代码和指标作为行，季度作为列）
   function TableView() {
     const metricToFieldMapping = getMetricToFieldMapping();
 
-    return (
-      <div className="rounded-md border border-border h-full overflow-auto">
-        <table className="w-full min-w-max border-collapse">
-          <thead className="sticky top-0 z-10 bg-background shadow-sm">
-            <tr className="border-b">
-              <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">
-                股票代码
-              </th>
-              <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[120px] z-20 border-r p-3 text-left">
-                季度
-              </th>
-              {selectedMetrics.map((metricId) => (
-                <th
-                  key={metricId}
-                  className="text-foreground font-medium min-w-[200px] bg-background p-3 text-right"
-                >
-                  {getMetricDisplayName(metricId)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tableData.map((row, index) => {
-              // 检查是否是新的symbol组的开始
-              const isNewSymbolGroup =
-                index === 0 || tableData[index - 1].symbol !== row.symbol;
+    // 获取所有唯一的股票代码
+    const symbols = useMemo(() => {
+      return Array.from(new Set(tableData.map(row => row.symbol)));
+    }, [tableData]);
 
-              return (
-                <tr
-                  key={index}
-                  className={`border-b hover:bg-secondary/50 ${
-                    isNewSymbolGroup
-                      ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600'
-                      : ''
-                  }`}
-                >
-                  <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">
-                    {row.symbol}
-                  </td>
-                  <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">
-                    {row.period} {row.fiscalYear}
-                  </td>
-                  {selectedMetrics.map((metricId) => {
-                    const fieldName = metricToFieldMapping[metricId];
-                    const metricData = row.metrics[fieldName];
-                    return (
-                      <td key={metricId} className="p-3 text-right">
-                        <div className="space-y-1">
-                          <div className="font-medium text-foreground">
-                            {formatValue(metricData?.value, metricId)}
+    // 绝对模式：所有公司对齐到相同的财季+财年
+    const absoluteView = useMemo(() => {
+      // 获取所有唯一的季度（按时间倒序）
+      const uniquePeriods = Array.from(
+        new Set(tableData.map(row => `${row.period} ${row.fiscalYear}`))
+      );
+
+      // 构建数据查找映射：symbol -> metric -> period -> data
+      const dataMap: Record<string, Record<string, Record<string, any>>> = {};
+
+      tableData.forEach(row => {
+        const periodKey = `${row.period} ${row.fiscalYear}`;
+        if (!dataMap[row.symbol]) dataMap[row.symbol] = {};
+
+        selectedMetrics.forEach(metricId => {
+          const fieldName = metricToFieldMapping[metricId];
+          if (!dataMap[row.symbol][metricId]) dataMap[row.symbol][metricId] = {};
+          dataMap[row.symbol][metricId][periodKey] = row.metrics[fieldName];
+        });
+      });
+
+      return { periods: uniquePeriods, dataMap };
+    }, [tableData, selectedMetrics, metricToFieldMapping]);
+
+    // 相对模式：每个公司按自己的时间序列，显示Q-0, Q-1, Q-2...
+    const relativeView = useMemo(() => {
+      // 按公司分组并排序时间
+      const symbolData: Record<string, Array<{period: string, data: FinancialDataPoint}>> = {};
+
+      tableData.forEach(row => {
+        if (!symbolData[row.symbol]) symbolData[row.symbol] = [];
+        symbolData[row.symbol].push({
+          period: `${row.period} ${row.fiscalYear}`,
+          data: row
+        });
+      });
+
+      // 每个公司按时间倒序排序（最新的在前面）
+      Object.keys(symbolData).forEach(symbol => {
+        symbolData[symbol].sort((a, b) => {
+          // 精确的时间排序：先按财年，再按季度
+          const [periodA, yearA] = a.period.split(' ');
+          const [periodB, yearB] = b.period.split(' ');
+
+          const yearNumA = parseInt(yearA);
+          const yearNumB = parseInt(yearB);
+
+          // 提取季度数字 (Q1 -> 1, Q2 -> 2, etc.)
+          const quarterA = parseInt(periodA.replace('Q', ''));
+          const quarterB = parseInt(periodB.replace('Q', ''));
+
+          // 先比较年份（倒序）
+          if (yearNumB !== yearNumA) {
+            return yearNumB - yearNumA;
+          }
+
+          // 年份相同，比较季度（倒序）
+          return quarterB - quarterA;
+        });
+      });
+
+      // 找出最大的季度数量
+      const maxQuarters = Math.max(...Object.values(symbolData).map(arr => arr.length));
+
+      // 构建数据映射：symbol -> metric -> relativeIndex -> data
+      const dataMap: Record<string, Record<string, Record<number, any>>> = {};
+
+      Object.entries(symbolData).forEach(([symbol, periods]) => {
+        if (!dataMap[symbol]) dataMap[symbol] = {};
+
+        periods.forEach((periodData, index) => {
+          selectedMetrics.forEach(metricId => {
+            const fieldName = metricToFieldMapping[metricId];
+            if (!dataMap[symbol][metricId]) dataMap[symbol][metricId] = {};
+            dataMap[symbol][metricId][index] = periodData.data.metrics[fieldName];
+          });
+        });
+      });
+
+      return { maxQuarters, dataMap, symbolData };
+    }, [tableData, selectedMetrics, metricToFieldMapping]);
+
+    // 根据模式选择数据
+    if (tableAlignMode === 'original') {
+      // 原始布局：股票代码和季度作为行，指标作为列
+      const metricToFieldMapping = getMetricToFieldMapping();
+
+      return (
+        <div className="rounded-md border border-border h-full overflow-auto">
+          <table className="w-full min-w-max border-collapse">
+            <thead className="sticky top-0 z-10 bg-background shadow-sm">
+              <tr className="border-b">
+                <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">
+                  股票代码
+                </th>
+                <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[120px] z-20 border-r p-3 text-left">
+                  季度
+                </th>
+                {selectedMetrics.map((metricId) => (
+                  <th
+                    key={metricId}
+                    className="text-foreground font-medium min-w-[200px] bg-background p-3 text-right"
+                  >
+                    {getMetricDisplayName(metricId)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.map((row, index) => {
+                // 检查是否是新的symbol组的开始
+                const isNewSymbolGroup =
+                  index === 0 || tableData[index - 1].symbol !== row.symbol;
+
+                return (
+                  <tr
+                    key={index}
+                    className={`border-b hover:bg-secondary/50 ${
+                      isNewSymbolGroup
+                        ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600'
+                        : ''
+                    }`}
+                  >
+                    <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">
+                      {row.symbol}
+                    </td>
+                    <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">
+                      {row.period} {row.fiscalYear}
+                    </td>
+                    {selectedMetrics.map((metricId) => {
+                      const fieldName = metricToFieldMapping[metricId];
+                      const metricData = row.metrics[fieldName];
+                      return (
+                        <td key={metricId} className="p-3 text-right">
+                          <div className="space-y-1">
+                            <div className="font-medium text-foreground">
+                              {formatValue(metricData?.value, metricId)}
+                            </div>
+                            <div className="flex justify-end space-x-1">
+                              <TrendIndicator
+                                trend={metricData?.qoq}
+                                label="QoQ"
+                              />
+                              <TrendIndicator
+                                trend={metricData?.yoy}
+                                label="YoY"
+                              />
+                            </div>
                           </div>
-                          <div className="flex justify-end space-x-1">
-                            <TrendIndicator
-                              trend={metricData?.qoq}
-                              label="QoQ"
-                            />
-                            <TrendIndicator
-                              trend={metricData?.yoy}
-                              label="YoY"
-                            />
-                          </div>
-                        </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    } else {
+      // 相对模式
+      const { maxQuarters, dataMap } = relativeView;
+
+      return (
+        <div className="rounded-md border border-border h-full overflow-auto">
+          <table className="w-full min-w-max border-collapse">
+            <thead className="sticky top-0 z-10 bg-background shadow-sm">
+              <tr className="border-b">
+                <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">
+                  股票代码
+                </th>
+                <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[180px] z-20 border-r p-3 text-left">
+                  指标
+                </th>
+                {Array.from({ length: maxQuarters }, (_, i) => (
+                  <th
+                    key={i}
+                    className="text-foreground font-medium min-w-[200px] bg-background p-3 text-center border-r"
+                  >
+                    Q-{i}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {symbols.map((symbol) => {
+                return selectedMetrics.map((metricId, metricIndex) => {
+                  const isFirstMetric = metricIndex === 0;
+                  return (
+                    <tr
+                      key={`${symbol}-${metricId}`}
+                      className={`border-b hover:bg-secondary/50 ${
+                        isFirstMetric ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600' : ''
+                      }`}
+                    >
+                      <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">
+                        {symbol}
                       </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
+                      <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">
+                        {getMetricDisplayName(metricId)}
+                      </td>
+                      {Array.from({ length: maxQuarters }, (_, i) => {
+                        const metricData = dataMap[symbol]?.[metricId]?.[i];
+                        return (
+                          <td key={i} className="p-3 text-center border-r">
+                            <div className="space-y-1">
+                              <div className="font-medium text-foreground">
+                                {formatValue(metricData?.value, metricId)}
+                              </div>
+                              <div className="flex justify-center space-x-1">
+                                <TrendIndicator
+                                  trend={metricData?.qoq}
+                                  label="QoQ"
+                                />
+                                <TrendIndicator
+                                  trend={metricData?.yoy}
+                                  label="YoY"
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                });
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
   }
 
   return (
@@ -606,28 +774,56 @@ function FinancialDataPanelComponent() {
           <div className="flex items-center gap-2">
             {/* 视图切换 - 只在有数据时显示 */}
             {tableData.length > 0 && (
-              <div className="flex gap-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
-                <button
-                  onClick={() => setViewMode('cards')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-                    viewMode === 'cards'
-                      ? 'neuro-pill-active text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  卡片
-                </button>
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-                    viewMode === 'table'
-                      ? 'neuro-pill-active text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  表格
-                </button>
-              </div>
+              <>
+                <div className="flex gap-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
+                  <button
+                    onClick={() => setViewMode('cards')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      viewMode === 'cards'
+                        ? 'neuro-pill-active text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    卡片
+                  </button>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      viewMode === 'table'
+                        ? 'neuro-pill-active text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    表格
+                  </button>
+                </div>
+
+                {/* 表格布局模式切换 - 只在表格视图时显示 */}
+                {viewMode === 'table' && (
+                  <div className="flex gap-1 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
+                    <button
+                      onClick={() => setTableAlignMode('original')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 whitespace-nowrap ${
+                        tableAlignMode === 'original'
+                          ? 'neuro-pill-active text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Timeline
+                    </button>
+                    <button
+                      onClick={() => setTableAlignMode('relative')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 whitespace-nowrap ${
+                        tableAlignMode === 'relative'
+                          ? 'neuro-pill-active text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Comparison
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {/* 导出Excel按钮 - 只在有数据时显示 */}

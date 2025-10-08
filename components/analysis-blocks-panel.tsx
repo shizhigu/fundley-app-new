@@ -18,6 +18,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   const [blocks, setBlocks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null)
   const lastTimestampRef = useRef<string | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -100,6 +101,9 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
             console.log(`📊 Found ${uniqueNewBlocks.length} new blocks`)
             // 更新最新时间戳
             lastTimestampRef.current = uniqueNewBlocks[uniqueNewBlocks.length - 1].created_at
+            // 自动展开最新的 block，收起其他所有的
+            const latestBlock = uniqueNewBlocks[uniqueNewBlocks.length - 1]
+            setExpandedBlockId(latestBlock.id)
             return [...prevBlocks, ...uniqueNewBlocks]
           }
 
@@ -176,7 +180,11 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
 
         {blocks.map((block) => (
           <div key={block.id}>
-            <AnalysisBlockRenderer block={block} />
+            <AnalysisBlockRenderer
+              block={block}
+              isExpanded={expandedBlockId === block.id}
+              onToggle={() => setExpandedBlockId(expandedBlockId === block.id ? null : block.id)}
+            />
           </div>
         ))}
       </div>

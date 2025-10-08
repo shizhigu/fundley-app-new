@@ -33,14 +33,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取SQL公式
+    // 获取SQL公式和指标类型
     console.log(`🔍 Fetching SQL formulas for ${metricIds.length} metrics`);
     const sqlFormulas: { [metricId: string]: string } = {};
+    const metricTypes: { [metricId: string]: string } = {};
 
     // 批量查询所有指标 - 修复UUID类型问题
     // Convex IDs 不是 UUID 格式，改用文本比较
     const metrics = await db`
-      SELECT id::text as id, name, formula->>'sql' as sql_formula
+      SELECT id::text as id, name, formula->>'sql' as sql_formula, metric_type
       FROM latex_metrics
       WHERE id::text = ANY(${metricIds})
         AND is_active = true
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
     for (const metric of metrics) {
       if (metric.sql_formula) {
         sqlFormulas[metric.id] = metric.sql_formula;
-        console.log(`✅ Found SQL formula for ${metric.name}: ${metric.sql_formula}`);
+        metricTypes[metric.id] = metric.metric_type || 'ratio'; // 默认为ratio
+        console.log(`✅ Found SQL formula for ${metric.name} (${metric.metric_type}): ${metric.sql_formula}`);
       } else {
         console.warn(`⚠️  No SQL formula found for metric: ${metric.name}`);
       }
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Requesting financial data from ${pythonServiceUrl}`);
     console.log(`📋 Request: ${symbols.length} symbols, ${Object.keys(sqlFormulas).length} SQL formulas, ${quarters} quarters`);
 
-    // 调用Python微服务，传递SQL公式而不是metric IDs
+    // 调用Python微服务，传递SQL公式和指标类型
     const response = await fetch(`${pythonServiceUrl}/api/v1/financial-data`, {
       method: 'POST',
       headers: {
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         symbols: symbols.map(s => s.trim().toUpperCase()),
         sqlFormulas, // 传递SQL公式映射
+        metricTypes, // 传递指标类型映射
         quarters
       }),
     });

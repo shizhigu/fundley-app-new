@@ -25,6 +25,8 @@ interface AnalysisBlockProps {
     created_at: string
     chat_id?: string  // Added to pass session ID
   }
+  isExpanded: boolean
+  onToggle: () => void
 }
 
 /**
@@ -37,7 +39,7 @@ interface AnalysisBlockProps {
  * Default state: Collapsed (small card)
  * Click to expand: Full content
  */
-export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
+export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisBlockProps) {
   const { content } = block
 
   // Get session ID from URL or context (you need to pass this from parent)
@@ -46,9 +48,6 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
 
   // Extract title (flexible field naming)
   const title = content.title || content.name || 'Analysis Block'
-
-  // Main collapsed/expanded state for the entire block
-  const [isBlockExpanded, setIsBlockExpanded] = useState(false)
 
   // State for collapsible sections (only used when block is expanded)
   const [isChartExpanded, setIsChartExpanded] = useState(true)
@@ -108,12 +107,12 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
 
   // Load data when block is expanded or selected data index changes
   React.useEffect(() => {
-    if (isBlockExpanded && dataFiles.length > 0) {
+    if (isExpanded && dataFiles.length > 0) {
       // Load selected data file
       const selectedFile = dataFiles[selectedDataIndex] || dataFiles[0]
       loadTableData(selectedFile)
     }
-  }, [isBlockExpanded, dataFiles, selectedDataIndex, loadTableData])
+  }, [isExpanded, dataFiles, selectedDataIndex, loadTableData])
 
   // Extract summary for collapsed view (first 150 chars of text content)
   const summary = content.text
@@ -172,11 +171,11 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
   })
 
   // Collapsed view - small card
-  if (!isBlockExpanded) {
+  if (!isExpanded) {
     return (
       <Card
         className="w-full cursor-pointer group"
-        onClick={() => setIsBlockExpanded(true)}
+        onClick={onToggle}
       >
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
@@ -236,7 +235,7 @@ export function AnalysisBlockRenderer({ block }: AnalysisBlockProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsBlockExpanded(false)}
+            onClick={onToggle}
             className="h-8 w-8 p-0"
           >
             <ChevronUp className="h-4 w-4" />
