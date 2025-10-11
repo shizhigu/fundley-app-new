@@ -37,6 +37,76 @@ import { DISPLAY_MODELS } from '@/lib/config/chat-models';
 import { startTransition, useOptimistic } from 'react';
 import { cn } from '@/lib/utils';
 
+// Streaming Timer Component
+const StreamingTimer = memo(() => {
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      className="
+        relative px-3 py-2 rounded-xl w-fit mx-auto
+        bg-white/[0.05] dark:bg-white/[0.08]
+        backdrop-blur-lg backdrop-saturate-150
+        border border-white/[0.12] dark:border-white/[0.16]
+        shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)]
+      "
+    >
+      <div className="flex items-center gap-3">
+        {/* Compact pulse animation */}
+        <div className="flex items-center gap-1">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
+              animate={{
+                scale: [1, 1.3, 1],
+                opacity: [0.4, 1, 0.4],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: i * 0.15,
+                ease: [0.4, 0, 0.2, 1],
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Timer display */}
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-xs font-mono text-muted-foreground/70 tabular-nums"
+        >
+          {formatTime(elapsedTime)}
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+});
+
+StreamingTimer.displayName = 'StreamingTimer';
+
 function PureMultimodalInput({
   status,
   stop,
@@ -288,42 +358,10 @@ function PureMultimodalInput({
 
   return (
     <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4 bg-transparent">
-      {/* Modern Loading Indicator */}
+      {/* Modern Loading Indicator with Timer */}
       <AnimatePresence>
         {status === 'streaming' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className="
-              relative px-3 py-2 rounded-xl w-fit mx-auto
-              bg-white/[0.05] dark:bg-white/[0.08]
-              backdrop-blur-lg backdrop-saturate-150
-              border border-white/[0.12] dark:border-white/[0.16]
-              shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)]
-            "
-          >
-            {/* Compact pulse animation */}
-            <div className="flex items-center gap-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [0.4, 1, 0.4],
-                  }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: i * 0.15,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                />
-              ))}
-            </div>
-          </motion.div>
+          <StreamingTimer />
         )}
       </AnimatePresence>
       <AnimatePresence>
