@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronUp, Building2, Settings, Users, UserPlus } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronUp, Building2, Settings, Users, UserPlus, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { LoaderIcon } from './icons';
+import { SettingsDialog } from './settings-dialog';
 
 interface SidebarUserNavProps {
   user?: {
@@ -30,6 +32,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const { isLoaded, user: clerkUser } = useUser();
   const { organization } = useOrganization();
   const { setTheme, resolvedTheme } = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const displayEmail = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || 'User';
 
@@ -112,9 +115,19 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
               <Building2 className="mr-2 h-4 w-4" />
               {organization ? 'Switch Organization' : 'Create Organization'}
             </DropdownMenuItem>
-            
+
             <DropdownMenuSeparator />
-            
+
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={() => setSettingsOpen(true)}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
             <DropdownMenuItem
               data-testid="user-nav-item-theme"
               className="cursor-pointer"
@@ -136,6 +149,8 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

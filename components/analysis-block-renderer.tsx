@@ -321,7 +321,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                       src={`/api/files/${chartFile}?session_id=${sessionId}`}
                       className="w-full h-full border-0 min-w-0"
                       title={`Visualization ${index + 1}`}
-                      sandbox="allow-scripts allow-same-origin"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
                     />
                   </div>
                 )}
@@ -539,7 +539,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                 src={`/api/files/${maximizedChart}?session_id=${sessionId}`}
                 className="w-full h-full border-0"
                 title="Visualization (Maximized)"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
               />
             )}
           </div>

@@ -146,6 +146,27 @@ function PureMultimodalInput({
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const { width } = useWindowSize();
 
+  // Listen for template prefill event
+  useEffect(() => {
+    const handleTemplatePrefill = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      const prompt = customEvent.detail;
+      setInput(prompt);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const textarea = textareaRef.current;
+          textarea.style.height = 'auto';
+          const newHeight = Math.min(textarea.scrollHeight + 2, 200);
+          textarea.style.height = `${newHeight}px`;
+        }
+      });
+    };
+
+    window.addEventListener('template-prefill', handleTemplatePrefill);
+    return () => window.removeEventListener('template-prefill', handleTemplatePrefill);
+  }, []);
+
   useEffect(() => {
     if (textareaRef.current) {
       adjustHeight();
