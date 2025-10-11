@@ -88,11 +88,14 @@ export interface ChatActions {
 
 // ============ 财务数据会话状态 ============
 
-import type { FinancialDataPoint, AvailableMetric } from '@/lib/types/financial-data';
+import type {
+  FinancialDataPoint,
+  AvailableMetric,
+} from '@/lib/types/financial-data';
 
 export interface FinancialSessionState {
-  'financial_metrics_data'?: FinancialDataPoint[];
-  'available_metrics'?: AvailableMetric[];
+  financial_metrics_data?: FinancialDataPoint[];
+  available_metrics?: AvailableMetric[];
 }
 
 // ============ 组件Props类型 ============
@@ -136,8 +139,15 @@ export interface CreateChatResponse {
 // ============ 事件类型 ============
 
 export interface StreamEvent {
-  type: 'user_saved' | 'assistant_start' | 'assistant_content' | 'assistant_complete' |
-        'tool_start' | 'tool_complete' | 'conversation_complete' | 'error';
+  type:
+    | 'user_saved'
+    | 'assistant_start'
+    | 'assistant_content'
+    | 'assistant_complete'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'conversation_complete'
+    | 'error';
   message?: ChatMessage;
   messageId?: string;
   content?: string;
