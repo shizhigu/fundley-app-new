@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download } from 'lucide-react'
+import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download, FileSpreadsheet, Search } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -12,11 +12,15 @@ import {
   flexRender,
   getSortedRowModel,
   getPaginationRowModel,
+  getFilteredRowModel,
   SortingState,
+  ColumnFiltersState,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import * as XLSX from 'xlsx'
 
 interface AnalysisBlockProps {
   block: {
@@ -55,6 +59,8 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
   const [dataLoading, setDataLoading] = useState(false)
   const [tableData, setTableData] = useState<any[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
   const [selectedDataIndex, setSelectedDataIndex] = useState(0) // Track which data table to show
 
   // State for fullscreen/maximized view - support multiple charts
@@ -128,6 +134,18 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     link.click()
   }, [sessionId])
 
+  // Excel export handler
+  const handleExportExcel = useCallback(() => {
+    if (tableData.length === 0) return
+
+    const worksheet = XLSX.utils.json_to_sheet(tableData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data')
+
+    const fileName = dataFiles[selectedDataIndex]?.replace('.json', '.xlsx') || 'table_export.xlsx'
+    XLSX.writeFile(workbook, fileName)
+  }, [tableData, dataFiles, selectedDataIndex])
+
   // Count available content types
   const hasText = !!content.text
   const hasChart = charts.length > 0
@@ -160,10 +178,17 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
   const table = useReactTable({
     data: tableData,
     columns,
-    state: { sorting },
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       pagination: { pageSize: 10 }
@@ -333,7 +358,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
         {/* Data Table (JSON) - Support multiple data files */}
         {dataFiles.length > 0 && (
           <div className="border rounded-lg w-full" style={{ maxWidth: '100%' }}>
-            {/* Header with collapse button */}
+            {/* Header with collapse button and actions */}
             <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
               <button
                 onClick={() => setIsDataExpanded(!isDataExpanded)}
@@ -345,22 +370,37 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                 </span>
                 {tableData.length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    ({tableData.length} rows)
+                    ({table.getFilteredRowModel().rows.length} / {tableData.length} rows)
                   </span>
                 )}
                 {isDataExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
               </button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsDataMaximized(true)
-                }}
-                className="h-8 w-8 p-0"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleExportExcel()
+                  }}
+                  className="h-8 px-3"
+                  disabled={tableData.length === 0}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1" />
+                  <span className="text-xs">Export</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsDataMaximized(true)
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Tab navigation for multiple data files */}
@@ -391,6 +431,19 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                   </div>
                 ) : tableData.length > 0 ? (
                   <>
+                    {/* Search bar */}
+                    <div className="px-3 py-2 border-t bg-muted/30">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search all columns..."
+                          value={globalFilter ?? ''}
+                          onChange={(e) => setGlobalFilter(e.target.value)}
+                          className="pl-9 h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+
                     {/* TanStack Table with horizontal scroll - max height with scroll */}
                     <div className="border-t max-h-[500px] overflow-auto" style={{ width: '100%', display: 'block' }}>
                       <table className="divide-y divide-gray-200" style={{ width: 'max-content', minWidth: '100%' }}>
@@ -497,7 +550,19 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
       <Dialog open={isDataMaximized} onOpenChange={setIsDataMaximized}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 flex flex-col">
           <DialogHeader className="p-6 pb-4 border-b">
-            <DialogTitle>Data Table - {title}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Data Table - {title}</DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="h-8 px-3"
+                disabled={tableData.length === 0}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export to Excel
+              </Button>
+            </div>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {dataLoading ? (
@@ -506,8 +571,24 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
               </div>
             ) : tableData.length > 0 ? (
               <>
+                {/* Search bar in maximized view */}
+                <div className="px-6 py-3 border-b bg-muted/30">
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search all columns..."
+                      value={globalFilter ?? ''}
+                      onChange={(e) => setGlobalFilter(e.target.value)}
+                      className="pl-9 h-9 text-sm"
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Showing {table.getFilteredRowModel().rows.length} of {tableData.length} rows
+                  </div>
+                </div>
+
                 {/* Maximized TanStack Table with horizontal scroll */}
-                <div className="h-[calc(90vh-12rem)] overflow-auto" style={{ width: '100%', display: 'block' }}>
+                <div className="h-[calc(90vh-16rem)] overflow-auto" style={{ width: '100%', display: 'block' }}>
                     <table className="divide-y divide-gray-200" style={{ width: 'max-content', minWidth: '100%' }}>
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         {table.getHeaderGroups().map(headerGroup => (
