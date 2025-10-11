@@ -48,12 +48,35 @@ export function useChat(): ChatState & ChatActions {
 
     const sessionState: FinancialSessionState = {};
 
+    // 压缩财务数据：删除YoY/QoQ，限制数字精度为3位小数
     if (currentFinancialData && currentFinancialData.length > 0) {
-      sessionState['financial metrics data'] = currentFinancialData;
+      sessionState['financial_metrics_data'] = currentFinancialData.map(dataPoint => {
+        const compressedMetrics: any = {};
+
+        // 遍历每个指标
+        Object.keys(dataPoint.metrics).forEach(metricKey => {
+          const metricData = dataPoint.metrics[metricKey];
+
+          // 只保留value，删除qoq和yoy
+          compressedMetrics[metricKey] = {
+            value: typeof metricData.value === 'number'
+              ? parseFloat(metricData.value.toFixed(3))  // 保留3位小数
+              : metricData.value
+          };
+        });
+
+        return {
+          symbol: dataPoint.symbol,
+          fiscalYear: dataPoint.fiscalYear,
+          period: dataPoint.period,
+          date: dataPoint.date,
+          metrics: compressedMetrics
+        };
+      });
     }
 
     if (currentAvailableMetrics && currentAvailableMetrics.length > 0) {
-      sessionState['available metrics'] = currentAvailableMetrics;
+      sessionState['available_metrics'] = currentAvailableMetrics;
     }
 
     return sessionState;
@@ -209,11 +232,11 @@ export function useChat(): ChatState & ChatActions {
       // 构建请求
       const sessionState = buildSessionState();
       console.log('📤 Sending message with sessionState:', {
-        hasFinancialData: !!(sessionState['financial metrics data']?.length),
-        financialDataLength: sessionState['financial metrics data']?.length || 0,
-        hasAvailableMetrics: !!(sessionState['available metrics']?.length),
-        availableMetricsLength: sessionState['available metrics']?.length || 0,
-        sampleSymbols: sessionState['financial metrics data']?.slice(0, 3).map(d => d.symbol) || []
+        hasFinancialData: !!(sessionState['financial_metrics_data']?.length),
+        financialDataLength: sessionState['financial_metrics_data']?.length || 0,
+        hasAvailableMetrics: !!(sessionState['available_metrics']?.length),
+        availableMetricsLength: sessionState['available_metrics']?.length || 0,
+        sampleSymbols: sessionState['financial_metrics_data']?.slice(0, 3).map(d => d.symbol) || []
       });
 
       const hasFiles = files && files.length > 0;

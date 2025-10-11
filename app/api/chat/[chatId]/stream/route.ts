@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/clerk';
 import { db } from '@/lib/db/config';
 
+// Disable timeout for streaming responses (unlimited for self-hosted)
+export const maxDuration = 0; // 0 = unlimited timeout
+export const dynamic = 'force-dynamic';
+
 // 自动命名聊天函数
 async function autoNameChat(
   chatId: string,
@@ -211,10 +215,15 @@ export async function POST(
         '📨 Received JSON request with sessionState keys:',
         Object.keys(sessionState),
       );
-      if (sessionState['financial metrics data']) {
+
+      // 兼容旧格式（带空格）和新格式（下划线）
+      const financialData = sessionState['financial_metrics_data'] || sessionState['financial metrics data'];
+      const availableMetrics = sessionState['available_metrics'] || sessionState['available metrics'];
+
+      if (financialData) {
         console.log(
           '📊 Financial data found in sessionState:',
-          sessionState['financial metrics data'].length,
+          financialData.length,
           'records',
         );
       } else {

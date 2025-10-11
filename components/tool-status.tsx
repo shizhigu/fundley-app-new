@@ -83,6 +83,14 @@ const toolConfig: Record<string, { label: string; icon: React.ElementType }> = {
     label: 'Sophisticated analysis completed',
     icon: PythonIcon,
   },
+  read_script_lines: {
+    label: 'Result reviewed',
+    icon: FileText,
+  },
+  edit_script_lines: {
+    label: 'Result finetuned',
+    icon: FileText,
+  },
   download_file_from_sandbox: {
     label: 'Artifact downloaded',
     icon: Download,

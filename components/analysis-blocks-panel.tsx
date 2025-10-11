@@ -22,8 +22,13 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   const lastTimestampRef = useRef<string | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 初始加载
+  // 初始加载 - 每次切换chat时重新加载
   useEffect(() => {
+    // 重置状态
+    setBlocks([])
+    setExpandedBlockId(null)
+    lastTimestampRef.current = null
+
     loadInitialBlocks()
 
     // 清理函数
@@ -64,9 +69,11 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
 
       setBlocks(fetchedBlocks)
 
-      // 记录最新的时间戳
+      // 记录最新的时间戳，并自动展开最新的block
       if (fetchedBlocks.length > 0) {
-        lastTimestampRef.current = fetchedBlocks[fetchedBlocks.length - 1].created_at
+        const latestBlock = fetchedBlocks[fetchedBlocks.length - 1]
+        lastTimestampRef.current = latestBlock.created_at
+        setExpandedBlockId(latestBlock.id)
       }
     } catch (err) {
       console.error('Failed to load analysis blocks:', err)
@@ -82,7 +89,9 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
       const fetchedBlocks = await getAnalysisBlocksSince(chatId)
       if (fetchedBlocks.length > 0) {
         setBlocks(fetchedBlocks)
-        lastTimestampRef.current = fetchedBlocks[fetchedBlocks.length - 1].created_at
+        const latestBlock = fetchedBlocks[fetchedBlocks.length - 1]
+        lastTimestampRef.current = latestBlock.created_at
+        setExpandedBlockId(latestBlock.id)
       }
       return
     }

@@ -91,8 +91,8 @@ export interface ChatActions {
 import type { FinancialDataPoint, AvailableMetric } from '@/lib/types/financial-data';
 
 export interface FinancialSessionState {
-  'financial metrics data'?: FinancialDataPoint[];
-  'available metrics'?: AvailableMetric[];
+  'financial_metrics_data'?: FinancialDataPoint[];
+  'available_metrics'?: AvailableMetric[];
 }
 
 // ============ 组件Props类型 ============
