@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/clerk';
 
-const CHATBOT_SERVICE_URL = process.env.CHATBOT_SERVICE_URL || 'http://localhost:8000';
+const AGENTSOS_API_URL = process.env.AGENTSOS_API_URL;
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if AgentOS API URL is configured
+    if (!AGENTSOS_API_URL) {
+      console.error('AGENTSOS_API_URL environment variable is not set');
+      return NextResponse.json(
+        { error: 'Service configuration error', details: 'AGENTSOS_API_URL not configured' },
+        { status: 500 }
+      );
+    }
+
     // Get authenticated user
     const session = await auth();
 
@@ -19,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch token usage from Python backend
     const response = await fetch(
-      `${CHATBOT_SERVICE_URL}/api/v1/users/token-usage/${userId}`,
+      `${AGENTSOS_API_URL}/api/v1/users/token-usage/${userId}`,
       {
         method: 'GET',
         headers: {
