@@ -6,11 +6,10 @@ import { TradingChart } from '@/components/trading-chart';
 import type { AuthSession } from '@/lib/auth/clerk';
 
 interface MobileTabsProps {
-  initialChatModel: string;
   user: AuthSession['user'];
 }
 
-export function MobileTabs({ initialChatModel, user }: MobileTabsProps) {
+export function MobileTabs({ user }: MobileTabsProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'chart'>('chat');
 
   return (
@@ -46,7 +45,6 @@ export function MobileTabs({ initialChatModel, user }: MobileTabsProps) {
           <div className={`h-full ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
             <ChatManager
               user={user}
-              initialChatModel={initialChatModel}
             />
           </div>
 

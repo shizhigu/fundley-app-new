@@ -102,18 +102,15 @@ export interface FinancialSessionState {
 
 export interface ChatLayoutProps {
   user: AuthSession['user'];
-  initialChatModel: string;
 }
 
 export interface ChatManagerProps {
   user: AuthSession['user'];
-  initialChatModel: string;
 }
 
 export interface ChatInterfaceProps {
   chatId: string;
   user: AuthSession['user'];
-  initialChatModel: string;
   isReadonly?: boolean;
 }
 

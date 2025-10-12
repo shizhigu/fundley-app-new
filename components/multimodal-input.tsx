@@ -26,16 +26,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown, Paperclip, Sparkles } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
-
-type VisibilityType = 'private' | 'public';
+import { cn } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { DISPLAY_MODELS } from '@/lib/config/chat-models';
-import { startTransition, useOptimistic } from 'react';
-import { cn } from '@/lib/utils';
+
+type VisibilityType = 'private' | 'public';
 
 // Streaming Timer Component
 const StreamingTimer = memo(() => {
@@ -118,8 +116,6 @@ function PureMultimodalInput({
   className,
   selectedVisibilityType,
   user,
-  selectedModelId,
-  setSelectedModelId,
   isAtBottom,
   scrollToBottom,
 }: {
@@ -133,8 +129,6 @@ function PureMultimodalInput({
   className?: string;
   selectedVisibilityType: VisibilityType;
   user: AuthSession['user'];
-  selectedModelId: string;
-  setSelectedModelId?: (modelId: string) => void;
   isAtBottom?: boolean;
   scrollToBottom?: () => void;
 }) {
@@ -498,7 +492,7 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-        <CompactModelSelector user={user} selectedModelId={selectedModelId} setSelectedModelId={setSelectedModelId} />
+        <SuggestionsButton messages={messages} />
       </div>
 
       <div className="absolute bottom-0 right-0 p-3 flex flex-row items-center">
@@ -522,7 +516,6 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
-    if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
     if (prevProps.isAtBottom !== nextProps.isAtBottom) return false;
 
     return true;
@@ -553,84 +546,6 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
-// Compact Model Selector for input area
-function PureCompactModelSelector({
-  user,
-  selectedModelId,
-  setSelectedModelId,
-}: {
-  user: AuthSession['user'];
-  selectedModelId: string;
-  setSelectedModelId?: (modelId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [optimisticModelId, setOptimisticModelId] = useOptimistic(selectedModelId);
-
-  // 简化：直接使用所有展示模型（无权限逻辑）
-  const availableChatModels = DISPLAY_MODELS;
-
-  // Get simple model name
-  const getSimpleModelName = (modelId: string) => {
-    const model = DISPLAY_MODELS.find(m => m.id === modelId);
-    return model?.name || modelId;
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center transition-all duration-300',
-            'text-foreground hover:text-primary',
-            open && 'neuro-pill-active'
-          )}
-        >
-          <Sparkles size={18} />
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent
-        align="start"
-        className="w-fit p-2 neuro-card"
-        sideOffset={8}
-      >
-        <div className="space-y-1">
-          {availableChatModels.map((chatModel) => {
-            const { id } = chatModel;
-            const isSelected = id === optimisticModelId;
-            const simpleName = getSimpleModelName(id);
-
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  startTransition(() => {
-                    setOptimisticModelId(id);
-                    setSelectedModelId?.(id);
-                  });
-                }}
-                className={cn(
-                  'w-full px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg',
-                  'flex items-center justify-center whitespace-nowrap',
-                  isSelected
-                    ? 'neuro-primary text-white font-semibold'
-                    : 'neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-foreground hover:text-primary'
-                )}
-              >
-                {simpleName}
-              </button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-const CompactModelSelector = memo(PureCompactModelSelector);
 
 function PureStopButton({
   stop,
@@ -681,5 +596,134 @@ function PureSendButton({
 
 const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.input !== nextProps.input) return false;
+  return true;
+});
+
+// Suggestions Button - extracts suggestions from latest assistant message
+function PureSuggestionsButton({
+  messages,
+}: {
+  messages: Array<UIMessage>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ label: string; prompt: string }>>([]);
+
+  // Extract suggestions from the latest assistant message
+  useEffect(() => {
+    const latestAssistantMessage = [...messages]
+      .reverse()
+      .find(m => m.role === 'assistant');
+
+    if (!latestAssistantMessage?.parts) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Get all text content
+    const allText = latestAssistantMessage.parts
+      ?.filter((part: any) => part.type === 'text')
+      ?.map((part: any) => part.text)
+      ?.join('') || '';
+
+    if (!allText.trim() || !allText.includes('</suggestions>')) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      // Extract suggestions from XML tags
+      const regex = /<suggestions>([\s\S]*?)<\/suggestions>/;
+      const match = allText.match(regex);
+
+      if (!match || !match[1]) {
+        setSuggestions([]);
+        return;
+      }
+
+      const jsonStr = match[1].trim();
+      const parsedSuggestions = JSON.parse(jsonStr);
+
+      if (Array.isArray(parsedSuggestions)) {
+        const validSuggestions = parsedSuggestions.filter(
+          s => s && typeof s === 'object' && s.label && s.prompt
+        );
+        setSuggestions(validSuggestions);
+      } else {
+        setSuggestions([]);
+      }
+    } catch (e) {
+      setSuggestions([]);
+    }
+  }, [messages]);
+
+  const handleSuggestionClick = (prompt: string) => {
+    setOpen(false);
+    // Dispatch template-prefill event
+    window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
+  };
+
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center transition-all duration-300 relative',
+            'text-foreground hover:text-primary',
+            open && 'neuro-pill-active'
+          )}
+        >
+          <Sparkles size={18} />
+          {/* Badge indicating number of suggestions */}
+          {suggestions.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {suggestions.length}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="start"
+        className="w-fit max-w-md p-2 neuro-card"
+        sideOffset={8}
+      >
+        <div className="space-y-1">
+          <div className="px-2 py-1 text-xs text-muted-foreground font-medium">
+            AI Suggestions
+          </div>
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleSuggestionClick(suggestion.prompt)}
+              className={cn(
+                'w-full px-3 py-2 text-sm transition-all duration-300 rounded-lg text-left',
+                'neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900',
+                'hover:text-primary hover:neuro-pill-active'
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                <span className="font-medium">{suggestion.label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const SuggestionsButton = memo(PureSuggestionsButton, (prevProps, nextProps) => {
+  // Re-render when messages change
+  if (prevProps.messages.length !== nextProps.messages.length) return false;
+  const prevLatest = prevProps.messages[prevProps.messages.length - 1];
+  const nextLatest = nextProps.messages[nextProps.messages.length - 1];
+  if (prevLatest?.id !== nextLatest?.id) return false;
   return true;
 });

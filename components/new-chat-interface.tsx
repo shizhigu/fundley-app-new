@@ -13,7 +13,6 @@ import type { AuthSession } from '@/lib/auth/clerk';
 interface NewChatInterfaceProps {
   chatId: string;
   user: AuthSession['user'];
-  initialChatModel: string;
   messages: ChatMessage[];
   groupedMessages?: MessageInvocation[]; // Add grouped messages support
   isLoading: boolean;
@@ -29,7 +28,6 @@ interface NewChatInterfaceProps {
 export function NewChatInterface({
   chatId,
   user,
-  initialChatModel,
   messages,
   groupedMessages = [],
   isLoading,
@@ -150,8 +148,6 @@ export function NewChatInterface({
             sendMessage={handleSendMessage}
             selectedVisibilityType="private"
             user={user}
-            selectedModelId={initialChatModel}
-            setSelectedModelId={() => {}}
             isAtBottom={isAtBottom}
             scrollToBottom={scrollToBottom}
           />

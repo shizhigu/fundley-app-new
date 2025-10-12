@@ -11,7 +11,7 @@ import type { ChatLayoutProps } from '@/lib/types/chat';
  * 主聊天布局组件
  * 负责整体布局：左侧聊天管理器 + 右侧财务数据面板
  */
-export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
+export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
   return (
     <ChatProvider>
       {/* 桌面端分屏布局：可拖拽调整的左右分割面板 */}
@@ -20,7 +20,6 @@ export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
           leftPanel={
             <ChatManager
               user={user}
-              initialChatModel={initialChatModel}
             />
           }
           rightPanel={<RightPanelTabs />}
@@ -35,7 +34,6 @@ export function ChatLayout({ user, initialChatModel }: ChatLayoutProps) {
       <div className="lg:hidden h-screen">
         <MobileTabs
           user={user}
-          initialChatModel={initialChatModel}
         />
       </div>
     </ChatProvider>

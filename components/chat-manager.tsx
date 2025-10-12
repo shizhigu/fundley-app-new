@@ -10,7 +10,7 @@ import type { ChatManagerProps } from '@/lib/types/chat';
  * 聊天管理器组件
  * 整合聊天侧边栏和聊天界面，使用统一的聊天Context
  */
-export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
+export function ChatManager({ user }: ChatManagerProps) {
   // 在桌面端默认展开侧边栏，移动端默认收起
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -105,7 +105,6 @@ export function ChatManager({ user, initialChatModel }: ChatManagerProps) {
           <NewChatInterface
             chatId={chat.currentChatId}
             user={user}
-            initialChatModel={initialChatModel}
             messages={chat.messages}
             groupedMessages={chat.groupedMessages}
             isLoading={chat.isLoading}

@@ -384,56 +384,79 @@ const PurePreviewMessage = ({
     ...attachmentsFromDB
   ];
 
-  // 🎯 SIMPLIFIED: Only extract suggestions for the latest assistant message
+  // 🎯 STREAMING-AWARE: Extract suggestions from XML tags in streamed content
   useEffect(() => {
-    // Only process if this is the latest assistant message that just finished streaming
-    if (!isLoading && 
-        message.role === 'assistant' && 
-        message.id &&
-        isLatest &&
-        !suggestionsGenerated) {
-      
-      setSuggestionsGenerated(true);
-      
-      // Simple approach: always generate fresh suggestions, no caching
-      const allText = message.parts
-        ?.filter((part: any) => part.type === 'text')
-        ?.map((part: any) => part.text)
-        ?.join('') || '';
-      
-      if (allText.trim().length > 50) { // Only if there's meaningful content
-        
-        // Simple metadata API call - no complex ID validation
-        // Handle BigInt serialization in message parts
-        const serializableParts = JSON.parse(JSON.stringify(message.parts, (_, value) =>
-          typeof value === 'bigint' ? value.toString() : value
-        ));
-        
-        fetch('/api/simple-suggestions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            messageText: allText.substring(0, 2000), // Limit text length
-            messageParts: serializableParts,
-          }),
-        })
-        .then(response => response.json())
-        .then(result => {
-          if (result.success && result.suggestions) {
-            setExtractedMetadata({
-              suggestions: result.suggestions,
-              tickers: result.tickers,
-              containsRealData: result.containsRealData,
-              verificationMessage: result.verificationMessage
-            });
-          }
-        })
-        .catch(error => {
-          console.warn('Suggestion API error:', error);
-        });
-      }
+    // Only process assistant messages
+    if (message.role !== 'assistant' || !message.parts) {
+      return;
     }
-  }, [isLoading, message.id, message.role, message.parts, suggestionsGenerated]);
+
+    // Get all text content
+    const allText = message.parts
+      ?.filter((part: any) => part.type === 'text')
+      ?.map((part: any) => part.text)
+      ?.join('') || '';
+
+    if (!allText.trim()) {
+      return;
+    }
+
+    // Extract suggestions from XML tags with streaming awareness
+    const extractSuggestions = (content: string) => {
+      // Only parse if we have a complete closing tag
+      if (!content.includes('</suggestions>')) {
+        return null;
+      }
+
+      try {
+        // Extract content between tags
+        const regex = /<suggestions>([\s\S]*?)<\/suggestions>/;
+        const match = content.match(regex);
+
+        if (!match || !match[1]) {
+          return null;
+        }
+
+        // Parse JSON (handle potential malformed JSON)
+        const jsonStr = match[1].trim();
+        const suggestions = JSON.parse(jsonStr);
+
+        // Validate structure
+        if (!Array.isArray(suggestions)) {
+          console.warn('Suggestions not an array:', suggestions);
+          return null;
+        }
+
+        // Validate each suggestion has required fields
+        const validSuggestions = suggestions.filter(
+          s => s && typeof s === 'object' && s.label && s.prompt
+        );
+
+        if (validSuggestions.length === 0) {
+          return null;
+        }
+
+        return validSuggestions.map(s => ({
+          text: s.prompt,
+          containsRealData: false, // Maintain compatibility with existing interface
+        }));
+      } catch (e) {
+        // Silently fail on JSON parse errors (might be incomplete streaming)
+        return null;
+      }
+    };
+
+    const extractedSuggestions = extractSuggestions(allText);
+
+    if (extractedSuggestions) {
+      setExtractedMetadata({
+        suggestions: extractedSuggestions,
+        tickers: extractedMetadata?.tickers, // Preserve existing tickers
+        containsRealData: extractedMetadata?.containsRealData,
+        verificationMessage: extractedMetadata?.verificationMessage
+      });
+    }
+  }, [message.role, message.parts]);
 
   return (
     <AnimatePresence>
@@ -494,8 +517,12 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
-                  // No metadata parsing - show clean text content
-                  const parsedMessage = { content: sanitizeText(part.text), metadata: {} as MessageMetadata };
+                  // Remove suggestions XML tags from displayed content
+                  let cleanedText = part.text;
+                  const suggestionsTagRegex = /<suggestions>[\s\S]*?<\/suggestions>/g;
+                  cleanedText = cleanedText.replace(suggestionsTagRegex, '').trim();
+
+                  const parsedMessage = { content: sanitizeText(cleanedText), metadata: {} as MessageMetadata };
                   
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">

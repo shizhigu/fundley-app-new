@@ -17,7 +17,7 @@ export default async function SimpleChatPage({
 
   return (
     <div className="h-screen">
-      <ChatManager user={session.user} initialChatModel="gpt-4o" />
+      <ChatManager user={session.user} />
     </div>
   );
 }
