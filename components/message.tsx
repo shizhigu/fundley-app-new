@@ -1,4 +1,5 @@
 'use client';
+
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
@@ -21,12 +22,10 @@ import { ToolStatus } from './tool-status';
 import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
-// Removed direct import - now using API route
 
 // Chart.js visualization engine for frontend execution
 const JSVisualizationEngine = {
   generateChartJSHTML: (data: any[], chartConfig: any, vizId: string = 'default'): string => {
-    // Use the chartConfig directly as it's already a Chart.js config
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -70,24 +69,20 @@ const JSVisualizationEngine = {
   }
 };
 
-// Citation Card Component - handles metadata fetching
+// Citation Card Component - 2025 Design
 const CitationCard = ({ citation }: { citation: any }) => {
   const [imageError, setImageError] = useState(false);
   const [metadata, setMetadata] = useState<{title?: string, description?: string, loading?: boolean}>({ loading: true });
-  
-  // Parse citation data
+
   const url = typeof citation === 'string' ? citation : citation.url || citation.link;
-  
-  // Fetch real page title and description with caching
+
   useEffect(() => {
     const cacheKey = `metadata_${url}`;
-    
-    // Check localStorage cache first
     const cached = localStorage.getItem(cacheKey);
+
     if (cached) {
       try {
         const cachedData = JSON.parse(cached);
-        // Check if cache is less than 1 hour old
         if (Date.now() - cachedData.timestamp < 60 * 60 * 1000) {
           setMetadata({
             title: cachedData.title,
@@ -97,7 +92,7 @@ const CitationCard = ({ citation }: { citation: any }) => {
           return;
         }
       } catch (e) {
-        // Invalid cached data, continue to fetch
+        // Continue to fetch
       }
     }
 
@@ -105,25 +100,22 @@ const CitationCard = ({ citation }: { citation: any }) => {
       try {
         const response = await fetch(`/api/metadata?url=${encodeURIComponent(url)}`);
         const data = await response.json();
-        
+
         const metadataResult = {
           title: data.title,
           description: data.description,
           loading: false
         };
-        
+
         setMetadata(metadataResult);
-        
-        // Cache the result
         localStorage.setItem(cacheKey, JSON.stringify({
           title: data.title,
           description: data.description,
           timestamp: Date.now()
         }));
-        
+
       } catch (error) {
         console.warn('Failed to fetch metadata for', url);
-        // Fallback to domain name
         try {
           const domain = new URL(url).hostname.replace('www.', '');
           const fallbackResult = {
@@ -131,25 +123,19 @@ const CitationCard = ({ citation }: { citation: any }) => {
             description: `Content from ${domain}`,
             loading: false
           };
-          
           setMetadata(fallbackResult);
-          
-          // Cache fallback too
           localStorage.setItem(cacheKey, JSON.stringify({
             title: domain,
             description: `Content from ${domain}`,
             timestamp: Date.now()
           }));
-          
         } catch {
           const defaultResult = {
             title: 'Web Page',
             description: 'External content',
             loading: false
           };
-          
           setMetadata(defaultResult);
-          
           localStorage.setItem(cacheKey, JSON.stringify({
             title: 'Web Page',
             description: 'External content',
@@ -161,11 +147,10 @@ const CitationCard = ({ citation }: { citation: any }) => {
 
     fetchMetadata();
   }, [url]);
-  
+
   const displayTitle = metadata.loading ? 'Loading...' : metadata.title || new URL(url).hostname;
   const displayDescription = metadata.loading ? '' : metadata.description || '';
-  
-  // Generate preview image URL (using favicon as fallback)
+
   const getPreviewImage = (url: string) => {
     try {
       const domain = new URL(url).hostname;
@@ -176,14 +161,13 @@ const CitationCard = ({ citation }: { citation: any }) => {
   };
 
   return (
-    <a 
-      href={url} 
-      target="_blank" 
+    <a
+      href={url}
+      target="_blank"
       rel="noopener noreferrer"
-      className="block p-2 bg-white/20 dark:bg-gray-800/20 border border-gray-200/30 dark:border-gray-700/30 rounded text-xs hover:bg-white/30 dark:hover:bg-gray-700/30 transition-colors group"
+      className="block p-2 bg-card border border-border/50 rounded-lg text-xs hover:scale-[1.02] hover:border-brand-primary/30 transition-all duration-150 group"
     >
       <div className="flex gap-2">
-        {/* Preview Image */}
         <div className="flex-shrink-0">
           {!imageError ? (
             <img
@@ -193,44 +177,41 @@ const CitationCard = ({ citation }: { citation: any }) => {
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
+            <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
               <span className="text-xs">🌐</span>
             </div>
           )}
         </div>
-        
-        {/* Content */}
+
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate text-xs">
+          <div className="font-medium text-foreground group-hover:text-brand-primary truncate text-xs transition-colors duration-150">
             {displayTitle}
           </div>
           {displayDescription && (
-            <div className="text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 text-xs">
+            <div className="text-muted-foreground mt-1 line-clamp-2 text-xs">
               {displayDescription}
             </div>
           )}
-          <div className="text-gray-400 dark:text-gray-500 mt-1 truncate text-xs">
+          <div className="text-muted-foreground/70 mt-1 truncate text-xs">
             {new URL(url).hostname}
           </div>
         </div>
-        
-        {/* External link indicator */}
-        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="text-gray-400 text-xs">↗</span>
+
+        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <span className="text-muted-foreground text-xs">↗</span>
         </div>
       </div>
     </a>
   );
 };
 
-// Compact Search Results Component - restored working version
+// Search Results Card - 2025 Design
 const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; output: any; input: any }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  // Parse the output exactly as before
+
   let content = '';
   let citations = [];
-  
+
   if (typeof output === 'string') {
     content = output;
   } else if (output && typeof output === 'object') {
@@ -243,49 +224,38 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
       initial={{ opacity: 0, y: 5, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={cn(
-        "relative rounded-lg overflow-hidden max-w-xl", // Made smaller
-        "bg-white/30 dark:bg-gray-900/30", // More transparent
-        "backdrop-blur-md border border-white/20 dark:border-gray-700/20",
-        "shadow-[0_4px_16px_-4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.2)]",
-        "transition-all duration-200"
-      )}
+      className="relative rounded-xl overflow-hidden max-w-xl bg-card border border-border/50 transition-all duration-150 hover:scale-[1.02] hover:border-brand-primary/30"
     >
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/3 via-transparent to-blue-500/3 pointer-events-none" />
-      
-      {/* Compact Header - Clickable */}
-      <div 
-        className="relative px-3 py-2 cursor-pointer hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors"
+      <div
+        className="relative px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors duration-150"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
-          <div className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400">🌐</div>
+          <div className="w-3.5 h-3.5 text-brand-primary">🌐</div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-xs font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="text-xs font-medium text-foreground">
               Web Search
             </h3>
             {input?.query && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 &ldquo;{input.query.substring(0, 30)}...&rdquo;
               </p>
             )}
           </div>
           <div className="flex items-center gap-2">
             {citations.length > 0 && (
-              <span className="text-xs text-gray-600 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {citations.length} sources
               </span>
             )}
             <div className={cn(
-              "w-3.5 h-3.5 text-gray-400 transition-transform duration-200",
+              "w-3.5 h-3.5 text-muted-foreground transition-transform duration-150",
               isExpanded && "rotate-180"
             )}>↓</div>
           </div>
         </div>
       </div>
-      
-      {/* Expandable content */}
+
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -293,15 +263,14 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden border-t border-gray-200/40 dark:border-gray-700/40"
+            className="overflow-hidden border-t border-border/50"
           >
-            {/* Compact content */}
             {content && (
               <div className="px-3 py-2">
                 <div className="flex items-start gap-2 mb-3">
-                  <div className="w-3 h-3 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0">✨</div>
+                  <div className="w-3 h-3 text-brand-primary mt-0.5 flex-shrink-0">✨</div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-orange-700 dark:text-orange-300 mb-1">
+                    <h4 className="text-xs font-medium text-brand-primary mb-1">
                       Key Insights
                     </h4>
                     <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
@@ -311,11 +280,10 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
                 </div>
               </div>
             )}
-            
-            {/* Compact Citations */}
+
             {citations.length > 0 && (
-              <div className="px-3 pb-3 border-t border-gray-200/20 dark:border-gray-700/20">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 mt-2">
+              <div className="px-3 pb-3 border-t border-border/30">
+                <h4 className="text-xs font-medium text-foreground mb-2 mt-2">
                   Sources ({citations.length})
                 </h4>
                 <div className="space-y-1">
@@ -332,9 +300,7 @@ const SearchResultsCard = ({ toolCallId, output, input }: { toolCallId: string; 
   );
 };
 
-// Type narrowing is handled by TypeScript's control flow analysis
-// The AI SDK provides proper discriminated unions for tool calls
-
+// Main Message Component
 const PurePreviewMessage = ({
   message,
   isLoading,
@@ -355,8 +321,8 @@ const PurePreviewMessage = ({
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [extractedMetadata, setExtractedMetadata] = useState<{ 
-    tickers?: string[], 
+  const [extractedMetadata, setExtractedMetadata] = useState<{
+    tickers?: string[],
     suggestions?: { text: string, containsRealData: boolean, verificationMessage?: string }[],
     containsRealData?: boolean,
     verificationMessage?: string
@@ -364,34 +330,28 @@ const PurePreviewMessage = ({
   const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
   const [showFullVerification, setShowFullVerification] = useState(false);
 
-  // 从两个地方收集附件：新的attachments字段和旧的parts中的file类型
+  // Collect attachments from two sources
   const attachmentsFromParts = message.parts?.filter(
     (part: any) => part.type === 'file',
   ) || [];
 
-  // 从数据库的attachments字段获取附件
   const attachmentsFromDB = (message as any).attachments || [];
 
-  // 合并两种类型的附件
   const allAttachments = [
-    // 将parts中的file转换为Attachment格式
     ...attachmentsFromParts.map((part: any) => ({
       name: part.filename ?? 'file',
       contentType: part.mediaType,
       url: part.url,
     })),
-    // 直接使用数据库中的attachments
     ...attachmentsFromDB
   ];
 
-  // 🎯 STREAMING-AWARE: Extract suggestions from XML tags in streamed content
+  // Extract suggestions from XML tags in streamed content
   useEffect(() => {
-    // Only process assistant messages
     if (message.role !== 'assistant' || !message.parts) {
       return;
     }
 
-    // Get all text content
     const allText = message.parts
       ?.filter((part: any) => part.type === 'text')
       ?.map((part: any) => part.text)
@@ -401,15 +361,12 @@ const PurePreviewMessage = ({
       return;
     }
 
-    // Extract suggestions from XML tags with streaming awareness
     const extractSuggestions = (content: string) => {
-      // Only parse if we have a complete closing tag
       if (!content.includes('</suggestions>')) {
         return null;
       }
 
       try {
-        // Extract content between tags
         const regex = /<suggestions>([\s\S]*?)<\/suggestions>/;
         const match = content.match(regex);
 
@@ -417,17 +374,14 @@ const PurePreviewMessage = ({
           return null;
         }
 
-        // Parse JSON (handle potential malformed JSON)
         const jsonStr = match[1].trim();
         const suggestions = JSON.parse(jsonStr);
 
-        // Validate structure
         if (!Array.isArray(suggestions)) {
           console.warn('Suggestions not an array:', suggestions);
           return null;
         }
 
-        // Validate each suggestion has required fields
         const validSuggestions = suggestions.filter(
           s => s && typeof s === 'object' && s.label && s.prompt
         );
@@ -438,10 +392,9 @@ const PurePreviewMessage = ({
 
         return validSuggestions.map(s => ({
           text: s.prompt,
-          containsRealData: false, // Maintain compatibility with existing interface
+          containsRealData: false,
         }));
       } catch (e) {
-        // Silently fail on JSON parse errors (might be incomplete streaming)
         return null;
       }
     };
@@ -451,7 +404,7 @@ const PurePreviewMessage = ({
     if (extractedSuggestions) {
       setExtractedMetadata({
         suggestions: extractedSuggestions,
-        tickers: extractedMetadata?.tickers, // Preserve existing tickers
+        tickers: extractedMetadata?.tickers,
         containsRealData: extractedMetadata?.containsRealData,
         verificationMessage: extractedMetadata?.verificationMessage
       });
@@ -477,7 +430,7 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === 'assistant' && (
-            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-brand-avatar">
+            <div className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20">
               <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
             </div>
           )}
@@ -494,9 +447,9 @@ const PurePreviewMessage = ({
               >
                 <EnhancedAttachmentPreview
                   attachments={allAttachments}
-                  onRemove={() => {}} // 消息中的附件不允许删除
+                  onRemove={() => {}}
                   isUploading={false}
-                  showRemoveButton={false} // 消息中不显示删除按钮
+                  showRemoveButton={false}
                 />
               </div>
             )}
@@ -517,13 +470,12 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
-                  // Remove suggestions XML tags from displayed content
                   let cleanedText = part.text;
                   const suggestionsTagRegex = /<suggestions>[\s\S]*?<\/suggestions>/g;
                   cleanedText = cleanedText.replace(suggestionsTagRegex, '').trim();
 
                   const parsedMessage = { content: sanitizeText(cleanedText), metadata: {} as MessageMetadata };
-                  
+
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -532,7 +484,7 @@ const PurePreviewMessage = ({
                             <Button
                               data-testid="message-edit-button"
                               variant="ghost"
-                              className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                              className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100 transition-opacity duration-150"
                               onClick={() => {
                                 setMode('edit');
                               }}
@@ -555,24 +507,20 @@ const PurePreviewMessage = ({
                         ) : (
                           <Markdown>{parsedMessage.content}</Markdown>
                         )}
-                        
-                        {/* Render metadata components if available */}
+
                         {hasMetadata(parsedMessage.metadata) && (
                           <div className="flex flex-col gap-3 mt-2">
-                            {/* Ticker buttons */}
                             {parsedMessage.metadata.tickers && (
-                              <TickerButtonGroup 
+                              <TickerButtonGroup
                                 tickers={parsedMessage.metadata.tickers}
                                 className="not-prose"
                               />
                             )}
-                            
-                            {/* Suggestion buttons */}
+
                             {parsedMessage.metadata.suggestions && (
-                              <SuggestionButtonGroup 
+                              <SuggestionButtonGroup
                                 suggestions={parsedMessage.metadata.suggestions}
                                 onSuggestionClick={(suggestion) => {
-                                  // Find the textarea input element by multiple possible selectors
                                   const selectors = [
                                     'textarea[data-testid="multimodal-input"]',
                                     'textarea[name="message"]',
@@ -581,29 +529,24 @@ const PurePreviewMessage = ({
                                     '.professional-input',
                                     'form textarea'
                                   ];
-                                  
+
                                   let input: HTMLTextAreaElement | null = null;
                                   for (const selector of selectors) {
                                     input = document.querySelector(selector) as HTMLTextAreaElement;
                                     if (input) break;
                                   }
-                                  
+
                                   if (input) {
-                                    // Set the value and trigger React's change event
                                     const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
                                     nativeTextAreaValueSetter?.call(input, suggestion);
-                                    
-                                    // Trigger input and change events for React
+
                                     const inputEvent = new Event('input', { bubbles: true });
                                     input.dispatchEvent(inputEvent);
-                                    
+
                                     const changeEvent = new Event('change', { bubbles: true });
                                     input.dispatchEvent(changeEvent);
-                                    
-                                    // Focus the input
+
                                     input.focus();
-                                    
-                                    // Move cursor to end
                                     input.selectionStart = input.selectionEnd = suggestion.length;
                                   } else {
                                     console.warn('Could not find textarea input element');
@@ -612,12 +555,11 @@ const PurePreviewMessage = ({
                                 className="not-prose"
                               />
                             )}
-                            
-                            {/* Data verification badge */}
+
                             {message.role === 'assistant' && extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
-                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50/80 dark:bg-green-900/20 border border-green-200/50 dark:border-green-700/30 w-fit text-xs">
-                                <Shield className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                                <span className="text-green-700 dark:text-green-300 font-medium">
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-brand-primary/20 w-fit text-xs">
+                                <Shield className="w-3.5 h-3.5 text-brand-primary" />
+                                <span className="text-brand-primary font-medium">
                                   {extractedMetadata.verificationMessage}
                                 </span>
                               </div>
@@ -646,15 +588,15 @@ const PurePreviewMessage = ({
                 }
               }
 
-              // Support only createJSVisualization tool (Python visualization removed)
+              // JS Visualization Tool
               if (type === 'tool-createJSVisualization' as any) {
                 const { toolCallId, state } = part as any;
 
                 if (state === 'input-available') {
                   const { input } = part as any;
                   return (
-                    <div key={toolCallId} className="skeleton">
-                      <div className="flex items-center gap-2 p-2 text-sm">
+                    <div key={toolCallId} className="bg-card border border-border/50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-sm">
                         <div className="animate-spin size-fit">
                           <LoaderIcon />
                         </div>
@@ -669,13 +611,12 @@ const PurePreviewMessage = ({
 
                   if ('error' in output) {
                     return (
-                      <div key={toolCallId} className="text-red-500 p-2 border rounded">
+                      <div key={toolCallId} className="text-destructive p-3 border border-destructive/50 rounded-lg">
                         Error: {String(output.error)}
                       </div>
                     );
                   }
 
-                  // Generate stable key for each visualization instance
                   const uniqueKey = `js-viz-${toolCallId}-${output.id}`;
 
                   console.log(`🎨 Rendering JS Visualization:`, {
@@ -689,7 +630,7 @@ const PurePreviewMessage = ({
                   return (
                     <div key={uniqueKey} data-viz-id={output.id} data-tool-call={toolCallId}>
                       <JSVisualizationMessage
-                        key={uniqueKey} // Force unique component instance
+                        key={uniqueKey}
                         id={output.id}
                         title={output.title}
                         description={output.description}
@@ -701,7 +642,7 @@ const PurePreviewMessage = ({
                 }
               }
 
-              // Handle direct visualization parts from simple-chat-new
+              // Direct visualization parts
               if (type === 'visualization') {
                 const { chartjsConfig, title, description } = part;
                 const vizId = `viz-${message.id}-${index}`;
@@ -721,7 +662,7 @@ const PurePreviewMessage = ({
                 }
               }
 
-              // Handle direct web_search parts from simple-chat-new
+              // Direct web_search parts
               if (type === 'web_search') {
                 const { query, results, summary } = part;
 
@@ -736,7 +677,7 @@ const PurePreviewMessage = ({
                 );
               }
 
-              // Handle direct tool_status parts from simple-chat-new
+              // Direct tool_status parts
               if (type === 'tool_status') {
                 const { name, status, displayResult, formattedData } = part;
 
@@ -751,6 +692,7 @@ const PurePreviewMessage = ({
                 );
               }
 
+              // Request Suggestions Tool
               if (type === 'tool-requestSuggestions') {
                 const { toolCallId, state } = part;
 
@@ -761,7 +703,7 @@ const PurePreviewMessage = ({
                     return (
                       <div
                         key={toolCallId}
-                        className="text-red-500 p-2 border rounded"
+                        className="text-destructive p-3 border border-destructive/50 rounded-lg"
                       >
                         Error: {String(output.error)}
                       </div>
@@ -769,27 +711,27 @@ const PurePreviewMessage = ({
                   }
 
                   return (
-                    <div key={toolCallId} className="text-sm text-gray-600">
+                    <div key={toolCallId} className="text-sm text-muted-foreground">
                       Suggestions generated successfully
                     </div>
                   );
                 }
               }
-              
-              // Handle calculate LaTeX metric tool
+
+              // Calculate LaTeX Metric Tool
               if (type === 'tool-calculateLatexMetric') {
                 const { toolCallId, state } = part;
 
                 if (state === 'input-available') {
                   const { input } = part;
                   const metricName = input?.metricId || 'LaTeX Metric';
-                  
+
                   return (
-                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/40 dark:bg-orange-900/40 backdrop-blur-md border border-orange-200/50 dark:border-orange-700/50 text-sm not-prose">
-                      <div className="animate-spin text-orange-600 dark:text-orange-400">
+                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-avatar border border-brand-primary/20 text-sm not-prose">
+                      <div className="animate-spin text-brand-primary">
                         <LoaderIcon size={14} />
                       </div>
-                      <span className="text-orange-700 dark:text-orange-300 font-medium">
+                      <span className="text-brand-primary font-medium">
                         Computing LaTeX metric {metricName}...
                       </span>
                     </div>
@@ -798,20 +740,18 @@ const PurePreviewMessage = ({
 
                 if (state === 'output-available') {
                   const { input } = part;
-                  
-                  // Extract metric name from input
                   const metricName = input?.metricId || 'LaTeX Metric';
                   const description = input?.dataRequirements?.description || '';
-                  
+
                   return (
                     <div key={toolCallId} className="not-prose">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/40 dark:bg-orange-900/40 backdrop-blur-md border border-orange-200/50 dark:border-orange-700/50 text-sm">
-                        <div className="w-3 h-3 bg-orange-500/70 rounded-full"></div>
-                        <span className="text-orange-700 dark:text-orange-300 font-medium">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-avatar border border-brand-primary/20 text-sm">
+                        <div className="w-3 h-3 bg-brand-primary rounded-full"></div>
+                        <span className="text-brand-primary font-medium">
                           LaTeX metric {metricName} calculated
                         </span>
                         {description && (
-                          <span className="text-orange-600/70 dark:text-orange-400/70 text-xs">
+                          <span className="text-brand-primary/70 text-xs">
                             • {description.slice(0, 50)}{description.length > 50 ? '...' : ''}
                           </span>
                         )}
@@ -820,9 +760,9 @@ const PurePreviewMessage = ({
                   );
                 }
               }
-              
-              // Handle financial tools
-              if ((type as any) === 'tool-financialFieldsAgent' || 
+
+              // Financial Tools
+              if ((type as any) === 'tool-financialFieldsAgent' ||
                   (type as any) === 'tool-getIncomeStatement' ||
                   (type as any) === 'tool-findIncomeStatementFields' ||
                   (type as any) === 'tool-getKeyMetrics' ||
@@ -832,14 +772,13 @@ const PurePreviewMessage = ({
                   (type as any) === 'tool-findFinancialRatioFields') {
                 const { toolCallId, state } = part as any;
                 const toolName = (type as string).replace('tool-', '');
-                
+
                 if (state === 'input-available') {
                   const { input } = part as any;
-                  
-                  // Generate displayAction based on tool and input
+
                   let displayAction = 'Processing request';
-                  
-                  if ((type as any) === 'tool-financialFieldsAgent' || 
+
+                  if ((type as any) === 'tool-financialFieldsAgent' ||
                       (type as any) === 'tool-findIncomeStatementFields' ||
                       (type as any) === 'tool-findKeyMetricsFields' ||
                       (type as any) === 'tool-findFinancialRatioFields') {
@@ -869,17 +808,16 @@ const PurePreviewMessage = ({
                     const symbols = input?.symbols || [];
                     const dataType = input?.dataType || 'financial data';
                     if (symbols.length > 0) {
-                      // Better formatting for data type labels
                       const typeLabel = dataType.replace('get', '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
                       displayAction = `Fetching ${symbols.join(', ')} ${typeLabel}`;
                     } else {
                       displayAction = 'Fetching financial data';
                     }
                   }
-                  
+
                   return (
                     <div key={toolCallId}>
-                      <ToolStatus 
+                      <ToolStatus
                         name={toolName}
                         status="running"
                         displayAction={displayAction}
@@ -887,13 +825,12 @@ const PurePreviewMessage = ({
                     </div>
                   );
                 }
-                
+
                 if (state === 'output-available') {
                   const { output } = part as any;
-                  
-                  // Generate past tense displayAction for completed state
+
                   let completedAction = 'Completed';
-                  if ((type as any) === 'tool-financialFieldsAgent' || 
+                  if ((type as any) === 'tool-financialFieldsAgent' ||
                       (type as any) === 'tool-findIncomeStatementFields' ||
                       (type as any) === 'tool-findKeyMetricsFields' ||
                       (type as any) === 'tool-findFinancialRatioFields') {
@@ -927,20 +864,18 @@ const PurePreviewMessage = ({
                     const symbols = input?.symbols || [];
                     const dataType = input?.dataType || 'financial data';
                     if (symbols.length > 0) {
-                      // Better formatting for data type labels
                       const typeLabel = dataType.replace('get', '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
                       completedAction = `Fetched ${symbols.join(', ')} ${typeLabel}`;
                     } else {
                       completedAction = 'Fetched financial data';
                     }
                   }
-                  
-                  // Check for errors or failure
+
                   if ('error' in output || (output && 'success' in output && !output.success)) {
                     const errorMessage = output?.message || 'Failed to retrieve data';
                     return (
                       <div key={toolCallId}>
-                        <ToolStatus 
+                        <ToolStatus
                           name={toolName}
                           status="completed"
                           displayAction={completedAction}
@@ -949,11 +884,10 @@ const PurePreviewMessage = ({
                       </div>
                     );
                   }
-                  
-                  // Success case
+
                   return (
                     <div key={toolCallId}>
-                      <ToolStatus 
+                      <ToolStatus
                         name={toolName}
                         status="completed"
                         displayAction={completedAction}
@@ -963,8 +897,8 @@ const PurePreviewMessage = ({
                   );
                 }
               }
-              
-              // Handle calculate metric tool
+
+              // Calculate Metric Tool
               if (type === 'tool-calculateMetric') {
                 const { toolCallId, state } = part;
 
@@ -972,13 +906,13 @@ const PurePreviewMessage = ({
                   const { input } = part;
                   const metricName = input?.metricName || input?.name || 'Financial Metric';
                   const symbols = input?.symbols || [];
-                  
+
                   return (
-                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/40 dark:bg-gray-900/40 backdrop-blur-md border border-white/50 dark:border-gray-700/50 text-sm not-prose">
-                      <div className="animate-spin text-gray-600 dark:text-gray-400">
+                    <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 text-sm not-prose">
+                      <div className="animate-spin text-muted-foreground">
                         <LoaderIcon size={14} />
                       </div>
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      <span className="text-foreground font-medium">
                         Computing {metricName}{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}...
                       </span>
                     </div>
@@ -987,31 +921,27 @@ const PurePreviewMessage = ({
 
                 if (state === 'output-available') {
                   const { output, input } = part;
-                  
-                  // Try to extract metric name from the output string
+
                   let metricDisplayName = 'Custom Metric';
-                  
+
                   if (output && typeof output === 'string') {
-                    // Look for Chinese metric name in the output
                     const chineseMatch = output.match(/\*\*([^*]+)\s*Calculation Results\*\*/);
                     if (chineseMatch && chineseMatch[1]) {
                       metricDisplayName = chineseMatch[1];
                     }
                   }
-                  
-                  // Fallback to input parameters - but not the ID
+
                   if (metricDisplayName === 'Custom Metric') {
                     metricDisplayName = input?.metricName || input?.name || 'Financial Metric';
                   }
-                  
+
                   const symbols = input?.symbols || [];
-                  
-                  // Simple success display without expansion
+
                   return (
                     <div key={toolCallId} className="not-prose">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/40 dark:bg-gray-900/40 backdrop-blur-md border border-white/50 dark:border-gray-700/50 text-sm">
-                        <div className="w-3 h-3 bg-green-500/70 rounded-full"></div>
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 text-sm">
+                        <div className="w-3 h-3 bg-brand-primary rounded-full"></div>
+                        <span className="text-foreground font-medium">
                           {metricDisplayName} calculated{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}
                         </span>
                       </div>
@@ -1020,23 +950,23 @@ const PurePreviewMessage = ({
                 }
               }
 
-              // Handle web search tool
+              // Web Search Tool
               if (type === 'tool-webSearch') {
                 const { toolCallId, state } = part;
 
                 if (state === 'input-available') {
                   const { input } = part;
                   return (
-                    <div key={toolCallId} className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-900/20">
+                    <div key={toolCallId} className="border border-border/50 rounded-lg p-4 bg-card">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="animate-spin">
                           <LoaderIcon size={16} />
                         </div>
-                        <span className="font-medium text-blue-700 dark:text-blue-300">
+                        <span className="font-medium text-brand-primary">
                           Searching the web...
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                      <div className="text-sm text-muted-foreground">
                         <strong>Query:</strong> {input?.query}
                         {input?.searchAfterDate && (
                           <div><strong>After:</strong> {input.searchAfterDate}</div>
@@ -1051,17 +981,17 @@ const PurePreviewMessage = ({
 
                 if (state === 'output-available') {
                   const { output, input } = part;
-                  
+
                   if (typeof output === 'string' && output.startsWith('Search failed:')) {
                     return (
-                      <div key={toolCallId} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-900/20">
+                      <div key={toolCallId} className="border border-destructive/50 rounded-lg p-4 bg-destructive/10">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="text-red-600">⚠️</div>
-                          <span className="font-medium text-red-700 dark:text-red-300">
+                          <div className="text-destructive">⚠️</div>
+                          <span className="font-medium text-destructive">
                             Search Failed
                           </span>
                         </div>
-                        <div className="text-sm text-red-600 dark:text-red-400">
+                        <div className="text-sm text-destructive">
                           {output}
                         </div>
                       </div>
@@ -1069,7 +999,7 @@ const PurePreviewMessage = ({
                   }
 
                   return (
-                    <SearchResultsCard 
+                    <SearchResultsCard
                       key={toolCallId}
                       toolCallId={toolCallId}
                       output={output}
@@ -1078,58 +1008,48 @@ const PurePreviewMessage = ({
                   );
                 }
               }
-
-              // saveCustomMetric is now handled as a regular server-side tool
             })}
 
-            {/* Render extracted metadata at the end */}
             {extractedMetadata && ((extractedMetadata as any).tickers || (extractedMetadata as any).suggestions) && (
               <div className="flex flex-col gap-3 mt-4">
-                {/* Data verification badge */}
                 {extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
-                  <div 
+                  <div
                     onClick={() => setShowFullVerification(!showFullVerification)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50/30 dark:bg-gray-800/30 border border-gray-200/30 dark:border-gray-700/30 w-fit text-xs opacity-50 hover:opacity-70 transition-all duration-200 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-card border border-border/30 w-fit text-xs opacity-50 hover:opacity-70 transition-all duration-150 cursor-pointer select-none"
                     title="点击展开验证详情"
                   >
-                    <Shield className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                    <span className="text-gray-600 dark:text-gray-400 font-medium transition-all duration-200">
+                    <Shield className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground font-medium transition-all duration-150">
                       {showFullVerification ? extractedMetadata.verificationMessage : 'Verified'}
                     </span>
                   </div>
                 )}
 
-                {/* Ticker buttons */}
                 {(extractedMetadata as any).tickers && (
-                  <TickerButtonGroup 
+                  <TickerButtonGroup
                     tickers={(extractedMetadata as any).tickers}
                     className="not-prose"
                   />
                 )}
-                
-                {/* Suggestion buttons */}
+
                 {(extractedMetadata as any).suggestions && (
-                  <SuggestionButtonGroup 
+                  <SuggestionButtonGroup
                     suggestions={(extractedMetadata as any).suggestions}
                     onSuggestionClick={(suggestion) => {
                       const input = document.querySelector('textarea[data-testid="multimodal-input"]') as HTMLTextAreaElement;
                       if (input) {
-                        // React hack: 直接更新React的内部值
                         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
                         nativeInputValueSetter?.call(input, suggestion);
-                        
-                        // 触发input事件让React知道变化
+
                         const inputEvent = new Event('input', { bubbles: true });
                         input.dispatchEvent(inputEvent);
-                        
+
                         input.focus();
                       }
                     }}
                     className="not-prose"
                   />
                 )}
-
-                
               </div>
             )}
 
@@ -1172,12 +1092,8 @@ export const ThinkingMessage = () => {
       animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
       data-role={role}
     >
-      <div
-        className={cx(
-          'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
-        )}
-      >
-        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-brand-avatar">
+      <div className="flex gap-4 w-full">
+        <div className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20">
           <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
         </div>
 

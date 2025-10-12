@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronUp, Building2, Settings, Users, UserPlus, FileText } from 'lucide-react';
+import { ChevronUp, Building2, Settings, Moon, Sun, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { LoaderIcon } from './icons';
 import { SettingsDialog } from './settings-dialog';
+import { cn } from '@/lib/utils';
 
 interface SidebarUserNavProps {
   user?: {
@@ -46,17 +47,17 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {!isLoaded ? (
-            <Button 
+            <Button
               variant="ghost"
-              className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-lg border-white/20 dark:border-gray-700/50 border rounded-xl h-10 justify-between"
+              className="w-full h-auto py-2 px-3 bg-card border border-border rounded-lg justify-between hover:bg-muted transition-all duration-200"
             >
-              <div className="flex flex-row gap-2">
-                <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
-                <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
-                  Loading auth status
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />
+                <span className="bg-muted text-transparent rounded-md animate-pulse">
+                  Loading...
                 </span>
               </div>
-              <div className="animate-spin text-zinc-500">
+              <div className="animate-spin text-muted-foreground">
                 <LoaderIcon />
               </div>
             </Button>
@@ -64,93 +65,107 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             <Button
               data-testid="user-nav-button"
               variant="ghost"
-              className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-lg border-white/20 dark:border-gray-700/50 border rounded-xl h-auto py-2"
+              className="w-full h-auto py-2 px-3 bg-card border border-border rounded-lg hover:bg-muted hover:border-brand-primary/20 transition-all duration-200"
             >
-              <div className="flex items-start gap-2 flex-1">
+              <div className="flex items-start gap-2 flex-1 min-w-0">
                 <Image
                   src={clerkUser?.imageUrl || `https://avatar.vercel.sh/${displayEmail}`}
                   alt={displayEmail ?? 'User Avatar'}
                   width={32}
                   height={32}
-                  className="rounded-full mt-0.5"
+                  className="rounded-full flex-shrink-0"
                 />
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span data-testid="user-email" className="text-sm font-medium truncate">
+                <div className="flex flex-col flex-1 min-w-0 text-left">
+                  <span
+                    data-testid="user-email"
+                    className="text-sm font-medium text-foreground truncate"
+                  >
                     {displayEmail}
                   </span>
                   {organization && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                      <Building2 className="size-3" />
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 truncate mt-0.5">
+                      <Building2 className="w-3 h-3 flex-shrink-0" />
                       {organization.name}
                     </span>
                   )}
                 </div>
               </div>
-              <ChevronUp className="ml-auto size-4 shrink-0" />
+              <ChevronUp className="ml-2 w-4 h-4 flex-shrink-0 text-muted-foreground" />
             </Button>
           )}
         </DropdownMenuTrigger>
-          <DropdownMenuContent
-            data-testid="user-nav-menu"
-            side="top"
-            className="w-[--radix-popper-anchor-width]"
+
+        <DropdownMenuContent
+          data-testid="user-nav-menu"
+          side="top"
+          align="start"
+          className="w-[--radix-popper-anchor-width]"
+        >
+          {organization && (
+            <>
+              <DropdownMenuItem
+                className="cursor-pointer flex items-center gap-2"
+                onSelect={() => openOrganizationProfile()}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Organization Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          <DropdownMenuItem
+            className="cursor-pointer flex items-center gap-2"
+            onSelect={() => openCreateOrganization()}
           >
-            {organization && (
+            <Building2 className="w-4 h-4" />
+            <span>{organization ? 'Switch Organization' : 'Create Organization'}</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            className="cursor-pointer flex items-center gap-2"
+            onSelect={() => setSettingsOpen(true)}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            data-testid="user-nav-item-theme"
+            className="cursor-pointer flex items-center gap-2"
+            onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          >
+            {resolvedTheme === 'dark' ? (
               <>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onSelect={() => openOrganizationProfile()}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Organization Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <Sun className="w-4 h-4" />
+                <span>Light Mode</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4" />
+                <span>Dark Mode</span>
               </>
             )}
-            
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={() => openCreateOrganization()}
-            >
-              <Building2 className="mr-2 h-4 w-4" />
-              {organization ? 'Switch Organization' : 'Create Organization'}
-            </DropdownMenuItem>
+          </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
+          <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={() => setSettingsOpen(true)}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
+          <DropdownMenuItem
+            data-testid="user-nav-item-auth"
+            className="cursor-pointer flex items-center gap-2 text-destructive focus:text-destructive"
+            onSelect={handleSignOut}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem
-              data-testid="user-nav-item-theme"
-              className="cursor-pointer"
-              onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            >
-              {`${resolvedTheme === 'light' ? 'Dark' : 'Light'} mode`}
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem asChild data-testid="user-nav-item-auth">
-              <button
-                type="button"
-                className="w-full cursor-pointer"
-                onClick={handleSignOut}
-              >
-                Sign out
-              </button>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

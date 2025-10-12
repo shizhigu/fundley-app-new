@@ -136,53 +136,53 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Create chart with TradingView-like configuration
+    // Create chart with clean 2025 configuration
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       layout: {
         background: { color: 'transparent' },
-        textColor: '#333',
+        textColor: 'hsl(var(--foreground))',
         fontSize: 12,
       },
       grid: {
         vertLines: {
-          color: '#f0f0f0',
-          style: 1, // 虚线
+          color: 'hsl(var(--border))',
+          style: 1,
           visible: true,
         },
         horzLines: {
-          color: '#f0f0f0',
-          style: 1, // 虚线
+          color: 'hsl(var(--border))',
+          style: 1,
           visible: true,
         },
       },
       crosshair: {
-        mode: 1, // 十字线模式
+        mode: 1,
         vertLine: {
           width: 1,
-          color: '#C3BCDB44',
-          style: 0, // 实线
+          color: 'hsl(var(--muted-foreground) / 0.3)',
+          style: 0,
           labelVisible: true,
         },
         horzLine: {
           width: 1,
-          color: '#C3BCDB44',
-          style: 0, // 实线
+          color: 'hsl(var(--muted-foreground) / 0.3)',
+          style: 0,
           labelVisible: true,
         },
       },
       timeScale: {
-        borderColor: '#D1D4DC',
+        borderColor: 'hsl(var(--border))',
         timeVisible: true,
         secondsVisible: false,
         tickMarkFormatter: (time: any) => {
-          const date = new Date(time * 1000); // TradingView time is in seconds
-          return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+          const date = new Date(time * 1000);
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         },
       },
       rightPriceScale: {
-        borderColor: '#D1D4DC',
+        borderColor: 'hsl(var(--border))',
         scaleMargins: {
           top: 0.1,
           bottom: 0.1,
@@ -190,13 +190,13 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
       },
     });
 
-    // Add candlestick series
+    // Add candlestick series with semantic colors
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#26a69a',
-      downColor: '#ef5350',
+      upColor: '#10b981',
+      downColor: '#ef4444',
       borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444',
     });
 
     // Store references
@@ -517,76 +517,78 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
 
 
   return (
-    <div className={`w-full h-full ${className}`}>
+    <div className={`flex flex-col w-full h-full bg-card border border-border rounded-lg ${className}`}>
       {/* Chart Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <input
               type="text"
               value={symbolInput}
               onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
               onKeyPress={handleKeyPress}
               onBlur={handleSymbolSubmit}
-              placeholder="股票代码"
-              className="w-24 px-2 py-1 text-sm border border-border rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="SYMBOL"
+              className="w-24 h-8 px-2 text-sm font-medium bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200"
             />
-            <h2 className="text-xl font-semibold text-foreground">{currentSymbol}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{currentSymbol}</h2>
           </div>
           {isLoading ? (
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full"></div>
               <span>Loading...</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span className={`px-2 py-1 rounded ${
+            <div className="flex items-center gap-2 text-sm">
+              <span className={`flex items-center gap-1 px-2 py-1 rounded-md font-medium transition-all duration-200 ${
                 priceChange >= 0
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                  ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                  : 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400'
               }`}>
                 {priceChange >= 0 ? '↗' : '↘'} {priceChange.toFixed(2)}%
               </span>
-              <span className="text-foreground">${latestPrice.toFixed(2)}</span>
+              <span className="font-semibold text-foreground">${latestPrice.toFixed(2)}</span>
             </div>
           )}
-
         </div>
-        <div className="flex items-center space-x-4">
+
+        <div className="flex items-center gap-6">
           {/* 时间间隔选择器 */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">间隔:</span>
-            {[
-              { value: 'daily', label: 'D' },
-              { value: 'weekly', label: 'W' },
-              { value: 'monthly', label: 'M' }
-            ].map((interval) => (
-              <button
-                key={interval.value}
-                onClick={() => handleIntervalChange(interval.value)}
-                disabled={isLoading}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
-                  currentInterval === interval.value
-                    ? 'bg-green-500 text-white'
-                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground disabled:opacity-50'
-                }`}
-              >
-                {interval.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">INTERVAL</span>
+            <div className="flex gap-1 p-1 bg-background border border-border rounded-lg">
+              {[
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'monthly', label: 'Monthly' }
+              ].map((interval) => (
+                <button
+                  key={interval.value}
+                  onClick={() => handleIntervalChange(interval.value)}
+                  disabled={isLoading}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
+                    currentInterval === interval.value
+                      ? 'bg-brand-primary text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+                >
+                  {interval.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 时间周期选择器 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex gap-1 p-1 bg-background border border-border rounded-lg">
             {['1M', '6M', '1Y', 'ALL'].map((period) => (
               <button
                 key={period}
                 onClick={() => handlePeriodChange(period)}
                 disabled={isLoading}
-                className={`px-3 py-1 text-sm rounded transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
                   currentPeriod === period
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground disabled:opacity-50'
+                    ? 'bg-brand-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
                 {period}
@@ -595,28 +597,36 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
           </div>
         </div>
       </div>
-      
+
       {/* Chart Container */}
-      <div className="flex-1 w-full relative" style={{ height: 'calc(100% - 73px)' }}>
-        <div
-          ref={chartContainerRef}
-          className="w-full h-full"
-        />
+      <div className="relative flex-1 w-full min-h-0">
+        <div ref={chartContainerRef} className="w-full h-full" />
 
         {/* Crosshair数据显示 */}
         {crosshairData && (
-          <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-2 rounded z-10 pointer-events-none">
-            <div>时间: {crosshairData.time}</div>
-            <div>价格: ${crosshairData.price.toFixed(2)}</div>
-            {Object.entries(crosshairData.panes).map(([paneId, paneData]) => (
-              <div key={paneId} className="mt-1 border-t border-gray-600 pt-1">
-                {Object.entries(paneData.indicators).map(([name, data]) => (
-                  <div key={name}>
-                    {name}: {data.value.toFixed(2)}% {data.quarter && `(${data.quarter})`}
-                  </div>
-                ))}
+          <div className="absolute top-3 left-3 bg-popover/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3 text-xs font-mono z-10 pointer-events-none">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-border">
+                <span className="text-muted-foreground">Time</span>
+                <span className="font-medium text-foreground">{crosshairData.time}</span>
               </div>
-            ))}
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Price</span>
+                <span className="font-semibold text-foreground">${crosshairData.price.toFixed(2)}</span>
+              </div>
+              {Object.entries(crosshairData.panes).map(([paneId, paneData]) => (
+                <div key={paneId} className="mt-1.5 pt-1.5 border-t border-border">
+                  {Object.entries(paneData.indicators).map(([name, data]) => (
+                    <div key={name} className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">{name}</span>
+                      <span className="font-medium text-foreground">
+                        {data.value.toFixed(2)}% {data.quarter && <span className="text-muted-foreground">({data.quarter})</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

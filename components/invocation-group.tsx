@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
 import { PreviewMessage } from './message';
 import { ToolStatusList } from './tool-status';
 import { JSVisualizationMessage } from './js-visualization-message';
 import type { MessageInvocation } from '@/lib/types';
 
-// Import JSVisualizationEngine for generating HTML
+/**
+ * JS Visualization Engine - Generate HTML for Chart.js visualizations
+ */
 class JSVisualizationEngine {
   static generateChartJSHTML(data: any[], chartjsConfig: any, vizId: string = 'default'): string {
     return `<!DOCTYPE html>
@@ -47,29 +48,34 @@ interface InvocationGroupProps {
   invocation: MessageInvocation;
 }
 
+/**
+ * Invocation Group Component
+ * Groups user message, tool executions, and assistant response together
+ * Ultra-clean 2025 design with minimal styling
+ */
 export function InvocationGroup({ invocation }: InvocationGroupProps) {
   const { userMessage, assistantMessage, toolMessages } = invocation;
 
-  // 分离特殊工具和普通工具 - 只有 create_visualization 是特殊工具
+  // Separate special tools from normal tools
   const specialTools = ['create_visualization'];
-  const specialToolMessages = toolMessages.filter(toolMsg =>
+  const specialToolMessages = toolMessages.filter((toolMsg) =>
     specialTools.includes((toolMsg as any).tool_name?.toLowerCase() || '')
   );
-  const normalToolMessages = toolMessages.filter(toolMsg =>
-    !specialTools.includes((toolMsg as any).tool_name?.toLowerCase() || '')
+  const normalToolMessages = toolMessages.filter(
+    (toolMsg) => !specialTools.includes((toolMsg as any).tool_name?.toLowerCase() || '')
   );
 
-  // 普通工具转换为ToolStatus格式，去重相同名称的工具
+  // Convert normal tools to ToolStatus format, deduplicate by name
   const uniqueTools = new Map<string, any>();
 
-  normalToolMessages.forEach(toolMsg => {
+  normalToolMessages.forEach((toolMsg) => {
     const toolName = (toolMsg as any).tool_name || 'Unknown Tool';
     if (!uniqueTools.has(toolName)) {
       uniqueTools.set(toolName, {
         name: toolName,
         status: 'completed' as const,
         displayAction: undefined,
-        displayResult: toolMsg.content || 'Tool completed'
+        displayResult: toolMsg.content || 'Tool completed',
       });
     }
   });
@@ -77,8 +83,8 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
   const toolStatuses = Array.from(uniqueTools.values());
 
   return (
-    <div className="invocation-group mb-6">
-      {/* 用户消息 */}
+    <div className="invocation-group mb-6 space-y-4">
+      {/* User Message */}
       {userMessage && (
         <PreviewMessage
           message={userMessage}
@@ -91,15 +97,15 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
         />
       )}
 
-      {/* 工具区域：特殊工具和普通工具 */}
+      {/* Tool Area: Special tools and normal tools */}
       {(specialToolMessages.length > 0 || toolStatuses.length > 0) && (
-        <div className="my-4">
-          {/* 特殊工具专属渲染 */}
+        <div className="space-y-4">
+          {/* Special tool rendering */}
           {specialToolMessages.map((toolMsg, index) => {
             const toolName = (toolMsg as any).tool_name?.toLowerCase();
 
             if (toolName === 'create_visualization') {
-              // 使用JSVisualizationMessage渲染可视化
+              // Use JSVisualizationMessage to render visualization
               const toolResult = (toolMsg as any).tool_result;
               let parsedResult;
               try {
@@ -113,10 +119,10 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
                 toolResult,
                 parsedResult,
                 hasType: parsedResult?.type,
-                hasCachedHtml: !!parsedResult?.cachedHtml
+                hasCachedHtml: !!parsedResult?.cachedHtml,
               });
 
-              // 生成HTML如果有chartjsConfig
+              // Generate HTML if chartjsConfig exists
               if (parsedResult && parsedResult.chartjsConfig) {
                 const vizId = `viz-${toolMsg.id}`;
                 const cachedHtml = JSVisualizationEngine.generateChartJSHTML(
@@ -126,7 +132,7 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
                 );
 
                 return (
-                  <div key={`special-${toolMsg.id}-${index}`} className="mb-4">
+                  <div key={`special-${toolMsg.id}-${index}`}>
                     <JSVisualizationMessage
                       id={vizId}
                       title={parsedResult.title || 'Data Visualization'}
@@ -139,18 +145,15 @@ export function InvocationGroup({ invocation }: InvocationGroupProps) {
               }
             }
 
-
             return null;
           })}
 
-          {/* 普通工具横排显示 */}
-          {toolStatuses.length > 0 && (
-            <ToolStatusList tools={toolStatuses} />
-          )}
+          {/* Normal tools - horizontal display */}
+          {toolStatuses.length > 0 && <ToolStatusList tools={toolStatuses} />}
         </div>
       )}
 
-      {/* 助手回复 */}
+      {/* Assistant Response */}
       {assistantMessage && (
         <PreviewMessage
           message={assistantMessage}

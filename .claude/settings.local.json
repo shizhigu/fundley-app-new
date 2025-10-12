@@ -7,7 +7,12 @@
       "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -f /Users/gushizhi/Projects/fundley-app/lib/db/migrations/006_create_reusable_scripts.sql)",
       "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d analysis_templates\")",
       "Bash(PGPASSWORD=\"$DATABASE_PASSWORD\" psql -h \"$DATABASE_HOST\" -U \"$DATABASE_USER\" -d \"$DATABASE_NAME\" -c \"\\d users\")",
-      "Bash(export DATABASE_URL='postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-muddy-tooth-af42d7l3-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require')"
+      "Bash(export DATABASE_URL='postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-muddy-tooth-af42d7l3-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require')",
+      "Bash(wc:*)",
+      "Bash(git tag:*)",
+      "Bash(git stash push:*)",
+      "Bash(./scripts/switch-theme.sh:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": [],

@@ -1,62 +1,97 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Streamdown } from 'streamdown';
 
-const NonMemoizedMarkdown = ({ children }: { children: string }) => {
+interface MarkdownProps {
+  children: string;
+}
+
+function MarkdownRenderer({ children }: MarkdownProps) {
   return (
     <div
-      className="prose prose-sm dark:prose-invert mobile-responsive-prose"
-      style={{
-        maxWidth: 'none',
-        width: '100%',
-        minWidth: 0 // 确保可以收缩
-      }}
+      className="prose prose-sm dark:prose-invert max-w-none w-full"
+      style={{ minWidth: 0 }}
     >
       <Streamdown
-        parseIncompleteMarkdown={true}
-        className="streamdown-content mobile-responsive-content"
-        shikiTheme={["github-light", "github-dark"]}
+        parseIncompleteMarkdown
+        className="streamdown-content"
+        shikiTheme={['github-light', 'github-dark']}
         remarkPlugins={[]}
         components={{
-          del: ({ children }) => <>{children}</>, // 禁用删除线，直接显示原文
-          s: ({ children }) => <>{children}</>,   // 禁用 <s> 标签
+          // Disable strikethrough rendering
+          del: ({ children }) => <>{children}</>,
+          s: ({ children }) => <>{children}</>,
+
+          // Inline code styling
           code: ({ children, className, ...props }) => {
             const isInlineCode = !className;
             if (isInlineCode) {
               return (
-                <code 
-                  className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm font-mono border-0"
+                <code
+                  className="px-2 py-0.5 rounded-md bg-muted text-foreground text-sm font-mono border-0"
                   {...props}
                 >
                   {children}
                 </code>
               );
             }
-            // For code blocks, just return the code element without extra styling
+            // Block code - let pre handle styling
             return <code {...props}>{children}</code>;
           },
+
+          // Code block container styling
           pre: ({ children, ...props }) => (
             <pre
-              className="!bg-gray-900 !text-gray-100 !p-4 !rounded-lg !border-0 !shadow-none overflow-x-auto font-mono text-sm leading-relaxed w-full max-w-full"
-              style={{
-                background: '#1a1a1a !important',
-                border: 'none !important',
-                boxShadow: 'none !important',
-                maxWidth: '100% !important'
-              }}
+              className="p-4 rounded-xl bg-muted/50 border border-border/30 overflow-x-auto font-mono text-sm leading-relaxed w-full"
+              style={{ maxWidth: '100%' }}
               {...props}
             >
               {children}
             </pre>
-          )
+          ),
+
+          // Table styling
+          table: ({ children, ...props }) => (
+            <div className="overflow-x-auto my-4">
+              <table
+                className="min-w-full border border-border/30 rounded-lg"
+                {...props}
+              >
+                {children}
+              </table>
+            </div>
+          ),
+
+          // Link styling
+          a: ({ children, href, ...props }) => (
+            <a
+              href={href}
+              className="text-brand-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              {...props}
+            >
+              {children}
+            </a>
+          ),
+
+          // Blockquote styling
+          blockquote: ({ children, ...props }) => (
+            <blockquote
+              className="border-l-4 border-brand-primary/30 bg-brand-avatar pl-4 py-2 my-4 italic"
+              {...props}
+            >
+              {children}
+            </blockquote>
+          ),
         }}
       >
         {children}
       </Streamdown>
     </div>
   );
-};
+}
 
 export const Markdown = memo(
-  NonMemoizedMarkdown,
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  MarkdownRenderer,
+  (prevProps, nextProps) => prevProps.children === nextProps.children
 );

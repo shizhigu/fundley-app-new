@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
-import { CheckCircleFillIcon, WarningIcon } from './icons';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const iconsByType: Record<'success' | 'error', ReactNode> = {
-  success: <CheckCircleFillIcon />,
-  error: <WarningIcon />,
+  success: <CheckCircle2 className="w-5 h-5" />,
+  error: <AlertCircle className="w-5 h-5" />,
 };
 
 export function toast(props: Omit<ToastProps, 'id'>) {
@@ -45,23 +45,26 @@ function Toast(props: ToastProps) {
         data-testid="toast"
         key={id}
         className={cn(
-          'neuro-card px-4 py-3 w-full toast-mobile:w-fit flex flex-row gap-3 backdrop-blur-sm',
-          multiLine ? 'items-start' : 'items-center',
+          'px-4 py-3 w-full toast-mobile:w-fit flex flex-row gap-3 bg-popover border border-border rounded-lg shadow-lg',
+          multiLine ? 'items-start' : 'items-center'
         )}
       >
         <div
           data-type={type}
           className={cn(
             'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-            'data-[type=error]:bg-gradient-to-br data-[type=error]:from-red-50 data-[type=error]:to-red-100 data-[type=error]:text-red-600',
-            'data-[type=success]:bg-gradient-to-br data-[type=success]:from-green-50 data-[type=success]:to-green-100 data-[type=success]:text-green-600',
-            'neuro-raised-sm',
-            { 'mt-0.5': multiLine },
+            type === 'error'
+              ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+              : 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400',
+            { 'mt-0.5': multiLine }
           )}
         >
           {iconsByType[type]}
         </div>
-        <div ref={descriptionRef} className="text-foreground text-sm font-medium flex-1">
+        <div
+          ref={descriptionRef}
+          className="text-foreground text-sm font-medium flex-1"
+        >
           {description}
         </div>
       </div>

@@ -24,9 +24,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { User, FileText, Loader2, Users, Lock, Play, Pencil, Coins, TrendingUp, MessageSquare, DollarSign } from 'lucide-react';
+import {
+  User,
+  FileText,
+  Loader2,
+  Users,
+  Lock,
+  Play,
+  Pencil,
+  Coins,
+  TrendingUp,
+  MessageSquare,
+  DollarSign,
+  Check,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 interface Template {
   id: string;
@@ -120,10 +133,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       if (data.success) {
         setTemplates(data.templates);
         // Cache the result
-        localStorage.setItem(TEMPLATES_CACHE_KEY, JSON.stringify({
-          data: data.templates,
-          timestamp: Date.now()
-        }));
+        localStorage.setItem(
+          TEMPLATES_CACHE_KEY,
+          JSON.stringify({
+            data: data.templates,
+            timestamp: Date.now(),
+          })
+        );
       } else {
         toast.error('Failed to load templates');
       }
@@ -142,21 +158,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       const response = await fetch(`/api/templates/${templateId}/visibility`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_public: !currentPublic })
+        body: JSON.stringify({ is_public: !currentPublic }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        const updatedTemplates = templates.map(t =>
+        const updatedTemplates = templates.map((t) =>
           t.id === templateId ? { ...t, is_public: !currentPublic } : t
         );
         setTemplates(updatedTemplates);
         // Update cache
-        localStorage.setItem(TEMPLATES_CACHE_KEY, JSON.stringify({
-          data: updatedTemplates,
-          timestamp: Date.now()
-        }));
+        localStorage.setItem(
+          TEMPLATES_CACHE_KEY,
+          JSON.stringify({
+            data: updatedTemplates,
+            timestamp: Date.now(),
+          })
+        );
         toast.success(data.message);
       } else {
         toast.error(data.error || 'Failed to update visibility');
@@ -189,21 +208,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       const response = await fetch(`/api/templates/${templateId}/title`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: editTitle.trim() })
+        body: JSON.stringify({ title: editTitle.trim() }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        const updatedTemplates = templates.map(t =>
+        const updatedTemplates = templates.map((t) =>
           t.id === templateId ? { ...t, title: editTitle.trim() } : t
         );
         setTemplates(updatedTemplates);
         // Update cache
-        localStorage.setItem(TEMPLATES_CACHE_KEY, JSON.stringify({
-          data: updatedTemplates,
-          timestamp: Date.now()
-        }));
+        localStorage.setItem(
+          TEMPLATES_CACHE_KEY,
+          JSON.stringify({
+            data: updatedTemplates,
+            timestamp: Date.now(),
+          })
+        );
         setEditingId(null);
         setEditTitle('');
         toast.success('Title updated successfully');
@@ -238,80 +260,95 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] min-w-[800px] w-fit h-[80vh] p-0 gap-0">
+      <DialogContent className="max-w-[90vw] min-w-[800px] w-fit h-[80vh] p-0 gap-0 bg-popover border border-border rounded-lg">
         <div className="flex h-full">
           {/* Left Sidebar */}
-          <div className="w-48 border-r bg-muted/30 p-4 space-y-2">
-            <DialogHeader className="px-2 mb-4">
-              <DialogTitle className="text-lg">Settings</DialogTitle>
+          <div className="w-48 border-r border-border bg-background p-4 space-y-1">
+            <DialogHeader className="px-2 mb-6">
+              <DialogTitle className="text-base font-semibold text-foreground">
+                Settings
+              </DialogTitle>
             </DialogHeader>
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
               return (
-                <Button
+                <button
                   key={tab.id}
-                  variant={activeTab === tab.id ? 'secondary' : 'ghost'}
-                  className="w-full justify-start"
                   onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2 rounded-md
+                    text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? 'bg-brand-primary/10 text-brand-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }
+                  `}
                 >
-                  <Icon className="h-4 w-4 mr-2" />
+                  <Icon className="h-4 w-4 shrink-0" />
                   {tab.label}
-                </Button>
+                </button>
               );
             })}
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 overflow-auto min-w-0">
+          <div className="flex-1 overflow-auto min-w-0 bg-background">
             {activeTab === 'profile' && (
-              <div className="p-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold">Token Usage</h2>
+              <div className="p-8">
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-foreground">Token Usage</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your AI token consumption statistics
                   </p>
                 </div>
 
                 {loadingTokens ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : tokenUsage ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {/* Cost Calculation - GPT-5 Pricing */}
                     {(() => {
                       const PRICING = {
-                        input: 1.25 / 1_000_000,   // $1.25 per 1M tokens
-                        output: 10.00 / 1_000_000, // $10.00 per 1M tokens (includes reasoning)
+                        input: 1.25 / 1_000_000, // $1.25 per 1M tokens
+                        output: 10.0 / 1_000_000, // $10.00 per 1M tokens (includes reasoning)
                       };
 
                       // Reasoning tokens are priced as output tokens
-                      const totalOutputTokens = tokenUsage.output_tokens + tokenUsage.reasoning_tokens;
+                      const totalOutputTokens =
+                        tokenUsage.output_tokens + tokenUsage.reasoning_tokens;
 
                       const estimatedCost =
-                        (tokenUsage.input_tokens * PRICING.input) +
-                        (totalOutputTokens * PRICING.output);
+                        tokenUsage.input_tokens * PRICING.input +
+                        totalOutputTokens * PRICING.output;
 
                       return (
-                        <div className="border rounded-lg p-6 bg-card">
+                        <div className="border border-border rounded-lg p-6 bg-background">
                           <div className="flex items-start justify-between">
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <DollarSign className="h-5 w-5" />
                                 <span className="text-sm font-medium">Estimated Cost</span>
                               </div>
-                              <p className="text-4xl font-bold">
+                              <p className="text-4xl font-bold text-foreground">
                                 ${estimatedCost.toFixed(2)}
                               </p>
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-muted-foreground">
                                 Based on GPT-5 pricing ($1.25/1M input, $10/1M output)
                               </p>
                             </div>
                             <div className="text-right space-y-1 text-xs text-muted-foreground">
-                              <div>Input: ${(tokenUsage.input_tokens * PRICING.input).toFixed(4)}</div>
-                              <div>Output: ${(totalOutputTokens * PRICING.output).toFixed(4)}</div>
+                              <div>
+                                Input: ${(tokenUsage.input_tokens * PRICING.input).toFixed(4)}
+                              </div>
+                              <div>
+                                Output: ${(totalOutputTokens * PRICING.output).toFixed(4)}
+                              </div>
                               {tokenUsage.reasoning_tokens > 0 && (
-                                <div className="text-[10px] opacity-70">
+                                <div className="opacity-70">
                                   (incl. {tokenUsage.reasoning_tokens.toLocaleString()} reasoning)
                                 </div>
                               )}
@@ -323,91 +360,129 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="border rounded-lg p-4 space-y-2 bg-card">
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="border border-border rounded-lg p-4 bg-background">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <MessageSquare className="h-4 w-4" />
                           <span className="text-sm font-medium">Total Sessions</span>
                         </div>
-                        <p className="text-2xl font-bold">{tokenUsage.total_sessions.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {tokenUsage.total_sessions.toLocaleString()}
+                        </p>
                       </div>
 
-                      <div className="border rounded-lg p-4 space-y-2 bg-card">
-                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                      <div className="border border-border rounded-lg p-4 bg-background">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <TrendingUp className="h-4 w-4" />
                           <span className="text-sm font-medium">Input Tokens</span>
                         </div>
-                        <p className="text-2xl font-bold">{tokenUsage.input_tokens.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {tokenUsage.input_tokens.toLocaleString()}
+                        </p>
                       </div>
 
-                      <div className="border rounded-lg p-4 space-y-2 bg-card">
-                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <div className="border border-border rounded-lg p-4 bg-background">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <TrendingUp className="h-4 w-4" />
                           <span className="text-sm font-medium">Output Tokens</span>
                         </div>
-                        <p className="text-2xl font-bold">{tokenUsage.output_tokens.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {tokenUsage.output_tokens.toLocaleString()}
+                        </p>
                       </div>
 
-                      <div className="border rounded-lg p-4 space-y-2 bg-card">
-                        <div className="flex items-center gap-2 text-primary">
+                      <div className="border border-border rounded-lg p-4 bg-background">
+                        <div className="flex items-center gap-2 text-brand-primary mb-3">
                           <Coins className="h-4 w-4" />
                           <span className="text-sm font-medium">Total Tokens</span>
                         </div>
-                        <p className="text-2xl font-bold">{tokenUsage.total_tokens.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {tokenUsage.total_tokens.toLocaleString()}
+                        </p>
                       </div>
                     </div>
 
                     {/* Detailed Breakdown */}
-                    <div className="border rounded-lg p-6 space-y-4 bg-card">
-                      <h3 className="text-lg font-semibold">Token Breakdown</h3>
+                    <div className="border border-border rounded-lg p-6 bg-background">
+                      <h3 className="text-base font-semibold text-foreground mb-6">
+                        Token Breakdown
+                      </h3>
 
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Input Tokens</span>
-                          <span className="font-mono font-semibold">{tokenUsage.input_tokens.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full transition-all"
-                            style={{
-                              width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.input_tokens / tokenUsage.total_tokens) * 100 : 0}%`
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between mt-4">
-                          <span className="text-sm text-muted-foreground">Output Tokens</span>
-                          <span className="font-mono font-semibold">{tokenUsage.output_tokens.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full transition-all"
-                            style={{
-                              width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.output_tokens / tokenUsage.total_tokens) * 100 : 0}%`
-                            }}
-                          />
+                      <div className="space-y-5">
+                        {/* Input Tokens */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-muted-foreground">Input Tokens</span>
+                            <span className="font-mono font-semibold text-foreground">
+                              {tokenUsage.input_tokens.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-brand-primary h-2 rounded-full transition-all duration-200"
+                              style={{
+                                width: `${
+                                  tokenUsage.total_tokens > 0
+                                    ? (tokenUsage.input_tokens / tokenUsage.total_tokens) * 100
+                                    : 0
+                                }%`,
+                              }}
+                            />
+                          </div>
                         </div>
 
+                        {/* Output Tokens */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-muted-foreground">Output Tokens</span>
+                            <span className="font-mono font-semibold text-foreground">
+                              {tokenUsage.output_tokens.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-brand-primary h-2 rounded-full transition-all duration-200"
+                              style={{
+                                width: `${
+                                  tokenUsage.total_tokens > 0
+                                    ? (tokenUsage.output_tokens / tokenUsage.total_tokens) * 100
+                                    : 0
+                                }%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Reasoning Tokens */}
                         {tokenUsage.reasoning_tokens > 0 && (
-                          <>
-                            <div className="flex items-center justify-between mt-4">
-                              <span className="text-sm text-muted-foreground">Reasoning Tokens</span>
-                              <span className="font-mono font-semibold">{tokenUsage.reasoning_tokens.toLocaleString()}</span>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-muted-foreground">
+                                Reasoning Tokens
+                              </span>
+                              <span className="font-mono font-semibold text-foreground">
+                                {tokenUsage.reasoning_tokens.toLocaleString()}
+                              </span>
                             </div>
-                            <div className="w-full bg-muted rounded-full h-2">
+                            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                               <div
-                                className="bg-purple-500 h-2 rounded-full transition-all"
+                                className="bg-brand-primary h-2 rounded-full transition-all duration-200"
                                 style={{
-                                  width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.reasoning_tokens / tokenUsage.total_tokens) * 100 : 0}%`
+                                  width: `${
+                                    tokenUsage.total_tokens > 0
+                                      ? (tokenUsage.reasoning_tokens / tokenUsage.total_tokens) *
+                                        100
+                                      : 0
+                                  }%`,
                                 }}
                               />
                             </div>
-                          </>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-center py-16 text-muted-foreground">
                     No token usage data available
                   </div>
                 )}
@@ -415,42 +490,59 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             )}
 
             {activeTab === 'templates' && (
-              <div className="p-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold">Analysis Templates</h2>
+              <div className="p-8">
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-foreground">Analysis Templates</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Manage your saved analysis workflows
                   </p>
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : templates.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-center py-16 text-muted-foreground">
                     No templates yet. Save an analysis in chat to create one.
                   </div>
                 ) : (
                   <TooltipProvider>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border border-border rounded-lg overflow-hidden bg-background">
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
-                            <TableRow>
-                              <TableHead className="min-w-[200px]">Title</TableHead>
-                              <TableHead className="min-w-[250px]">Description</TableHead>
-                              <TableHead>Category</TableHead>
-                              <TableHead>Source</TableHead>
-                              <TableHead>Visibility</TableHead>
-                              <TableHead>Created</TableHead>
-                              <TableHead>Action</TableHead>
+                            <TableRow className="border-border hover:bg-transparent">
+                              <TableHead className="min-w-[200px] text-muted-foreground font-medium">
+                                Title
+                              </TableHead>
+                              <TableHead className="min-w-[250px] text-muted-foreground font-medium">
+                                Description
+                              </TableHead>
+                              <TableHead className="text-muted-foreground font-medium">
+                                Category
+                              </TableHead>
+                              <TableHead className="text-muted-foreground font-medium">
+                                Source
+                              </TableHead>
+                              <TableHead className="text-muted-foreground font-medium">
+                                Visibility
+                              </TableHead>
+                              <TableHead className="text-muted-foreground font-medium">
+                                Created
+                              </TableHead>
+                              <TableHead className="text-muted-foreground font-medium">
+                                Action
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {templates.map((template) => (
-                              <TableRow key={template.id}>
-                                <TableCell className="font-medium">
+                              <TableRow
+                                key={template.id}
+                                className="border-border hover:bg-muted/50 transition-colors duration-200"
+                              >
+                                <TableCell className="font-medium text-foreground">
                                   {editingId === template.id ? (
                                     <div className="flex items-center gap-2">
                                       <input
@@ -461,24 +553,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                           if (e.key === 'Enter') saveEdit(template.id);
                                           if (e.key === 'Escape') cancelEdit();
                                         }}
-                                        className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="flex-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-brand-primary/50 transition-all duration-200"
                                         autoFocus
                                       />
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-7 w-7 p-0"
+                                        className="h-8 w-8 p-0 hover:bg-muted"
                                         onClick={() => saveEdit(template.id)}
                                       >
-                                        ✓
+                                        <Check className="h-4 w-4" />
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-7 w-7 p-0"
+                                        className="h-8 w-8 p-0 hover:bg-muted"
                                         onClick={cancelEdit}
                                       >
-                                        ✕
+                                        <X className="h-4 w-4" />
                                       </Button>
                                     </div>
                                   ) : (
@@ -497,10 +589,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-muted"
                                           onClick={() => startEdit(template)}
                                         >
-                                          <Pencil className="h-3 w-3" />
+                                          <Pencil className="h-3.5 w-3.5" />
                                         </Button>
                                       )}
                                     </div>
@@ -519,23 +611,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                   </Tooltip>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="whitespace-nowrap">
+                                  <Badge
+                                    variant="outline"
+                                    className="whitespace-nowrap border-border text-muted-foreground"
+                                  >
                                     {template.category}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
                                   <Badge
                                     variant={template.is_mine ? 'default' : 'secondary'}
-                                    className="whitespace-nowrap"
+                                    className={`
+                                      whitespace-nowrap transition-all duration-200
+                                      ${
+                                        template.is_mine
+                                          ? 'bg-brand-primary text-white'
+                                          : 'bg-muted text-muted-foreground'
+                                      }
+                                    `}
                                   >
                                     {template.is_mine ? 'Mine' : 'Team'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
                                   {template.is_mine ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                       {template.is_public ? (
-                                        <Users className="h-4 w-4 text-green-600 shrink-0" />
+                                        <Users className="h-4 w-4 text-brand-primary shrink-0" />
                                       ) : (
                                         <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
                                       )}
@@ -545,6 +647,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                           toggleVisibility(template.id, template.is_public)
                                         }
                                         disabled={updatingId === template.id}
+                                        className="data-[state=checked]:bg-brand-primary"
                                       />
                                     </div>
                                   ) : (
@@ -563,7 +666,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-8 w-8 p-0"
+                                        className="h-8 w-8 p-0 hover:bg-brand-primary/10 hover:text-brand-primary transition-all duration-200"
                                         onClick={() => useTemplate(template)}
                                       >
                                         <Play className="h-4 w-4" />

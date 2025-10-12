@@ -2,7 +2,20 @@
 
 import React, { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download, FileSpreadsheet, Search } from 'lucide-react'
+import {
+  FileText,
+  BarChart,
+  ChevronUp,
+  ChevronDown,
+  Loader2,
+  ChevronRight,
+  Maximize2,
+  Download,
+  FileSpreadsheet,
+  Search,
+  Copy,
+  Check
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -27,33 +40,27 @@ interface AnalysisBlockProps {
     id: string
     content: any
     created_at: string
-    chat_id?: string  // Added to pass session ID
+    chat_id?: string
   }
   isExpanded: boolean
   onToggle: () => void
 }
 
 /**
- * Simplified Analysis Block Renderer
- * Only 3 types of content:
- * 1. text - Markdown text (includes metrics, insights, small tables)
- * 2. files.chart - Visualization file (HTML)
- * 3. files.data - Large data table (JSON)
- *
- * Default state: Collapsed (small card)
- * Click to expand: Full content
+ * Analysis Block Renderer - Ultra-premium 2025 design
+ * Clean, minimal styling with Stripe/Linear inspiration
+ * Only gray + brand color system, no neumorphism or gradients
  */
 export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisBlockProps) {
   const { content } = block
 
-  // Get session ID from URL or context (you need to pass this from parent)
-  // For now, we'll extract from the block's metadata if available
+  // Get session ID from URL or context
   const sessionId = block.chat_id || window.location.pathname.split('/').pop()
 
-  // Extract title (flexible field naming)
+  // Extract title
   const title = content.title || content.name || 'Analysis Block'
 
-  // State for collapsible sections (only used when block is expanded)
+  // State management
   const [isChartExpanded, setIsChartExpanded] = useState(true)
   const [isDataExpanded, setIsDataExpanded] = useState(true)
   const [dataLoading, setDataLoading] = useState(false)
@@ -61,28 +68,27 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [selectedDataIndex, setSelectedDataIndex] = useState(0) // Track which data table to show
-
-  // State for fullscreen/maximized view - support multiple charts
+  const [selectedDataIndex, setSelectedDataIndex] = useState(0)
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null)
   const [isDataMaximized, setIsDataMaximized] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  // Normalize files to arrays (support both single file and multiple files)
+  // Normalize files to arrays
   const charts = React.useMemo(() => {
-    if (content.files?.charts) return content.files.charts // Multiple files
-    if (content.files?.chart) return [content.files.chart] // Single file (backward compatible)
+    if (content.files?.charts) return content.files.charts
+    if (content.files?.chart) return [content.files.chart]
     return []
   }, [content.files])
 
   const dataFiles = React.useMemo(() => {
-    if (Array.isArray(content.files?.data)) return content.files.data // Multiple files
-    if (content.files?.data) return [content.files.data] // Single file (backward compatible)
+    if (Array.isArray(content.files?.data)) return content.files.data
+    if (content.files?.data) return [content.files.data]
     return []
   }, [content.files])
 
   const reports = React.useMemo(() => {
-    if (content.files?.reports) return content.files.reports // Multiple PDFs
-    if (content.files?.report) return [content.files.report] // Single PDF
+    if (content.files?.reports) return content.files.reports
+    if (content.files?.report) return [content.files.report]
     return []
   }, [content.files])
 
@@ -93,10 +99,8 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
       const response = await fetch(`/api/files/${filename}?session_id=${sessionId}`)
 
       if (response.ok) {
-        // JSON files contain array of records directly
         if (filename.endsWith('.json')) {
           const data = await response.json()
-          // Data should be in format: [{col1: val1, col2: val2}, ...]
           setTableData(Array.isArray(data) ? data : [])
         } else {
           console.log('Unsupported file format:', filename)
@@ -111,16 +115,15 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     }
   }, [sessionId])
 
-  // Load data when block is expanded or selected data index changes
+  // Load data when block is expanded
   React.useEffect(() => {
     if (isExpanded && dataFiles.length > 0) {
-      // Load selected data file
       const selectedFile = dataFiles[selectedDataIndex] || dataFiles[0]
       loadTableData(selectedFile)
     }
   }, [isExpanded, dataFiles, selectedDataIndex, loadTableData])
 
-  // Extract summary for collapsed view (first 150 chars of text content)
+  // Extract summary for collapsed view
   const summary = content.text
     ? content.text.split('\n').find((line: string) => line.trim().length > 20)?.slice(0, 150) + '...'
     : 'Click to view analysis details'
@@ -146,12 +149,20 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     XLSX.writeFile(workbook, fileName)
   }, [tableData, dataFiles, selectedDataIndex])
 
+  // Copy handler
+  const handleCopy = useCallback(() => {
+    if (content.text) {
+      navigator.clipboard.writeText(content.text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [content.text])
+
   // Count available content types
   const hasText = !!content.text
   const hasChart = charts.length > 0
   const hasData = dataFiles.length > 0
   const hasReport = reports.length > 0
-  const contentTypesCount = [hasText, hasChart, hasData, hasReport].filter(Boolean).length
 
   // Dynamic table columns
   const columns = React.useMemo(() => {
@@ -195,47 +206,47 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     }
   })
 
-  // Collapsed view - small card
+  // Collapsed view - minimal card
   if (!isExpanded) {
     return (
       <Card
-        className="w-full cursor-pointer group"
+        className="w-full cursor-pointer group hover:border-brand-primary/20 transition-all duration-200"
         onClick={onToggle}
       >
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
-            {/* Icon indicator - neumorphic circle */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-full neuro-raised-sm bg-brand-avatar flex items-center justify-center">
-              <BarChart className="h-5 w-5 text-brand-primary" />
+            {/* Icon indicator */}
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center group-hover:bg-brand-primary/10 transition-colors duration-200">
+              <BarChart className="h-5 w-5 text-muted-foreground group-hover:text-brand-primary transition-colors duration-200" />
             </div>
 
             {/* Content preview */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-base truncate">{title}</h3>
-                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                <h3 className="font-semibold text-base truncate text-foreground">{title}</h3>
+                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform duration-200" />
               </div>
 
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
                 {summary}
               </p>
 
-              {/* Content type badges - neumorphic pills */}
+              {/* Content type badges - clean pills */}
               <div className="flex items-center gap-2 text-xs">
                 {hasText && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 text-blue-700 dark:text-blue-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-medium">
                     <FileText className="h-3 w-3" />
                     Text
                   </span>
                 )}
                 {hasChart && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-badge text-green-700 dark:text-green-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-medium">
                     <BarChart className="h-3 w-3" />
                     Chart
                   </span>
                 )}
                 {hasData && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-avatar text-orange-700 dark:text-orange-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-medium">
                     <FileText className="h-3 w-3" />
                     Data
                   </span>
@@ -253,18 +264,34 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
 
   // Expanded view - full content
   return (
-    <Card className="w-full overflow-hidden">
+    <Card className="w-full overflow-hidden border-brand-primary/20">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </Button>
+          <CardTitle className="text-lg font-semibold text-foreground">{title}</CardTitle>
+          <div className="flex items-center gap-2">
+            {content.text && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-200"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-brand-primary" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-200"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <span className="text-xs text-muted-foreground">
           {new Date(block.created_at).toLocaleString()}
@@ -280,27 +307,31 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
           </div>
         )}
 
-        {/* Visualization Charts (HTML) - Support multiple charts */}
+        {/* Visualization Charts */}
         {charts.length > 0 && (
           <div className="space-y-4">
             {charts.length > 1 && (
               <div className="flex items-center gap-2">
-                <BarChart className="h-4 w-4" />
-                <span className="text-sm font-semibold">Visualizations ({charts.length})</span>
+                <BarChart className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Visualizations ({charts.length})</span>
               </div>
             )}
             {charts.map((chartFile: string, index: number) => (
-              <div key={chartFile} className="border rounded-lg overflow-hidden w-full max-w-full">
-                <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
+              <div key={chartFile} className="border border-border rounded-lg overflow-hidden w-full max-w-full">
+                <div className="p-3 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors duration-200">
                   <button
                     onClick={() => setIsChartExpanded(!isChartExpanded)}
-                    className="flex items-center gap-2 flex-1"
+                    className="flex items-center gap-2 flex-1 text-foreground"
                   >
                     <BarChart className="h-4 w-4" />
                     <span className="text-sm font-medium">
                       {charts.length === 1 ? 'Visualization' : `Visualization ${index + 1}`}
                     </span>
-                    {isChartExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                    {isChartExpanded ? (
+                      <ChevronUp className="h-4 w-4 ml-2 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 ml-2 text-muted-foreground" />
+                    )}
                   </button>
                   <Button
                     variant="ghost"
@@ -309,14 +340,14 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                       e.stopPropagation()
                       setMaximizedChart(chartFile)
                     }}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-200"
                   >
                     <Maximize2 className="h-4 w-4" />
                   </Button>
                 </div>
 
                 {isChartExpanded && (
-                  <div className="w-full h-[400px] bg-white overflow-auto">
+                  <div className="w-full h-[400px] bg-muted/50 overflow-auto">
                     <iframe
                       src={`/api/files/${chartFile}?session_id=${sessionId}`}
                       className="w-full h-full border-0 min-w-0"
@@ -330,10 +361,10 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
           </div>
         )}
 
-        {/* PDF Reports - Support multiple PDFs */}
+        {/* PDF Reports */}
         {reports.length > 0 && (
           <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <FileText className="w-4 h-4" />
               <span>Report{reports.length > 1 ? 's' : ''}</span>
             </div>
@@ -344,25 +375,25 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                   key={index}
                   onClick={() => handleDownloadPDF(reportFile)}
                   variant="outline"
-                  className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
+                  className="w-full justify-start gap-2 hover:bg-muted transition-colors duration-200"
                 >
                   <Download className="w-4 h-4" />
                   <span className="flex-1 text-left truncate">{reportFile}</span>
-                  <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">PDF</span>
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-md bg-muted">PDF</span>
                 </Button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Data Table (JSON) - Support multiple data files */}
+        {/* Data Table */}
         {dataFiles.length > 0 && (
-          <div className="border rounded-lg w-full" style={{ maxWidth: '100%' }}>
+          <div className="border border-border rounded-lg w-full" style={{ maxWidth: '100%' }}>
             {/* Header with collapse button and actions */}
-            <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
+            <div className="p-3 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors duration-200">
               <button
                 onClick={() => setIsDataExpanded(!isDataExpanded)}
-                className="flex items-center gap-2 flex-1"
+                className="flex items-center gap-2 flex-1 text-foreground"
               >
                 <FileText className="h-4 w-4" />
                 <span className="text-sm font-medium">
@@ -373,7 +404,11 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                     ({table.getFilteredRowModel().rows.length} / {tableData.length} rows)
                   </span>
                 )}
-                {isDataExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                {isDataExpanded ? (
+                  <ChevronUp className="h-4 w-4 ml-2 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 ml-2 text-muted-foreground" />
+                )}
               </button>
               <div className="flex items-center gap-2">
                 <Button
@@ -383,7 +418,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                     e.stopPropagation()
                     handleExportExcel()
                   }}
-                  className="h-8 px-3"
+                  className="h-8 px-3 hover:bg-muted transition-colors duration-200"
                   disabled={tableData.length === 0}
                 >
                   <FileSpreadsheet className="h-4 w-4 mr-1" />
@@ -396,7 +431,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                     e.stopPropagation()
                     setIsDataMaximized(true)
                   }}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-200"
                 >
                   <Maximize2 className="h-4 w-4" />
                 </Button>
@@ -405,15 +440,15 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
 
             {/* Tab navigation for multiple data files */}
             {isDataExpanded && dataFiles.length > 1 && (
-              <div className="flex gap-1 px-3 py-2 bg-muted/50 border-t overflow-x-auto">
+              <div className="flex gap-1 px-3 py-2 bg-muted/50 border-t border-border overflow-x-auto">
                 {dataFiles.map((file: string, index: number) => (
                   <button
                     key={file}
                     onClick={() => setSelectedDataIndex(index)}
                     className={cn(
-                      "px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap",
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap",
                       selectedDataIndex === index
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground border border-border shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                     )}
                   >
@@ -427,65 +462,67 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
               <>
                 {dataLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : tableData.length > 0 ? (
                   <>
                     {/* Search bar */}
-                    <div className="px-3 py-2 border-t bg-muted/30">
+                    <div className="px-3 py-2 border-t border-border bg-muted/30">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Search all columns..."
                           value={globalFilter ?? ''}
                           onChange={(e) => setGlobalFilter(e.target.value)}
-                          className="pl-9 h-8 text-xs"
+                          className="pl-9 h-8 text-xs bg-background"
                         />
                       </div>
                     </div>
 
-                    {/* TanStack Table with horizontal scroll - max height with scroll */}
-                    <div className="border-t max-h-[500px] overflow-auto" style={{ width: '100%', display: 'block' }}>
-                      <table className="divide-y divide-gray-200" style={{ width: 'max-content', minWidth: '100%' }}>
-                          <thead className="bg-gray-50 sticky top-0">
-                            {table.getHeaderGroups().map(headerGroup => (
-                              <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                  <th
-                                    key={header.id}
-                                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                                    onClick={header.column.getToggleSortingHandler()}
-                                  >
+                    {/* TanStack Table with horizontal scroll */}
+                    <div className="border-t border-border max-h-[500px] overflow-auto" style={{ width: '100%', display: 'block' }}>
+                      <table className="divide-y divide-border" style={{ width: 'max-content', minWidth: '100%' }}>
+                        <thead className="bg-muted/50 sticky top-0">
+                          {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id}>
+                              {headerGroup.headers.map(header => (
+                                <th
+                                  key={header.id}
+                                  className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors duration-200 whitespace-nowrap"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                >
+                                  <div className="flex items-center gap-1">
                                     {flexRender(
                                       header.column.columnDef.header,
                                       header.getContext()
                                     )}
-                                    {header.column.getIsSorted() === 'asc' && ' ↑'}
-                                    {header.column.getIsSorted() === 'desc' && ' ↓'}
-                                  </th>
-                                ))}
-                              </tr>
-                            ))}
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {table.getRowModel().rows.map(row => (
-                              <tr key={row.id} className="hover:bg-gray-50">
-                                {row.getVisibleCells().map(cell => (
-                                  <td key={cell.id} className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                    {flexRender(
-                                      cell.column.columnDef.cell,
-                                      cell.getContext()
-                                    )}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                    {header.column.getIsSorted() === 'asc' && <ChevronUp className="h-3 w-3" />}
+                                    {header.column.getIsSorted() === 'desc' && <ChevronDown className="h-3 w-3" />}
+                                  </div>
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                        <tbody className="bg-background divide-y divide-border">
+                          {table.getRowModel().rows.map(row => (
+                            <tr key={row.id} className="hover:bg-muted/50 transition-colors duration-200">
+                              {row.getVisibleCells().map(cell => (
+                                <td key={cell.id} className="px-3 py-2 whitespace-nowrap text-sm text-foreground">
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Pagination Controls */}
-                    <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                    <div className="flex items-center justify-between p-4 border-t border-border bg-muted/50">
                       <div className="text-sm text-muted-foreground">
                         Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
                       </div>
@@ -495,6 +532,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                           size="sm"
                           onClick={() => table.previousPage()}
                           disabled={!table.getCanPreviousPage()}
+                          className="transition-colors duration-200"
                         >
                           Previous
                         </Button>
@@ -503,6 +541,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                           size="sm"
                           onClick={() => table.nextPage()}
                           disabled={!table.getCanNextPage()}
+                          className="transition-colors duration-200"
                         >
                           Next
                         </Button>
@@ -529,11 +568,11 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
 
       {/* Maximized Chart Dialog */}
       <Dialog open={!!maximizedChart} onOpenChange={(open) => !open && setMaximizedChart(null)}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle>Visualization - {title}</DialogTitle>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-card border border-border">
+          <DialogHeader className="p-6 pb-4 border-b border-border">
+            <DialogTitle className="text-foreground">Visualization - {title}</DialogTitle>
           </DialogHeader>
-          <div className="w-full h-[calc(90vh-8rem)] bg-white">
+          <div className="w-full h-[calc(90vh-8rem)] bg-muted/50">
             {maximizedChart && (
               <iframe
                 src={`/api/files/${maximizedChart}?session_id=${sessionId}`}
@@ -548,15 +587,15 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
 
       {/* Maximized Data Table Dialog */}
       <Dialog open={isDataMaximized} onOpenChange={setIsDataMaximized}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 flex flex-col">
-          <DialogHeader className="p-6 pb-4 border-b">
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 flex flex-col bg-card border border-border">
+          <DialogHeader className="p-6 pb-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <DialogTitle>Data Table - {title}</DialogTitle>
+              <DialogTitle className="text-foreground">Data Table - {title}</DialogTitle>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportExcel}
-                className="h-8 px-3"
+                className="h-8 px-3 transition-colors duration-200"
                 disabled={tableData.length === 0}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -567,19 +606,19 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
           <div className="flex-1 overflow-hidden">
             {dataLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : tableData.length > 0 ? (
               <>
                 {/* Search bar in maximized view */}
-                <div className="px-6 py-3 border-b bg-muted/30">
+                <div className="px-6 py-3 border-b border-border bg-muted/30">
                   <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search all columns..."
                       value={globalFilter ?? ''}
                       onChange={(e) => setGlobalFilter(e.target.value)}
-                      className="pl-9 h-9 text-sm"
+                      className="pl-9 h-9 text-sm bg-background"
                     />
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
@@ -587,48 +626,50 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                   </div>
                 </div>
 
-                {/* Maximized TanStack Table with horizontal scroll */}
+                {/* Maximized TanStack Table */}
                 <div className="h-[calc(90vh-16rem)] overflow-auto" style={{ width: '100%', display: 'block' }}>
-                    <table className="divide-y divide-gray-200" style={{ width: 'max-content', minWidth: '100%' }}>
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        {table.getHeaderGroups().map(headerGroup => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                              <th
-                                key={header.id}
-                                className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                                onClick={header.column.getToggleSortingHandler()}
-                              >
+                  <table className="divide-y divide-border" style={{ width: 'max-content', minWidth: '100%' }}>
+                    <thead className="bg-muted/50 sticky top-0 z-10">
+                      {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                          {headerGroup.headers.map(header => (
+                            <th
+                              key={header.id}
+                              className="px-4 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors duration-200 whitespace-nowrap"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              <div className="flex items-center gap-1">
                                 {flexRender(
                                   header.column.columnDef.header,
                                   header.getContext()
                                 )}
-                                {header.column.getIsSorted() === 'asc' && ' ↑'}
-                                {header.column.getIsSorted() === 'desc' && ' ↓'}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {table.getRowModel().rows.map(row => (
-                          <tr key={row.id} className="hover:bg-gray-50">
-                            {row.getVisibleCells().map(cell => (
-                              <td key={cell.id} className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext()
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                {header.column.getIsSorted() === 'asc' && <ChevronUp className="h-3 w-3" />}
+                                {header.column.getIsSorted() === 'desc' && <ChevronDown className="h-3 w-3" />}
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      ))}
+                    </thead>
+                    <tbody className="bg-background divide-y divide-border">
+                      {table.getRowModel().rows.map(row => (
+                        <tr key={row.id} className="hover:bg-muted/50 transition-colors duration-200">
+                          {row.getVisibleCells().map(cell => (
+                            <td key={cell.id} className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                <div className="flex items-center justify-between p-4 border-t border-border bg-muted/50">
                   <div className="text-sm text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
                   </div>
@@ -638,6 +679,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                       size="sm"
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
+                      className="transition-colors duration-200"
                     >
                       Previous
                     </Button>
@@ -646,6 +688,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                       size="sm"
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
+                      className="transition-colors duration-200"
                     >
                       Next
                     </Button>

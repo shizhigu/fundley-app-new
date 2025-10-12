@@ -24,7 +24,7 @@ import { VoiceRecorder } from './voice-recorder';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, Paperclip, Sparkles } from 'lucide-react';
+import { ArrowDown, Paperclip, Sparkles, Send } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,9 @@ import {
 
 type VisibilityType = 'private' | 'public';
 
-// Streaming Timer Component
+// ============================================================================
+// Ultra-Premium 2025 Design - Streaming Timer Component
+// ============================================================================
 const StreamingTimer = memo(() => {
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -60,31 +62,25 @@ const StreamingTimer = memo(() => {
       initial={{ opacity: 0, scale: 0.95, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="
-        relative px-3 py-2 rounded-xl w-fit mx-auto
-        bg-white/[0.05] dark:bg-white/[0.08]
-        backdrop-blur-lg backdrop-saturate-150
-        border border-white/[0.12] dark:border-white/[0.16]
-        shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)]
-      "
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="relative px-4 py-2 rounded-xl w-fit mx-auto bg-card border border-border"
     >
       <div className="flex items-center gap-3">
-        {/* Compact pulse animation */}
-        <div className="flex items-center gap-1">
+        {/* Clean pulse animation */}
+        <div className="flex items-center gap-1.5">
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-400 to-blue-400"
+              className="w-1.5 h-1.5 rounded-full bg-brand-primary"
               animate={{
                 scale: [1, 1.3, 1],
                 opacity: [0.4, 1, 0.4],
               }}
               transition={{
-                duration: 1,
+                duration: 1.2,
                 repeat: Infinity,
-                delay: i * 0.15,
-                ease: [0.4, 0, 0.2, 1],
+                delay: i * 0.2,
+                ease: 'easeOut',
               }}
             />
           ))}
@@ -95,7 +91,7 @@ const StreamingTimer = memo(() => {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="text-xs font-mono text-muted-foreground/70 tabular-nums"
+          className="text-xs font-mono text-muted-foreground tabular-nums tracking-wider"
         >
           {formatTime(elapsedTime)}
         </motion.div>
@@ -106,6 +102,9 @@ const StreamingTimer = memo(() => {
 
 StreamingTimer.displayName = 'StreamingTimer';
 
+// ============================================================================
+// Ultra-Premium 2025 Design - Main Input Component
+// ============================================================================
 function PureMultimodalInput({
   status,
   stop,
@@ -133,29 +132,32 @@ function PureMultimodalInput({
   isAtBottom?: boolean;
   scrollToBottom?: () => void;
 }) {
-  // 内部input状态管理
+  // ========================================================================
+  // State Management
+  // ========================================================================
   const [input, setInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { width } = useWindowSize();
 
-  // Handle voice transcript
+  const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '');
+
+  // ========================================================================
+  // Voice & Template Handling
+  // ========================================================================
   const handleVoiceTranscript = useCallback((transcript: string, metadata?: any) => {
     setInput(transcript);
     requestAnimationFrame(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
-        const textarea = textareaRef.current;
-        textarea.style.height = 'auto';
-        const newHeight = Math.min(textarea.scrollHeight + 2, 200);
-        textarea.style.height = `${newHeight}px`;
+        adjustTextareaHeight(textareaRef.current);
       }
     });
   }, []);
 
-  // Listen for template prefill event
   useEffect(() => {
     const handleTemplatePrefill = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
@@ -164,10 +166,7 @@ function PureMultimodalInput({
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
-          const textarea = textareaRef.current;
-          textarea.style.height = 'auto';
-          const newHeight = Math.min(textarea.scrollHeight + 2, 200);
-          textarea.style.height = `${newHeight}px`;
+          adjustTextareaHeight(textareaRef.current);
         }
       });
     };
@@ -176,42 +175,30 @@ function PureMultimodalInput({
     return () => window.removeEventListener('template-prefill', handleTemplatePrefill);
   }, []);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      adjustHeight();
-    }
-  }, []);
-
-  const adjustHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      const maxHeight = 200; // 与CSS max-h-[200px] 保持一致
-      const newHeight = Math.min(textareaRef.current.scrollHeight + 2, maxHeight);
-      textareaRef.current.style.height = `${newHeight}px`;
-    }
+  // ========================================================================
+  // Textarea Auto-Resize
+  // ========================================================================
+  const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = 'auto';
+    const maxHeight = 200;
+    const newHeight = Math.min(textarea.scrollHeight + 2, maxHeight);
+    textarea.style.height = `${newHeight}px`;
   };
 
-  const resetHeight = () => {
+  const resetTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = '100px';
     }
   };
 
-  const [localStorageInput, setLocalStorageInput] = useLocalStorage(
-    'input',
-    '',
-  );
-
   useEffect(() => {
     if (textareaRef.current) {
       const domValue = textareaRef.current.value;
-      // Prefer DOM value over localStorage to handle hydration
       const finalValue = domValue || localStorageInput || '';
       setInput(finalValue);
-      adjustHeight();
+      adjustTextareaHeight(textareaRef.current);
     }
-    // Only run once after hydration
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -221,23 +208,22 @@ function PureMultimodalInput({
 
   const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);
-    adjustHeight();
+    adjustTextareaHeight(event.target);
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  // ========================================================================
+  // Form Submission
+  // ========================================================================
   const submitForm = useCallback(() => {
-    // 防止重复提交 - 如果状态不是 ready，直接返回
     if (status !== 'ready' || !input.trim()) {
       return;
     }
 
-    // Call sendMessage with AgentOS format: (content, attachments)
     sendMessage(input, attachments.length > 0 ? attachments : undefined);
 
     setAttachments([]);
     setLocalStorageInput('');
-    resetHeight();
+    resetTextareaHeight();
     setInput('');
 
     if (width && width > 768) {
@@ -246,7 +232,6 @@ function PureMultimodalInput({
   }, [
     input,
     status,
-    setInput,
     attachments,
     sendMessage,
     setAttachments,
@@ -254,10 +239,12 @@ function PureMultimodalInput({
     width,
   ]);
 
-  // 直接将File对象添加到attachments，不上传到blob
+  // ========================================================================
+  // File Upload Handling
+  // ========================================================================
   const addFileToAttachments = (file: File) => {
     return {
-      file: file, // 保存原始File对象
+      file: file,
       name: file.name,
       contentType: file.type,
       size: file.size,
@@ -267,21 +254,17 @@ function PureMultimodalInput({
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
-
-      // 直接添加File对象到attachments，无需上传
       const newAttachments = files.map(addFileToAttachments);
 
-      setAttachments((currentAttachments) => {
-        const updated = [...currentAttachments, ...newAttachments];
-        return updated;
-      });
-
+      setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
       toast.success(`Added ${files.length} file(s)`);
     },
     [setAttachments],
   );
 
-  // 拖拽上传处理
+  // ========================================================================
+  // Drag & Drop Handling
+  // ========================================================================
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -291,7 +274,6 @@ function PureMultimodalInput({
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // 只有当离开整个drop zone时才取消dragging状态
     if (e.currentTarget === e.target) {
       setIsDragging(false);
     }
@@ -310,7 +292,6 @@ function PureMultimodalInput({
 
       const files = Array.from(e.dataTransfer.files);
 
-      // 过滤支持的文件类型
       const supportedFiles = files.filter(file => {
         const isImage = file.type.startsWith('image/');
         const isPDF = file.type === 'application/pdf';
@@ -330,36 +311,24 @@ function PureMultimodalInput({
         toast.error(`${files.length - supportedFiles.length} unsupported file(s) skipped`);
       }
 
-      // 添加文件到attachments
       const newAttachments = supportedFiles.map(addFileToAttachments);
-
-      setAttachments((currentAttachments) => {
-        const updated = [...currentAttachments, ...newAttachments];
-        return updated;
-      });
+      setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
 
       toast.success(`Added ${supportedFiles.length} file(s)`);
     },
     [setAttachments],
   );
 
-  useEffect(() => {
-    if (status === 'submitted' && scrollToBottom) {
-      scrollToBottom();
-    }
-  }, [status, scrollToBottom]);
-
-  // 粘贴图片处理
+  // ========================================================================
+  // Paste Image Handling
+  // ========================================================================
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       const items = e.clipboardData.items;
       const imageFiles: File[] = [];
 
-      // 遍历剪贴板项目，查找图片
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-
-        // 检查是否是图片类型
         if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (file) {
@@ -368,32 +337,36 @@ function PureMultimodalInput({
         }
       }
 
-      // 如果找到图片，添加到附件
       if (imageFiles.length > 0) {
-        e.preventDefault(); // 阻止默认粘贴行为
-
+        e.preventDefault();
         const newAttachments = imageFiles.map(addFileToAttachments);
-
-        setAttachments((currentAttachments) => {
-          const updated = [...currentAttachments, ...newAttachments];
-          return updated;
-        });
-
+        setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
         toast.success(`Pasted ${imageFiles.length} image(s)`);
       }
     },
     [setAttachments],
   );
 
+  // ========================================================================
+  // Auto Scroll on Submit
+  // ========================================================================
+  useEffect(() => {
+    if (status === 'submitted' && scrollToBottom) {
+      scrollToBottom();
+    }
+  }, [status, scrollToBottom]);
 
+  // ========================================================================
+  // Ultra-Premium 2025 UI Rendering
+  // ========================================================================
   return (
-    <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4 bg-transparent">
-      {/* Modern Loading Indicator with Timer */}
+    <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4">
+      {/* ==================== Streaming Timer ==================== */}
       <AnimatePresence>
-        {status === 'streaming' && (
-          <StreamingTimer />
-        )}
+        {status === 'streaming' && <StreamingTimer />}
       </AnimatePresence>
+
+      {/* ==================== Scroll to Bottom Button ==================== */}
       <AnimatePresence>
         {scrollToBottom && isAtBottom === false && (
           <motion.div
@@ -401,11 +374,11 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute left-1/2 bottom-28 -translate-x-1/2 z-50"
+            className="absolute left-1/2 bottom-32 -translate-x-1/2 z-50"
           >
             <Button
               data-testid="scroll-to-bottom-button"
-              className="rounded-full"
+              className="rounded-full shadow-lg"
               size="icon"
               variant="outline"
               onClick={(event) => {
@@ -413,13 +386,13 @@ function PureMultimodalInput({
                 scrollToBottom();
               }}
             >
-              <ArrowDown />
+              <ArrowDown className="w-5 h-5" />
             </Button>
           </motion.div>
         )}
       </AnimatePresence>
 
-
+      {/* ==================== Hidden File Input ==================== */}
       <input
         type="file"
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
@@ -430,6 +403,7 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
+      {/* ==================== Attachment Preview ==================== */}
       {attachments.length > 0 && (
         <EnhancedAttachmentPreview
           data-testid="attachments-preview"
@@ -440,10 +414,11 @@ function PureMultimodalInput({
             setAttachments(newAttachments);
           }}
           isUploading={status === 'streaming'}
-          className="mb-4"
+          className="mb-2"
         />
       )}
 
+      {/* ==================== Main Input Container ==================== */}
       <div
         ref={dropZoneRef}
         onDragEnter={handleDragEnter}
@@ -452,37 +427,48 @@ function PureMultimodalInput({
         onDrop={handleDrop}
         className="relative"
       >
-        {/* 拖拽覆盖层 */}
+        {/* Drag Overlay - Clean Design */}
         <AnimatePresence>
           {isDragging && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 rounded-2xl bg-primary/10 dark:bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center pointer-events-none"
+              className="absolute inset-0 z-10 rounded-xl bg-brand-primary/5 border-2 border-dashed border-brand-primary/50 flex items-center justify-center pointer-events-none"
             >
-              <div className="text-center">
-                <div className="text-primary text-lg font-semibold mb-1">Drop files here</div>
-                <div className="text-muted-foreground text-sm">Images, PDFs, documents supported</div>
+              <div className="text-center px-6 py-4">
+                <div className="text-brand-primary text-base font-medium mb-1">
+                  Drop files here
+                </div>
+                <div className="text-muted-foreground text-sm">
+                  Images, PDFs, documents supported
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Ultra-Premium Textarea - Stripe/Linear Style */}
         <Textarea
           data-testid="multimodal-input"
           ref={textareaRef}
-          placeholder="Ask me anything about the market..."
+          placeholder="Ask me anything..."
           value={input}
           onChange={handleInput}
           onPaste={handlePaste}
-          className={cx(
-            'professional-input min-h-[100px] max-h-[200px] overflow-y-auto resize-none rounded-2xl !text-sm bg-transparent pb-12 pl-4 pr-20 placeholder:text-foreground/40',
-            'border-2 border-gray-400/80 dark:border-gray-500/80',
-            'shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)]',
-            'focus:border-blue-500 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(59,130,246,0.2),0_1px_2px_rgba(0,0,0,0.2)] focus:ring-0 focus:outline-none',
-            'dark:focus:border-blue-400 dark:focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_0_0_4px_rgba(96,165,250,0.2),0_1px_2px_rgba(0,0,0,0.4)]',
-            'transition-all duration-300 ease-out',
+          className={cn(
+            // Core styling - clean and minimal
+            'min-h-[100px] max-h-[200px] overflow-y-auto resize-none',
+            'rounded-xl bg-card text-base leading-relaxed',
+            // Professional spacing
+            'px-4 py-3 pb-12 pr-20',
+            // Subtle border - NO yellow, NO pink!
+            'border border-border',
+            'focus:border-brand-primary/50 focus:ring-1 focus:ring-brand-primary/20',
+            // Smooth transitions
+            'transition-colors duration-200',
+            // Professional placeholder
+            'placeholder:text-muted-foreground',
             className,
           )}
           rows={2}
@@ -503,23 +489,22 @@ function PureMultimodalInput({
             }
           }}
         />
-      </div>
 
-      <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-        <VoiceRecorder onTranscript={handleVoiceTranscript} />
-        <SuggestionsButton messages={messages} />
-      </div>
+        {/* ==================== Bottom Left Actions ==================== */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+          <VoiceRecorder onTranscript={handleVoiceTranscript} />
+          <SuggestionsButton messages={messages} />
+        </div>
 
-      <div className="absolute bottom-0 right-0 p-3 flex flex-row items-center">
-        {status === 'submitted' ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-          />
-        )}
+        {/* ==================== Bottom Right Actions ==================== */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          {status === 'submitted' ? (
+            <StopButton stop={stop} setMessages={setMessages} />
+          ) : (
+            <SendButton input={input} submitForm={submitForm} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -538,6 +523,11 @@ export const MultimodalInput = memo(
   },
 );
 
+// ============================================================================
+// Ultra-Premium 2025 Design - Action Buttons
+// ============================================================================
+
+// ==================== Attachments Button ====================
 function PureAttachmentsButton({
   fileInputRef,
   status,
@@ -548,21 +538,34 @@ function PureAttachmentsButton({
   return (
     <button
       data-testid="attachments-button"
-      className="neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-foreground hover:text-primary transition-all duration-300"
+      className={cn(
+        // Clean button styling
+        'h-10 px-3 rounded-lg',
+        'bg-card border border-border',
+        'flex items-center justify-center gap-2',
+        // Subtle hover effect
+        'hover:bg-muted transition-colors duration-200',
+        // Text styling - clean and minimal
+        'text-sm text-foreground',
+        // Disabled state
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+      )}
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
       }}
       type="button"
+      disabled={status !== 'ready'}
     >
-      <Paperclip size={18} />
+      <Paperclip className="w-4 h-4" />
+      <span className="hidden sm:inline">Attach</span>
     </button>
   );
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
-
+// ==================== Stop Button ====================
 function PureStopButton({
   stop,
   setMessages,
@@ -573,20 +576,31 @@ function PureStopButton({
   return (
     <button
       data-testid="stop-button"
-      className="neuro-raised-sm w-12 h-12 rounded-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-red-600 hover:text-red-700 transition-all duration-300 shadow-[3px_3px_6px_rgba(239,68,68,0.15),-2px_-2px_4px_rgba(255,255,255,0.9)]"
+      className={cn(
+        // Clean stop button
+        'h-10 px-4 rounded-lg',
+        'bg-destructive/10 border border-destructive/30',
+        'flex items-center justify-center gap-2',
+        // Hover effect
+        'hover:bg-destructive/20 transition-colors duration-200',
+        // Text styling
+        'text-sm font-medium text-destructive',
+      )}
       onClick={(event) => {
         event.preventDefault();
         stop();
       }}
       type="button"
     >
-      <StopIcon size={18} />
+      <StopIcon className="w-4 h-4" />
+      <span>Stop</span>
     </button>
   );
 }
 
 const StopButton = memo(PureStopButton);
 
+// ==================== Send Button - ONLY BRAND COLOR ELEMENT ====================
 function PureSendButton({
   submitForm,
   input,
@@ -597,7 +611,18 @@ function PureSendButton({
   return (
     <button
       data-testid="send-button"
-      className="neuro-primary w-12 h-12 rounded-full flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
+      className={cn(
+        // Premium brand button - THE ONLY BRAND COLOR ELEMENT
+        'h-10 px-4 rounded-lg',
+        'bg-brand-primary',
+        'flex items-center justify-center gap-2',
+        // Clean hover effect
+        'hover:opacity-90 transition-opacity duration-200',
+        // Text styling
+        'text-sm font-medium text-white',
+        // Disabled state
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+      )}
       onClick={(event) => {
         event.preventDefault();
         submitForm();
@@ -605,7 +630,8 @@ function PureSendButton({
       disabled={(input?.length || 0) === 0}
       type="button"
     >
-      <ArrowUpIcon size={18} className="text-white fill-white" />
+      <Send className="w-4 h-4" />
+      <span>Send</span>
     </button>
   );
 }
@@ -615,7 +641,9 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   return true;
 });
 
-// Suggestions Button - extracts suggestions from latest assistant message
+// ============================================================================
+// Ultra-Premium 2025 Design - Suggestions Button
+// ============================================================================
 function PureSuggestionsButton({
   messages,
 }: {
@@ -635,7 +663,6 @@ function PureSuggestionsButton({
       return;
     }
 
-    // Get all text content
     const allText = latestAssistantMessage.parts
       ?.filter((part: any) => part.type === 'text')
       ?.map((part: any) => part.text)
@@ -647,7 +674,6 @@ function PureSuggestionsButton({
     }
 
     try {
-      // Extract suggestions from XML tags
       const regex = /<suggestions>([\s\S]*?)<\/suggestions>/;
       const match = allText.match(regex);
 
@@ -674,7 +700,6 @@ function PureSuggestionsButton({
 
   const handleSuggestionClick = (prompt: string) => {
     setOpen(false);
-    // Dispatch template-prefill event
     window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
   };
 
@@ -688,15 +713,23 @@ function PureSuggestionsButton({
         <button
           type="button"
           className={cn(
-            'neuro-raised-sm w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center transition-all duration-300 relative',
-            'text-foreground hover:text-primary',
-            open && 'neuro-pill-active'
+            // Clean button styling
+            'h-10 px-3 rounded-lg relative',
+            'bg-card border border-border',
+            'flex items-center justify-center gap-2',
+            // Hover effect
+            'hover:bg-muted transition-colors duration-200',
+            // Text styling
+            'text-sm text-foreground',
+            // Active state with brand color
+            open && 'border-brand-primary/50 bg-brand-primary/5',
           )}
         >
-          <Sparkles size={18} />
-          {/* Badge indicating number of suggestions */}
+          <Sparkles className="w-4 h-4" />
+          <span className="hidden sm:inline">Suggestions</span>
+          {/* Clean badge */}
           {suggestions.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
               {suggestions.length}
             </span>
           )}
@@ -705,12 +738,12 @@ function PureSuggestionsButton({
 
       <PopoverContent
         align="start"
-        className="w-fit max-w-md p-2 neuro-card"
+        className="w-fit max-w-md p-2 bg-card border border-border rounded-lg shadow-xl"
         sideOffset={8}
       >
         <div className="space-y-1">
-          <div className="px-2 py-1 text-xs text-muted-foreground font-medium">
-            AI Suggestions
+          <div className="px-3 py-1.5 text-xs text-muted-foreground font-medium">
+            Suggestions
           </div>
           {suggestions.map((suggestion, index) => (
             <button
@@ -718,14 +751,15 @@ function PureSuggestionsButton({
               type="button"
               onClick={() => handleSuggestionClick(suggestion.prompt)}
               className={cn(
-                'w-full px-3 py-2 text-sm transition-all duration-300 rounded-lg text-left',
-                'neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900',
-                'hover:text-primary hover:neuro-pill-active'
+                // Clean suggestion button
+                'w-full px-3 py-2 text-sm rounded-lg text-left',
+                'bg-transparent border border-transparent',
+                'hover:bg-muted hover:border-border transition-colors duration-200',
               )}
             >
               <div className="flex items-start gap-2">
-                <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                <span className="font-medium">{suggestion.label}</span>
+                <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0 text-brand-primary" />
+                <span className="font-medium text-foreground">{suggestion.label}</span>
               </div>
             </button>
           ))}
@@ -736,7 +770,6 @@ function PureSuggestionsButton({
 }
 
 const SuggestionsButton = memo(PureSuggestionsButton, (prevProps, nextProps) => {
-  // Re-render when messages change
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   const prevLatest = prevProps.messages[prevProps.messages.length - 1];
   const nextLatest = nextProps.messages[nextProps.messages.length - 1];

@@ -1,28 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { SimpleChatSelector } from '@/components/simple-chat-selector';
 import { NewChatInterface } from '@/components/new-chat-interface';
+import { Button } from '@/components/ui/button';
 import type { ChatManagerProps } from '@/lib/types/chat';
 
 /**
- * 聊天管理器组件
- * 整合聊天侧边栏和聊天界面，使用统一的聊天Context
+ * Chat Manager Component
+ * Manages sidebar and chat interface with unified chat context
  */
 export function ChatManager({ user }: ChatManagerProps) {
-  // 在桌面端默认展开侧边栏，移动端默认收起
+  // Desktop: expanded by default, Mobile: collapsed by default
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 1024; // lg breakpoint
-    }
-    return true; // 服务端渲染时默认展开
+    if (typeof window === 'undefined') return true; // SSR default
+    return window.innerWidth >= 1024; // lg breakpoint
   });
 
-  // 使用全局聊天Context（共享状态）
   const chat = useChatContext();
 
-  // 监听窗口大小变化，在移动端自动收起侧边栏
+  // Responsive: auto-collapse sidebar on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -60,9 +59,14 @@ export function ChatManager({ user }: ChatManagerProps) {
   };
 
   return (
-    <div className="flex h-full relative">
-      {/* 聊天侧边栏 */}
-      <div className={`${isSidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden`}>
+    <div className="flex h-full relative overflow-hidden">
+      {/* Sidebar */}
+      <div
+        className={`
+          ${isSidebarOpen ? 'w-80' : 'w-0'}
+          transition-all duration-300 overflow-hidden
+        `}
+      >
         <SimpleChatSelector
           chats={chat.chats}
           selectedChatId={chat.currentChatId}
@@ -77,30 +81,21 @@ export function ChatManager({ user }: ChatManagerProps) {
         />
       </div>
 
-      {/* 侧边栏展开按钮 - 当侧边栏收起时显示 */}
+      {/* Sidebar Toggle Button - Show when sidebar is collapsed */}
       {!isSidebarOpen && (
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={handleSidebarToggle}
-          className="absolute left-2 top-4 z-50 p-2 bg-background border border-border rounded-md shadow-md hover:bg-accent hover:text-accent-foreground transition-colors"
-          title="展开聊天列表"
+          className="absolute left-2 top-4 z-50 bg-card border-border hover:border-brand-primary/30 shadow-sm"
+          title="Expand chat list"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 12h18M3 6h18M3 18h18" />
-          </svg>
-        </button>
+          <Menu className="w-4 h-4" />
+        </Button>
       )}
 
-      {/* 聊天界面 */}
-      <div className="flex-1 min-w-0">
+      {/* Chat Interface */}
+      <div className="flex-1 min-w-0 overflow-hidden">
         {chat.currentChatId ? (
           <NewChatInterface
             chatId={chat.currentChatId}
@@ -112,16 +107,16 @@ export function ChatManager({ user }: ChatManagerProps) {
             onSendMessage={chat.sendMessage}
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="text-muted-foreground mb-4">No chat selected</div>
-              <button
+          <div className="flex h-full items-center justify-center bg-background">
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground text-sm">No chat selected</p>
+              <Button
                 onClick={handleNewChat}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                 disabled={chat.isLoading}
+                className="bg-brand-primary text-white hover:opacity-90"
               >
                 Create New Chat
-              </button>
+              </Button>
             </div>
           </div>
         )}

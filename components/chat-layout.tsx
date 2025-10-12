@@ -8,33 +8,28 @@ import { ChatProvider } from '@/lib/contexts/chat-context';
 import type { ChatLayoutProps } from '@/lib/types/chat';
 
 /**
- * 主聊天布局组件
- * 负责整体布局：左侧聊天管理器 + 右侧财务数据面板
+ * Ultra-Clean 2025 Chat Layout
+ * Desktop: Resizable split panel (chat | data)
+ * Mobile: Tab-based navigation
  */
 export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
   return (
     <ChatProvider>
-      {/* 桌面端分屏布局：可拖拽调整的左右分割面板 */}
-      <div className="hidden lg:block h-screen bg-transparent">
+      {/* Desktop Layout: Resizable Split Panel */}
+      <div className="hidden lg:flex h-screen w-full overflow-hidden bg-background">
         <ResizableSplitPanel
-          leftPanel={
-            <ChatManager
-              user={user}
-            />
-          }
+          leftPanel={<ChatManager user={user} />}
           rightPanel={<RightPanelTabs />}
-          defaultLeftWidth={50}
+          defaultLeftWidth={55}
           minLeftWidth={30}
           minRightWidth={25}
-          className="h-full"
+          className="w-full h-full"
         />
       </div>
 
-      {/* 移动端标签页布局 */}
-      <div className="lg:hidden h-screen">
-        <MobileTabs
-          user={user}
-        />
+      {/* Mobile Layout: Tabbed Interface */}
+      <div className="lg:hidden h-screen w-full overflow-hidden bg-background">
+        <MobileTabs user={user} />
       </div>
     </ChatProvider>
   );

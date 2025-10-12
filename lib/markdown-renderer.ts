@@ -64,7 +64,7 @@ export function createMarkdownRenderer() {
 
   // 自定义引用块样式
   md.renderer.rules.blockquote_open = () => {
-    return '<blockquote class="border-l-4 border-orange-400 bg-orange-50/50 pl-4 py-2 my-4 italic">';
+    return '<blockquote class="border-l-4 border-brand-primary bg-brand-avatar pl-4 py-2 my-4 italic">';
   };
 
   // 自定义代码块样式和Mermaid支持

@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon } from '@radix-ui/react-icons';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from './ui/button';
 
 interface JSVisualizationMessageProps {
   id: string;
@@ -39,41 +38,62 @@ export function JSVisualizationMessage({
   });
 
   return (
-    <div className="my-2 border rounded-lg overflow-hidden bg-background">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full justify-start p-3 hover:bg-muted/50"
+    <div className="my-3 bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header with expand/collapse */}
+      <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center gap-3 p-4 text-left transition-colors hover:bg-brand-primary/10 group"
       >
-        {isExpanded ? (
-          <ChevronDownIcon className="mr-2 h-4 w-4" />
-        ) : (
-          <ChevronRightIcon className="mr-2 h-4 w-4" />
-        )}
-        <span className="text-sm font-medium">
-          📊 {title}
-        </span>
-        {description && (
-          <span className="ml-2 text-xs text-muted-foreground">
-            {description}
-          </span>
-        )}
-        {metadata && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            {metadata.library} • {metadata.dataPoints} points • {metadata.renderTime}
-          </span>
-        )}
-      </Button>
+        <div className="flex-shrink-0 transition-colors group-hover:text-brand-primary">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </div>
 
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-semibold text-foreground truncate">
+              {title}
+            </h3>
+          </div>
+
+          {description && (
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              {description}
+            </p>
+          )}
+        </div>
+
+        {metadata && (
+          <div className="flex-shrink-0 flex items-center gap-2 text-xs text-muted-foreground">
+            {metadata.library && (
+              <span className="hidden sm:inline">{metadata.library}</span>
+            )}
+            {metadata.dataPoints && (
+              <span className="hidden md:inline">{metadata.dataPoints} points</span>
+            )}
+            {metadata.renderTime && (
+              <span className="hidden lg:inline">{metadata.renderTime}</span>
+            )}
+          </div>
+        )}
+      </button>
+
+      {/* Visualization content */}
       <div
         className={cn(
-          'overflow-hidden transition-all duration-200',
-          isExpanded ? 'max-h-[800px]' : 'max-h-0'
+          'overflow-hidden transition-all duration-300 ease-in-out',
+          isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
         {cachedHtml ? (
-          <div className="w-full min-h-[500px] max-h-[700px] bg-white overflow-auto" key={`container-${iframeKey}`}>
+          <div
+            className="w-full min-h-[500px] max-h-[700px] bg-white border-t border-border overflow-auto"
+            key={`container-${iframeKey}`}
+          >
             <iframe
               key={iframeKey}
               srcDoc={cachedHtml}
@@ -81,13 +101,14 @@ export function JSVisualizationMessage({
               title={`Interactive Chart - ${title}`}
               sandbox="allow-scripts allow-same-origin"
               style={{ height: '100%' }}
-              // Force iframe isolation with unique name
               name={`viz-frame-${id}`}
             />
           </div>
         ) : (
-          <div className="p-4 text-red-500 text-sm text-center">
-            ❌ No visualization data available
+          <div className="p-8 text-center border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              No visualization data available
+            </p>
           </div>
         )}
       </div>

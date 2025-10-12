@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,22 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSQLQuery } from '@/lib/hooks/use-sql-query';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
-import { Download, GripVertical } from 'lucide-react';
+import {
+  Download,
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  LayoutGrid,
+  Table2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertCircle
+} from 'lucide-react';
 import { toast } from './toast';
 import type {
   FinancialDataPoint,
-  LaTeXMetric,
   FinancialAnalysisRequest,
   ExcelDataRow,
 } from '@/lib/types/financial-data';
@@ -23,31 +34,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-
-// 移除重复的类型定义，使用统一的类型
 
 function FinancialDataPanelComponent() {
-  // 本地状态（只保留非持久化的状态）
+  // Local state
   const [tableData, setTableData] = useState<FinancialDataPoint[]>([]);
-
-  // 表格布局模式：'original' = 原始布局(股票代码+季度为行), 'relative' = 转置布局(相对季度Q-0, Q-1...)
   const [tableAlignMode, setTableAlignMode] = useState<'original' | 'relative'>('relative');
-
-  // 拖拽状态
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [orderedMetrics, setOrderedMetrics] = useState<any[]>([]);
 
-  // 从 Zustand store 获取状态和方法
+  // Zustand store
   const {
     data: storedData,
     analysisForm,
@@ -65,11 +61,9 @@ function FinancialDataPanelComponent() {
     setError,
   } = useFinancialDataStore();
 
-  // 解构表单状态，转换 periods 为字符串以兼容现有UI
   const { symbols: symbolInput, selectedMetrics, periods } = analysisForm;
   const selectedQuarters = periods.toString();
 
-  // 表单更新函数
   const setSymbolInput = (symbols: string) => {
     updateAnalysisForm({ symbols });
   };
@@ -82,38 +76,24 @@ function FinancialDataPanelComponent() {
     updateAnalysisForm({ periods: Number(periods) });
   };
 
-  // 页面加载时，从持久化数据中恢复tableData
+  // Restore data from store on mount
   useEffect(() => {
-    console.log(
-      '🔄 Component mounted, checking stored data:',
-      storedData.length,
-      'records',
-    );
     if (storedData.length > 0) {
       setTableData(storedData);
-      console.log(
-        '📊 Restored financial data from store:',
-        storedData.length,
-        'records',
-      );
     }
-  }, [storedData.length]); // 监听数据长度变化，避免无限循环
+  }, [storedData.length]);
 
-  // 使用localStorage store中的数据，而不是本地tableData状态
-  // 移除这个useEffect以避免循环依赖
-
-  // 从PostgreSQL获取用户组织的LaTeX指标
+  // Fetch LaTeX metrics
   const { data: latexMetricsData } = useSQLQuery<{ metrics: any[] }>(
     '/api/latex-metrics?limit=100',
   );
   const latexMetrics = latexMetricsData?.metrics;
 
-  // 过滤出有sqlFormula的指标 (使用useMemo稳定引用)
   const availableMetrics = useMemo(() => {
     return latexMetrics?.filter((metric) => metric.sqlFormula) || [];
   }, [latexMetrics]);
 
-  // 初始化指标顺序
+  // Initialize metric order
   useEffect(() => {
     if (availableMetrics.length > 0 && orderedMetrics.length === 0) {
       const savedOrder = localStorage.getItem('metric-selection-order');
@@ -123,7 +103,6 @@ function FinancialDataPanelComponent() {
           const ordered: any[] = [];
           const metricMap = new Map(availableMetrics.map((m) => [m._id, m]));
 
-          // 按保存顺序添加
           savedIds.forEach((id: string) => {
             const metric = metricMap.get(id);
             if (metric) {
@@ -132,7 +111,6 @@ function FinancialDataPanelComponent() {
             }
           });
 
-          // 添加新指标
           metricMap.forEach((metric) => ordered.push(metric));
           setOrderedMetrics(ordered);
         } catch {
@@ -144,7 +122,7 @@ function FinancialDataPanelComponent() {
     }
   }, [availableMetrics]);
 
-  // 更新store中的可用指标
+  // Update store metrics
   const metricsForStore = useMemo(() => {
     return availableMetrics.map((metric) => ({
       name: metric.name,
@@ -169,7 +147,7 @@ function FinancialDataPanelComponent() {
     [selectedMetrics, setSelectedMetrics],
   );
 
-  // 拖拽处理函数
+  // Drag and drop handlers
   const handleDragStart = useCallback((index: number) => {
     setDraggedIndex(index);
   }, []);
@@ -190,8 +168,6 @@ function FinancialDataPanelComponent() {
       newOrder.splice(dragOverIndex, 0, draggedItem);
 
       setOrderedMetrics(newOrder);
-
-      // 保存到 localStorage
       const orderIds = newOrder.map((m) => m._id);
       localStorage.setItem('metric-selection-order', JSON.stringify(orderIds));
     }
@@ -199,7 +175,6 @@ function FinancialDataPanelComponent() {
     setDragOverIndex(null);
   }, [draggedIndex, dragOverIndex, orderedMetrics]);
 
-  // 从SQL公式中提取字段名（AS后面的部分）
   const extractFieldName = (sqlFormula: string): string => {
     if (sqlFormula.includes(' AS ')) {
       return sqlFormula.split(' AS ')[1].trim();
@@ -207,7 +182,6 @@ function FinancialDataPanelComponent() {
     return sqlFormula;
   };
 
-  // 创建metric ID到字段名的映射
   const getMetricToFieldMapping = () => {
     const mapping: { [metricId: string]: string } = {};
     selectedMetrics.forEach((metricId) => {
@@ -229,12 +203,6 @@ function FinancialDataPanelComponent() {
         .map((s) => s.trim().toUpperCase())
         .filter((s) => s);
 
-      console.log('📊 Analyzing financial data:', {
-        symbols,
-        metricIds: selectedMetrics,
-        quarters: parseInt(selectedQuarters),
-      });
-
       const requestBody: FinancialAnalysisRequest = {
         symbols,
         metricIds: selectedMetrics,
@@ -251,25 +219,20 @@ function FinancialDataPanelComponent() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ API Error:', errorData);
         throw new Error(
           errorData.error || `HTTP ${response.status}: ${response.statusText}`,
         );
       }
 
       const data: FinancialDataPoint[] = await response.json();
-      console.log('✅ Received data:', data);
 
-      // 同时更新本地状态和持久化store
       setTableData(data);
       updateFinancialData(data);
 
-      // 自动折叠控制面板以展示更多数据空间
       if (data.length > 0) {
         setPanelCollapsed(true);
       }
     } catch (error) {
-      console.error('❌ Error fetching financial data:', error);
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       setError({ message: `获取财务数据失败: ${errorMessage}` });
     } finally {
@@ -281,7 +244,6 @@ function FinancialDataPanelComponent() {
     return availableMetrics.find((m) => m._id === metricId)?.name || metricId;
   };
 
-  // 导出Excel功能
   const exportToExcel = () => {
     if (tableData.length === 0) {
       toast({
@@ -293,7 +255,6 @@ function FinancialDataPanelComponent() {
 
     const metricToFieldMapping = getMetricToFieldMapping();
 
-    // 准备Excel数据
     const excelData: ExcelDataRow[] = tableData.map((row) => {
       const excelRow: ExcelDataRow = {
         股票代码: row.symbol,
@@ -301,17 +262,14 @@ function FinancialDataPanelComponent() {
         日期: row.date || '',
       };
 
-      // 添加每个指标的数据
       selectedMetrics.forEach((metricId) => {
         const fieldName = metricToFieldMapping[metricId];
         const metricData = row.metrics[fieldName];
         const metricName = getMetricDisplayName(metricId);
 
         if (metricData) {
-          // 主要数值
           excelRow[metricName] = formatValue(metricData.value, metricId);
 
-          // QoQ趋势
           if (
             metricData.qoq?.value !== null &&
             metricData.qoq?.value !== undefined
@@ -320,7 +278,6 @@ function FinancialDataPanelComponent() {
               `${metricData.qoq.value.toFixed(1)}%`;
           }
 
-          // YoY趋势
           if (
             metricData.yoy?.value !== null &&
             metricData.yoy?.value !== undefined
@@ -334,37 +291,30 @@ function FinancialDataPanelComponent() {
       return excelRow;
     });
 
-    // 创建工作簿
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(excelData);
 
-    // 设置列宽
     const colWidths = [
-      { wch: 12 }, // 股票代码
-      { wch: 15 }, // 季度
-      { wch: 12 }, // 日期
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 12 },
     ];
 
-    // 为每个指标添加列宽
     selectedMetrics.forEach(() => {
-      colWidths.push({ wch: 18 }); // 主要数值
-      colWidths.push({ wch: 12 }); // QoQ
-      colWidths.push({ wch: 12 }); // YoY
+      colWidths.push({ wch: 18 });
+      colWidths.push({ wch: 12 });
+      colWidths.push({ wch: 12 });
     });
 
     ws['!cols'] = colWidths;
 
-    // 添加工作表到工作簿
     XLSX.utils.book_append_sheet(wb, ws, '财务数据');
 
-    // 生成文件名
     const symbols = [...new Set(tableData.map((row) => row.symbol))].join('_');
     const fileName = `财务数据_${symbols}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-    // 下载文件
     XLSX.writeFile(wb, fileName);
 
-    // 显示成功提示
     toast({
       type: 'success',
       description: `Excel文件已成功导出: ${fileName}`,
@@ -376,7 +326,6 @@ function FinancialDataPanelComponent() {
 
     const numValue = parseFloat(String(value));
 
-    // 添加千位分隔符的辅助函数
     const addCommas = (num: number, decimals: number = 0) => {
       return num.toLocaleString('en-US', {
         minimumFractionDigits: decimals,
@@ -384,7 +333,6 @@ function FinancialDataPanelComponent() {
       });
     };
 
-    // 格式化不同类型的数据
     if (
       metricId.includes('margin') ||
       metricId.includes('rate') ||
@@ -397,14 +345,13 @@ function FinancialDataPanelComponent() {
       metricId === 'netincomeaccounting' ||
       metricId === 'grossprofit'
     ) {
-      // 大数值显示完整数字，加逗号分隔符
       return `$${addCommas(numValue, 0)}`;
     } else {
       return addCommas(numValue, 2);
     }
   };
 
-  // 趋势指示器组件
+  // Trend Indicator Component
   function TrendIndicator({
     trend,
     label,
@@ -417,27 +364,29 @@ function FinancialDataPanelComponent() {
     if (!trend || trend.value === null)
       return <span className="text-xs text-muted-foreground">-</span>;
 
+    const Icon = trend.direction === 'up'
+      ? TrendingUp
+      : trend.direction === 'down'
+      ? TrendingDown
+      : Minus;
+
     return (
       <span
-        className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
           trend.direction === 'up'
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+            ? 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
             : trend.direction === 'down'
-              ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+              ? 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+              : 'bg-muted text-muted-foreground'
         }`}
       >
-        {trend.direction === 'up'
-          ? '↗'
-          : trend.direction === 'down'
-            ? '↘'
-            : '→'}{' '}
+        <Icon size={12} />
         {label}: {Math.abs(trend.value).toFixed(1)}%
       </span>
     );
   }
 
-  // 卡片视图组件
+  // Card View Component
   function MetricCard({
     metricId,
     data,
@@ -446,7 +395,6 @@ function FinancialDataPanelComponent() {
     const fieldName = metricToFieldMapping[metricId];
     const metricName = getMetricDisplayName(metricId);
 
-    // 检查是否有任何有效数据
     const hasValidData = data.some((row) => {
       const metricData = row.metrics[fieldName];
       return (
@@ -456,12 +404,10 @@ function FinancialDataPanelComponent() {
       );
     });
 
-    // 如果没有任何有效数据，不渲染此卡片
     if (!hasValidData) {
       return null;
     }
 
-    // 按symbol分组数据
     const groupedData = data.reduce(
       (acc, row) => {
         if (!acc[row.symbol]) acc[row.symbol] = [];
@@ -472,7 +418,7 @@ function FinancialDataPanelComponent() {
     );
 
     return (
-      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4 transition-all duration-200 hover:shadow-sm">
         <h3 className="text-lg font-semibold text-foreground">{metricName}</h3>
 
         {Object.entries(groupedData).map(([symbol, symbolData]) => (
@@ -486,16 +432,16 @@ function FinancialDataPanelComponent() {
                 return (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-secondary/50 rounded"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors duration-200"
                   >
                     <span className="text-xs text-muted-foreground">
                       {row.period} {row.fiscalYear}
                     </span>
                     <div className="text-right">
-                      <div className="font-medium text-sm">
+                      <div className="font-medium text-sm text-foreground">
                         {formatValue(metricData?.value, metricId)}
                       </div>
-                      <div className="flex space-x-1 text-xs">
+                      <div className="flex gap-1 text-xs mt-1">
                         <TrendIndicator trend={metricData?.qoq} label="QoQ" />
                         <TrendIndicator trend={metricData?.yoy} label="YoY" />
                       </div>
@@ -510,7 +456,7 @@ function FinancialDataPanelComponent() {
     );
   }
 
-  // 卡片布局视图
+  // Cards View
   function CardsView() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -521,42 +467,15 @@ function FinancialDataPanelComponent() {
     );
   }
 
-  // 表格视图（转置：股票代码和指标作为行，季度作为列）
+  // Table View
   function TableView() {
     const metricToFieldMapping = getMetricToFieldMapping();
 
-    // 获取所有唯一的股票代码
     const symbols = useMemo(() => {
       return Array.from(new Set(tableData.map(row => row.symbol)));
-    }, [tableData]);
+    }, []);
 
-    // 绝对模式：所有公司对齐到相同的财季+财年
-    const absoluteView = useMemo(() => {
-      // 获取所有唯一的季度（按时间倒序）
-      const uniquePeriods = Array.from(
-        new Set(tableData.map(row => `${row.period} ${row.fiscalYear}`))
-      );
-
-      // 构建数据查找映射：symbol -> metric -> period -> data
-      const dataMap: Record<string, Record<string, Record<string, any>>> = {};
-
-      tableData.forEach(row => {
-        const periodKey = `${row.period} ${row.fiscalYear}`;
-        if (!dataMap[row.symbol]) dataMap[row.symbol] = {};
-
-        selectedMetrics.forEach(metricId => {
-          const fieldName = metricToFieldMapping[metricId];
-          if (!dataMap[row.symbol][metricId]) dataMap[row.symbol][metricId] = {};
-          dataMap[row.symbol][metricId][periodKey] = row.metrics[fieldName];
-        });
-      });
-
-      return { periods: uniquePeriods, dataMap };
-    }, [tableData, selectedMetrics, metricToFieldMapping]);
-
-    // 相对模式：每个公司按自己的时间序列，显示Q-0, Q-1, Q-2...
     const relativeView = useMemo(() => {
-      // 按公司分组并排序时间
       const symbolData: Record<string, Array<{period: string, data: FinancialDataPoint}>> = {};
 
       tableData.forEach(row => {
@@ -567,34 +486,27 @@ function FinancialDataPanelComponent() {
         });
       });
 
-      // 每个公司按时间倒序排序（最新的在前面）
       Object.keys(symbolData).forEach(symbol => {
         symbolData[symbol].sort((a, b) => {
-          // 精确的时间排序：先按财年，再按季度
           const [periodA, yearA] = a.period.split(' ');
           const [periodB, yearB] = b.period.split(' ');
 
           const yearNumA = parseInt(yearA);
           const yearNumB = parseInt(yearB);
 
-          // 提取季度数字 (Q1 -> 1, Q2 -> 2, etc.)
           const quarterA = parseInt(periodA.replace('Q', ''));
           const quarterB = parseInt(periodB.replace('Q', ''));
 
-          // 先比较年份（倒序）
           if (yearNumB !== yearNumA) {
             return yearNumB - yearNumA;
           }
 
-          // 年份相同，比较季度（倒序）
           return quarterB - quarterA;
         });
       });
 
-      // 找出最大的季度数量
       const maxQuarters = Math.max(...Object.values(symbolData).map(arr => arr.length));
 
-      // 构建数据映射：symbol -> metric -> relativeIndex -> data
       const dataMap: Record<string, Record<string, Record<number, any>>> = {};
 
       Object.entries(symbolData).forEach(([symbol, periods]) => {
@@ -612,26 +524,22 @@ function FinancialDataPanelComponent() {
       return { maxQuarters, dataMap, symbolData };
     }, [tableData, selectedMetrics, metricToFieldMapping]);
 
-    // 根据模式选择数据
     if (tableAlignMode === 'original') {
-      // 原始布局：股票代码和季度作为行，指标作为列
-      const metricToFieldMapping = getMetricToFieldMapping();
-
       return (
-        <div className="rounded-md border border-border h-full overflow-auto">
+        <div className="rounded-lg border border-border h-full overflow-auto bg-card shadow-sm">
           <table className="w-full min-w-max border-collapse">
-            <thead className="sticky top-0 z-10 bg-background shadow-sm">
-              <tr className="border-b">
-                <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">
+            <thead className="sticky top-0 z-10 bg-muted shadow-sm">
+              <tr className="border-b border-border">
+                <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
                   股票代码
                 </th>
-                <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[120px] z-20 border-r p-3 text-left">
+                <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[120px] z-20 border-r border-border p-3 text-left">
                   季度
                 </th>
                 {selectedMetrics.map((metricId) => (
                   <th
                     key={metricId}
-                    className="text-foreground font-medium min-w-[200px] bg-background p-3 text-right"
+                    className="text-foreground font-medium min-w-[200px] bg-muted p-3 text-right"
                   >
                     {getMetricDisplayName(metricId)}
                   </th>
@@ -640,23 +548,22 @@ function FinancialDataPanelComponent() {
             </thead>
             <tbody>
               {tableData.map((row, index) => {
-                // 检查是否是新的symbol组的开始
                 const isNewSymbolGroup =
                   index === 0 || tableData[index - 1].symbol !== row.symbol;
 
                 return (
                   <tr
                     key={index}
-                    className={`border-b hover:bg-secondary/50 ${
+                    className={`border-b border-border hover:bg-muted/50 transition-colors duration-200 ${
                       isNewSymbolGroup
-                        ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600'
+                        ? 'border-t-2 border-t-brand-primary/20'
                         : ''
                     }`}
                   >
-                    <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">
+                    <td className="sticky left-0 bg-card font-medium text-foreground border-r border-border p-3">
                       {row.symbol}
                     </td>
-                    <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">
+                    <td className="sticky left-[100px] bg-card text-muted-foreground border-r border-border p-3">
                       {row.period} {row.fiscalYear}
                     </td>
                     {selectedMetrics.map((metricId) => {
@@ -668,7 +575,7 @@ function FinancialDataPanelComponent() {
                             <div className="font-medium text-foreground">
                               {formatValue(metricData?.value, metricId)}
                             </div>
-                            <div className="flex justify-end space-x-1">
+                            <div className="flex justify-end gap-1">
                               <TrendIndicator
                                 trend={metricData?.qoq}
                                 label="QoQ"
@@ -690,24 +597,23 @@ function FinancialDataPanelComponent() {
         </div>
       );
     } else {
-      // 相对模式
       const { maxQuarters, dataMap } = relativeView;
 
       return (
-        <div className="rounded-md border border-border h-full overflow-auto">
+        <div className="rounded-lg border border-border h-full overflow-auto bg-card shadow-sm">
           <table className="w-full min-w-max border-collapse">
-            <thead className="sticky top-0 z-10 bg-background shadow-sm">
-              <tr className="border-b">
-                <th className="sticky left-0 bg-background text-foreground font-medium min-w-[100px] z-20 border-r p-3 text-left">
+            <thead className="sticky top-0 z-10 bg-muted shadow-sm">
+              <tr className="border-b border-border">
+                <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
                   股票代码
                 </th>
-                <th className="sticky left-[100px] bg-background text-foreground font-medium min-w-[180px] z-20 border-r p-3 text-left">
+                <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[180px] z-20 border-r border-border p-3 text-left">
                   指标
                 </th>
                 {Array.from({ length: maxQuarters }, (_, i) => (
                   <th
                     key={i}
-                    className="text-foreground font-medium min-w-[200px] bg-background p-3 text-center border-r"
+                    className="text-foreground font-medium min-w-[200px] bg-muted p-3 text-center border-r border-border"
                   >
                     Q-{i}
                   </th>
@@ -721,25 +627,25 @@ function FinancialDataPanelComponent() {
                   return (
                     <tr
                       key={`${symbol}-${metricId}`}
-                      className={`border-b hover:bg-secondary/50 ${
-                        isFirstMetric ? 'border-t-4 border-t-slate-400 dark:border-t-slate-600' : ''
+                      className={`border-b border-border hover:bg-muted/50 transition-colors duration-200 ${
+                        isFirstMetric ? 'border-t-2 border-t-brand-primary/20' : ''
                       }`}
                     >
-                      <td className="sticky left-0 bg-background font-medium text-foreground border-r p-3">
+                      <td className="sticky left-0 bg-card font-medium text-foreground border-r border-border p-3">
                         {symbol}
                       </td>
-                      <td className="sticky left-[100px] bg-background text-muted-foreground border-r p-3">
+                      <td className="sticky left-[100px] bg-card text-muted-foreground border-r border-border p-3">
                         {getMetricDisplayName(metricId)}
                       </td>
                       {Array.from({ length: maxQuarters }, (_, i) => {
                         const metricData = dataMap[symbol]?.[metricId]?.[i];
                         return (
-                          <td key={i} className="p-3 text-center border-r">
+                          <td key={i} className="p-3 text-center border-r border-border">
                             <div className="space-y-1">
                               <div className="font-medium text-foreground">
                                 {formatValue(metricData?.value, metricId)}
                               </div>
-                              <div className="flex justify-center space-x-1">
+                              <div className="flex justify-center gap-1">
                                 <TrendIndicator
                                   trend={metricData?.qoq}
                                   label="QoQ"
@@ -765,58 +671,60 @@ function FinancialDataPanelComponent() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-transparent">
-      {/* 控制面板 */}
-      <div className="border-b border-border/50">
-        {/* 标题栏 - 始终可见 */}
+    <div className="w-full h-full flex flex-col bg-background">
+      {/* Control Panel */}
+      <div className="border-b border-border">
+        {/* Header - Always Visible */}
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-bold text-foreground">财务数据分析</h2>
+          <h2 className="text-xl font-semibold text-foreground">财务数据分析</h2>
           <div className="flex items-center gap-2">
-            {/* 视图切换 - 只在有数据时显示 */}
+            {/* View Toggle - Only show when data exists */}
             {tableData.length > 0 && (
               <>
-                <div className="flex gap-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
+                <div className="flex gap-1 bg-muted rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('cards')}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 ${
                       viewMode === 'cards'
-                        ? 'neuro-pill-active text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                        : 'text-muted-foreground hover:bg-background hover:text-foreground'
                     }`}
                   >
+                    <LayoutGrid size={16} />
                     卡片
                   </button>
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 ${
                       viewMode === 'table'
-                        ? 'neuro-pill-active text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                        : 'text-muted-foreground hover:bg-background hover:text-foreground'
                     }`}
                   >
+                    <Table2 size={16} />
                     表格
                   </button>
                 </div>
 
-                {/* 表格布局模式切换 - 只在表格视图时显示 */}
+                {/* Table Layout Toggle - Only in table view */}
                 {viewMode === 'table' && (
-                  <div className="flex gap-1 bg-brand-avatar rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
+                  <div className="flex gap-1 bg-muted rounded-lg p-1">
                     <button
                       onClick={() => setTableAlignMode('original')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 whitespace-nowrap ${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
                         tableAlignMode === 'original'
-                          ? 'neuro-pill-active text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                          : 'text-muted-foreground hover:bg-background hover:text-foreground'
                       }`}
                     >
                       Timeline
                     </button>
                     <button
                       onClick={() => setTableAlignMode('relative')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 whitespace-nowrap ${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
                         tableAlignMode === 'relative'
-                          ? 'neuro-pill-active text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                          : 'text-muted-foreground hover:bg-background hover:text-foreground'
                       }`}
                     >
                       Comparison
@@ -826,61 +734,38 @@ function FinancialDataPanelComponent() {
               </>
             )}
 
-            {/* 导出Excel按钮 - 只在有数据时显示 */}
+            {/* Export Button - Only when data exists */}
             {tableData.length > 0 && (
               <Button
                 onClick={exportToExcel}
                 size="sm"
-                className="neuro-raised-sm bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 flex items-center gap-2 text-sm font-medium border-0"
+                variant="outline"
+                className="flex items-center gap-2 text-sm font-medium"
               >
                 <Download size={16} />
                 导出Excel
               </Button>
             )}
 
-            {/* 折叠/展开按钮 */}
+            {/* Collapse/Expand Button */}
             <button
               onClick={() => setPanelCollapsed(!isPanelCollapsed)}
-              className="p-2 hover:bg-secondary rounded transition-colors"
+              className="p-2 hover:bg-muted rounded-md transition-colors duration-200"
               title={isPanelCollapsed ? '展开控制面板' : '收起控制面板'}
             >
               {isPanelCollapsed ? (
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                <ChevronDown size={20} />
               ) : (
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 15l7-7 7 7"
-                  />
-                </svg>
+                <ChevronUp size={20} />
               )}
             </button>
           </div>
         </div>
 
-        {/* 可折叠的控制区域 */}
+        {/* Collapsible Control Area */}
         {!isPanelCollapsed && (
           <div className="px-4 pb-4 space-y-4">
-            {/* 股票代码输入 */}
+            {/* Stock Symbol Input */}
             <div className="space-y-2">
               <Label
                 htmlFor="symbols"
@@ -893,11 +778,11 @@ function FinancialDataPanelComponent() {
                 value={symbolInput}
                 onChange={(e) => setSymbolInput(e.target.value)}
                 placeholder="例如: AAPL,MSFT,GOOGL"
-                className="professional-input"
+                className="bg-background border-border"
               />
             </div>
 
-            {/* 指标选择 */}
+            {/* Metric Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">
                 选择财务指标 (可拖拽调整顺序)
@@ -915,10 +800,10 @@ function FinancialDataPanelComponent() {
                   {orderedMetrics.map((metric, index) => (
                     <div
                       key={metric._id}
-                      className={`flex items-center space-x-2 p-2 rounded-md border-2 transition-all cursor-move ${
+                      className={`flex items-center gap-2 p-2 rounded-lg border transition-all duration-200 cursor-move ${
                         dragOverIndex === index
-                          ? 'bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-600'
-                          : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+                          ? 'bg-brand-primary/5 border-brand-primary/30'
+                          : 'border-border hover:bg-muted'
                       } ${draggedIndex === index ? 'opacity-50 scale-95' : ''}`}
                       draggable
                       onDragStart={() => handleDragStart(index)}
@@ -926,7 +811,7 @@ function FinancialDataPanelComponent() {
                       onDragEnd={handleDragEnd}
                       title="拖拽调整指标顺序"
                     >
-                      <GripVertical className="w-4 h-4 text-blue-500 opacity-60 hover:opacity-100 transition-opacity flex-shrink-0" />
+                      <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <Checkbox
                         id={metric._id}
                         checked={selectedMetrics.includes(metric._id)}
@@ -935,7 +820,7 @@ function FinancialDataPanelComponent() {
                       />
                       <Label
                         htmlFor={metric._id}
-                        className="text-xs text-muted-foreground cursor-pointer flex-1"
+                        className="text-xs text-muted-foreground cursor-pointer flex-1 truncate"
                         title={metric.description}
                       >
                         {metric.name}
@@ -946,7 +831,7 @@ function FinancialDataPanelComponent() {
               )}
             </div>
 
-            {/* 季度选择 */}
+            {/* Quarter Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">
                 历史季度数
@@ -955,7 +840,7 @@ function FinancialDataPanelComponent() {
                 value={selectedQuarters}
                 onValueChange={setSelectedQuarters}
               >
-                <SelectTrigger className="w-full bg-secondary">
+                <SelectTrigger className="w-full bg-background border-border">
                   <SelectValue placeholder="Select number of quarters" />
                 </SelectTrigger>
                 <SelectContent>
@@ -966,40 +851,42 @@ function FinancialDataPanelComponent() {
               </Select>
             </div>
 
-            {/* 分析按钮 */}
+            {/* Analyze Button */}
             <Button
               onClick={handleAnalyze}
               disabled={isLoading || selectedMetrics.length === 0}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="w-full bg-brand-primary text-white hover:opacity-90 transition-all duration-200"
             >
               {isLoading ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>Analyzing...</span>
+                  <span>分析中...</span>
                 </div>
               ) : (
-                'Analyze'
+                <>
+                  <Search size={16} className="mr-2" />
+                  分析
+                </>
               )}
             </Button>
           </div>
         )}
       </div>
 
-      {/* 数据显示区域 */}
+      {/* Data Display Area */}
       <div className="flex-1 p-4 overflow-auto">
         {error ? (
-          <div className="flex items-center justify-center h-full text-red-500">
-            <div className="text-center max-w-md">
-              <p className="text-lg mb-2">❌</p>
-              <p className="font-medium mb-2">Error getting data</p>
-              <p className="text-sm text-muted-foreground">{error.message}</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center max-w-md bg-card border border-border rounded-lg p-6">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <p className="font-medium mb-2 text-foreground">获取数据时出错</p>
+              <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
               <Button
                 onClick={() => setError(null)}
                 variant="outline"
                 size="sm"
-                className="mt-4"
               >
-                Retry
+                重试
               </Button>
             </div>
           </div>
@@ -1010,11 +897,16 @@ function FinancialDataPanelComponent() {
             <TableView />
           )
         ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="text-lg mb-2">📊</p>
-              <p>
-                Select stock symbols and metrics, click "Analyze" to view data
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Table2 size={32} className="text-muted-foreground" />
+              </div>
+              <p className="text-lg font-medium text-foreground mb-2">
+                开始分析财务数据
+              </p>
+              <p className="text-sm text-muted-foreground">
+                选择股票代码和指标，点击"分析"按钮查看数据
               </p>
             </div>
           </div>

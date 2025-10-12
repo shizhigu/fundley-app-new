@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDownIcon, LoaderIcon } from './icons';
+import { ChevronDown, Loader2, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from './markdown';
 
@@ -16,74 +16,56 @@ export function MessageReasoning({
 }: MessageReasoningProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const variants = {
-    collapsed: {
-      height: 0,
-      opacity: 0,
-      marginTop: 0,
-      marginBottom: 0,
-    },
-    expanded: {
-      height: 'auto',
-      opacity: 1,
-      marginTop: '0.5rem',
-      marginBottom: '0.25rem',
-    },
-  };
-
-  // 只要有reasoning内容就显示toggle按钮，无论是否还在loading
   const hasContent = reasoning && reasoning.trim().length > 0;
-  
+
+  const toggleExpand = () => setIsExpanded(!isExpanded);
+
+  if (!hasContent && !isLoading) return null;
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-1">
       {hasContent ? (
         <button
           data-testid="message-reasoning-toggle"
           type="button"
-          className="flex flex-row gap-2 items-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-md px-2 py-1 -mx-2 -my-1 transition-colors duration-200"
-          onClick={() => {
-            setIsExpanded(!isExpanded);
-          }}
+          onClick={toggleExpand}
+          className="inline-flex items-center gap-2 px-2 py-1.5 -mx-2 rounded-lg hover:bg-brand-avatar hover:border-brand-primary/20 transition-all duration-150 group"
         >
-          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">
-            {isLoading ? "Reasoning..." : "Reasoned for a few seconds"}
-          </div>
+          <Brain className="w-3.5 h-3.5 text-brand-primary" />
+          <span className="text-xs font-medium text-muted-foreground group-hover:text-brand-primary">
+            {isLoading ? 'Reasoning...' : 'Reasoned for a few seconds'}
+          </span>
           {isLoading && (
-            <div className="animate-spin scale-75">
-              <LoaderIcon />
-            </div>
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />
           )}
-          <div
-            className={`scale-75 transition-transform duration-200 ${
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
               isExpanded ? 'rotate-180' : 'rotate-0'
             }`}
-          >
-            <ChevronDownIcon />
-          </div>
+          />
         </button>
-      ) : isLoading ? (
-        <div className="flex flex-row gap-2 items-center">
-          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Reasoning</div>
-          <div className="animate-spin scale-75">
-            <LoaderIcon />
-          </div>
+      ) : (
+        <div className="inline-flex items-center gap-2 px-2">
+          <Brain className="w-3.5 h-3.5 text-brand-primary" />
+          <span className="text-xs font-medium text-muted-foreground">
+            Reasoning...
+          </span>
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />
         </div>
-      ) : null}
+      )}
 
       <AnimatePresence initial={false}>
         {isExpanded && hasContent && (
           <motion.div
             data-testid="message-reasoning"
-            key="content"
-            initial="collapsed"
-            animate="expanded"
-            exit="collapsed"
-            variants={variants}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+            animate={{ height: 'auto', opacity: 1, marginTop: '0.5rem' }}
+            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             style={{ overflow: 'hidden' }}
-            className="pl-3 text-xs leading-tight text-zinc-400 dark:text-zinc-500 border-l border-zinc-200 dark:border-zinc-700 flex flex-col gap-2"
+            className="pl-4 border-l-2 border-brand-primary/30"
           >
-            <div className="reasoning-content">
+            <div className="text-xs leading-relaxed text-muted-foreground">
               <Markdown>{reasoning}</Markdown>
             </div>
           </motion.div>

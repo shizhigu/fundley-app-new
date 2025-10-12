@@ -1,7 +1,6 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface Suggestion {
   label: string;
@@ -12,9 +11,12 @@ interface SuggestionChipsProps {
   suggestions: Suggestion[];
 }
 
+/**
+ * Ultra-Premium 2025 Suggestion Chips
+ * Clean pill-style buttons for quick prompts
+ */
 export function SuggestionChips({ suggestions }: SuggestionChipsProps) {
   const handleSelect = (prompt: string) => {
-    // Dispatch template-prefill event to populate input
     window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
   };
 
@@ -23,18 +25,16 @@ export function SuggestionChips({ suggestions }: SuggestionChipsProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/40">
+    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
       {suggestions.map((suggestion, index) => (
-        <Button
+        <button
           key={index}
-          variant="ghost"
-          size="sm"
           onClick={() => handleSelect(suggestion.prompt)}
-          className="h-auto py-2 px-3 text-sm rounded-full border border-brand-primary/20 hover:bg-brand-avatar hover:border-brand-primary/40 transition-all"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border text-sm font-medium text-foreground hover:bg-muted hover:border-brand-primary/30 transition-colors duration-200"
         >
-          <Sparkles className="w-3.5 h-3.5 mr-1.5 text-brand-primary" />
+          <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
           {suggestion.label}
-        </Button>
+        </button>
       ))}
     </div>
   );

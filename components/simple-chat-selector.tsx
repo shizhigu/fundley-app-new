@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, MessageSquare, X, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import type { Chat } from '@/lib/types/chat';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -65,143 +65,171 @@ export function SimpleChatSelector({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border/50">
-      {/* 头部 */}
-      <div className="p-4 border-b border-border/50">
-        <div className="flex items-center justify-between mb-3">
+    <div className="flex flex-col h-full bg-background border-r border-border">
+      {/* Header */}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Chats</h2>
 
-          {/* 收起侧边栏按钮 */}
+          {/* Collapse sidebar button */}
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="收起聊天列表"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+              title="Collapse sidebar"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <ChevronLeft className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* 新建聊天按钮 */}
+        {/* New chat button */}
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl neuro-primary text-white font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white rounded-lg font-medium transition-all duration-200 hover:bg-brand-primary/90 active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           <span className="text-sm">New Chat</span>
         </button>
       </div>
 
-      {/* 聊天列表 */}
+      {/* Chat list */}
       <div className="flex-1 overflow-y-auto">
         {isLoading && chats.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-            Loading chats...
+          <div className="p-4 text-center">
+            <div className="text-sm text-muted-foreground">Loading chats...</div>
           </div>
         ) : chats.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-            No chats yet. Create your first chat!
+          <div className="p-8 text-center">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+            <div className="text-sm text-muted-foreground">
+              No chats yet. Create your first chat!
+            </div>
           </div>
         ) : (
-          <div className="px-2 py-2 space-y-0.5">
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`group relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                  selectedChatId === chat.id
-                    ? 'bg-accent/80 text-foreground border border-primary/20'
-                    : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
-                }`}
-                onMouseEnter={() => setHoveredChatId(chat.id)}
-                onMouseLeave={() => setHoveredChatId(null)}
-                onClick={() => editingChatId !== chat.id && onChatSelect(chat.id)}
-              >
-                <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  {editingChatId === chat.id ? (
-                    <input
-                      ref={inputRef}
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveRename();
-                        if (e.key === 'Escape') cancelRename();
-                      }}
-                      onBlur={saveRename}
-                      className="w-full text-sm font-medium bg-background border border-border rounded-md px-2 py-1 outline-none focus:border-primary"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <div className="text-sm font-medium truncate">
-                      {chat.title}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(chat.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
+          <div className="p-2 space-y-1">
+            {chats.map((chat) => {
+              const isSelected = selectedChatId === chat.id;
+              const isHovered = hoveredChatId === chat.id;
+              const isEditing = editingChatId === chat.id;
 
-                {/* 更多操作菜单 */}
-                {hoveredChatId === chat.id && editingChatId !== chat.id && (
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenuChatId(showMenuChatId === chat.id ? null : chat.id);
-                      }}
-                      className="p-1 rounded-md hover:bg-background transition-colors"
-                      title="More options"
-                    >
-                      <MoreHorizontal className="w-3.5 h-3.5" />
-                    </button>
+              return (
+                <div
+                  key={chat.id}
+                  className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                      : 'text-foreground hover:bg-muted border border-transparent'
+                  }`}
+                  onMouseEnter={() => setHoveredChatId(chat.id)}
+                  onMouseLeave={() => setHoveredChatId(null)}
+                  onClick={() => !isEditing && onChatSelect(chat.id)}
+                >
+                  {/* Icon */}
+                  <MessageSquare className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${
+                    isSelected ? 'text-brand-primary' : 'text-muted-foreground'
+                  }`} />
 
-                    {/* 下拉菜单 */}
-                    {showMenuChatId === chat.id && (
-                      <div className="absolute right-0 top-7 z-50 w-32 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRename(chat.id, chat.title);
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          Rename
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteChat(chat.id);
-                            setShowMenuChatId(null);
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
-                        </button>
-                      </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <input
+                        ref={inputRef}
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRename();
+                          if (e.key === 'Escape') cancelRename();
+                        }}
+                        onBlur={saveRename}
+                        className="w-full text-sm font-medium bg-background border border-border rounded-md px-2 py-1 outline-none focus:border-brand-primary transition-all duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <div className={`text-sm font-medium truncate transition-all duration-200 ${
+                          isSelected ? 'text-brand-primary' : 'text-foreground'
+                        }`}>
+                          {chat.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(chat.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Actions menu */}
+                  {isHovered && !isEditing && (
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenuChatId(showMenuChatId === chat.id ? null : chat.id);
+                        }}
+                        className={`p-1.5 rounded-md transition-all duration-200 ${
+                          showMenuChatId === chat.id
+                            ? 'bg-muted text-foreground'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                        title="More options"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown menu */}
+                      {showMenuChatId === chat.id && (
+                        <>
+                          {/* Backdrop */}
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMenuChatId(null);
+                            }}
+                          />
+
+                          {/* Menu */}
+                          <div className="absolute right-0 top-8 z-50 w-40 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRename(chat.id, chat.title);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-all duration-200"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Rename</span>
+                            </button>
+                            <div className="h-px bg-border" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteChat(chat.id);
+                                setShowMenuChatId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-all duration-200"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* 用户设置 */}
+      {/* User navigation */}
       <div className="p-4 border-t border-border">
         <SidebarUserNav user={user} />
       </div>
