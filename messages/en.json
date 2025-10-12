@@ -71,7 +71,8 @@
     "mine": "Mine",
     "team": "Team",
     "shared": "Shared",
-    "useTemplate": "Use this template"
+    "useTemplate": "Use this template",
+    "templatePrompt": "Please use the analysis template \"{title}\" ({category}) to analyze: "
   },
   "analysis": {
     "noBlocksYet": "No analysis blocks yet",

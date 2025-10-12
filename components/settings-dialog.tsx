@@ -242,7 +242,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const useTemplate = (template: Template) => {
     // Create prefill prompt
-    const prompt = `Please use the analysis template "${template.title}" (${template.category}) to analyze: `;
+    const prompt = t('templatePrompt', { title: template.title, category: template.category });
 
     // Dispatch custom event with the prompt text BEFORE closing dialog
     window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));

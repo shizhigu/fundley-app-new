@@ -201,7 +201,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
   if (!isExpanded) {
     return (
       <Card
-        className="w-full cursor-pointer group"
+        className="w-full cursor-pointer group border-2 border-border hover:border-brand-primary/30 transition-colors"
         onClick={onToggle}
       >
         <CardContent className="p-5">
@@ -222,22 +222,22 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                 {summary}
               </p>
 
-              {/* Content type badges - neumorphic pills */}
+              {/* Content type badges - simple unified style */}
               <div className="flex items-center gap-2 text-xs">
                 {hasText && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 text-blue-700 dark:text-blue-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
                     <FileText className="h-3 w-3" />
                     Text
                   </span>
                 )}
                 {hasChart && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-badge text-green-700 dark:text-green-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
                     <BarChart className="h-3 w-3" />
                     Chart
                   </span>
                 )}
                 {hasData && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-avatar text-orange-700 dark:text-orange-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
                     <FileText className="h-3 w-3" />
                     Data
                   </span>
@@ -255,7 +255,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
 
   // Expanded view - full content
   return (
-    <Card className="w-full overflow-hidden">
+    <Card className="w-full overflow-hidden border-2 border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">{title}</CardTitle>

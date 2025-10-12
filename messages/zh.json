@@ -71,7 +71,8 @@
     "mine": "我的",
     "team": "团队",
     "shared": "共享",
-    "useTemplate": "使用此模板"
+    "useTemplate": "使用此模板",
+    "templatePrompt": "请使用分析模板\"{title}\"（{category}）来分析："
   },
   "analysis": {
     "noBlocksYet": "还没有分析块",
@@ -89,8 +90,8 @@
   "financialData": {
     "cards": "卡片",
     "table": "表格",
-    "timeline": "Timeline",
-    "comparison": "Comparison",
+    "timeline": "时间轴",
+    "comparison": "对比",
     "exportExcel": "导出Excel",
     "noData": "暂无数据"
   },
