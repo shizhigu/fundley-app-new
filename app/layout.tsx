@@ -5,13 +5,20 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ClerkProvider } from '@clerk/nextjs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ConvexClientProvider from '@/components/convex-client-provider';
+import { getBranding } from '@/lib/config/branding';
+import { BrandingStyles } from '@/components/branding-styles';
 
 import './globals.css';
 
+const branding = getBranding();
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://fundley.ai'),
-  title: 'FogaAI - Private Equity AI Assistant',
-  description: 'Professional AI-powered assistant for private equity, hedge funds, and family offices',
+  title: `${branding.name} - ${branding.tagline}`,
+  description: branding.metaDescription,
+  icons: {
+    icon: branding.favicon,
+  },
 };
 
 export const viewport = {
@@ -52,6 +59,7 @@ export default async function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased">
+        <BrandingStyles />
         <ClerkProvider>
           <ConvexClientProvider>
             <ThemeProvider
@@ -61,10 +69,10 @@ export default async function RootLayout({
               disableTransitionOnChange={false}
             >
               <TooltipProvider>
-                <div className="mesh-background min-h-screen">
+                <div className="bg-background min-h-screen">
                   {children}
                 </div>
-                <Toaster 
+                <Toaster
                   position="top-right"
                   theme="system"
                   richColors

@@ -39,7 +39,7 @@ export function SuggestionButton({
       )}
       title={containsRealData && verificationMessage ? verificationMessage : undefined}
     >
-      <Lightbulb className="w-3 h-3 flex-shrink-0 text-amber-500/70" />
+      <Lightbulb className="w-3 h-3 flex-shrink-0 text-brand-primary" />
       <span className="truncate font-medium">{text}</span>
       
       <ArrowRight className={cn(

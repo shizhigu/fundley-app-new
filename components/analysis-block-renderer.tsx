@@ -205,8 +205,8 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
             {/* Icon indicator - neumorphic circle */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-full neuro-raised-sm bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 flex items-center justify-center">
-              <BarChart className="h-5 w-5 text-primary" />
+            <div className="flex-shrink-0 w-10 h-10 rounded-full neuro-raised-sm bg-brand-avatar flex items-center justify-center">
+              <BarChart className="h-5 w-5 text-brand-primary" />
             </div>
 
             {/* Content preview */}
@@ -229,13 +229,13 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                   </span>
                 )}
                 {hasChart && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 text-green-700 dark:text-green-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-badge text-green-700 dark:text-green-400 font-medium">
                     <BarChart className="h-3 w-3" />
                     Chart
                   </span>
                 )}
                 {hasData && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 text-orange-700 dark:text-orange-400 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full neuro-raised-sm bg-brand-avatar text-orange-700 dark:text-orange-400 font-medium">
                     <FileText className="h-3 w-3" />
                     Data
                   </span>

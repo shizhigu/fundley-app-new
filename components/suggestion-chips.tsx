@@ -30,9 +30,9 @@ export function SuggestionChips({ suggestions }: SuggestionChipsProps) {
           variant="ghost"
           size="sm"
           onClick={() => handleSelect(suggestion.prompt)}
-          className="h-auto py-2 px-3 text-sm rounded-full border border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all"
+          className="h-auto py-2 px-3 text-sm rounded-full border border-brand-primary/20 hover:bg-brand-avatar hover:border-brand-primary/40 transition-all"
         >
-          <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+          <Sparkles className="w-3.5 h-3.5 mr-1.5 text-brand-primary" />
           {suggestion.label}
         </Button>
       ))}

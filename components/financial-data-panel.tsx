@@ -800,7 +800,7 @@ function FinancialDataPanelComponent() {
 
                 {/* 表格布局模式切换 - 只在表格视图时显示 */}
                 {viewMode === 'table' && (
-                  <div className="flex gap-1 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
+                  <div className="flex gap-1 bg-brand-avatar rounded-xl p-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]">
                     <button
                       onClick={() => setTableAlignMode('original')}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 whitespace-nowrap ${

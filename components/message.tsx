@@ -477,8 +477,8 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === 'assistant' && (
-            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40">
-              <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
+            <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-brand-avatar">
+              <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
             </div>
           )}
 
@@ -1177,8 +1177,8 @@ export const ThinkingMessage = () => {
           'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
         )}
       >
-        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40">
-          <Heart size={16} className="text-primary fill-primary/20" strokeWidth={2.5} />
+        <div className="size-9 flex items-center rounded-full justify-center shrink-0 neuro-raised-sm bg-brand-avatar">
+          <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
         </div>
 
         <div className="flex flex-col gap-2 w-full">

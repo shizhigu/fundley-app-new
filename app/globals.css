@@ -256,7 +256,7 @@
         --card-foreground: var(--gray-900);
         --popover: var(--gray-50);
         --popover-foreground: var(--gray-900);
-        --primary: var(--brand-accent);
+        --primary: var(--brand-primary);
         --primary-foreground: var(--gray-50);
         --secondary: var(--gray-200);
         --secondary-foreground: var(--gray-700);
@@ -311,7 +311,7 @@
         --card-foreground: var(--gray-50);
         --popover: var(--gray-900);
         --popover-foreground: var(--gray-50);
-        --primary: var(--brand-accent);
+        --primary: var(--brand-primary);
         --primary-foreground: var(--gray-50);
         --secondary: var(--gray-800);
         --secondary-foreground: var(--gray-200);
@@ -1621,21 +1621,23 @@
                 0 0 0 2px hsl(var(--brand-primary) / 0.3);
 }
 
-/* Orange Primary Elements */
+/* Brand Primary Elements (solid color, no gradient) */
 .neuro-primary {
-    background: linear-gradient(145deg, hsl(var(--brand-primary-light)), hsl(var(--brand-primary)));
-    box-shadow: var(--shadow-orange-raised);
+    background: hsl(var(--brand-primary));
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15), -2px -2px 4px rgba(255, 255, 255, 0.1);
     border: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .neuro-primary:hover {
-    box-shadow: var(--shadow-orange-hover);
+    background: hsl(var(--brand-primary) / 0.9);
+    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.2), -2px -2px 6px rgba(255, 255, 255, 0.15);
     transform: translateY(-1px);
 }
 
 .neuro-primary:active {
-    box-shadow: var(--shadow-orange-active);
+    background: hsl(var(--brand-primary) / 0.95);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2), -1px -1px 3px rgba(255, 255, 255, 0.1);
     transform: translateY(1px);
 }
 
@@ -1728,4 +1730,57 @@
     background: linear-gradient(145deg, #27272a, #18181b);
     box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.5),
                 -4px -4px 10px rgba(255, 255, 255, 0.05);
+}
+/* ============================================
+   BRAND UTILITY CLASSES (White-Label System)
+   ============================================ */
+
+/* Primary brand background (solid, no gradient) */
+.bg-brand-primary {
+    background: hsl(var(--brand-primary));
+}
+
+/* Primary brand text */
+.text-brand-primary {
+    color: hsl(var(--brand-primary));
+}
+
+/* Primary brand border */
+.border-brand-primary {
+    border-color: hsl(var(--brand-primary));
+}
+
+/* Brand avatar/icon backgrounds (subtle) */
+.bg-brand-avatar {
+    background: hsl(var(--brand-primary) / 0.1);
+}
+
+.dark .bg-brand-avatar {
+    background: hsl(var(--brand-primary) / 0.2);
+}
+
+/* Brand badge (success/active state) */
+.bg-brand-badge {
+    background: hsl(var(--brand-primary) / 0.15);
+    color: hsl(var(--brand-primary));
+}
+
+.dark .bg-brand-badge {
+    background: hsl(var(--brand-primary) / 0.25);
+}
+
+/* Brand button (primary CTA) */
+.btn-brand {
+    background: hsl(var(--brand-primary));
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-brand:hover {
+    background: hsl(var(--brand-primary) / 0.9);
+    transform: translateY(-1px);
+}
+
+.btn-brand:active {
+    transform: translateY(0);
 }

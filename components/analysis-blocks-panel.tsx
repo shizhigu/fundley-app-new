@@ -178,7 +178,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30"
+                className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-brand-badge"
               >
                 <div className="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                 <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>

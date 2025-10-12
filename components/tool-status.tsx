@@ -183,8 +183,8 @@ export function ToolStatus({
           'animate-pulse-subtle',
         ],
         status === 'completed' && [
-          'bg-primary-100/80 dark:bg-primary-900/30',
-          'border-primary-300/50 dark:border-primary-600/40',
+          'bg-brand-avatar',
+          'border-brand-primary/20',
           'opacity-90',
         ],
         status === 'pending' && [
@@ -200,7 +200,7 @@ export function ToolStatus({
           className={cn(
             'w-4 h-4',
             status === 'running' && 'text-blue-500 dark:text-blue-400',
-            status === 'completed' && 'text-primary-500 dark:text-primary-400',
+            status === 'completed' && 'text-brand-primary',
             status === 'pending' && 'text-gray-400 dark:text-gray-500',
           )}
         />
@@ -215,7 +215,7 @@ export function ToolStatus({
           className={cn(
             'text-xs font-medium block truncate',
             status === 'running' && 'text-blue-600 dark:text-blue-300',
-            status === 'completed' && 'text-primary-600 dark:text-primary-300',
+            status === 'completed' && 'text-brand-primary',
             status === 'pending' && 'text-gray-400 dark:text-gray-500',
           )}
         >
