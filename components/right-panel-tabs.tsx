@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TrendingUp, BarChart3, Layers } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
 import { AnalysisBlocksPanel } from './analysis-blocks-panel';
@@ -19,11 +20,12 @@ interface Tab {
 function RightPanelTabsComponent() {
   const [activeTab, setActiveTab] = useState<TabType>('data');
   const { currentChatId } = useChatContext();
+  const t = useTranslations('panels');
 
   const tabs: Tab[] = [
-    { id: 'data', label: 'Financial Data', icon: BarChart3 },
-    { id: 'blocks', label: 'Analysis', icon: Layers },
-    { id: 'chart', label: 'Chart', icon: TrendingUp },
+    { id: 'data', label: t('financialData'), icon: BarChart3 },
+    { id: 'blocks', label: t('analysis'), icon: Layers },
+    { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
 
   const renderTabContent = () => {

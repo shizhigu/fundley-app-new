@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, BarChart3, Database } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatContext } from '@/lib/contexts/chat-context'
+import { useTranslations } from 'next-intl'
 
 interface AnalysisBlocksPanelProps {
   chatId: string
@@ -14,6 +15,7 @@ interface AnalysisBlocksPanelProps {
 }
 
 export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPanelProps) {
+  const t = useTranslations('analysis')
   const { isLoading: isChatStreaming } = useChatContext()
   const [blocks, setBlocks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -150,9 +152,9 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
       <div className={`flex items-center justify-center h-64 ${className}`}>
         <div className="text-center space-y-2">
           <Database className="h-8 w-8 text-muted-foreground mx-auto" />
-          <p className="text-sm text-muted-foreground">No analysis blocks yet</p>
+          <p className="text-sm text-muted-foreground">{t('noBlocksYet')}</p>
           <p className="text-xs text-muted-foreground">
-            AI agents will create blocks as they analyze data
+            {t('agentsWillCreate')}
           </p>
         </div>
       </div>
@@ -165,12 +167,12 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Analysis Blocks
+            {t('analysisBlocks')}
           </h3>
           <div className="flex items-center gap-3">
             <div className="neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900">
               <span className="text-sm font-medium text-foreground">
-                {blocks.length} block{blocks.length !== 1 ? 's' : ''}
+                {blocks.length} {blocks.length !== 1 ? t('blocks') : t('block')}
               </span>
             </div>
             {/* 实时指示器 - 仅在流式传输时显示 */}
@@ -181,7 +183,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                 className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-brand-badge"
               >
                 <div className="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">{t('live')}</span>
               </motion.div>
             )}
           </div>

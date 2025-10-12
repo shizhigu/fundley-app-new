@@ -34,8 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 function FinancialDataPanelComponent() {
+  const tFinancial = useTranslations('financialData');
   // Local state
   const [tableData, setTableData] = useState<FinancialDataPoint[]>([]);
   const [tableAlignMode, setTableAlignMode] = useState<'original' | 'relative'>('relative');
@@ -691,7 +693,7 @@ function FinancialDataPanelComponent() {
                     }`}
                   >
                     <LayoutGrid size={16} />
-                    卡片
+                    {tFinancial('cards')}
                   </button>
                   <button
                     onClick={() => setViewMode('table')}
@@ -702,7 +704,7 @@ function FinancialDataPanelComponent() {
                     }`}
                   >
                     <Table2 size={16} />
-                    表格
+                    {tFinancial('table')}
                   </button>
                 </div>
 
@@ -717,7 +719,7 @@ function FinancialDataPanelComponent() {
                           : 'text-muted-foreground hover:bg-background hover:text-foreground'
                       }`}
                     >
-                      Timeline
+                      {tFinancial('timeline')}
                     </button>
                     <button
                       onClick={() => setTableAlignMode('relative')}
@@ -727,7 +729,7 @@ function FinancialDataPanelComponent() {
                           : 'text-muted-foreground hover:bg-background hover:text-foreground'
                       }`}
                     >
-                      Comparison
+                      {tFinancial('comparison')}
                     </button>
                   </div>
                 )}
@@ -743,7 +745,7 @@ function FinancialDataPanelComponent() {
                 className="flex items-center gap-2 text-sm font-medium"
               >
                 <Download size={16} />
-                导出Excel
+                {tFinancial('exportExcel')}
               </Button>
             )}
 

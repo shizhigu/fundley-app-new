@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import {
   DropdownMenu,
@@ -28,6 +29,9 @@ interface SidebarUserNavProps {
 }
 
 export function SidebarUserNav({ user }: SidebarUserNavProps) {
+  const t = useTranslations('nav');
+  const tOrg = useTranslations('organization');
+  const tTheme = useTranslations('theme');
   const router = useRouter();
   const { signOut, openOrganizationProfile, openCreateOrganization } = useClerk();
   const { isLoaded, user: clerkUser } = useUser();
@@ -108,7 +112,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
                 onSelect={() => openOrganizationProfile()}
               >
                 <Settings className="w-4 h-4" />
-                <span>Organization Settings</span>
+                <span>{tOrg('settings')}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
@@ -119,7 +123,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             onSelect={() => openCreateOrganization()}
           >
             <Building2 className="w-4 h-4" />
-            <span>{organization ? 'Switch Organization' : 'Create Organization'}</span>
+            <span>{organization ? tOrg('switch') : tOrg('create')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -129,7 +133,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             onSelect={() => setSettingsOpen(true)}
           >
             <Settings className="w-4 h-4" />
-            <span>Settings</span>
+            <span>{t('settings')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -142,12 +146,12 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             {resolvedTheme === 'dark' ? (
               <>
                 <Sun className="w-4 h-4" />
-                <span>Light Mode</span>
+                <span>{tTheme('light')}</span>
               </>
             ) : (
               <>
                 <Moon className="w-4 h-4" />
-                <span>Dark Mode</span>
+                <span>{tTheme('dark')}</span>
               </>
             )}
           </DropdownMenuItem>
@@ -160,7 +164,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
             onSelect={handleSignOut}
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
+            <span>{t('signOut')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

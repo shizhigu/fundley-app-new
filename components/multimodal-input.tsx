@@ -15,6 +15,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
+import { useTranslations } from 'next-intl';
 
 import { ArrowUpIcon, StopIcon } from './icons';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
@@ -135,6 +136,7 @@ function PureMultimodalInput({
   // ========================================================================
   // State Management
   // ========================================================================
+  const t = useTranslations('chat');
   const [input, setInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
@@ -452,7 +454,7 @@ function PureMultimodalInput({
         <Textarea
           data-testid="multimodal-input"
           ref={textareaRef}
-          placeholder="Ask me anything..."
+          placeholder={t('placeholder')}
           value={input}
           onChange={handleInput}
           onPaste={handlePaste}
@@ -535,6 +537,7 @@ function PureAttachmentsButton({
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>['status'];
 }) {
+  const t = useTranslations('chat');
   return (
     <button
       data-testid="attachments-button"
@@ -558,7 +561,7 @@ function PureAttachmentsButton({
       disabled={status !== 'ready'}
     >
       <Paperclip className="w-4 h-4" />
-      <span className="hidden sm:inline">Attach</span>
+      <span className="hidden sm:inline">{t('attachFile')}</span>
     </button>
   );
 }
@@ -573,6 +576,7 @@ function PureStopButton({
   stop: () => void;
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
 }) {
+  const t = useTranslations('chat');
   return (
     <button
       data-testid="stop-button"
@@ -593,7 +597,7 @@ function PureStopButton({
       type="button"
     >
       <StopIcon className="w-4 h-4" />
-      <span>Stop</span>
+      <span>{t('stopRecording')}</span>
     </button>
   );
 }
@@ -608,6 +612,7 @@ function PureSendButton({
   submitForm: () => void;
   input: string;
 }) {
+  const t = useTranslations('common');
   return (
     <button
       data-testid="send-button"
@@ -631,7 +636,7 @@ function PureSendButton({
       type="button"
     >
       <Send className="w-4 h-4" />
-      <span>Send</span>
+      <span>{t('send')}</span>
     </button>
   );
 }

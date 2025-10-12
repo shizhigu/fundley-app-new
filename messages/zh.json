@@ -1,0 +1,107 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "filter": "筛选",
+    "export": "导出",
+    "import": "导入",
+    "close": "关闭",
+    "send": "发送"
+  },
+  "nav": {
+    "newChat": "新对话",
+    "settings": "设置",
+    "profile": "个人资料",
+    "signOut": "退出登录"
+  },
+  "chat": {
+    "placeholder": "向我询问您的数据...",
+    "sendMessage": "发送",
+    "thinking": "思考中...",
+    "noMessages": "还没有消息",
+    "startConversation": "开始对话",
+    "attachFile": "添加附件",
+    "stopRecording": "停止"
+  },
+  "sidebar": {
+    "chats": "对话列表",
+    "today": "今天",
+    "yesterday": "昨天",
+    "lastWeek": "最近7天",
+    "lastMonth": "最近30天",
+    "older": "更早",
+    "searchChats": "搜索对话..."
+  },
+  "panels": {
+    "financialData": "财务数据",
+    "analysis": "分析块",
+    "chart": "图表"
+  },
+  "settings": {
+    "title": "设置",
+    "profile": "个人资料",
+    "templates": "模板",
+    "tokenUsage": "Token 使用量",
+    "yourAIStats": "您的 AI Token 消耗统计",
+    "estimatedCost": "预估成本",
+    "basedOnPricing": "基于 GPT-5 定价（输入 $1.25/百万，输出 $10/百万）",
+    "totalSessions": "总会话数",
+    "inputTokens": "Input Tokens",
+    "outputTokens": "Output Tokens",
+    "totalTokens": "Total Tokens",
+    "tokenBreakdown": "Token 分布",
+    "reasoningTokens": "Reasoning Tokens",
+    "analysisTemplates": "分析模板",
+    "manageWorkflows": "管理您保存的分析工作流",
+    "noTemplatesYet": "还没有模板。在聊天中保存分析以创建模板。",
+    "title_column": "标题",
+    "description_column": "描述",
+    "category_column": "类别",
+    "source_column": "来源",
+    "visibility_column": "可见性",
+    "created_column": "创建时间",
+    "action_column": "操作",
+    "mine": "我的",
+    "team": "团队",
+    "shared": "共享",
+    "useTemplate": "使用此模板"
+  },
+  "analysis": {
+    "noBlocksYet": "还没有分析块",
+    "agentsWillCreate": "AI代理将在分析数据时创建块",
+    "analysisBlocks": "分析块",
+    "live": "实时",
+    "blocks": "个块",
+    "block": "个块",
+    "dataTable": "数据表",
+    "dataTables": "数据表",
+    "export": "导出",
+    "exportToExcel": "导出到 Excel",
+    "table": "表格"
+  },
+  "financialData": {
+    "cards": "卡片",
+    "table": "表格",
+    "timeline": "Timeline",
+    "comparison": "Comparison",
+    "exportExcel": "导出Excel",
+    "noData": "暂无数据"
+  },
+  "organization": {
+    "settings": "组织设置",
+    "switch": "切换组织",
+    "create": "创建组织"
+  },
+  "theme": {
+    "light": "浅色模式",
+    "dark": "深色模式",
+    "system": "跟随系统"
+  }
+}

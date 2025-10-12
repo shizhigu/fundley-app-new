@@ -1,5 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
+
+// i18n configuration - get locale from environment variable
+const getLocale = () => {
+  return process.env.NEXT_PUBLIC_LOCALE || 'en';
+};
 
 // Define protected routes
 const isProtectedRoute = createRouteMatcher([
@@ -27,7 +33,7 @@ export default clerkMiddleware(async (auth, req) => {
   // Check if the route is protected and user is not authenticated
   if (isProtectedRoute(req) && !isPublicRoute(req)) {
     const { userId } = await auth();
-    
+
     if (!userId) {
       // Redirect to sign-in page
       const signInUrl = new URL('/sign-in', req.url);

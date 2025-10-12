@@ -88,6 +88,7 @@
     "mermaid": "^11.10.1",
     "nanoid": "^5.0.8",
     "next": "15.3.0-canary.31",
+    "next-intl": "^4.3.12",
     "next-themes": "^0.3.0",
     "orderedmap": "^2.1.1",
     "papaparse": "^5.5.2",

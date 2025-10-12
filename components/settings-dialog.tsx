@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,7 @@ const TEMPLATES_CACHE_KEY = 'analysis_templates_cache';
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const t = useTranslations('settings');
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
@@ -254,8 +256,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   const tabs = [
-    { id: 'profile' as const, label: 'Profile', icon: User },
-    { id: 'templates' as const, label: 'Templates', icon: FileText },
+    { id: 'profile' as const, label: t('profile'), icon: User },
+    { id: 'templates' as const, label: t('templates'), icon: FileText },
   ];
 
   return (
@@ -266,7 +268,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="w-48 border-r border-border bg-background p-4 space-y-1">
             <DialogHeader className="px-2 mb-6">
               <DialogTitle className="text-base font-semibold text-foreground">
-                Settings
+                {t('title')}
               </DialogTitle>
             </DialogHeader>
             {tabs.map((tab) => {
@@ -298,9 +300,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {activeTab === 'profile' && (
               <div className="p-8">
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-foreground">Token Usage</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{t('tokenUsage')}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Your AI token consumption statistics
+                    {t('yourAIStats')}
                   </p>
                 </div>
 
@@ -331,13 +333,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             <div className="space-y-2">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <DollarSign className="h-5 w-5" />
-                                <span className="text-sm font-medium">Estimated Cost</span>
+                                <span className="text-sm font-medium">{t('estimatedCost')}</span>
                               </div>
                               <p className="text-4xl font-bold text-foreground">
                                 ${estimatedCost.toFixed(2)}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                Based on GPT-5 pricing ($1.25/1M input, $10/1M output)
+                                {t('basedOnPricing')}
                               </p>
                             </div>
                             <div className="text-right space-y-1 text-xs text-muted-foreground">
@@ -363,7 +365,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <div className="border border-border rounded-lg p-4 bg-background">
                         <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <MessageSquare className="h-4 w-4" />
-                          <span className="text-sm font-medium">Total Sessions</span>
+                          <span className="text-sm font-medium">{t('totalSessions')}</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
                           {tokenUsage.total_sessions.toLocaleString()}
@@ -373,7 +375,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <div className="border border-border rounded-lg p-4 bg-background">
                         <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="text-sm font-medium">Input Tokens</span>
+                          <span className="text-sm font-medium">{t('inputTokens')}</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
                           {tokenUsage.input_tokens.toLocaleString()}
@@ -383,7 +385,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <div className="border border-border rounded-lg p-4 bg-background">
                         <div className="flex items-center gap-2 text-muted-foreground mb-3">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="text-sm font-medium">Output Tokens</span>
+                          <span className="text-sm font-medium">{t('outputTokens')}</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
                           {tokenUsage.output_tokens.toLocaleString()}
@@ -393,7 +395,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <div className="border border-border rounded-lg p-4 bg-background">
                         <div className="flex items-center gap-2 text-brand-primary mb-3">
                           <Coins className="h-4 w-4" />
-                          <span className="text-sm font-medium">Total Tokens</span>
+                          <span className="text-sm font-medium">{t('totalTokens')}</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
                           {tokenUsage.total_tokens.toLocaleString()}
@@ -404,14 +406,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     {/* Detailed Breakdown */}
                     <div className="border border-border rounded-lg p-6 bg-background">
                       <h3 className="text-base font-semibold text-foreground mb-6">
-                        Token Breakdown
+                        {t('tokenBreakdown')}
                       </h3>
 
                       <div className="space-y-5">
                         {/* Input Tokens */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-muted-foreground">Input Tokens</span>
+                            <span className="text-sm text-muted-foreground">{t('inputTokens')}</span>
                             <span className="font-mono font-semibold text-foreground">
                               {tokenUsage.input_tokens.toLocaleString()}
                             </span>
@@ -433,7 +435,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         {/* Output Tokens */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-muted-foreground">Output Tokens</span>
+                            <span className="text-sm text-muted-foreground">{t('outputTokens')}</span>
                             <span className="font-mono font-semibold text-foreground">
                               {tokenUsage.output_tokens.toLocaleString()}
                             </span>
@@ -457,7 +459,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm text-muted-foreground">
-                                Reasoning Tokens
+                                {t('reasoningTokens')}
                               </span>
                               <span className="font-mono font-semibold text-foreground">
                                 {tokenUsage.reasoning_tokens.toLocaleString()}
@@ -492,9 +494,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {activeTab === 'templates' && (
               <div className="p-8">
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-foreground">Analysis Templates</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{t('analysisTemplates')}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Manage your saved analysis workflows
+                    {t('manageWorkflows')}
                   </p>
                 </div>
 
@@ -514,25 +516,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <TableHeader>
                             <TableRow className="border-border hover:bg-transparent">
                               <TableHead className="min-w-[200px] text-muted-foreground font-medium">
-                                Title
+                                {t('title_column')}
                               </TableHead>
                               <TableHead className="min-w-[250px] text-muted-foreground font-medium">
-                                Description
+                                {t('description_column')}
                               </TableHead>
                               <TableHead className="text-muted-foreground font-medium">
-                                Category
+                                {t('category_column')}
                               </TableHead>
                               <TableHead className="text-muted-foreground font-medium">
-                                Source
+                                {t('source_column')}
                               </TableHead>
                               <TableHead className="text-muted-foreground font-medium">
-                                Visibility
+                                {t('visibility_column')}
                               </TableHead>
                               <TableHead className="text-muted-foreground font-medium">
-                                Created
+                                {t('created_column')}
                               </TableHead>
                               <TableHead className="text-muted-foreground font-medium">
-                                Action
+                                {t('action_column')}
                               </TableHead>
                             </TableRow>
                           </TableHeader>
@@ -633,7 +635,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                     {template.is_mine ? 'Mine' : 'Team'}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="min-w-[120px]">
                                   {template.is_mine ? (
                                     <div className="flex items-center gap-3">
                                       {template.is_public ? (
@@ -652,7 +654,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                     </div>
                                   ) : (
                                     <span className="text-sm text-muted-foreground flex items-center gap-2">
-                                      <Users className="h-4 w-4 shrink-0" />
+                                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                                       Shared
                                     </span>
                                   )}

@@ -7,6 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import ConvexClientProvider from '@/components/convex-client-provider';
 import { getBranding } from '@/lib/config/branding';
 import { BrandingStyles } from '@/components/branding-styles';
+import { I18nProvider } from '@/lib/i18n-provider';
 
 import './globals.css';
 
@@ -52,9 +53,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Load messages based on environment variable
+  const locale = process.env.NEXT_PUBLIC_LOCALE || 'en';
+  const messages = (await import(`@/messages/${locale}.json`)).default;
+
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
@@ -68,20 +73,22 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange={false}
             >
-              <TooltipProvider>
-                <div className="bg-background min-h-screen">
-                  {children}
-                </div>
-                <Toaster
-                  position="top-right"
-                  theme="system"
-                  richColors
-                  closeButton
-                  toastOptions={{
-                    className: 'glass-card',
-                  }}
-                />
-              </TooltipProvider>
+              <I18nProvider locale={locale} messages={messages}>
+                <TooltipProvider>
+                  <div className="bg-background min-h-screen">
+                    {children}
+                  </div>
+                  <Toaster
+                    position="top-right"
+                    theme="system"
+                    richColors
+                    closeButton
+                    toastOptions={{
+                      className: 'glass-card',
+                    }}
+                  />
+                </TooltipProvider>
+              </I18nProvider>
             </ThemeProvider>
           </ConvexClientProvider>
         </ClerkProvider>

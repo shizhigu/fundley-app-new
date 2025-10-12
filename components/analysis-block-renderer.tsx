@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download, FileSpreadsheet, Search } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useTranslations } from 'next-intl'
 import {
   useReactTable,
   getCoreRowModel,
@@ -45,6 +46,7 @@ interface AnalysisBlockProps {
  */
 export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisBlockProps) {
   const { content } = block
+  const tAnalysis = useTranslations('analysis')
 
   // Get session ID from URL or context (you need to pass this from parent)
   // For now, we'll extract from the block's metadata if available
@@ -366,7 +368,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
               >
                 <FileText className="h-4 w-4" />
                 <span className="text-sm font-medium">
-                  {dataFiles.length === 1 ? 'Data Table' : `Data Tables (${dataFiles.length})`}
+                  {dataFiles.length === 1 ? tAnalysis('dataTable') : `${tAnalysis('dataTables')} (${dataFiles.length})`}
                 </span>
                 {tableData.length > 0 && (
                   <span className="text-xs text-muted-foreground">
@@ -387,7 +389,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                   disabled={tableData.length === 0}
                 >
                   <FileSpreadsheet className="h-4 w-4 mr-1" />
-                  <span className="text-xs">Export</span>
+                  <span className="text-xs">{tAnalysis('export')}</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -417,7 +419,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                         : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                     )}
                   >
-                    Table {index + 1}
+                    {tAnalysis('table')} {index + 1}
                   </button>
                 ))}
               </div>
@@ -551,7 +553,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 flex flex-col">
           <DialogHeader className="p-6 pb-4 border-b">
             <div className="flex items-center justify-between">
-              <DialogTitle>Data Table - {title}</DialogTitle>
+              <DialogTitle>{tAnalysis('dataTable')} - {title}</DialogTitle>
               <Button
                 variant="outline"
                 size="sm"
@@ -560,7 +562,7 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                 disabled={tableData.length === 0}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export to Excel
+                {tAnalysis('exportToExcel')}
               </Button>
             </div>
           </DialogHeader>

@@ -1,0 +1,107 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "close": "Close",
+    "send": "Send"
+  },
+  "nav": {
+    "newChat": "New Chat",
+    "settings": "Settings",
+    "profile": "Profile",
+    "signOut": "Sign Out"
+  },
+  "chat": {
+    "placeholder": "Ask me anything about your data...",
+    "sendMessage": "Send",
+    "thinking": "Thinking...",
+    "noMessages": "No messages yet",
+    "startConversation": "Start a conversation",
+    "attachFile": "Attach file",
+    "stopRecording": "Stop"
+  },
+  "sidebar": {
+    "chats": "Chats",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "lastWeek": "Last 7 Days",
+    "lastMonth": "Last 30 Days",
+    "older": "Older",
+    "searchChats": "Search chats..."
+  },
+  "panels": {
+    "financialData": "Financial Data",
+    "analysis": "Analysis",
+    "chart": "Chart"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "templates": "Templates",
+    "tokenUsage": "Token Usage",
+    "yourAIStats": "Your AI token consumption statistics",
+    "estimatedCost": "Estimated Cost",
+    "basedOnPricing": "Based on GPT-5 pricing ($1.25/1M input, $10/1M output)",
+    "totalSessions": "Total Sessions",
+    "inputTokens": "Input Tokens",
+    "outputTokens": "Output Tokens",
+    "totalTokens": "Total Tokens",
+    "tokenBreakdown": "Token Breakdown",
+    "reasoningTokens": "Reasoning Tokens",
+    "analysisTemplates": "Analysis Templates",
+    "manageWorkflows": "Manage your saved analysis workflows",
+    "noTemplatesYet": "No templates yet. Save an analysis in chat to create one.",
+    "title_column": "Title",
+    "description_column": "Description",
+    "category_column": "Category",
+    "source_column": "Source",
+    "visibility_column": "Visibility",
+    "created_column": "Created",
+    "action_column": "Action",
+    "mine": "Mine",
+    "team": "Team",
+    "shared": "Shared",
+    "useTemplate": "Use this template"
+  },
+  "analysis": {
+    "noBlocksYet": "No analysis blocks yet",
+    "agentsWillCreate": "AI agents will create blocks as they analyze data",
+    "analysisBlocks": "Analysis Blocks",
+    "live": "Live",
+    "blocks": "blocks",
+    "block": "block",
+    "dataTable": "Data Table",
+    "dataTables": "Data Tables",
+    "export": "Export",
+    "exportToExcel": "Export to Excel",
+    "table": "Table"
+  },
+  "financialData": {
+    "cards": "Cards",
+    "table": "Table",
+    "timeline": "Timeline",
+    "comparison": "Comparison",
+    "exportExcel": "Export Excel",
+    "noData": "No data available"
+  },
+  "organization": {
+    "settings": "Organization Settings",
+    "switch": "Switch Organization",
+    "create": "Create Organization"
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "system": "System"
+  }
+}

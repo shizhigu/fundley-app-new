@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Plus, MessageSquare, Trash2, Edit2, ChevronLeft, MoreHorizontal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import type { Chat } from '@/lib/types/chat';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -31,6 +32,8 @@ export function SimpleChatSelector({
   onToggleSidebar,
   isSidebarOpen
 }: SimpleChatSelectorProps) {
+  const tSidebar = useTranslations('sidebar');
+  const tNav = useTranslations('nav');
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -69,7 +72,7 @@ export function SimpleChatSelector({
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Chats</h2>
+          <h2 className="text-lg font-semibold text-foreground">{tSidebar('chats')}</h2>
 
           {/* Collapse sidebar button */}
           {onToggleSidebar && (
@@ -89,7 +92,7 @@ export function SimpleChatSelector({
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white rounded-lg font-medium transition-all duration-200 hover:bg-brand-primary/90 active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
-          <span className="text-sm">New Chat</span>
+          <span className="text-sm">{tNav('newChat')}</span>
         </button>
       </div>
 
