@@ -596,7 +596,7 @@ function PureStopButton({
       }}
       type="button"
     >
-      <StopIcon className="w-4 h-4" />
+      <StopIcon size={16} />
       <span>{t('stopRecording')}</span>
     </button>
   );
