@@ -24,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { User, FileText, Loader2, Users, Lock, Play, Pencil } from 'lucide-react';
+import { User, FileText, Loader2, Users, Lock, Play, Pencil, Coins, TrendingUp, MessageSquare, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +37,15 @@ interface Template {
   is_public: boolean;
   is_mine: boolean;
   source: string;
+}
+
+interface TokenUsage {
+  user_id: string;
+  total_sessions: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  reasoning_tokens: number;
 }
 
 type SettingsTab = 'profile' | 'templates';
@@ -56,12 +65,37 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [loadingTokens, setLoadingTokens] = useState(false);
 
   useEffect(() => {
     if (open && activeTab === 'templates') {
       fetchTemplates();
     }
+    if (open && activeTab === 'profile') {
+      fetchTokenUsage();
+    }
   }, [open, activeTab]);
+
+  const fetchTokenUsage = async () => {
+    setLoadingTokens(true);
+    try {
+      const response = await fetch('/api/token-usage');
+      const data = await response.json();
+
+      if (response.ok) {
+        setTokenUsage(data);
+      } else {
+        console.error('Failed to fetch token usage:', data);
+        toast.error('Failed to load token usage');
+      }
+    } catch (error) {
+      console.error('Error fetching token usage:', error);
+      toast.error('Failed to load token usage');
+    } finally {
+      setLoadingTokens(false);
+    }
+  };
 
   const fetchTemplates = async () => {
     // Try to load from cache first
@@ -231,10 +265,152 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="flex-1 overflow-auto min-w-0">
             {activeTab === 'profile' && (
               <div className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Profile Settings</h2>
-                <p className="text-muted-foreground">
-                  Profile settings coming soon...
-                </p>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold">Token Usage</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your AI token consumption statistics
+                  </p>
+                </div>
+
+                {loadingTokens ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : tokenUsage ? (
+                  <div className="space-y-4">
+                    {/* Cost Calculation - GPT-5 Pricing */}
+                    {(() => {
+                      const PRICING = {
+                        input: 1.25 / 1_000_000,   // $1.25 per 1M tokens
+                        output: 10.00 / 1_000_000, // $10.00 per 1M tokens (includes reasoning)
+                      };
+
+                      // Reasoning tokens are priced as output tokens
+                      const totalOutputTokens = tokenUsage.output_tokens + tokenUsage.reasoning_tokens;
+
+                      const estimatedCost =
+                        (tokenUsage.input_tokens * PRICING.input) +
+                        (totalOutputTokens * PRICING.output);
+
+                      return (
+                        <div className="border rounded-lg p-6 bg-card">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <DollarSign className="h-5 w-5" />
+                                <span className="text-sm font-medium">Estimated Cost</span>
+                              </div>
+                              <p className="text-4xl font-bold">
+                                ${estimatedCost.toFixed(2)}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Based on GPT-5 pricing ($1.25/1M input, $10/1M output)
+                              </p>
+                            </div>
+                            <div className="text-right space-y-1 text-xs text-muted-foreground">
+                              <div>Input: ${(tokenUsage.input_tokens * PRICING.input).toFixed(4)}</div>
+                              <div>Output: ${(totalOutputTokens * PRICING.output).toFixed(4)}</div>
+                              {tokenUsage.reasoning_tokens > 0 && (
+                                <div className="text-[10px] opacity-70">
+                                  (incl. {tokenUsage.reasoning_tokens.toLocaleString()} reasoning)
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="border rounded-lg p-4 space-y-2 bg-card">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <MessageSquare className="h-4 w-4" />
+                          <span className="text-sm font-medium">Total Sessions</span>
+                        </div>
+                        <p className="text-2xl font-bold">{tokenUsage.total_sessions.toLocaleString()}</p>
+                      </div>
+
+                      <div className="border rounded-lg p-4 space-y-2 bg-card">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="text-sm font-medium">Input Tokens</span>
+                        </div>
+                        <p className="text-2xl font-bold">{tokenUsage.input_tokens.toLocaleString()}</p>
+                      </div>
+
+                      <div className="border rounded-lg p-4 space-y-2 bg-card">
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="text-sm font-medium">Output Tokens</span>
+                        </div>
+                        <p className="text-2xl font-bold">{tokenUsage.output_tokens.toLocaleString()}</p>
+                      </div>
+
+                      <div className="border rounded-lg p-4 space-y-2 bg-card">
+                        <div className="flex items-center gap-2 text-primary">
+                          <Coins className="h-4 w-4" />
+                          <span className="text-sm font-medium">Total Tokens</span>
+                        </div>
+                        <p className="text-2xl font-bold">{tokenUsage.total_tokens.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Detailed Breakdown */}
+                    <div className="border rounded-lg p-6 space-y-4 bg-card">
+                      <h3 className="text-lg font-semibold">Token Breakdown</h3>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Input Tokens</span>
+                          <span className="font-mono font-semibold">{tokenUsage.input_tokens.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full transition-all"
+                            style={{
+                              width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.input_tokens / tokenUsage.total_tokens) * 100 : 0}%`
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="text-sm text-muted-foreground">Output Tokens</span>
+                          <span className="font-mono font-semibold">{tokenUsage.output_tokens.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full transition-all"
+                            style={{
+                              width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.output_tokens / tokenUsage.total_tokens) * 100 : 0}%`
+                            }}
+                          />
+                        </div>
+
+                        {tokenUsage.reasoning_tokens > 0 && (
+                          <>
+                            <div className="flex items-center justify-between mt-4">
+                              <span className="text-sm text-muted-foreground">Reasoning Tokens</span>
+                              <span className="font-mono font-semibold">{tokenUsage.reasoning_tokens.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div
+                                className="bg-purple-500 h-2 rounded-full transition-all"
+                                style={{
+                                  width: `${tokenUsage.total_tokens > 0 ? (tokenUsage.reasoning_tokens / tokenUsage.total_tokens) * 100 : 0}%`
+                                }}
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    No token usage data available
+                  </div>
+                )}
               </div>
             )}
 

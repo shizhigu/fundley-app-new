@@ -20,6 +20,7 @@ import { ArrowUpIcon, StopIcon } from './icons';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
+import { VoiceRecorder } from './voice-recorder';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -139,6 +140,20 @@ function PureMultimodalInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const { width } = useWindowSize();
+
+  // Handle voice transcript
+  const handleVoiceTranscript = useCallback((transcript: string, metadata?: any) => {
+    setInput(transcript);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const textarea = textareaRef.current;
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(textarea.scrollHeight + 2, 200);
+        textarea.style.height = `${newHeight}px`;
+      }
+    });
+  }, []);
 
   // Listen for template prefill event
   useEffect(() => {
@@ -492,6 +507,7 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 left-0 p-3 flex flex-row items-center gap-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        <VoiceRecorder onTranscript={handleVoiceTranscript} />
         <SuggestionsButton messages={messages} />
       </div>
 
