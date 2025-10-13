@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
 import { InvocationGroup } from '@/components/invocation-group';
@@ -35,6 +36,7 @@ export function NewChatInterface({
   onSendMessage,
   isReadonly = false,
 }: NewChatInterfaceProps) {
+  const t = useTranslations('common');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   // 滚动控制
@@ -70,7 +72,7 @@ export function NewChatInterface({
       <div className="flex flex-col h-full w-full max-w-full relative">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-red-500 mb-2">Error</div>
+            <div className="text-red-500 mb-2">{t('error')}</div>
             <div className="text-muted-foreground">{error}</div>
           </div>
         </div>
@@ -88,7 +90,7 @@ export function NewChatInterface({
             className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
           >
             <div className="flex items-center justify-center h-full">
-              <div className="text-muted-foreground">Loading chat...</div>
+              <div className="text-muted-foreground">{t('loadingChat')}</div>
             </div>
           </div>
           <div ref={endRef} />
@@ -109,9 +111,9 @@ export function NewChatInterface({
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                  欢迎使用
+                  {t('welcome')}
                 </h2>
-                <p className="text-muted-foreground">开始对话以获取财务分析</p>
+                <p className="text-muted-foreground">{t('welcomeDescription')}</p>
               </div>
             </div>
           )}

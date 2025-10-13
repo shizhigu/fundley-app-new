@@ -223,6 +223,9 @@ export function useChat(): ChatState & ChatActions {
   const sendMessage = useCallback(async (content: string, files?: File[]) => {
     if (!currentChatId || !content.trim()) return;
 
+    // 记录发送消息时的 chatId，用于验证流式响应
+    const messageChatId = currentChatId;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -232,6 +235,7 @@ export function useChat(): ChatState & ChatActions {
       // 构建请求
       const sessionState = buildSessionState();
       console.log('📤 Sending message with sessionState:', {
+        chatId: messageChatId,
         hasFinancialData: !!(sessionState['financial_metrics_data']?.length),
         financialDataLength: sessionState['financial_metrics_data']?.length || 0,
         hasAvailableMetrics: !!(sessionState['available_metrics']?.length),
@@ -250,13 +254,13 @@ export function useChat(): ChatState & ChatActions {
         formData.append('sessionState', JSON.stringify(sessionState));
         files.forEach(file => formData.append('files', file));
 
-        response = await fetch(`/api/chat/${currentChatId}/stream`, {
+        response = await fetch(`/api/chat/${messageChatId}/stream`, {
           method: 'POST',
           body: formData
         });
       } else {
         // 纯文本使用JSON
-        response = await fetch(`/api/chat/${currentChatId}/stream`, {
+        response = await fetch(`/api/chat/${messageChatId}/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -270,8 +274,8 @@ export function useChat(): ChatState & ChatActions {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // 处理流式响应
-      await handleStreamResponse(response);
+      // 处理流式响应，传入 chatId 用于验证
+      await handleStreamResponse(response, messageChatId);
 
     } catch (err) {
       console.error('Error sending message:', err);
@@ -285,7 +289,7 @@ export function useChat(): ChatState & ChatActions {
 
   // ============ 流式响应处理 ============
 
-  const handleStreamResponse = useCallback(async (response: Response) => {
+  const handleStreamResponse = useCallback(async (response: Response, expectedChatId: string) => {
     if (!response.body) throw new Error('No response body');
 
     const reader = response.body.getReader();
@@ -310,7 +314,7 @@ export function useChat(): ChatState & ChatActions {
           if (jsonData === '[DONE]') break;
 
           const eventData: StreamEvent = JSON.parse(jsonData);
-          handleStreamEvent(eventData);
+          handleStreamEvent(eventData, expectedChatId);
         } catch (err) {
           console.warn('Failed to parse SSE data:', line, err);
         }
@@ -318,13 +322,33 @@ export function useChat(): ChatState & ChatActions {
     }
   }, []);
 
-  const handleStreamEvent = useCallback((event: StreamEvent) => {
+  const handleStreamEvent = useCallback((event: StreamEvent, expectedChatId: string) => {
+    // 验证消息是否属于当前chat
+    if (event.message?.chatId && event.message.chatId !== expectedChatId) {
+      console.warn('⚠️ Ignoring event from different chat:', {
+        eventChatId: event.message.chatId,
+        expectedChatId,
+        eventType: event.type
+      });
+      return;
+    }
+
+    // 检查用户是否已经切换到其他chat
+    if (currentChatId !== expectedChatId) {
+      console.warn('⚠️ User switched to different chat, ignoring event:', {
+        currentChatId,
+        expectedChatId,
+        eventType: event.type
+      });
+      return;
+    }
+
     switch (event.type) {
       case 'user_saved':
-      case 'assistant_start':
-      case 'assistant_complete':
       case 'tool_start':
       case 'tool_complete':
+      case 'assistant_complete':
+        // 这些事件：直接保存/更新完整消息
         if (event.message) {
           const convertedMessage = convertMessage(event.message);
           setMessages(prev => {
@@ -340,7 +364,23 @@ export function useChat(): ChatState & ChatActions {
         }
         break;
 
+      case 'assistant_start':
+        // assistant_start：创建空消息占位，不显示初始内容
+        if (event.message) {
+          const convertedMessage = convertMessage(event.message);
+          setMessages(prev => {
+            const existing = prev.find(msg => msg.id === convertedMessage.id);
+            if (!existing) {
+              // 创建空消息占位符，内容为空字符串
+              return [...prev, { ...convertedMessage, content: '', parts: [{ type: 'text', text: '' }] }];
+            }
+            return prev;
+          });
+        }
+        break;
+
       case 'assistant_content':
+        // assistant_content：增量追加内容
         if (event.messageId && event.content) {
           setMessages(prev => prev.map(msg =>
             msg.id === event.messageId
@@ -358,7 +398,7 @@ export function useChat(): ChatState & ChatActions {
         setError(event.error || 'Unknown error occurred');
         break;
     }
-  }, []);
+  }, [currentChatId]);
 
   // ============ 消息分组逻辑 ============
 

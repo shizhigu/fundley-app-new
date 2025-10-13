@@ -13,7 +13,10 @@
     "export": "Export",
     "import": "Import",
     "close": "Close",
-    "send": "Send"
+    "send": "Send",
+    "welcome": "Welcome",
+    "welcomeDescription": "Start a conversation to get financial analysis",
+    "loadingChat": "Loading chat..."
   },
   "nav": {
     "newChat": "New Chat",

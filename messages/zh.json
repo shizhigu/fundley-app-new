@@ -13,7 +13,10 @@
     "export": "导出",
     "import": "导入",
     "close": "关闭",
-    "send": "发送"
+    "send": "发送",
+    "welcome": "欢迎使用",
+    "welcomeDescription": "开始对话以获取财务分析",
+    "loadingChat": "加载对话..."
   },
   "nav": {
     "newChat": "新对话",
