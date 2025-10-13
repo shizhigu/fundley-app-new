@@ -30,6 +30,9 @@ export function useChat(): ChatState & ChatActions {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 跟踪活跃的stream，用于检测用户切换chat
+  const [activeStreamChatId, setActiveStreamChatId] = useState<string | null>(null);
+
   // ============ 财务数据集成 ============
   const financialData = useFinancialDataStore((state) => state.data);
   const availableMetrics = useFinancialDataStore((state) => state.availableMetrics);
@@ -229,6 +232,7 @@ export function useChat(): ChatState & ChatActions {
     try {
       setIsLoading(true);
       setError(null);
+      setActiveStreamChatId(messageChatId); // 标记活跃的stream
 
       // 删除前端检查逻辑，移到后端处理
 
@@ -282,6 +286,7 @@ export function useChat(): ChatState & ChatActions {
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setIsLoading(false);
+      setActiveStreamChatId(null); // 清除活跃stream标记
     }
   }, [currentChatId]);
 
@@ -323,20 +328,15 @@ export function useChat(): ChatState & ChatActions {
   }, []);
 
   const handleStreamEvent = useCallback((event: StreamEvent, expectedChatId: string) => {
-    // 验证消息是否属于当前chat
-    if (event.message?.chatId && event.message.chatId !== expectedChatId) {
-      console.warn('⚠️ Ignoring event from different chat:', {
-        eventChatId: event.message.chatId,
-        expectedChatId,
-        eventType: event.type
-      });
-      return;
-    }
+    // 使用 activeStreamChatId 检测用户是否切换到其他chat
+    // activeStreamChatId 在 sendMessage 开始时设置，结束时清除
+    // 如果用户切换了chat，activeStreamChatId 会保持旧值，currentChatId 是新值
 
-    // 检查用户是否已经切换到其他chat
-    if (currentChatId !== expectedChatId) {
-      console.warn('⚠️ User switched to different chat, ignoring event:', {
-        currentChatId,
+    // 简化逻辑：只要 activeStreamChatId 存在且与 expectedChatId 匹配，就接受事件
+    // 如果 activeStreamChatId 为 null，说明没有活跃的stream，也接受（兼容刷新后重新加载）
+    if (activeStreamChatId && activeStreamChatId !== expectedChatId) {
+      console.warn('⚠️ Different stream is active, ignoring event:', {
+        activeStreamChatId,
         expectedChatId,
         eventType: event.type
       });
@@ -398,7 +398,7 @@ export function useChat(): ChatState & ChatActions {
         setError(event.error || 'Unknown error occurred');
         break;
     }
-  }, [currentChatId]);
+  }, [activeStreamChatId]);
 
   // ============ 消息分组逻辑 ============
 
