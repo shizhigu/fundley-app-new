@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = session.user.id; // This is already the database UUID from auth()
 
     // Get user's chats with ADK session mapping
     const chats = await db`
@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { title } = await request.json();
-    const userId = session.user.id;
+    const userId = session.user.id; // This is already the database UUID from auth()
 
-    // Get user organization info if needed (using session.user data directly)
+    // Get user organization info
     const user = await db`
       SELECT id, clerk_organization_id
       FROM users

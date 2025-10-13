@@ -51,15 +51,40 @@ export async function auth(): Promise<AuthSession> {
 
     let dbUser;
     if (users.length === 0) {
-      // User doesn't exist in database, create them
+      // User doesn't exist in database, try to create or update existing by email
       const email = clerkUser.emailAddresses[0]?.emailAddress || '';
-      const insertedUsers = await db`
-        INSERT INTO users (id, email, clerk_user_id, clerk_organization_id, created_at, updated_at)
-        VALUES (uuid_generate_v4(), ${email}, ${clerkUserId}, ${clerkOrgId}, NOW(), NOW())
-        RETURNING id, email, clerk_user_id, clerk_organization_id
-      `;
-      dbUser = insertedUsers[0];
-      console.log(`✅ [Auth] User created with org: ${email} (org: ${clerkOrgId || 'none'})`);
+
+      try {
+        // Try to insert new user
+        const insertedUsers = await db`
+          INSERT INTO users (id, email, clerk_user_id, clerk_organization_id, created_at, updated_at)
+          VALUES (uuid_generate_v4(), ${email}, ${clerkUserId}, ${clerkOrgId}, NOW(), NOW())
+          RETURNING id, email, clerk_user_id, clerk_organization_id
+        `;
+        dbUser = insertedUsers[0];
+        console.log(`✅ [Auth] User created: ${email} (org: ${clerkOrgId || 'none'})`);
+      } catch (insertError: any) {
+        // If email already exists (duplicate key error), update the clerk_user_id
+        if (insertError.code === '23505') {
+          console.log(`⚠️ [Auth] Email exists, updating clerk_user_id: ${email}`);
+          const updatedUsers = await db`
+            UPDATE users
+            SET clerk_user_id = ${clerkUserId},
+                clerk_organization_id = ${clerkOrgId},
+                updated_at = NOW()
+            WHERE email = ${email}
+            RETURNING id, email, clerk_user_id, clerk_organization_id
+          `;
+          if (updatedUsers.length > 0) {
+            dbUser = updatedUsers[0];
+            console.log(`✅ [Auth] User clerk_user_id updated: ${email}`);
+          } else {
+            throw new Error('Failed to update user with existing email');
+          }
+        } else {
+          throw insertError;
+        }
+      }
     } else {
       dbUser = users[0];
 

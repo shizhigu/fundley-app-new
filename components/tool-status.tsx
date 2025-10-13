@@ -26,49 +26,57 @@ export interface ToolStatusProps {
 }
 
 // Tool configuration mapping
-const TOOL_CONFIG: Record<string, { label: string; icon: React.ElementType }> = {
-  // Financial data tools
-  financial_data_agent: { label: 'Data analyzed', icon: TrendingUp },
-  get_financial_data: { label: 'Data loaded', icon: TrendingUp },
-  get_company_profile: { label: 'Profile loaded', icon: Briefcase },
-  get_earnings: { label: 'Earnings loaded', icon: Briefcase },
-  get_stock_quote: { label: 'Quote loaded', icon: TrendingUp },
-  get_financial_timeline: { label: 'Timeline built', icon: TrendingUp },
+const TOOL_CONFIG: Record<string, { label: string; icon: React.ElementType }> =
+  {
+    // Financial data tools
+    financial_data_agent: { label: 'Data analyzed', icon: TrendingUp },
+    get_financial_data: { label: 'Data loaded', icon: TrendingUp },
+    get_company_profile: { label: 'Profile loaded', icon: Briefcase },
+    get_earnings: { label: 'Earnings loaded', icon: Briefcase },
+    get_stock_quote: { label: 'Quote loaded', icon: TrendingUp },
+    get_financial_timeline: { label: 'Timeline built', icon: TrendingUp },
 
-  // Analysis tools
-  run_python_code: { label: 'Analysis completed', icon: PythonIcon },
-  create_analysis_block: { label: 'Analysis block created', icon: BarChart },
-  create_visualization: { label: 'Chart created', icon: TrendingUp },
+    // Analysis tools
+    run_python_code: { label: 'Analysis completed', icon: PythonIcon },
+    create_analysis_block: { label: 'Analysis block created', icon: BarChart },
+    create_visualization: { label: 'Chart created', icon: TrendingUp },
 
-  // SEC filing tools
-  extract_mda: { label: 'MD&A reviewed', icon: FileText },
-  extract_risk_factors: { label: 'Risks identified', icon: AlertTriangle },
-  extract_business_overview: { label: 'Overview compiled', icon: Briefcase },
-  extractMDA: { label: 'MD&A reviewed', icon: FileText },
-  extractRiskFactors: { label: 'Risks identified', icon: AlertTriangle },
-  extractBusinessOverview: { label: 'Overview compiled', icon: Briefcase },
+    // SEC filing tools
+    extract_mda: { label: 'MD&A reviewed', icon: FileText },
+    extract_risk_factors: { label: 'Risks identified', icon: AlertTriangle },
+    extract_business_overview: { label: 'Overview compiled', icon: Briefcase },
+    extractMDA: { label: 'MD&A reviewed', icon: FileText },
+    extractRiskFactors: { label: 'Risks identified', icon: AlertTriangle },
+    extractBusinessOverview: { label: 'Overview compiled', icon: Briefcase },
 
-  // Search and query tools
-  web_search: { label: 'Search completed', icon: Search },
-  webSearch: { label: 'Search completed', icon: Search },
-  sql_query: { label: 'Query executed', icon: Database },
-  searchMetrics: { label: 'Metrics searched', icon: Search },
-  financialFieldsAgent: { label: 'Metrics found', icon: Search },
+    // Search and query tools
+    web_search: { label: 'Search completed', icon: Search },
+    webSearch: { label: 'Search completed', icon: Search },
+    sql_query: { label: 'Query executed', icon: Database },
+    searchMetrics: { label: 'Metrics searched', icon: Search },
+    financialFieldsAgent: { label: 'Metrics found', icon: Search },
 
-  // File operations
-  read_script_lines: { label: 'Result reviewed', icon: FileText },
-  edit_script_lines: { label: 'Result finetuned', icon: FileText },
-  download_file_from_sandbox: { label: 'Artifact downloaded', icon: Download },
+    // File operations
+    read_script_lines: { label: 'Result reviewed', icon: FileText },
+    edit_script_lines: { label: 'Result finetuned', icon: FileText },
+    download_file_from_sandbox: {
+      label: 'Artifact downloaded',
+      icon: Download,
+    },
+    batch_download_files_from_sandbox: {
+      label: 'Artifacts downloaded',
+      icon: Download,
+    },
 
-  // Legacy tools
-  getFinancialData: { label: 'Data loaded', icon: TrendingUp },
-  getIncomeStatement: { label: 'Income loaded', icon: FileText },
-  getBalanceSheet: { label: 'Balance loaded', icon: Database },
-  getCashFlow: { label: 'Cash flow loaded', icon: TrendingUp },
-  getFinancialRatios: { label: 'Ratios calculated', icon: Database },
-  getKeyMetrics: { label: 'Metrics loaded', icon: TrendingUp },
-  calculateMetric: { label: 'Metric calculated', icon: Calculator },
-};
+    // Legacy tools
+    getFinancialData: { label: 'Data loaded', icon: TrendingUp },
+    getIncomeStatement: { label: 'Income loaded', icon: FileText },
+    getBalanceSheet: { label: 'Balance loaded', icon: Database },
+    getCashFlow: { label: 'Cash flow loaded', icon: TrendingUp },
+    getFinancialRatios: { label: 'Ratios calculated', icon: Database },
+    getKeyMetrics: { label: 'Metrics loaded', icon: TrendingUp },
+    calculateMetric: { label: 'Metric calculated', icon: Calculator },
+  };
 
 // Status icon configuration
 const STATUS_ICONS = {
@@ -77,11 +85,7 @@ const STATUS_ICONS = {
   completed: CheckCircle2,
 } as const;
 
-export function ToolStatus({
-  name,
-  status,
-  displayAction,
-}: ToolStatusProps) {
+export function ToolStatus({ name, status, displayAction }: ToolStatusProps) {
   const config = TOOL_CONFIG[name] || { label: name, icon: Database };
   const ToolIcon = config.icon;
   const StatusIcon = STATUS_ICONS[status];
@@ -95,15 +99,11 @@ export function ToolStatus({
       transition={{ duration: 0.15, ease: 'easeOut' }}
       className={cn(
         'inline-flex items-center gap-2.5 px-3 py-2 rounded-lg border min-h-[36px] max-w-sm transition-all duration-150',
-        status === 'running' && [
-          'bg-brand-avatar/50 border-brand-primary/30'
-        ],
+        status === 'running' && ['bg-brand-avatar/50 border-brand-primary/30'],
         status === 'completed' && [
-          'bg-brand-avatar/30 border-brand-primary/20 opacity-80'
+          'bg-brand-avatar/30 border-brand-primary/20 opacity-80',
         ],
-        status === 'pending' && [
-          'bg-muted/20 border-border/20 opacity-60'
-        ]
+        status === 'pending' && ['bg-muted/20 border-border/20 opacity-60'],
       )}
     >
       {/* Tool icon */}
@@ -113,7 +113,7 @@ export function ToolStatus({
             'w-4 h-4',
             status === 'running' && 'text-brand-primary',
             status === 'completed' && 'text-brand-primary/80',
-            status === 'pending' && 'text-muted-foreground'
+            status === 'pending' && 'text-muted-foreground',
           )}
         />
       </div>
@@ -124,7 +124,7 @@ export function ToolStatus({
           'text-xs font-medium truncate flex-1',
           status === 'running' && 'text-brand-primary',
           status === 'completed' && 'text-brand-primary/80',
-          status === 'pending' && 'text-muted-foreground'
+          status === 'pending' && 'text-muted-foreground',
         )}
       >
         {actionLabel}
@@ -137,7 +137,7 @@ export function ToolStatus({
             'w-3.5 h-3.5',
             status === 'running' && 'animate-spin text-brand-primary',
             status === 'completed' && 'text-brand-primary/80',
-            status === 'pending' && 'text-muted-foreground'
+            status === 'pending' && 'text-muted-foreground',
           )}
         />
       </div>
