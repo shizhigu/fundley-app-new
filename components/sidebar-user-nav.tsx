@@ -120,16 +120,6 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
 
           <DropdownMenuItem
             className="cursor-pointer flex items-center gap-2"
-            onSelect={() => openCreateOrganization()}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>{organization ? tOrg('switch') : tOrg('create')}</span>
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem
-            className="cursor-pointer flex items-center gap-2"
             onSelect={() => setSettingsOpen(true)}
           >
             <Settings className="w-4 h-4" />
