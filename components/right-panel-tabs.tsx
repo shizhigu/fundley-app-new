@@ -28,28 +28,6 @@ function RightPanelTabsComponent() {
     { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'data':
-        return <FinancialDataPanel />;
-
-      case 'blocks':
-        return currentChatId ? (
-          <AnalysisBlocksPanel chatId={currentChatId} />
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            Select a chat to view analysis blocks
-          </div>
-        );
-
-      case 'chart':
-        return <TradingChart />;
-
-      default:
-        return <FinancialDataPanel />;
-    }
-  };
-
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Tab Navigation */}
@@ -82,38 +60,29 @@ function RightPanelTabsComponent() {
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div
-          id="data-panel"
-          role="tabpanel"
-          aria-labelledby="data-tab"
-          className={cn('h-full', activeTab === 'data' ? 'block' : 'hidden')}
-        >
-          <FinancialDataPanel />
-        </div>
+        {activeTab === 'data' && (
+          <div id="data-panel" role="tabpanel" aria-labelledby="data-tab" className="h-full">
+            <FinancialDataPanel />
+          </div>
+        )}
 
-        <div
-          id="blocks-panel"
-          role="tabpanel"
-          aria-labelledby="blocks-tab"
-          className={cn('h-full', activeTab === 'blocks' ? 'block' : 'hidden')}
-        >
-          {currentChatId ? (
-            <AnalysisBlocksPanel chatId={currentChatId} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              Select a chat to view analysis blocks
-            </div>
-          )}
-        </div>
+        {activeTab === 'blocks' && (
+          <div id="blocks-panel" role="tabpanel" aria-labelledby="blocks-tab" className="h-full">
+            {currentChatId ? (
+              <AnalysisBlocksPanel chatId={currentChatId} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                Select a chat to view analysis blocks
+              </div>
+            )}
+          </div>
+        )}
 
-        <div
-          id="chart-panel"
-          role="tabpanel"
-          aria-labelledby="chart-tab"
-          className={cn('h-full', activeTab === 'chart' ? 'block' : 'hidden')}
-        >
-          <TradingChart />
-        </div>
+        {activeTab === 'chart' && (
+          <div id="chart-panel" role="tabpanel" aria-labelledby="chart-tab" className="h-full">
+            <TradingChart />
+          </div>
+        )}
       </div>
     </div>
   );
