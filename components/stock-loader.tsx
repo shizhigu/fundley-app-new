@@ -7,101 +7,43 @@ interface StockLoaderProps {
 }
 
 interface Candle {
-  price: number;     // Price level (0-100)
-  high: number;      // Upper shadow length
-  low: number;       // Lower shadow length
-  bodySize: number;  // Body height
-  isHollow: boolean; // Hollow (阴线) or filled (阳线)
-  visible: boolean;  // Whether candle has appeared yet
+  price: number;
+  bodySize: number;
+  high: number;
+  low: number;
+  isHollow: boolean;
 }
 
 export function StockLoader({ size = 16 }: StockLoaderProps) {
-  const [candles, setCandles] = useState<Candle[]>([]);
+  const [visibleCount, setVisibleCount] = useState(0);
   const [cycle, setCycle] = useState(0);
 
+  // V-shaped reversal pattern
+  const pattern: Candle[] = [
+    { price: 65, bodySize: 12, high: 3, low: 3, isHollow: true },   // Decline 1
+    { price: 50, bodySize: 10, high: 3, low: 3, isHollow: true },   // Decline 2
+    { price: 38, bodySize: 11, high: 3, low: 4, isHollow: true },   // Decline 3
+    { price: 35, bodySize: 15, high: 3, low: 18, isHollow: false }, // Hammer - reversal!
+    { price: 58, bodySize: 28, high: 5, low: 3, isHollow: false },  // Rally 1
+    { price: 75, bodySize: 30, high: 4, low: 3, isHollow: false },  // Rally 2 - breaks high!
+  ];
+
   useEffect(() => {
-    // V-shaped reversal pattern
-    const pattern: Candle[] = [
-      // 1. Small bearish candle - start of decline (hollow)
-      {
-        price: 65,
-        bodySize: 12,
-        high: 3,
-        low: 3,
-        isHollow: true,
-        visible: false,
-      },
-      // 2. Small bearish candle - decline continues (hollow)
-      {
-        price: 55,
-        bodySize: 10,
-        high: 3,
-        low: 3,
-        isHollow: true,
-        visible: false,
-      },
-      // 3. Small bearish candle - near bottom (hollow)
-      {
-        price: 45,
-        bodySize: 11,
-        high: 3,
-        low: 4,
-        isHollow: true,
-        visible: false,
-      },
-      // 4. HAMMER - reversal signal! (filled with long lower shadow)
-      {
-        price: 35,
-        bodySize: 15,
-        high: 3,
-        low: 18, // Long lower shadow = buying pressure
-        isHollow: false,
-        visible: false,
-      },
-      // 5. Big bullish candle - rally starts (filled)
-      {
-        price: 50,
-        bodySize: 25,
-        high: 5,
-        low: 3,
-        isHollow: false,
-        visible: false,
-      },
-      // 6. Big bullish candle - strong rally (filled)
-      {
-        price: 70,
-        bodySize: 28,
-        high: 4,
-        low: 3,
-        isHollow: false,
-        visible: false,
-      },
-    ];
+    setVisibleCount(0);
 
-    setCandles(pattern);
-
-    // Show candles one by one from left to right
-    let visibleCount = 0;
-    const revealInterval = setInterval(() => {
-      setCandles((prev) =>
-        prev.map((c, i) => ({
-          ...c,
-          visible: i <= visibleCount,
-        }))
-      );
-      visibleCount++;
-
-      if (visibleCount >= pattern.length) {
-        clearInterval(revealInterval);
-        // Wait 1000ms then restart animation
-        setTimeout(() => {
-          setCycle((c) => c + 1);
-        }, 1000);
+    const showCandles = async () => {
+      for (let i = 0; i < pattern.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 220));
+        setVisibleCount(i + 1);
       }
-    }, 200); // 200ms delay between each candle appearance
 
-    return () => clearInterval(revealInterval);
-  }, [cycle]); // Re-run when cycle changes
+      // Wait then restart
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      setCycle(c => c + 1);
+    };
+
+    showCandles();
+  }, [cycle, pattern.length]);
 
   const containerHeight = size * 4;
 
@@ -110,39 +52,38 @@ export function StockLoader({ size = 16 }: StockLoaderProps) {
       className="flex items-end gap-1.5 relative"
       style={{ height: containerHeight }}
     >
-      {candles.map((candle, i) => {
-        // Calculate positions from bottom (items-end alignment)
+      {pattern.map((candle, i) => {
+        const isVisible = i < visibleCount;
+
         const priceFromBottom = (candle.price / 100) * containerHeight;
         const upperShadowHeight = (candle.high / 100) * containerHeight;
         const lowerShadowHeight = (candle.low / 100) * containerHeight;
-        const bodyHeight = Math.max(
-          (candle.bodySize / 100) * containerHeight,
-          3
-        );
+        const bodyHeight = Math.max((candle.bodySize / 100) * containerHeight, 3);
+
+        const finalOpacity = 0.7 + i * 0.05;
 
         return (
           <div
             key={`${cycle}-${i}`}
-            className="relative transition-all duration-300 ease-out"
+            className="relative transition-opacity duration-500 ease-out"
             style={{
               width: size / 2,
               height: containerHeight,
-              opacity: candle.visible ? 0.7 + i * 0.05 : 0,
-              transform: candle.visible ? 'scale(1)' : 'scale(0.8)',
+              opacity: isVisible ? finalOpacity : 0,
             }}
           >
             {/* Upper shadow */}
             <div
-              className="absolute left-1/2 -translate-x-1/2 w-px bg-brand-primary transition-all duration-300"
+              className="absolute left-1/2 -translate-x-1/2 w-px bg-brand-primary"
               style={{
                 bottom: `${priceFromBottom + bodyHeight / 2}px`,
                 height: `${upperShadowHeight}px`,
               }}
             />
 
-            {/* Body (filled or hollow) */}
+            {/* Body */}
             <div
-              className="absolute left-0 w-full transition-all duration-300"
+              className="absolute left-0 w-full"
               style={{
                 bottom: `${priceFromBottom - bodyHeight / 2}px`,
                 height: `${bodyHeight}px`,
@@ -157,7 +98,7 @@ export function StockLoader({ size = 16 }: StockLoaderProps) {
 
             {/* Lower shadow */}
             <div
-              className="absolute left-1/2 -translate-x-1/2 w-px bg-brand-primary transition-all duration-300"
+              className="absolute left-1/2 -translate-x-1/2 w-px bg-brand-primary"
               style={{
                 bottom: `${priceFromBottom - bodyHeight / 2 - lowerShadowHeight}px`,
                 height: `${lowerShadowHeight}px`,
