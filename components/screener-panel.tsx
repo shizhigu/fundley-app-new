@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Loader2, Table as TableIcon, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
@@ -51,7 +51,7 @@ export function ScreenerPanel() {
   const [globalFilter, setGlobalFilter] = useState('');
 
   // Load saved query and result from localStorage on mount
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedQuery = localStorage.getItem('screener_last_query');
       const savedResult = localStorage.getItem('screener_last_result');
@@ -69,7 +69,7 @@ export function ScreenerPanel() {
         }
       }
     }
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,13 +136,21 @@ export function ScreenerPanel() {
       console.log('✅ Query result:', queryResult);
 
       // Combine agent explanation with query results
-      setResult({
+      const finalResult = {
         explanation: agentResult.explanation,
         data: queryResult.data || [],
         columns: queryResult.columns || [],
         row_count: queryResult.row_count || 0,
         error: queryResult.error,
-      });
+      };
+
+      setResult(finalResult);
+
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('screener_last_query', query.trim());
+        localStorage.setItem('screener_last_result', JSON.stringify(finalResult));
+      }
     } catch (error) {
       console.error('Screener error:', error);
       setResult({

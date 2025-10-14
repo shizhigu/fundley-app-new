@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log('✅ Screener agent response:', result);
 
     // Parse the content field if it's a JSON string
     let parsedContent;
