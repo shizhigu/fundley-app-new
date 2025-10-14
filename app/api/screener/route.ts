@@ -88,13 +88,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('✅ Screener agent result:', {
-      success: parsedContent.success,
-      hasSuggestions: !!parsedContent.suggestions,
-      suggestionsCount: parsedContent.suggestions?.length || 0,
-      suggestions: parsedContent.suggestions,
-    });
-
     return NextResponse.json(parsedContent);
   } catch (error) {
     console.error('❌ Screener API error:', error);

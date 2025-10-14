@@ -7,10 +7,6 @@ export async function GET(request: NextRequest) {
   const interval = searchParams.get('interval') || 'daily'; // 新增：daily, weekly, monthly
 
   try {
-    console.log(
-      `📊 Fetching chart data for ${symbol}, period: ${period}, interval: ${interval}`,
-    );
-
     // 根据时间周期确定数据范围
     const dateCondition = getDateCondition(period);
 
@@ -49,10 +45,6 @@ export async function GET(request: NextRequest) {
       volume: parseInt(row.volume),
       adjClose: parseFloat(row.adjclose),
     }));
-
-    console.log(
-      `✅ Chart data prepared: ${chartData.length} points for ${symbol}`,
-    );
 
     return Response.json({
       success: true,

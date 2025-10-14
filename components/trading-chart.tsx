@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { createChart, IChartApi, LineSeries, CandlestickSeries, HistogramSeries, AreaSeries, ISeriesApi, createSeriesMarkers } from 'lightweight-charts';
+import {
+  createChart,
+  IChartApi,
+  LineSeries,
+  CandlestickSeries,
+  HistogramSeries,
+  AreaSeries,
+  ISeriesApi,
+  createSeriesMarkers,
+} from 'lightweight-charts';
 import type { ChartIndicator as ImportedChartIndicator } from '@/lib/types';
 
 interface TradingChartProps {
@@ -59,16 +68,24 @@ interface ChartApiResponse {
   error?: string;
 }
 
-export function TradingChart({ symbol: initialSymbol, className = '', indicators = [] }: TradingChartProps) {
+export function TradingChart({
+  symbol: initialSymbol,
+  className = '',
+  indicators = [],
+}: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const indicatorSeriesRef = useRef<Map<string, { series: ISeriesApi<any>, pane?: any, markers?: any }>>(new Map());
+  const indicatorSeriesRef = useRef<
+    Map<string, { series: ISeriesApi<any>; pane?: any; markers?: any }>
+  >(new Map());
 
   // Load symbol from localStorage or use default
   const [currentSymbol, setCurrentSymbol] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('trading-chart-symbol') || initialSymbol || 'AAPL';
+      return (
+        localStorage.getItem('trading-chart-symbol') || initialSymbol || 'AAPL'
+      );
     }
     return initialSymbol || 'AAPL';
   });
@@ -83,10 +100,16 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
   const [crosshairData, setCrosshairData] = useState<{
     time: string;
     price: number;
-    panes: { [paneId: string]: { indicators: { [key: string]: { value: number; quarter?: string } } } };
+    panes: {
+      [paneId: string]: {
+        indicators: { [key: string]: { value: number; quarter?: string } };
+      };
+    };
   } | null>(null);
 
-  const [paneInfo, setPaneInfo] = useState<Map<any, { indicators: string[], position: { top: number, left: number } }>>(new Map());
+  const [paneInfo, setPaneInfo] = useState<
+    Map<any, { indicators: string[]; position: { top: number; left: number } }>
+  >(new Map());
 
   // Use indicators from props only (data stream removed)
   const allIndicators = useMemo(() => indicators, [indicators]);
@@ -97,40 +120,44 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
   }, [allIndicators.length]);
 
   // 从API获取真实股票数据
-  const fetchChartData = useCallback(async (stockSymbol: string, period: string, interval: string): Promise<ChartData[]> => {
-    setIsLoading(true);
-    try {
-      console.log(`📊 Fetching chart data for ${stockSymbol}, period: ${period}, interval: ${interval}`);
+  const fetchChartData = useCallback(
+    async (
+      stockSymbol: string,
+      period: string,
+      interval: string,
+    ): Promise<ChartData[]> => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/stock/chart-data?symbol=${stockSymbol}&period=${period}&interval=${interval}`,
+        );
+        const result: ChartApiResponse = await response.json();
 
-      const response = await fetch(`/api/stock/chart-data?symbol=${stockSymbol}&period=${period}&interval=${interval}`);
-      const result: ChartApiResponse = await response.json();
+        if (!result.success) {
+          console.error('❌ API Error:', result.error);
+          return [];
+        }
 
-      if (!result.success) {
-        console.error('❌ API Error:', result.error);
+        // 更新价格信息
+        setLatestPrice(result.latestPrice);
+
+        // 计算涨跌幅
+        if (result.data.length > 1) {
+          const firstPrice = result.data[0].close;
+          const change = ((result.latestPrice - firstPrice) / firstPrice) * 100;
+          setPriceChange(change);
+        }
+
+        return result.data;
+      } catch (error) {
+        console.error('❌ Chart data fetch failed:', error);
         return [];
+      } finally {
+        setIsLoading(false);
       }
-
-      console.log(`✅ Loaded ${result.count} data points for ${stockSymbol}`);
-
-      // 更新价格信息
-      setLatestPrice(result.latestPrice);
-
-      // 计算涨跌幅
-      if (result.data.length > 1) {
-        const firstPrice = result.data[0].close;
-        const change = ((result.latestPrice - firstPrice) / firstPrice) * 100;
-        setPriceChange(change);
-      }
-
-      return result.data;
-
-    } catch (error) {
-      console.error('❌ Chart data fetch failed:', error);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Initialize chart
   useEffect(() => {
@@ -178,7 +205,10 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
         secondsVisible: false,
         tickMarkFormatter: (time: any) => {
           const date = new Date(time * 1000);
-          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          });
         },
       },
       rightPriceScale: {
@@ -244,14 +274,26 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
         return;
       }
 
-      const timeStr = param.time ? (typeof param.time === 'string' ? param.time : new Date(param.time * 1000).toISOString().split('T')[0]) : '';
+      const timeStr = param.time
+        ? typeof param.time === 'string'
+          ? param.time
+          : new Date(param.time * 1000).toISOString().split('T')[0]
+        : '';
       let price = 0;
-      const panes: { [paneId: string]: { indicators: { [key: string]: { value: number; quarter?: string } } } } = {};
+      const panes: {
+        [paneId: string]: {
+          indicators: { [key: string]: { value: number; quarter?: string } };
+        };
+      } = {};
 
       // 获取主价格
       if (candlestickSeriesRef.current) {
         const candleData = param.seriesData.get(candlestickSeriesRef.current);
-        if (candleData && typeof candleData === 'object' && 'close' in candleData) {
+        if (
+          candleData &&
+          typeof candleData === 'object' &&
+          'close' in candleData
+        ) {
           price = (candleData as any).close;
         }
       }
@@ -259,7 +301,9 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
       // 获取指标数据 - 简化版本
       const currentIndicators = latestIndicatorsRef.current || [];
       indicatorSeriesRef.current.forEach((indicatorRef, indicatorId) => {
-        const indicator = currentIndicators.find(ind => ind.id === indicatorId);
+        const indicator = currentIndicators.find(
+          (ind) => ind.id === indicatorId,
+        );
         if (!indicator) return;
 
         let value = null;
@@ -283,7 +327,11 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
 
           if (latestPoint) {
             value = latestPoint.value;
-            if (indicator.metadata?.quarters && latestIndex >= 0 && latestIndex < indicator.metadata.quarters.length) {
+            if (
+              indicator.metadata?.quarters &&
+              latestIndex >= 0 &&
+              latestIndex < indicator.metadata.quarters.length
+            ) {
               quarter = indicator.metadata.quarters[latestIndex];
             }
           }
@@ -291,9 +339,17 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
 
         // 如果有精确数据点，则覆盖
         const indicatorData = param.seriesData.get(indicatorRef.series);
-        if (indicatorData && typeof indicatorData === 'object' && 'value' in indicatorData) {
+        if (
+          indicatorData &&
+          typeof indicatorData === 'object' &&
+          'value' in indicatorData
+        ) {
           value = (indicatorData as any).value;
-          if (indicator.metadata?.filingDates && indicator.metadata?.quarters && timeStr) {
+          if (
+            indicator.metadata?.filingDates &&
+            indicator.metadata?.quarters &&
+            timeStr
+          ) {
             const index = indicator.metadata.filingDates.indexOf(timeStr);
             if (index >= 0) {
               quarter = indicator.metadata.quarters[index];
@@ -332,7 +388,11 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
   // 加载股票数据的独立effect
   useEffect(() => {
     const loadChartData = async () => {
-      const data = await fetchChartData(currentSymbol, currentPeriod, currentInterval);
+      const data = await fetchChartData(
+        currentSymbol,
+        currentPeriod,
+        currentInterval,
+      );
       if (data.length > 0 && candlestickSeriesRef.current) {
         candlestickSeriesRef.current.setData(data);
         // Fit content after data is loaded
@@ -347,7 +407,6 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
 
     loadChartData();
   }, [currentSymbol, currentPeriod, currentInterval, fetchChartData]);
-
 
   // 处理指标的函数
   const processIndicators = useCallback(() => {
@@ -380,9 +439,14 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
       let series = null;
 
       // 为fundamental指标创建子面板（step-line类型或有paneHeight的指标）
-      if ((indicator.type === 'step-line' && indicator.metadata?.dataType === 'quarterly-fundamental') ||
-          (indicator.paneHeight && indicator.paneHeight > 0)) {
-        console.log(`📊 Creating pane for fundamental indicator: ${indicator.name}`);
+      if (
+        (indicator.type === 'step-line' &&
+          indicator.metadata?.dataType === 'quarterly-fundamental') ||
+        (indicator.paneHeight && indicator.paneHeight > 0)
+      ) {
+        console.log(
+          `📊 Creating pane for fundamental indicator: ${indicator.name}`,
+        );
         pane = chartRef.current?.addPane();
         console.log(`📊 Pane created:`, !!pane);
       }
@@ -412,7 +476,7 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
             pointMarkersVisible: false, // 不显示点标记
             lastValueVisible: true,
             priceLineVisible: false,
-            title: indicator.name // 显示指标名称
+            title: indicator.name, // 显示指标名称
           });
         } else {
           series = chartRef.current?.addSeries(LineSeries, {
@@ -422,7 +486,7 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
             pointMarkersVisible: false,
             lastValueVisible: true,
             priceLineVisible: false,
-            title: indicator.name // 显示指标名称
+            title: indicator.name, // 显示指标名称
           });
         }
       } else if (indicator.type === 'histogram') {
@@ -474,7 +538,9 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
   };
 
   // 切换指标显示状态
-  const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
+  const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleIndicator = (indicatorId: string) => {
     const indicatorRef = indicatorSeriesRef.current.get(indicatorId);
@@ -482,7 +548,7 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
       const isHidden = hiddenIndicators.has(indicatorId);
       indicatorRef.series.applyOptions({ visible: !isHidden });
 
-      setHiddenIndicators(prev => {
+      setHiddenIndicators((prev) => {
         const newSet = new Set(prev);
         if (isHidden) {
           newSet.delete(indicatorId);
@@ -510,14 +576,19 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
 
   // 处理指标更新 - 只在指标数量变化时执行
   useEffect(() => {
-    if (chartRef.current && candlestickSeriesRef.current && allIndicators.length > 0) {
+    if (
+      chartRef.current &&
+      candlestickSeriesRef.current &&
+      allIndicators.length > 0
+    ) {
       processIndicators();
     }
   }, [allIndicators.length]); // 只依赖数量，不依赖整个数组
 
-
   return (
-    <div className={`flex flex-col w-full h-full bg-card border border-border rounded-lg ${className}`}>
+    <div
+      className={`flex flex-col w-full h-full bg-card border border-border rounded-lg ${className}`}
+    >
       {/* Chart Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-4">
@@ -531,7 +602,9 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
               placeholder="SYMBOL"
               className="w-24 h-8 px-2 text-sm font-medium bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200"
             />
-            <h2 className="text-lg font-semibold text-foreground">{currentSymbol}</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              {currentSymbol}
+            </h2>
           </div>
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -540,14 +613,18 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
             </div>
           ) : (
             <div className="flex items-center gap-2 text-sm">
-              <span className={`flex items-center gap-1 px-2 py-1 rounded-md font-medium transition-all duration-200 ${
-                priceChange >= 0
-                  ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400'
-                  : 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400'
-              }`}>
+              <span
+                className={`flex items-center gap-1 px-2 py-1 rounded-md font-medium transition-all duration-200 ${
+                  priceChange >= 0
+                    ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                    : 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                }`}
+              >
                 {priceChange >= 0 ? '↗' : '↘'} {priceChange.toFixed(2)}%
               </span>
-              <span className="font-semibold text-foreground">${latestPrice.toFixed(2)}</span>
+              <span className="font-semibold text-foreground">
+                ${latestPrice.toFixed(2)}
+              </span>
             </div>
           )}
         </div>
@@ -555,12 +632,14 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
         <div className="flex items-center gap-6">
           {/* 时间间隔选择器 */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">INTERVAL</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              INTERVAL
+            </span>
             <div className="flex gap-1 p-1 bg-background border border-border rounded-lg">
               {[
                 { value: 'daily', label: 'Daily' },
                 { value: 'weekly', label: 'Weekly' },
-                { value: 'monthly', label: 'Monthly' }
+                { value: 'monthly', label: 'Monthly' },
               ].map((interval) => (
                 <button
                   key={interval.value}
@@ -608,19 +687,34 @@ export function TradingChart({ symbol: initialSymbol, className = '', indicators
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-border">
                 <span className="text-muted-foreground">Time</span>
-                <span className="font-medium text-foreground">{crosshairData.time}</span>
+                <span className="font-medium text-foreground">
+                  {crosshairData.time}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground">Price</span>
-                <span className="font-semibold text-foreground">${crosshairData.price.toFixed(2)}</span>
+                <span className="font-semibold text-foreground">
+                  ${crosshairData.price.toFixed(2)}
+                </span>
               </div>
               {Object.entries(crosshairData.panes).map(([paneId, paneData]) => (
-                <div key={paneId} className="mt-1.5 pt-1.5 border-t border-border">
+                <div
+                  key={paneId}
+                  className="mt-1.5 pt-1.5 border-t border-border"
+                >
                   {Object.entries(paneData.indicators).map(([name, data]) => (
-                    <div key={name} className="flex items-center justify-between gap-4">
+                    <div
+                      key={name}
+                      className="flex items-center justify-between gap-4"
+                    >
                       <span className="text-muted-foreground">{name}</span>
                       <span className="font-medium text-foreground">
-                        {data.value.toFixed(2)}% {data.quarter && <span className="text-muted-foreground">({data.quarter})</span>}
+                        {data.value.toFixed(2)}%{' '}
+                        {data.quarter && (
+                          <span className="text-muted-foreground">
+                            ({data.quarter})
+                          </span>
+                        )}
                       </span>
                     </div>
                   ))}
