@@ -22,6 +22,7 @@ import { ToolStatus } from './tool-status';
 import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
+import { StockLoader } from './stock-loader';
 
 // Chart.js visualization engine for frontend execution
 const JSVisualizationEngine = {
@@ -597,9 +598,7 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId} className="bg-card border border-border/50 rounded-lg p-3">
                       <div className="flex items-center gap-2 text-sm">
-                        <div className="animate-spin size-fit">
-                          <LoaderIcon />
-                        </div>
+                        <StockLoader size={14} />
                         <span>Creating visualization: {input?.title}</span>
                       </div>
                     </div>
@@ -728,9 +727,7 @@ const PurePreviewMessage = ({
 
                   return (
                     <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-avatar border border-brand-primary/20 text-sm not-prose">
-                      <div className="animate-spin text-brand-primary">
-                        <LoaderIcon size={14} />
-                      </div>
+                      <StockLoader size={12} />
                       <span className="text-brand-primary font-medium">
                         Computing LaTeX metric {metricName}...
                       </span>
@@ -909,9 +906,7 @@ const PurePreviewMessage = ({
 
                   return (
                     <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 text-sm not-prose">
-                      <div className="animate-spin text-muted-foreground">
-                        <LoaderIcon size={14} />
-                      </div>
+                      <StockLoader size={12} />
                       <span className="text-foreground font-medium">
                         Computing {metricName}{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}...
                       </span>
@@ -959,9 +954,7 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId} className="border border-border/50 rounded-lg p-4 bg-card">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-spin">
-                          <LoaderIcon size={16} />
-                        </div>
+                        <StockLoader size={14} />
                         <span className="font-medium text-brand-primary">
                           Searching the web...
                         </span>
@@ -1098,8 +1091,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col gap-4 text-muted-foreground">
-            Hmm...
+          <div className="flex items-center gap-4">
+            <StockLoader size={16} />
+            <span className="text-sm text-muted-foreground">Thinking...</span>
           </div>
         </div>
       </div>

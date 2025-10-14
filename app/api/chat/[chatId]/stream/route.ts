@@ -42,16 +42,12 @@ async function autoNameChat(
     const suggestedTitle = data?.content?.title;
 
     if (suggestedTitle && typeof suggestedTitle === 'string') {
-      console.log('✨ Auto-naming chat to:', suggestedTitle);
-
       // 更新聊天标题（带用户验证）
       await db`
         UPDATE chats
         SET title = ${suggestedTitle}, updated_at = NOW()
         WHERE id = ${chatId} AND user_id = ${userId}
       `;
-
-      console.log('✅ Chat auto-named successfully');
     }
   } catch (error) {
     console.warn('Error in auto-naming:', error);
@@ -94,7 +90,6 @@ async function saveMessage(
       content.substring(0, 50),
       `invocationId: ${invocationId}`,
     );
-    console.log(`📝 Returned invocation_id from DB:`, newMessage.invocation_id);
     return {
       id: newMessage.id,
       role: newMessage.role,
@@ -309,11 +304,9 @@ export async function POST(
             SELECT COUNT(*) as count FROM messages WHERE chat_id = ${chatId}
           `;
           const isFirstMessage = Number(existingMessages[0].count) === 0;
-          console.log(`📝 Is first message: ${isFirstMessage}`);
 
           // 1. 生成本次invocation的唯一ID
           const invocationId = crypto.randomUUID();
-          console.log(`🔄 Starting new invocation: ${invocationId}`);
 
           // 1. 立即保存用户消息（包括附件）
           // 将文件转换为附件格式
@@ -352,7 +345,6 @@ export async function POST(
           // 3. 调用AgentOS Python服务
           const agentosUrl =
             process.env.AGENTSOS_API_URL || 'http://localhost:8012';
-          console.log('🌐 Calling AgentOS Python service at:', agentosUrl);
 
           // 根据是否有文件决定请求格式
           let agentResponse: Response;
@@ -500,11 +492,6 @@ export async function POST(
                               message: assistantMessage,
                             })}\n\n`,
                           ),
-                        );
-
-                        console.log(
-                          '📝 Created assistant message on first content:',
-                          content.substring(0, 50),
                         );
                       } else {
                         // 后续内容累加

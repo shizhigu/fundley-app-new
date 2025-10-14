@@ -4,7 +4,6 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ClerkProvider } from '@clerk/nextjs';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import ConvexClientProvider from '@/components/convex-client-provider';
 import { getBranding } from '@/lib/config/branding';
 import { I18nProvider } from '@/lib/i18n-provider';
 
@@ -106,31 +105,29 @@ export default async function RootLayout({
     >
       <body className="antialiased">
         <ClerkProvider>
-          <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange={false}
-            >
-              <I18nProvider locale={locale} messages={messages}>
-                <TooltipProvider>
-                  <div className="bg-background min-h-screen">
-                    {children}
-                  </div>
-                  <Toaster
-                    position="top-right"
-                    theme="system"
-                    richColors
-                    closeButton
-                    toastOptions={{
-                      className: 'glass-card',
-                    }}
-                  />
-                </TooltipProvider>
-              </I18nProvider>
-            </ThemeProvider>
-          </ConvexClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange={false}
+          >
+            <I18nProvider locale={locale} messages={messages}>
+              <TooltipProvider>
+                <div className="bg-background min-h-screen">
+                  {children}
+                </div>
+                <Toaster
+                  position="top-right"
+                  theme="system"
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    className: 'glass-card',
+                  }}
+                />
+              </TooltipProvider>
+            </I18nProvider>
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>

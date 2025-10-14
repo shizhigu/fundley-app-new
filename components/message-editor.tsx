@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import { Send, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { deleteTrailingMessages } from '@/app/(chat)/actions';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import type { ChatMessage } from '@/lib/types';
 import { getTextFromMessage } from '@/lib/utils';
@@ -58,7 +57,10 @@ export function MessageEditor({
     setIsSubmitting(true);
 
     try {
-      await deleteTrailingMessages({ id: message.id });
+      // Delete trailing messages via API
+      await fetch(`/api/messages/${message.id}/trailing`, {
+        method: 'DELETE',
+      }).catch(console.error);
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);

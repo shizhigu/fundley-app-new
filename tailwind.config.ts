@@ -10,6 +10,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      animation: {
+        'stock-pulse': 'stock-pulse 1.5s ease-in-out infinite',
+      },
       fontFamily: {
         sans: ['Montserrat', 'Noto Sans SC', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],

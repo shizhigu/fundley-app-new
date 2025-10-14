@@ -199,3 +199,32 @@
 .neuro-primary {
   @apply bg-brand-primary text-white px-4 py-2 rounded-xl;
 }
+
+/* ============================================
+   STOCK MARKET ANIMATIONS
+   ============================================ */
+
+@keyframes stock-pulse {
+  0%, 100% {
+    transform: scaleY(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scaleY(1.5);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}

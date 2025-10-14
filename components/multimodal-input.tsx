@@ -34,6 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { StockLoader } from './stock-loader';
 
 type VisibilityType = 'private' | 'public';
 
@@ -67,25 +68,8 @@ const StreamingTimer = memo(() => {
       className="relative px-4 py-2 rounded-xl w-fit mx-auto bg-card border border-border"
     >
       <div className="flex items-center gap-3">
-        {/* Clean pulse animation */}
-        <div className="flex items-center gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              className="w-1.5 h-1.5 rounded-full bg-brand-primary"
-              animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.4, 1, 0.4],
-              }}
-              transition={{
-                duration: 1.2,
-                repeat: Infinity,
-                delay: i * 0.2,
-                ease: 'easeOut',
-              }}
-            />
-          ))}
-        </div>
+        {/* Stock K-line animation */}
+        <StockLoader size={12} />
 
         {/* Timer display */}
         <motion.div
@@ -462,6 +446,8 @@ function PureMultimodalInput({
             // Core styling - clean and minimal
             'min-h-[100px] max-h-[200px] overflow-y-auto resize-none',
             'rounded-xl bg-card text-base leading-relaxed',
+            // Hide scrollbar but keep scroll functionality
+            'scrollbar-hide',
             // Professional spacing
             'px-4 py-3 pb-12 pr-20',
             // Subtle border - NO yellow, NO pink!
