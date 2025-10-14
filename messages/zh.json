@@ -45,7 +45,15 @@
   "panels": {
     "financialData": "财务数据",
     "analysis": "分析块",
+    "screener": "筛选器",
     "chart": "图表"
+  },
+  "screener": {
+    "title": "财务筛选器",
+    "description": "用自然语言提问财务数据",
+    "placeholder": "例如：显示2024年利润最高的10家公司",
+    "search": "搜索",
+    "loading": "加载中..."
   },
   "settings": {
     "title": "设置",

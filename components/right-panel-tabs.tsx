@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
 import { AnalysisBlocksPanel } from './analysis-blocks-panel';
+import { ScreenerPanel } from './screener-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 
-type TabType = 'data' | 'blocks' | 'chart';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener';
 
 interface Tab {
   id: TabType;
@@ -26,6 +27,7 @@ function RightPanelTabsComponent() {
   const tabs: Tab[] = [
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
+    { id: 'screener', label: t('screener'), icon: Search },
     { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
 
@@ -76,6 +78,12 @@ function RightPanelTabsComponent() {
                 Select a chat to view analysis blocks
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'screener' && (
+          <div id="screener-panel" role="tabpanel" aria-labelledby="screener-tab" className="h-full">
+            <ScreenerPanel />
           </div>
         )}
 

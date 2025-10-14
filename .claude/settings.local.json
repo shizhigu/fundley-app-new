@@ -17,7 +17,8 @@
       "Bash(find:*)",
       "Bash(node:*)",
       "Bash(python3:*)",
-      "Read(//Users/gushizhi/anaconda3/envs/fundley-chat/lib/python3.11/site-packages/openai/**)"
+      "Read(//Users/gushizhi/anaconda3/envs/fundley-chat/lib/python3.11/site-packages/openai/**)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": [],

@@ -45,7 +45,15 @@
   "panels": {
     "financialData": "Financial Data",
     "analysis": "Analysis",
+    "screener": "Screener",
     "chart": "Chart"
+  },
+  "screener": {
+    "title": "Financial Screener",
+    "description": "Ask questions about financial data in natural language",
+    "placeholder": "e.g., Show top 10 profitable companies in 2024",
+    "search": "Search",
+    "loading": "Loading..."
   },
   "settings": {
     "title": "Settings",
