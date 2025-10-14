@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Send, Loader2, Table as TableIcon, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
-import { useChatContext } from '@/lib/contexts/chat-context';
+import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,6 +21,7 @@ interface AgentResult {
   success: boolean;
   sql: string;
   explanation: string;
+  suggestions?: string[];
   error?: string;
 }
 
@@ -34,6 +35,7 @@ interface QueryResult {
 
 interface ScreenerResult {
   explanation: string;
+  suggestions?: string[];
   data: Record<string, any>[];
   columns: string[];
   row_count: number;
@@ -42,13 +44,14 @@ interface ScreenerResult {
 
 export function ScreenerPanel() {
   const t = useTranslations('screener');
-  const { availableMetrics } = useChatContext();
+  const availableMetrics = useFinancialDataStore((state) => state.availableMetrics);
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<ScreenerResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Load saved query and result from localStorage on mount
   useEffect(() => {
@@ -138,6 +141,7 @@ export function ScreenerPanel() {
       // Combine agent explanation with query results
       const finalResult = {
         explanation: agentResult.explanation,
+        suggestions: agentResult.suggestions || [],
         data: queryResult.data || [],
         columns: queryResult.columns || [],
         row_count: queryResult.row_count || 0,
@@ -239,14 +243,37 @@ export function ScreenerPanel() {
       {/* Query Input */}
       <div className="p-4 border-b border-border">
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('placeholder') || 'e.g., Show top 10 profitable companies in 2024'}
-            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
-            disabled={isLoading}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              placeholder={t('placeholder') || 'e.g., Show top 10 profitable companies in 2024'}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              disabled={isLoading}
+            />
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && result?.suggestions && result.suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                {result.suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setQuery(suggestion);
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="submit"
             disabled={isLoading || !query.trim()}
