@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    console.log('🔍 Calling screener agent:', AGENTSOS_API_URL);
-
     // Prepare request parameters
     const requestParams: Record<string, string> = {
       message: query,

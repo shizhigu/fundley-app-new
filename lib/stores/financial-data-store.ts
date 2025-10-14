@@ -5,7 +5,7 @@ import type {
   AvailableMetric,
   FinancialAnalysisForm,
   ViewMode,
-  FinancialDataError
+  FinancialDataError,
 } from '@/lib/types/financial-data';
 
 interface FinancialDataStore {
@@ -74,7 +74,12 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
       // 数据更新方法
       updateFinancialData: (data: FinancialDataPoint[]) => {
         const timestamp = new Date().toISOString();
-        console.log('🔄 Zustand Store: updateFinancialData called with', data.length, 'rows at', timestamp);
+        console.log(
+          '🔄 Zustand Store: updateFinancialData called with',
+          data.length,
+          'rows at',
+          timestamp,
+        );
         console.log('📝 Sample data:', data.slice(0, 2));
 
         set({
@@ -100,7 +105,6 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
 
       updateAvailableMetrics: (metrics: AvailableMetric[]) => {
         set({ availableMetrics: metrics });
-        console.log('📊 Available metrics updated:', metrics.length, 'metrics');
       },
 
       // 表单状态更新方法
@@ -156,6 +160,6 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
         lastUpdated: state.lastUpdated,
         isActive: state.isActive,
       }),
-    }
-  )
+    },
+  ),
 );

@@ -89,10 +89,6 @@ export function ScreenerPanel() {
 
       if (availableMetrics && availableMetrics.length > 0) {
         sessionState['available_metrics'] = availableMetrics;
-        console.log(
-          '📊 Screener sessionState - custom formulas:',
-          availableMetrics.length,
-        );
       }
 
       // Stage 1: Call screener agent to generate SQL
@@ -113,13 +109,6 @@ export function ScreenerPanel() {
       }
 
       const agentResult: AgentResult = await agentResponse.json();
-
-      console.log('📊 Agent result received:', {
-        success: agentResult.success,
-        hasSuggestions: !!agentResult.suggestions,
-        suggestionsCount: agentResult.suggestions?.length || 0,
-        suggestions: agentResult.suggestions,
-      });
 
       if (!agentResult.success || !agentResult.sql) {
         setResult({
@@ -148,7 +137,6 @@ export function ScreenerPanel() {
       }
 
       const queryResult: QueryResult = await queryResponse.json();
-      console.log('✅ Query result:', queryResult);
 
       // Combine agent explanation with query results
       const finalResult = {

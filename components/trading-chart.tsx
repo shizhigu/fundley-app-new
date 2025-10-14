@@ -115,9 +115,7 @@ export function TradingChart({
   const allIndicators = useMemo(() => indicators, [indicators]);
 
   // Debug: Log indicators loaded (simplified to avoid loops)
-  useEffect(() => {
-    console.log('🔍 Indicators count:', allIndicators.length);
-  }, [allIndicators.length]);
+  useEffect(() => {}, [allIndicators.length]);
 
   // 从API获取真实股票数据
   const fetchChartData = useCallback(

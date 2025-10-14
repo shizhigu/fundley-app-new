@@ -87,7 +87,7 @@ export function NewChatInterface({
         <div className="flex-1 min-h-0 max-w-full">
           <div
             ref={containerRef}
-            className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+            className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 relative"
           >
             <div className="flex items-center justify-center h-full">
               <div className="text-muted-foreground">{t('loadingChat')}</div>
@@ -104,7 +104,7 @@ export function NewChatInterface({
       <div className="flex-1 min-h-0 max-w-full">
         <div
           ref={containerRef}
-          className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 custom-scrollbar relative"
+          className="professional-messages-container flex flex-col min-w-0 max-w-full gap-6 h-full overflow-y-auto overflow-x-hidden pt-4 pb-32 px-4 md:px-6 relative"
         >
           {/* 欢迎界面（无消息时显示） */}
           {messages.length === 0 && !isLoading && (

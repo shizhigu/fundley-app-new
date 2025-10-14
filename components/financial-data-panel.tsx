@@ -434,7 +434,7 @@ function FinancialDataPanelComponent() {
                 return (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors duration-200"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border/50 rounded-lg hover:bg-gray-100 dark:hover:bg-muted transition-colors duration-200"
                   >
                     <span className="text-xs text-muted-foreground">
                       {row.period} {row.fiscalYear}
@@ -533,10 +533,10 @@ function FinancialDataPanelComponent() {
             <thead className="sticky top-0 z-10 bg-muted shadow-sm">
               <tr className="border-b border-border">
                 <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
-                  股票代码
+                  {tFinancial('stockSymbol')}
                 </th>
                 <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[120px] z-20 border-r border-border p-3 text-left">
-                  季度
+                  {tFinancial('quarter')}
                 </th>
                 {selectedMetrics.map((metricId) => (
                   <th
@@ -607,10 +607,10 @@ function FinancialDataPanelComponent() {
             <thead className="sticky top-0 z-10 bg-muted shadow-sm">
               <tr className="border-b border-border">
                 <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
-                  股票代码
+                  {tFinancial('stockSymbol')}
                 </th>
                 <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[180px] z-20 border-r border-border p-3 text-left">
-                  指标
+                  {tFinancial('metric')}
                 </th>
                 {Array.from({ length: maxQuarters }, (_, i) => (
                   <th
@@ -773,29 +773,29 @@ function FinancialDataPanelComponent() {
                 htmlFor="symbols"
                 className="text-sm font-medium text-foreground"
               >
-                股票代码 (用逗号分隔)
+                {tFinancial('stockSymbolLabel')}
               </Label>
               <Input
                 id="symbols"
                 value={symbolInput}
                 onChange={(e) => setSymbolInput(e.target.value)}
-                placeholder="例如: AAPL,MSFT,GOOGL"
-                className="bg-background border-border"
+                placeholder={tFinancial('stockSymbolPlaceholder')}
+                className="bg-background border-input"
               />
             </div>
 
             {/* Metric Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">
-                选择财务指标 (可拖拽调整顺序)
+                {tFinancial('selectMetrics')}
               </Label>
               {latexMetrics === undefined ? (
                 <div className="text-sm text-muted-foreground">
-                  加载指标中...
+                  {tFinancial('loadingMetrics')}
                 </div>
               ) : availableMetrics.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  暂无可用指标，请先在LaTeX metrics中创建包含SQL公式的指标
+                  {tFinancial('noMetricsAvailable')}
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
@@ -811,7 +811,7 @@ function FinancialDataPanelComponent() {
                       onDragStart={() => handleDragStart(index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
-                      title="拖拽调整指标顺序"
+                      title={tFinancial('dragToReorder')}
                     >
                       <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <Checkbox
@@ -836,19 +836,19 @@ function FinancialDataPanelComponent() {
             {/* Quarter Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">
-                历史季度数
+                {tFinancial('historicalQuarters')}
               </Label>
               <Select
                 value={selectedQuarters}
                 onValueChange={setSelectedQuarters}
               >
-                <SelectTrigger className="w-full bg-background border-border">
+                <SelectTrigger className="w-full bg-background border-input">
                   <SelectValue placeholder="Select number of quarters" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5">5个季度</SelectItem>
-                  <SelectItem value="10">10个季度</SelectItem>
-                  <SelectItem value="20">20个季度</SelectItem>
+                  <SelectItem value="5">{tFinancial('quarters_5')}</SelectItem>
+                  <SelectItem value="10">{tFinancial('quarters_10')}</SelectItem>
+                  <SelectItem value="20">{tFinancial('quarters_20')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -862,12 +862,12 @@ function FinancialDataPanelComponent() {
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>分析中...</span>
+                  <span>{tFinancial('analyzing')}</span>
                 </div>
               ) : (
                 <>
                   <Search size={16} className="mr-2" />
-                  分析
+                  {tFinancial('analyze')}
                 </>
               )}
             </Button>
@@ -881,14 +881,14 @@ function FinancialDataPanelComponent() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md bg-card border border-border rounded-lg p-6">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="font-medium mb-2 text-foreground">获取数据时出错</p>
+              <p className="font-medium mb-2 text-foreground">{tFinancial('errorFetchingData')}</p>
               <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
               <Button
                 onClick={() => setError(null)}
                 variant="outline"
                 size="sm"
               >
-                重试
+                {tFinancial('retry')}
               </Button>
             </div>
           </div>
@@ -905,10 +905,10 @@ function FinancialDataPanelComponent() {
                 <Table2 size={32} className="text-muted-foreground" />
               </div>
               <p className="text-lg font-medium text-foreground mb-2">
-                开始分析财务数据
+                {tFinancial('startAnalyzing')}
               </p>
               <p className="text-sm text-muted-foreground">
-                选择股票代码和指标，点击"分析"按钮查看数据
+                {tFinancial('startAnalyzingDescription')}
               </p>
             </div>
           </div>
