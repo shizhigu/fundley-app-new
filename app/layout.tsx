@@ -93,29 +93,17 @@ export default async function RootLayout({
       lang={locale}
       suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable}`}
+      style={
+        {
+          '--brand-primary': primaryHSL,
+          '--primary': primaryHSL,
+          '--brand-accent': primaryHSL,
+          '--accent': primaryHSL,
+          '--brand-secondary': secondaryHSL || undefined,
+          '--secondary': secondaryHSL || undefined,
+        } as React.CSSProperties
+      }
     >
-      <head>
-        {/* Inject brand colors BEFORE any rendering to prevent FOUC */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                const root = document.documentElement;
-                root.style.setProperty('--brand-primary', '${primaryHSL}');
-                root.style.setProperty('--primary', '${primaryHSL}');
-                root.style.setProperty('--brand-accent', '${primaryHSL}');
-                root.style.setProperty('--accent', '${primaryHSL}');
-                root.style.setProperty('--gradient-primary', 'hsl(${primaryHSL})');
-                ${secondaryHSL ? `
-                root.style.setProperty('--brand-secondary', '${secondaryHSL}');
-                root.style.setProperty('--secondary', '${secondaryHSL}');
-                root.style.setProperty('--gradient-secondary', 'hsl(${secondaryHSL})');
-                ` : ''}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="antialiased">
         <ClerkProvider>
           <ConvexClientProvider>
