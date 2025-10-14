@@ -53,9 +53,9 @@
 
 @layer base {
   :root {
-    /* Brand Colors (dynamically set by BrandingStyles component) */
-    --brand-primary: 142 73% 51%; /* Default: #8EBF45 */
-    --brand-secondary: 84 68% 91%; /* Default: #E2F2C9 */
+    /* Brand Colors - Fundley Orange (default) */
+    --brand-primary: 18 100% 55%; /* #FF6B1A - Fundley Orange */
+    --brand-secondary: 38 94% 51%; /* #F59E0B - Amber */
 
     /* === LIGHT MODE COLORS === */
     --background: 0 0% 100%;           /* Pure white */

@@ -6,7 +6,6 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ConvexClientProvider from '@/components/convex-client-provider';
 import { getBranding } from '@/lib/config/branding';
-import { BrandingStyles } from '@/components/branding-styles';
 import { I18nProvider } from '@/lib/i18n-provider';
 
 import './globals.css';
@@ -57,14 +56,67 @@ export default async function RootLayout({
   const locale = process.env.NEXT_PUBLIC_LOCALE || 'en';
   const messages = (await import(`@/messages/${locale}.json`)).default;
 
+  // Convert hex to HSL for CSS variables (must match BrandingStyles logic)
+  const hexToHSL = (hex: string): string => {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+
+    h = Math.round(h * 360);
+    s = Math.round(s * 100);
+    l = Math.round(l * 100);
+
+    return `${h} ${s}% ${l}%`;
+  };
+
+  const primaryHSL = hexToHSL(branding.primaryColor);
+  const secondaryHSL = branding.secondaryColor ? hexToHSL(branding.secondaryColor) : null;
+
   return (
     <html
       lang={locale}
       suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        {/* Inject brand colors BEFORE any rendering to prevent FOUC */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const root = document.documentElement;
+                root.style.setProperty('--brand-primary', '${primaryHSL}');
+                root.style.setProperty('--primary', '${primaryHSL}');
+                root.style.setProperty('--brand-accent', '${primaryHSL}');
+                root.style.setProperty('--accent', '${primaryHSL}');
+                root.style.setProperty('--gradient-primary', 'hsl(${primaryHSL})');
+                ${secondaryHSL ? `
+                root.style.setProperty('--brand-secondary', '${secondaryHSL}');
+                root.style.setProperty('--secondary', '${secondaryHSL}');
+                root.style.setProperty('--gradient-secondary', 'hsl(${secondaryHSL})');
+                ` : ''}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased">
-        <BrandingStyles />
         <ClerkProvider>
           <ConvexClientProvider>
             <ThemeProvider
