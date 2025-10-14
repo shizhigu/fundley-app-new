@@ -18,7 +18,8 @@ interface Tab {
 }
 
 function RightPanelTabsComponent() {
-  const [activeTab, setActiveTab] = useState<TabType>('data');
+  // 默认显示分析块
+  const [activeTab, setActiveTab] = useState<TabType>('blocks');
   const { currentChatId } = useChatContext();
   const t = useTranslations('panels');
 

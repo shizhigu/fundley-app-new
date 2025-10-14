@@ -14,7 +14,9 @@
       "Bash(./scripts/switch-theme.sh:*)",
       "Bash(git branch:*)",
       "Bash(git checkout:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": [],

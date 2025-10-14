@@ -84,6 +84,8 @@
     "live": "实时",
     "blocks": "个块",
     "block": "个块",
+    "searchBlocks": "搜索分析块...",
+    "noMatchingBlocks": "没有匹配的分析块",
     "dataTable": "数据表",
     "dataTables": "数据表",
     "export": "导出",
@@ -91,6 +93,7 @@
     "table": "表格"
   },
   "financialData": {
+    "title": "财务数据分析",
     "cards": "卡片",
     "table": "表格",
     "timeline": "时间轴",

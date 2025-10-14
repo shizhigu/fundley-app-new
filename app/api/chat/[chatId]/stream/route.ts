@@ -217,8 +217,11 @@ export async function POST(
       );
 
       // 兼容旧格式（带空格）和新格式（下划线）
-      const financialData = sessionState['financial_metrics_data'] || sessionState['financial metrics data'];
-      const availableMetrics = sessionState['available_metrics'] || sessionState['available metrics'];
+      const financialData =
+        sessionState['financial_metrics_data'] ||
+        sessionState['financial metrics data'];
+      const availableMetrics =
+        sessionState['available_metrics'] || sessionState['available metrics'];
 
       if (financialData) {
         console.log(

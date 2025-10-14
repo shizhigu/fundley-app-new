@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { AnalysisBlockRenderer } from './analysis-block-renderer'
 import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, BarChart3, Database } from 'lucide-react'
+import { AlertCircle, BarChart3, Database, Search, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatContext } from '@/lib/contexts/chat-context'
 import { useTranslations } from 'next-intl'
+import { Input } from '@/components/ui/input'
 
 interface AnalysisBlocksPanelProps {
   chatId: string
@@ -21,14 +22,53 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const lastTimestampRef = useRef<string | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 过滤blocks - 根据搜索关键词
+  const filteredBlocks = useMemo(() => {
+    if (!searchQuery.trim()) return blocks
+
+    const query = searchQuery.toLowerCase()
+    return blocks.filter((block) => {
+      // 搜索content JSONB中的所有字段
+      const content = block.content || block
+
+      // 搜索标题
+      if (content.title?.toLowerCase().includes(query)) return true
+
+      // 搜索描述
+      if (content.description?.toLowerCase().includes(query)) return true
+
+      // 搜索text内容
+      if (content.text?.toLowerCase().includes(query)) return true
+
+      // 递归搜索JSONB中的所有字符串值
+      const searchInObject = (obj: any): boolean => {
+        if (typeof obj === 'string') {
+          return obj.toLowerCase().includes(query)
+        }
+        if (Array.isArray(obj)) {
+          return obj.some(item => searchInObject(item))
+        }
+        if (obj && typeof obj === 'object') {
+          return Object.values(obj).some(value => searchInObject(value))
+        }
+        return false
+      }
+
+      // 深度搜索整个content对象
+      return searchInObject(content)
+    })
+  }, [blocks, searchQuery])
 
   // 初始加载 - 每次切换chat时重新加载
   useEffect(() => {
     // 重置状态
     setBlocks([])
     setExpandedBlockId(null)
+    setSearchQuery('') // 清空搜索
     lastTimestampRef.current = null
 
     loadInitialBlocks()
@@ -164,32 +204,71 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   return (
     <div className={`h-full ${className}`} style={{ width: '100%', overflow: 'auto' }}>
       <div className="space-y-4 p-4" style={{ maxWidth: '100%' }}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            {t('analysisBlocks')}
-          </h3>
-          <div className="flex items-center gap-3">
-            <div className="neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900">
-              <span className="text-sm font-medium text-foreground">
-                {blocks.length} {blocks.length !== 1 ? t('blocks') : t('block')}
-              </span>
+        <div className="space-y-4 mb-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              {t('analysisBlocks')}
+            </h3>
+            <div className="flex items-center gap-3">
+              <div className="neuro-raised-sm px-3 py-1.5 rounded-full bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900">
+                <span className="text-sm font-medium text-foreground">
+                  {filteredBlocks.length} {filteredBlocks.length !== 1 ? t('blocks') : t('block')}
+                  {searchQuery && blocks.length !== filteredBlocks.length && (
+                    <span className="text-muted-foreground"> / {blocks.length}</span>
+                  )}
+                </span>
+              </div>
+              {/* 实时指示器 - 仅在流式传输时显示 */}
+              {isChatStreaming && (
+                <motion.div
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-brand-badge"
+                >
+                  <div className="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400">{t('live')}</span>
+                </motion.div>
+              )}
             </div>
-            {/* 实时指示器 - 仅在流式传输时显示 */}
-            {isChatStreaming && (
-              <motion.div
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center gap-2 neuro-raised-sm px-3 py-1.5 rounded-full bg-brand-badge"
-              >
-                <div className="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                <span className="text-xs font-medium text-green-700 dark:text-green-400">{t('live')}</span>
-              </motion.div>
-            )}
           </div>
+
+          {/* Search Bar */}
+          {blocks.length > 0 && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={t('searchBlocks')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9 h-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {blocks.map((block) => (
+        {/* No results */}
+        {filteredBlocks.length === 0 && searchQuery && (
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center space-y-2">
+              <Search className="h-8 w-8 text-muted-foreground mx-auto" />
+              <p className="text-sm text-muted-foreground">{t('noMatchingBlocks')}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Blocks List */}
+        {filteredBlocks.map((block) => (
           <div key={block.id}>
             <AnalysisBlockRenderer
               block={block}

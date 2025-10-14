@@ -84,6 +84,8 @@
     "live": "Live",
     "blocks": "blocks",
     "block": "block",
+    "searchBlocks": "Search blocks...",
+    "noMatchingBlocks": "No matching blocks found",
     "dataTable": "Data Table",
     "dataTables": "Data Tables",
     "export": "Export",
@@ -91,6 +93,7 @@
     "table": "Table"
   },
   "financialData": {
+    "title": "Financial Data Analysis",
     "cards": "Cards",
     "table": "Table",
     "timeline": "Timeline",

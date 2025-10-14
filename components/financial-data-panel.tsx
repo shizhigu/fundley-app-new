@@ -678,7 +678,7 @@ function FinancialDataPanelComponent() {
       <div className="border-b border-border">
         {/* Header - Always Visible */}
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-semibold text-foreground">财务数据分析</h2>
+          <h2 className="text-xl font-semibold text-foreground">{tFinancial('title')}</h2>
           <div className="flex items-center gap-2">
             {/* View Toggle - Only show when data exists */}
             {tableData.length > 0 && (
