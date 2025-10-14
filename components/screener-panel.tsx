@@ -44,7 +44,9 @@ interface ScreenerResult {
 
 export function ScreenerPanel() {
   const t = useTranslations('screener');
-  const availableMetrics = useFinancialDataStore((state) => state.availableMetrics);
+  const availableMetrics = useFinancialDataStore(
+    (state) => state.availableMetrics,
+  );
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<ScreenerResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,7 +89,10 @@ export function ScreenerPanel() {
 
       if (availableMetrics && availableMetrics.length > 0) {
         sessionState['available_metrics'] = availableMetrics;
-        console.log('📊 Screener sessionState - custom formulas:', availableMetrics.length);
+        console.log(
+          '📊 Screener sessionState - custom formulas:',
+          availableMetrics.length,
+        );
       }
 
       // Stage 1: Call screener agent to generate SQL
@@ -98,7 +103,8 @@ export function ScreenerPanel() {
         },
         body: JSON.stringify({
           query: query.trim(),
-          sessionState: Object.keys(sessionState).length > 0 ? sessionState : undefined
+          sessionState:
+            Object.keys(sessionState).length > 0 ? sessionState : undefined,
         }),
       });
 
@@ -107,6 +113,13 @@ export function ScreenerPanel() {
       }
 
       const agentResult: AgentResult = await agentResponse.json();
+
+      console.log('📊 Agent result received:', {
+        success: agentResult.success,
+        hasSuggestions: !!agentResult.suggestions,
+        suggestionsCount: agentResult.suggestions?.length || 0,
+        suggestions: agentResult.suggestions,
+      });
 
       if (!agentResult.success || !agentResult.sql) {
         setResult({
@@ -120,7 +133,6 @@ export function ScreenerPanel() {
       }
 
       // Stage 2: Execute SQL via Next.js API route (not directly to backend)
-      console.log('🔍 Executing SQL:', agentResult.sql);
       const queryResponse = await fetch('/api/query', {
         method: 'POST',
         headers: {
@@ -153,7 +165,10 @@ export function ScreenerPanel() {
       // Save to localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('screener_last_query', query.trim());
-        localStorage.setItem('screener_last_result', JSON.stringify(finalResult));
+        localStorage.setItem(
+          'screener_last_result',
+          JSON.stringify(finalResult),
+        );
       }
     } catch (error) {
       console.error('Screener error:', error);
@@ -236,7 +251,8 @@ export function ScreenerPanel() {
           </h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          {t('description') || 'Ask questions about financial data in natural language'}
+          {t('description') ||
+            'Ask questions about financial data in natural language'}
         </p>
       </div>
 
@@ -250,29 +266,34 @@ export function ScreenerPanel() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder={t('placeholder') || 'e.g., Show top 10 profitable companies in 2024'}
+              placeholder={
+                t('placeholder') ||
+                'e.g., Show top 10 profitable companies in 2024'
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
               disabled={isLoading}
             />
 
             {/* Suggestions Dropdown */}
-            {showSuggestions && result?.suggestions && result.suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                {result.suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      setQuery(suggestion);
-                      setShowSuggestions(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
+            {showSuggestions &&
+              result?.suggestions &&
+              result.suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  {result.suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setQuery(suggestion);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
           <button
             type="submit"
@@ -304,7 +325,8 @@ export function ScreenerPanel() {
                 <p className="text-sm text-foreground">{result.explanation}</p>
                 {result.row_count > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {result.row_count} {result.row_count === 1 ? 'result' : 'results'} found
+                    {result.row_count}{' '}
+                    {result.row_count === 1 ? 'result' : 'results'} found
                   </p>
                 )}
               </div>
@@ -357,12 +379,13 @@ export function ScreenerPanel() {
                                 <div className="flex items-center gap-2">
                                   {flexRender(
                                     header.column.columnDef.header,
-                                    header.getContext()
+                                    header.getContext(),
                                   )}
                                   {{
                                     asc: ' 🔼',
                                     desc: ' 🔽',
-                                  }[header.column.getIsSorted() as string] ?? null}
+                                  }[header.column.getIsSorted() as string] ??
+                                    null}
                                 </div>
                               </th>
                             ))}
@@ -376,10 +399,13 @@ export function ScreenerPanel() {
                             className="border-t border-border hover:bg-muted/50"
                           >
                             {row.getVisibleCells().map((cell) => (
-                              <td key={cell.id} className="px-4 py-3 text-foreground">
+                              <td
+                                key={cell.id}
+                                className="px-4 py-3 text-foreground"
+                              >
                                 {flexRender(
                                   cell.column.columnDef.cell,
-                                  cell.getContext()
+                                  cell.getContext(),
                                 )}
                               </td>
                             ))}
@@ -393,9 +419,17 @@ export function ScreenerPanel() {
                 {/* Pagination Controls */}
                 <div className="flex items-center justify-between px-2">
                   <div className="text-sm text-muted-foreground">
-                    Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-                    {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of{' '}
-                    {table.getFilteredRowModel().rows.length} results
+                    Showing{' '}
+                    {table.getState().pagination.pageIndex *
+                      table.getState().pagination.pageSize +
+                      1}{' '}
+                    to{' '}
+                    {Math.min(
+                      (table.getState().pagination.pageIndex + 1) *
+                        table.getState().pagination.pageSize,
+                      table.getFilteredRowModel().rows.length,
+                    )}{' '}
+                    of {table.getFilteredRowModel().rows.length} results
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -414,7 +448,8 @@ export function ScreenerPanel() {
                       {'<'}
                     </button>
                     <span className="text-sm text-foreground">
-                      Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                      Page {table.getState().pagination.pageIndex + 1} of{' '}
+                      {table.getPageCount()}
                     </span>
                     <button
                       onClick={() => table.nextPage()}
@@ -424,7 +459,9 @@ export function ScreenerPanel() {
                       {'>'}
                     </button>
                     <button
-                      onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                      onClick={() =>
+                        table.setPageIndex(table.getPageCount() - 1)
+                      }
                       disabled={!table.getCanNextPage()}
                       className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
@@ -449,9 +486,12 @@ export function ScreenerPanel() {
         {!result && !isLoading && (
           <div className="text-center py-12 text-muted-foreground">
             <TableIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
-            <p className="text-sm mb-2">Enter a query to screen financial data</p>
+            <p className="text-sm mb-2">
+              Enter a query to screen financial data
+            </p>
             <p className="text-xs">
-              Examples: &quot;Companies with revenue over $1B&quot;, &quot;Top 10 by net income&quot;
+              Examples: &quot;Companies with revenue over $1B&quot;, &quot;Top
+              10 by net income&quot;
             </p>
           </div>
         )}

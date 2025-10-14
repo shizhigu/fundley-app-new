@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth/clerk';
 import { NextRequest, NextResponse } from 'next/server';
 
-const AGENTSOS_API_URL = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
+const AGENTSOS_API_URL =
+  process.env.AGENTSOS_API_URL || 'http://localhost:8000';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,15 +24,18 @@ export async function POST(request: NextRequest) {
     // Prepare request parameters
     const requestParams: Record<string, string> = {
       message: query,
-      session_id: 'screener_session',  // Fixed session ID for screener
-      user_id: session.user.id,        // Current user ID
+      session_id: 'screener_session_1', // Fixed session ID for screener
+      user_id: session.user.id, // Current user ID
       stream: 'false',
     };
 
     // Add session_state if provided (contains custom formulas)
     if (sessionState && Object.keys(sessionState).length > 0) {
       requestParams.session_state = JSON.stringify(sessionState);
-      console.log('📊 Adding session_state with custom formulas:', Object.keys(sessionState));
+      console.log(
+        '📊 Adding session_state with custom formulas:',
+        Object.keys(sessionState),
+      );
     }
 
     // Call the screener agent via AgentOS (same way as main agent)
@@ -43,7 +47,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams(requestParams).toString(),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Screener agent error:', errorText);
       return NextResponse.json(
         { error: 'Failed to execute screener query' },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -68,7 +72,8 @@ export async function POST(request: NextRequest) {
           success: false,
           sql: '',
           explanation: '',
-          error: 'Invalid response format from agent'
+          suggestions: [],
+          error: 'Invalid response format from agent',
         });
       }
     } else if (result.content && typeof result.content === 'object') {
@@ -78,16 +83,24 @@ export async function POST(request: NextRequest) {
         success: false,
         sql: '',
         explanation: '',
-        error: 'No content in agent response'
+        suggestions: [],
+        error: 'No content in agent response',
       });
     }
+
+    console.log('✅ Screener agent result:', {
+      success: parsedContent.success,
+      hasSuggestions: !!parsedContent.suggestions,
+      suggestionsCount: parsedContent.suggestions?.length || 0,
+      suggestions: parsedContent.suggestions,
+    });
 
     return NextResponse.json(parsedContent);
   } catch (error) {
     console.error('❌ Screener API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
