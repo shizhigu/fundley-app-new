@@ -163,16 +163,20 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     const columnHelper = createColumnHelper<any>()
 
     return Object.keys(firstRow).map(key =>
-      columnHelper.accessor(key, {
-        header: key,
-        cell: info => {
-          const value = info.getValue()
-          if (typeof value === 'number') {
-            return <span className="font-mono text-xs">{value.toLocaleString()}</span>
-          }
-          return <span className="text-xs">{String(value)}</span>
-        },
-      })
+      columnHelper.accessor(
+        (row) => row[key], // Use function accessor to avoid dot notation parsing
+        {
+          id: key, // Unique ID for the column
+          header: key,
+          cell: info => {
+            const value = info.getValue()
+            if (typeof value === 'number') {
+              return <span className="font-mono text-xs">{value.toLocaleString()}</span>
+            }
+            return <span className="text-xs">{String(value)}</span>
+          },
+        }
+      )
     )
   }, [tableData])
 
