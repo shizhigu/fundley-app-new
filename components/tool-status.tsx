@@ -35,6 +35,9 @@ const TOOL_CONFIG: Record<string, { label: string; icon: React.ElementType }> =
     get_earnings: { label: 'Earnings loaded', icon: Briefcase },
     get_stock_quote: { label: 'Quote loaded', icon: TrendingUp },
     get_financial_timeline: { label: 'Timeline built', icon: TrendingUp },
+    get_analyst_estimates: { label: 'Estimates loaded', icon: Briefcase },
+    search_docs: { label: 'Docs searched', icon: Search },
+    call_api: { label: 'Custom Data loaded', icon: Calculator },
 
     // Analysis tools
     run_python_code: { label: 'Analysis completed', icon: PythonIcon },
