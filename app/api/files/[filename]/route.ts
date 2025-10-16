@@ -21,9 +21,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Get session_id (chat_id) from query params
+    // 2. Get session_id (chat_id) and download flag from query params
     const searchParams = request.nextUrl.searchParams
     const sessionId = searchParams.get('session_id')
+    const download = searchParams.get('download') === 'true'
+    const blockTitle = searchParams.get('title') || 'analysis'
 
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
@@ -68,13 +70,24 @@ export async function GET(
     const fileBlob = await response.blob()
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
 
-    return new NextResponse(fileBlob, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
-        'X-Content-Type-Options': 'nosniff',
-      },
-    })
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+      'X-Content-Type-Options': 'nosniff',
+    }
+
+    // If download flag is set, add Content-Disposition header with custom filename
+    if (download) {
+      const timestamp = Date.now()
+      // Keep Chinese characters, letters, numbers; replace special chars with underscore
+      const baseFilename = blockTitle.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
+      const extension = filename.split('.').pop() || 'html'
+      // Use UTF-8 encoding for Chinese filenames (RFC 6266)
+      const encodedFilename = encodeURIComponent(`${baseFilename}_${timestamp}.${extension}`)
+      headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodedFilename}`
+    }
+
+    return new NextResponse(fileBlob, { headers })
 
   } catch (error) {
     console.error('Error serving file:', error)

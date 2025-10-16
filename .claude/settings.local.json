@@ -22,7 +22,10 @@
       "Bash(pnpm remove:*)",
       "Bash(pnpm build:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash([ -n \"$AGNO_DATABASE_URL\" ])"
+      "Bash([ -n \"$AGNO_DATABASE_URL\" ])",
+      "Bash(npx puppeteer browsers:*)",
+      "Bash(psql:*)",
+      "Bash(echo \"$AGNO_DATABASE_URL\")"
     ],
     "deny": [],
     "ask": [],

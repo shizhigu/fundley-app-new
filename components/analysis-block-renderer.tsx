@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download, FileSpreadsheet, Search } from 'lucide-react'
+import { FileText, BarChart, ChevronUp, ChevronDown, Loader2, ChevronRight, Maximize2, X, Download, FileSpreadsheet, Search, RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTranslations } from 'next-intl'
@@ -147,6 +147,34 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
     const fileName = dataFiles[selectedDataIndex]?.replace('.json', '.xlsx') || 'table_export.xlsx'
     XLSX.writeFile(workbook, fileName)
   }, [tableData, dataFiles, selectedDataIndex])
+
+  const [refreshingChart, setRefreshingChart] = useState<string | null>(null)
+
+  // Refresh chart by reloading iframe
+  const handleRefreshChart = useCallback((chartFile: string) => {
+    setRefreshingChart(chartFile)
+    // Find the iframe and reload it
+    const iframes = document.querySelectorAll('iframe')
+    for (const iframe of iframes) {
+      if (iframe.src.includes(chartFile)) {
+        // Add timestamp to force reload
+        const url = new URL(iframe.src)
+        url.searchParams.set('t', Date.now().toString())
+        iframe.src = url.toString()
+        break
+      }
+    }
+    // Reset refreshing state after a delay
+    setTimeout(() => setRefreshingChart(null), 1000)
+  }, [])
+
+  // Export HTML file directly
+  const handleExportHtml = useCallback((chartFile: string) => {
+    const url = `/api/files/${chartFile}?session_id=${sessionId}&download=true&title=${encodeURIComponent(title)}`
+    const link = document.createElement('a')
+    link.href = url
+    link.click()
+  }, [sessionId, title])
 
   // Count available content types
   const hasText = !!content.text
@@ -308,22 +336,51 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
                     </span>
                     {isChartExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
                   </button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setMaximizedChart(chartFile)
-                    }}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRefreshChart(chartFile)
+                      }}
+                      disabled={refreshingChart === chartFile}
+                      className="h-8 w-8 p-0"
+                      title="Refresh"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${refreshingChart === chartFile ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleExportHtml(chartFile)
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Download HTML"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMaximizedChart(chartFile)
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Fullscreen"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {isChartExpanded && (
                   <div className="w-full h-[400px] bg-white overflow-auto">
                     <iframe
+                      id={`chart-iframe-${block.id}-${index}`}
                       src={`/api/files/${chartFile}?session_id=${sessionId}`}
                       className="w-full h-full border-0 min-w-0"
                       title={`Visualization ${index + 1}`}
@@ -536,12 +593,26 @@ export function AnalysisBlockRenderer({ block, isExpanded, onToggle }: AnalysisB
       {/* Maximized Chart Dialog */}
       <Dialog open={!!maximizedChart} onOpenChange={(open) => !open && setMaximizedChart(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-4">
+          <DialogHeader className="p-6 pb-4 flex flex-row items-center justify-between">
             <DialogTitle>Visualization - {title}</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (maximizedChart) {
+                  handleExportHtml(maximizedChart)
+                }
+              }}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download HTML
+            </Button>
           </DialogHeader>
           <div className="w-full h-[calc(90vh-8rem)] bg-white">
             {maximizedChart && (
               <iframe
+                id={`chart-iframe-${block.id}-maximized`}
                 src={`/api/files/${maximizedChart}?session_id=${sessionId}`}
                 className="w-full h-full border-0"
                 title="Visualization (Maximized)"
