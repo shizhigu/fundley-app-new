@@ -23,14 +23,18 @@ export async function GET(request: NextRequest) {
     console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId);
 
     // Get all user blocks with modification history
+    // Note: updated_at is auto-updated by trigger when block_modification_history is inserted
+    // Pinned blocks are sorted first, then by updated_at/created_at
     let blocks = await db`
       SELECT
         ab.id,
         ab.chat_id as "chatId",
         ab.user_id as "userId",
         ab.source_chat_id as "sourceChatId",
-        
         ab.created_at as "createdAt",
+        ab.updated_at as "updatedAt",
+        ab.is_pinned as "isPinned",
+        ab.pinned_at as "pinnedAt",
         ab.content,
         c.title as "sourceChatTitle",
         -- Get list of chats that modified this block
@@ -45,7 +49,11 @@ export async function GET(request: NextRequest) {
       FROM analysis_blocks ab
       LEFT JOIN chats c ON ab.source_chat_id = c.id
       WHERE ab.user_id = ${userId}
-      ORDER BY ab.created_at DESC
+      ORDER BY
+        ab.is_pinned DESC,
+        ab.pinned_at DESC NULLS LAST,
+        ab.updated_at DESC NULLS LAST,
+        ab.created_at DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
@@ -63,8 +71,10 @@ export async function GET(request: NextRequest) {
         id: block.id,
         userId: block.userId,
         sourceChatId: block.sourceChatId || block.chatId, // Fallback for legacy data
-        
         createdAt: block.createdAt,
+        updatedAt: block.updatedAt,
+        isPinned: block.isPinned || false,
+        pinnedAt: block.pinnedAt,
         content: block.content,
         // Computed fields for UI
         title,
@@ -73,6 +83,7 @@ export async function GET(request: NextRequest) {
         modifiedInChats: block.modifiedInChats || [], // Array of chat IDs that modified this block
         // Legacy field names for backward compatibility
         created_at: block.createdAt,
+        updated_at: block.updatedAt,
         chat_id: block.sourceChatId || block.chatId,
       };
     });

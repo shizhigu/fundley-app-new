@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { AnalysisBlockRenderer } from './analysis-block-renderer'
 import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, BarChart3, Database, Search, X, MessageSquare, Library, ChevronDown, RefreshCw, Plus } from 'lucide-react'
+import { AlertCircle, BarChart3, Database, Search, X, MessageSquare, Library, ChevronDown, RefreshCw, Plus, Pin } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatContext } from '@/lib/contexts/chat-context'
 import { useTranslations } from 'next-intl'
@@ -25,6 +25,16 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   // Quick filter for "This Chat" blocks
   const [showCurrentChatOnly, setShowCurrentChatOnly] = useState(false)
 
+  // Sort order - restore from localStorage
+  type SortOrder = 'updated' | 'created'
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('blocks-sort-order')
+      return (saved === 'created' || saved === 'updated') ? saved : 'updated'
+    }
+    return 'updated'
+  })
+
   // Restore last opened block from localStorage
   const restoredBlockId = typeof window !== 'undefined' ? localStorage.getItem('activeBlockId') : null;
 
@@ -39,8 +49,9 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   const [searchQuery, setSearchQuery] = useState('')
   const lastTimestampRef = useRef<string | null>(null)
 
-  // 过滤blocks - 根据搜索关键词和 "This Chat" 过滤器
-  const filteredBlocks = useMemo(() => {
+  // 过滤和排序blocks - 根据搜索关键词、"This Chat" 过滤器和排序顺序
+  // 分离置顶和普通块
+  const { pinnedBlocks, unpinnedBlocks } = useMemo(() => {
     let filtered = blocks
 
     // Filter by current chat if enabled
@@ -54,40 +65,83 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
     }
 
     // Filter by search query
-    if (!searchQuery.trim()) return filtered
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter((block) => {
+        // 搜索content JSONB中的所有字段
+        const content = block.content || block
 
-    const query = searchQuery.toLowerCase()
-    return filtered.filter((block) => {
-      // 搜索content JSONB中的所有字段
-      const content = block.content || block
+        // 搜索标题
+        if (content.title?.toLowerCase().includes(query)) return true
 
-      // 搜索标题
-      if (content.title?.toLowerCase().includes(query)) return true
+        // 搜索描述
+        if (content.description?.toLowerCase().includes(query)) return true
 
-      // 搜索描述
-      if (content.description?.toLowerCase().includes(query)) return true
+        // 搜索text内容
+        if (content.text?.toLowerCase().includes(query)) return true
 
-      // 搜索text内容
-      if (content.text?.toLowerCase().includes(query)) return true
-
-      // 递归搜索JSONB中的所有字符串值
-      const searchInObject = (obj: any): boolean => {
-        if (typeof obj === 'string') {
-          return obj.toLowerCase().includes(query)
+        // 递归搜索JSONB中的所有字符串值
+        const searchInObject = (obj: any): boolean => {
+          if (typeof obj === 'string') {
+            return obj.toLowerCase().includes(query)
+          }
+          if (Array.isArray(obj)) {
+            return obj.some(item => searchInObject(item))
+          }
+          if (obj && typeof obj === 'object') {
+            return Object.values(obj).some(value => searchInObject(value))
+          }
+          return false
         }
-        if (Array.isArray(obj)) {
-          return obj.some(item => searchInObject(item))
-        }
-        if (obj && typeof obj === 'object') {
-          return Object.values(obj).some(value => searchInObject(value))
-        }
-        return false
-      }
 
-      // 深度搜索整个content对象
-      return searchInObject(content)
-    })
-  }, [blocks, searchQuery, showCurrentChatOnly, chatId])
+        // 深度搜索整个content对象
+        return searchInObject(content)
+      })
+    }
+
+    // Separate pinned and unpinned blocks
+    const pinned = filtered.filter(b => b.isPinned)
+    const unpinned = filtered.filter(b => !b.isPinned)
+
+    // Sort each group
+    const sortBlocks = (blocksToSort: any[]) => {
+      return [...blocksToSort].sort((a, b) => {
+        if (sortOrder === 'updated') {
+          // Sort by updated_at (most recent first)
+          const aTime = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at).getTime()
+          const bTime = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at).getTime()
+          return bTime - aTime
+        } else {
+          // Sort by created_at (most recent first)
+          const aTime = new Date(a.createdAt || a.created_at).getTime()
+          const bTime = new Date(b.createdAt || b.created_at).getTime()
+          return bTime - aTime
+        }
+      })
+    }
+
+    return {
+      pinnedBlocks: sortBlocks(pinned),
+      unpinnedBlocks: sortBlocks(unpinned)
+    }
+  }, [blocks, searchQuery, showCurrentChatOnly, chatId, sortOrder])
+
+  // Combined for total count
+  const filteredBlocks = useMemo(() => {
+    return [...pinnedBlocks, ...unpinnedBlocks]
+  }, [pinnedBlocks, unpinnedBlocks])
+
+  // Handle pin toggle
+  const handlePin = async (blockId: string, isPinned: boolean) => {
+    // Optimistically update UI
+    setBlocks(prev => prev.map(b =>
+      b.id === blockId ? { ...b, isPinned, pinnedAt: isPinned ? new Date().toISOString() : null } : b
+    ))
+    console.log(`📌 Block ${isPinned ? 'pinned' : 'unpinned'}:`, blockId)
+
+    // Refresh from server to get accurate state
+    await loadInitialBlocks()
+  }
 
   // 初始加载 - 只在组件挂载时加载一次(Library view)
   useEffect(() => {
@@ -301,6 +355,14 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
               setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
               console.log('✅ Block updated without page reload:', updatedBlock.id)
             }}
+            onDelete={(blockId) => {
+              // Remove block from list
+              setBlocks(prev => prev.filter(b => b.id !== blockId))
+              console.log('✅ Block removed from list:', blockId)
+              // Also clear detail view since we just deleted it
+              setDetailViewBlockId(null)
+            }}
+            onPin={handlePin}
           />
         </div>
       </div>
@@ -400,24 +462,47 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
             </div>
           </div>
 
-          {/* Quick Filter: This Chat */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCurrentChatOnly(!showCurrentChatOnly)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border ${
-                showCurrentChatOnly
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20'
-              }`}
+          {/* Quick Filter and Sort Controls */}
+          <div className="flex items-center justify-between gap-4">
+            {/* Quick Filter: This Chat */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCurrentChatOnly(!showCurrentChatOnly)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border ${
+                  showCurrentChatOnly
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20'
+                }`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                {t('thisChat')}
+              </button>
+              {showCurrentChatOnly && (
+                <span className="text-xs text-muted-foreground">
+                  {filteredBlocks.length} / {blocks.length} blocks
+                </span>
+              )}
+            </div>
+
+            {/* Sort Order Tabs */}
+            <Tabs
+              value={sortOrder}
+              onValueChange={(value) => {
+                const newSort = value as SortOrder
+                setSortOrder(newSort)
+                localStorage.setItem('blocks-sort-order', newSort)
+              }}
+              className="w-auto"
             >
-              <MessageSquare className="h-4 w-4" />
-              {t('thisChat')}
-            </button>
-            {showCurrentChatOnly && (
-              <span className="text-xs text-muted-foreground">
-                {filteredBlocks.length} / {blocks.length} blocks
-              </span>
-            )}
+              <TabsList className="h-9">
+                <TabsTrigger value="updated" className="text-xs">
+                  {t('sortByUpdated') || 'Recently Updated'}
+                </TabsTrigger>
+                <TabsTrigger value="created" className="text-xs">
+                  {t('sortByCreated') || 'Recently Created'}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Search Bar - Only when blocks exist */}
@@ -483,24 +568,79 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
           </div>
         )}
 
-        {/* Blocks List - Grid layout, always collapsed preview cards */}
+        {/* Blocks List - Grid layout with pinned section */}
         {!loading && !error && filteredBlocks.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredBlocks.map((block) => (
-              <AnalysisBlockRenderer
-                key={block.id}
-                block={block}
-                isExpanded={false}
-                isActive={activeBlockId === block.id}
-                onToggle={() => setDetailViewBlockId(block.id)} // Open detail view
-                onSelect={() => {}} // No-op, auto-managed now
-                onUpdate={(updatedBlock) => {
-                  // Update blocks state with the updated block
-                  setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
-                  console.log('✅ Block updated without page reload:', updatedBlock.id)
-                }}
-              />
-            ))}
+          <div className="space-y-6">
+            {/* Pinned Blocks Section */}
+            {pinnedBlocks.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-2">
+                  <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Pin className="h-4 w-4" />
+                    {t('pinnedBlocks')}
+                  </h4>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">{pinnedBlocks.length}</span>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {pinnedBlocks.map((block) => (
+                    <AnalysisBlockRenderer
+                      key={block.id}
+                      block={block}
+                      isExpanded={false}
+                      isActive={activeBlockId === block.id}
+                      onToggle={() => setDetailViewBlockId(block.id)}
+                      onSelect={() => {}}
+                      onUpdate={(updatedBlock) => {
+                        setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
+                        console.log('✅ Block updated without page reload:', updatedBlock.id)
+                      }}
+                      onDelete={(blockId) => {
+                        setBlocks(prev => prev.filter(b => b.id !== blockId))
+                        console.log('✅ Block removed from list:', blockId)
+                      }}
+                      onPin={handlePin}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Blocks Section */}
+            {unpinnedBlocks.length > 0 && (
+              <div className="space-y-3">
+                {pinnedBlocks.length > 0 && (
+                  <div className="flex items-center gap-2 px-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground">
+                      All Blocks
+                    </h4>
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground">{unpinnedBlocks.length}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {unpinnedBlocks.map((block) => (
+                    <AnalysisBlockRenderer
+                      key={block.id}
+                      block={block}
+                      isExpanded={false}
+                      isActive={activeBlockId === block.id}
+                      onToggle={() => setDetailViewBlockId(block.id)}
+                      onSelect={() => {}}
+                      onUpdate={(updatedBlock) => {
+                        setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
+                        console.log('✅ Block updated without page reload:', updatedBlock.id)
+                      }}
+                      onDelete={(blockId) => {
+                        setBlocks(prev => prev.filter(b => b.id !== blockId))
+                        console.log('✅ Block removed from list:', blockId)
+                      }}
+                      onPin={handlePin}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -21,6 +21,9 @@ import {
   Save,
   XCircle,
   Plus,
+  Trash2,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useChatContext } from '@/lib/contexts/chat-context';
@@ -45,6 +48,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -75,6 +94,7 @@ interface AnalysisBlockProps {
     content: any;
     created_at: string;
     chat_id?: string; // Added to pass session ID
+    isPinned?: boolean;
     sourceChat?: {
       id: string;
       title: string;
@@ -85,6 +105,8 @@ interface AnalysisBlockProps {
   onToggle: () => void;
   onSelect?: () => void;
   onUpdate?: (updatedBlock: any) => void;
+  onDelete?: (blockId: string) => void;
+  onPin?: (blockId: string, isPinned: boolean) => void;
 }
 
 /**
@@ -104,6 +126,8 @@ export function AnalysisBlockRenderer({
   onToggle,
   onSelect,
   onUpdate,
+  onDelete,
+  onPin,
 }: AnalysisBlockProps) {
   const { content } = block;
   const tAnalysis = useTranslations('analysis');
@@ -111,6 +135,14 @@ export function AnalysisBlockRenderer({
 
   // Block ID for file fetching
   const blockId = block.id;
+  const isPinned = block.isPinned || false;
+
+  // Delete confirmation dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Pin state
+  const [isPinning, setIsPinning] = useState(false);
 
   // Extract title (flexible field naming)
   const title = content.title || content.name || 'Analysis Block';
@@ -334,7 +366,7 @@ export function AnalysisBlockRenderer({
       setIsSaving(true);
       try {
         const updatedSections = sections.map((s: any) =>
-          s.id === sectionId ? { ...s, content: newContent } : s,
+          s.id === sectionId ? { ...s, content: newContent} : s,
         );
 
         const response = await fetch(`/api/blocks/${block.id}`, {
@@ -360,6 +392,54 @@ export function AnalysisBlockRenderer({
     },
     [block.id, content, onUpdate],
   );
+
+  // Delete block
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/blocks/${block.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete');
+
+      console.log('✅ Block deleted:', block.id);
+      setShowDeleteDialog(false);
+
+      // Notify parent component to remove this block from list
+      if (onDelete) onDelete(block.id);
+    } catch (error) {
+      console.error('❌ Error deleting block:', error);
+      alert('Failed to delete block. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [block.id, onDelete]);
+
+  // Toggle pin status
+  const handleTogglePin = useCallback(async () => {
+    setIsPinning(true);
+    try {
+      const newPinStatus = !isPinned;
+      const response = await fetch(`/api/blocks/${block.id}/pin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: newPinStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle pin');
+
+      console.log(`📌 Block ${newPinStatus ? 'pinned' : 'unpinned'}:`, block.id);
+
+      // Notify parent component to update block list
+      if (onPin) onPin(block.id, newPinStatus);
+    } catch (error) {
+      console.error('❌ Error toggling pin:', error);
+      alert('Failed to toggle pin. Please try again.');
+    } finally {
+      setIsPinning(false);
+    }
+  }, [block.id, isPinned, onPin]);
 
   // Count available content types
   const hasText = hasSections || !!content.text;
@@ -423,92 +503,150 @@ export function AnalysisBlockRenderer({
   // Collapsed view - small card
   if (!isExpanded) {
     return (
-      <Card
-        className={cn(
-          'w-full group border-2 transition-all overflow-hidden',
-          isActive
-            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-            : 'border-border hover:border-brand-primary/30',
-        )}
-      >
-        <CardContent className="p-5">
-          <div className="flex items-start gap-3 min-w-0">
-            {/* Block icon - purely decorative now */}
-            <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center">
-              <BarChart className="h-6 w-6 text-brand-primary" />
-            </div>
+      <>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <Card
+              className={cn(
+                'w-full group border-2 transition-all overflow-hidden',
+                isActive
+                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                  : 'border-border hover:border-brand-primary/30',
+              )}
+            >
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3 min-w-0">
+              {/* Block icon - purely decorative now */}
+              <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center">
+                <BarChart className="h-6 w-6 text-brand-primary" />
+              </div>
 
-            {/* Content preview - clickable to open detail view */}
-            <div
-              className="flex-1 min-w-0 cursor-pointer"
-              onClick={(e) => {
-                console.log('🟡 Card clicked, opening detail view...');
-                onToggle();
+              {/* Content preview - clickable to open detail view */}
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={(e) => {
+                  console.log('🟡 Card clicked, opening detail view...');
+                  onToggle();
+                }}
+              >
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {isActive && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-md border border-primary/20 flex-shrink-0">
+                        <span className="text-xs font-medium text-primary">
+                          {tAnalysis('workingIn')}
+                        </span>
+                      </div>
+                    )}
+                    <h3 className="font-semibold text-base truncate min-w-0">
+                      {title}
+                    </h3>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                </div>
+
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
+                  {summary}
+                </p>
+
+                {/* Source chat jump button - only show if sourceChat exists */}
+                {block.sourceChat && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent card expansion
+                      selectChat(block.sourceChat!.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 mb-2 text-xs px-2.5 py-1.5 rounded-md border border-border/60 bg-background/80 text-foreground/70 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all group shadow-sm"
+                    title="Jump to source chat"
+                  >
+                    <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    <span className="font-medium">Jump to chat</span>
+                  </button>
+                )}
+
+                {/* Content type badges - simple unified style */}
+                <div className="flex items-center gap-2 text-xs">
+                  {hasText && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                      <FileText className="h-3 w-3" />
+                      Text
+                    </span>
+                  )}
+                  {hasChart && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                      <BarChart className="h-3 w-3" />
+                      Chart
+                    </span>
+                  )}
+                  {hasData && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                      <FileText className="h-3 w-3" />
+                      Data
+                    </span>
+                  )}
+                  <span className="text-muted-foreground ml-auto font-medium">
+                    {new Date(block.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <ContextMenuItem
+              className="cursor-pointer"
+              onSelect={handleTogglePin}
+              disabled={isPinning}
+            >
+              {isPinned ? (
+                <>
+                  <PinOff className="mr-2 h-4 w-4" />
+                  {tAnalysis('unpinBlock')}
+                </>
+              ) : (
+                <>
+                  <Pin className="mr-2 h-4 w-4" />
+                  {tAnalysis('pinBlock')}
+                </>
+              )}
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onSelect={() => {
+                console.log('🗑️ Delete menu item clicked, opening dialog...');
+                setShowDeleteDialog(true);
               }}
             >
-              <div className="flex items-center justify-between mb-2 gap-2">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  {isActive && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-md border border-primary/20 flex-shrink-0">
-                      <span className="text-xs font-medium text-primary">
-                        {tAnalysis('workingIn')}
-                      </span>
-                    </div>
-                  )}
-                  <h3 className="font-semibold text-base truncate min-w-0">
-                    {title}
-                  </h3>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-              </div>
+              <Trash2 className="mr-2 h-4 w-4" />
+              {tAnalysis('deleteBlock')}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
-                {summary}
-              </p>
-
-              {/* Source chat jump button - only show if sourceChat exists */}
-              {block.sourceChat && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card expansion
-                    selectChat(block.sourceChat!.id);
-                  }}
-                  className="inline-flex items-center gap-1.5 mb-2 text-xs px-2.5 py-1.5 rounded-md border border-border/60 bg-background/80 text-foreground/70 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all group shadow-sm"
-                  title="Jump to source chat"
-                >
-                  <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  <span className="font-medium">Jump to chat</span>
-                </button>
-              )}
-
-              {/* Content type badges - simple unified style */}
-              <div className="flex items-center gap-2 text-xs">
-                {hasText && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                    <FileText className="h-3 w-3" />
-                    Text
-                  </span>
-                )}
-                {hasChart && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                    <BarChart className="h-3 w-3" />
-                    Chart
-                  </span>
-                )}
-                {hasData && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                    <FileText className="h-3 w-3" />
-                    Data
-                  </span>
-                )}
-                <span className="text-muted-foreground ml-auto font-medium">
-                  {new Date(block.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Delete Confirmation Dialog - must be outside ContextMenu */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Analysis Block?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{title}"? This action cannot be undone.
+                All associated data and modification history will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
@@ -1144,6 +1282,29 @@ export function AnalysisBlockRenderer({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Analysis Block?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{title}"? This action cannot be undone.
+              All associated data and modification history will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

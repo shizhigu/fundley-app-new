@@ -18,7 +18,12 @@
       "Bash(awk:*)",
       "Bash(psql $DATABASE_URL -c \"\\d organizations\")",
       "WebSearch",
-      "WebFetch(domain:clerk.com)"
+      "WebFetch(domain:clerk.com)",
+      "Bash(psql:*)",
+      "Bash(export DATABASE_URL=\"postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-cool-salad-afap1kti-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\")",
+      "Bash(chmod:*)",
+      "Bash(node scripts/copy-metrics-to-all-users.mjs:*)",
+      "Bash(node -r dotenv/config:*)"
     ],
     "deny": [],
     "ask": [],

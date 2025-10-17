@@ -47,38 +47,13 @@ export async function POST(request: NextRequest) {
     const { title } = await request.json();
     const userId = session.user.id; // This is already the database UUID from auth()
 
-    // Get user organization info
-    const user = await db`
-      SELECT id, clerk_organization_id
-      FROM users
-      WHERE id = ${userId}
-    `;
-
-    // User should exist (created by auth system), but handle edge case
-    if (user.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Get organization if user belongs to one
-    let organizationId = null;
-    if (user[0].clerk_organization_id) {
-      const org = await db`
-        SELECT id
-        FROM organizations
-        WHERE clerk_organization_id = ${user[0].clerk_organization_id}
-      `;
-      if (org.length > 0) {
-        organizationId = org[0].id;
-      }
-    }
-
     // Generate unique ADK session ID
     const adkSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Create new chat with ADK session mapping
     const newChat = await db`
-      INSERT INTO chats (id, title, user_id, organization_id, langgraph_thread_id, created_at, updated_at)
-      VALUES (uuid_generate_v4(), ${title || 'New Chat'}, ${userId}, ${organizationId}, ${adkSessionId}, NOW(), NOW())
+      INSERT INTO chats (id, title, user_id, langgraph_thread_id, created_at, updated_at)
+      VALUES (uuid_generate_v4(), ${title || 'New Chat'}, ${userId}, ${adkSessionId}, NOW(), NOW())
       RETURNING id, title, langgraph_thread_id as "sessionId", created_at as "createdAt", updated_at as "updatedAt"
     `;
 

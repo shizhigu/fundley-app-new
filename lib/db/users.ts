@@ -7,7 +7,6 @@ import { db } from './config';
 export async function createOrUpdateUser(data: {
   clerkUserId: string;
   email?: string;
-  clerkOrganizationId?: string;
 }): Promise<void> {
   try {
     // Check if user exists
@@ -21,7 +20,6 @@ export async function createOrUpdateUser(data: {
         UPDATE users
         SET
           email = COALESCE(${data.email}, email),
-          clerk_organization_id = ${data.clerkOrganizationId},
           updated_at = NOW()
         WHERE clerk_user_id = ${data.clerkUserId}
       `;
@@ -33,7 +31,6 @@ export async function createOrUpdateUser(data: {
           id,
           email,
           clerk_user_id,
-          clerk_organization_id,
           created_at,
           updated_at
         )
@@ -41,7 +38,6 @@ export async function createOrUpdateUser(data: {
           uuid_generate_v4(),
           ${data.email || ''},
           ${data.clerkUserId},
-          ${data.clerkOrganizationId},
           NOW(),
           NOW()
         )

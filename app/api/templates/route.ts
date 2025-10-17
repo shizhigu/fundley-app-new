@@ -15,10 +15,10 @@ export async function GET() {
 
     // Get templates accessible to this user:
     // 1. Templates created by this user (private or public)
-    // 2. Public templates from same organization
+    // 2. Globally public templates (accessible to all users)
     const templates = await sql`
       WITH user_info AS (
-        SELECT id::text as user_id, organization_id FROM users WHERE clerk_user_id = ${userId} LIMIT 1
+        SELECT id::text as user_id FROM users WHERE clerk_user_id = ${userId} LIMIT 1
       )
       SELECT
         at.id,
@@ -30,13 +30,12 @@ export async function GET() {
         at.updated_at,
         at.is_public,
         at.user_id,
-        at.organization_id,
         CASE WHEN at.user_id = user_info.user_id THEN true ELSE false END as is_mine
       FROM analysis_templates at, user_info
       WHERE
         at.user_id = user_info.user_id
         OR
-        (at.is_public = true AND at.organization_id = user_info.organization_id)
+        at.is_public = true
       ORDER BY is_mine DESC, at.created_at DESC
     `;
 
@@ -51,7 +50,7 @@ export async function GET() {
         updated_at: t.updated_at,
         is_public: t.is_public,
         is_mine: t.is_mine,
-        source: t.is_mine ? 'My Template' : 'Team Template'
+        source: t.is_mine ? 'My Template' : 'Public Template'
       }))
     });
 

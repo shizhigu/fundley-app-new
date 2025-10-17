@@ -95,21 +95,34 @@ function FinancialDataPanelComponent() {
     return latexMetrics?.filter((metric) => metric.sqlFormula) || [];
   }, [latexMetrics]);
 
+  // Migrate selectedMetrics if IDs are invalid (due to metric ID changes)
+  useEffect(() => {
+    if (availableMetrics.length > 0 && selectedMetrics.length > 0) {
+      const currentIds = new Set(availableMetrics.map(m => m._id));
+      const hasInvalidIds = selectedMetrics.some(id => !currentIds.has(id));
+
+      if (hasInvalidIds) {
+        console.log('⚠️ Found invalid metric IDs, clearing selection');
+        setSelectedMetrics([]);
+      }
+    }
+  }, [availableMetrics, selectedMetrics, setSelectedMetrics]);
+
   // Initialize metric order
   useEffect(() => {
     if (availableMetrics.length > 0 && orderedMetrics.length === 0) {
       const savedOrder = localStorage.getItem('metric-selection-order');
       if (savedOrder) {
         try {
-          const savedIds = JSON.parse(savedOrder);
+          const savedNames = JSON.parse(savedOrder);
           const ordered: any[] = [];
-          const metricMap = new Map(availableMetrics.map((m) => [m._id, m]));
+          const metricMap = new Map(availableMetrics.map((m) => [m.name, m]));
 
-          savedIds.forEach((id: string) => {
-            const metric = metricMap.get(id);
+          savedNames.forEach((name: string) => {
+            const metric = metricMap.get(name);
             if (metric) {
               ordered.push(metric);
-              metricMap.delete(id);
+              metricMap.delete(name);
             }
           });
 
@@ -170,8 +183,8 @@ function FinancialDataPanelComponent() {
       newOrder.splice(dragOverIndex, 0, draggedItem);
 
       setOrderedMetrics(newOrder);
-      const orderIds = newOrder.map((m) => m._id);
-      localStorage.setItem('metric-selection-order', JSON.stringify(orderIds));
+      const orderNames = newOrder.map((m) => m.name);
+      localStorage.setItem('metric-selection-order', JSON.stringify(orderNames));
     }
     setDraggedIndex(null);
     setDragOverIndex(null);

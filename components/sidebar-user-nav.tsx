@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronUp, Building2, Settings, Moon, Sun, LogOut } from 'lucide-react';
+import { ChevronUp, Settings, Moon, Sun, LogOut } from 'lucide-react';
 import Image from 'next/image';
-import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -30,12 +30,10 @@ interface SidebarUserNavProps {
 
 export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const t = useTranslations('nav');
-  const tOrg = useTranslations('organization');
   const tTheme = useTranslations('theme');
   const router = useRouter();
-  const { signOut, openOrganizationProfile, openCreateOrganization } = useClerk();
+  const { signOut } = useClerk();
   const { isLoaded, user: clerkUser } = useUser();
-  const { organization } = useOrganization();
   const { setTheme, resolvedTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -86,12 +84,6 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
                   >
                     {displayEmail}
                   </span>
-                  {organization && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 truncate mt-0.5">
-                      <Building2 className="w-3 h-3 flex-shrink-0" />
-                      {organization.name}
-                    </span>
-                  )}
                 </div>
               </div>
               <ChevronUp className="ml-2 w-4 h-4 flex-shrink-0 text-muted-foreground" />
@@ -105,19 +97,6 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
           align="start"
           className="w-[--radix-popper-anchor-width]"
         >
-          {organization && (
-            <>
-              <DropdownMenuItem
-                className="cursor-pointer flex items-center gap-2"
-                onSelect={() => openOrganizationProfile()}
-              >
-                <Settings className="w-4 h-4" />
-                <span>{tOrg('settings')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-
           <DropdownMenuItem
             className="cursor-pointer flex items-center gap-2"
             onSelect={() => setSettingsOpen(true)}

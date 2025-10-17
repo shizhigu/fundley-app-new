@@ -111,6 +111,9 @@
     "duplicateBlock": "复制为新分析",
     "markAsTemplate": "标记为模板",
     "deleteBlock": "删除",
+    "pinBlock": "置顶",
+    "unpinBlock": "取消置顶",
+    "pinnedBlocks": "已置顶",
     "confirmDelete": "确定要删除这个分析块吗？",
     "fromChat": "来自对话",
     "newBlock": "新建",
@@ -127,7 +130,9 @@
     "blockSymbolsHint": "用逗号分隔多个股票代码",
     "create": "创建",
     "workingIn": "正在使用",
-    "workingInBlock": "正在分析"
+    "workingInBlock": "正在分析",
+    "sortByUpdated": "最近更新",
+    "sortByCreated": "最近创建"
   },
   "financialData": {
     "title": "财务数据分析",

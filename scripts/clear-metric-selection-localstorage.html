@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clear Metric Selection - Fundley</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #e55a2b;
+    }
+    button.secondary {
+      background: #666;
+    }
+    button.secondary:hover {
+      background: #555;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      border-left: 4px solid #2196f3;
+    }
+    .success {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      border-left: 4px solid #4caf50;
+      display: none;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🧹 Clear Metric Selection</h1>
+    <p class="subtitle">Fix invalid metric IDs in localStorage</p>
+
+    <div class="info">
+      <strong>Why do I need this?</strong>
+      <p>After copying metrics to all users, the metric IDs changed. This tool clears your saved metric selection so you can re-select metrics with the new IDs.</p>
+    </div>
+
+    <div id="current-state">
+      <h3>Current LocalStorage State</h3>
+      <pre id="storage-content"></pre>
+    </div>
+
+    <div style="margin: 20px 0;">
+      <button onclick="clearMetricSelection()">Clear Metric Selection</button>
+      <button class="secondary" onclick="clearAllFinancialData()">Clear All Financial Data</button>
+      <button class="secondary" onclick="location.reload()">Refresh</button>
+    </div>
+
+    <div id="success" class="success">
+      ✅ LocalStorage cleared successfully! Please refresh the Fundley app.
+    </div>
+  </div>
+
+  <script>
+    // Display current localStorage content
+    function displayCurrentState() {
+      const storageContent = document.getElementById('storage-content');
+      const keys = ['financial-data-storage', 'metric-selection-order'];
+      let content = '';
+
+      keys.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value) {
+          try {
+            const parsed = JSON.parse(value);
+            content += `${key}:\n${JSON.stringify(parsed, null, 2)}\n\n`;
+          } catch {
+            content += `${key}: ${value}\n\n`;
+          }
+        } else {
+          content += `${key}: (not found)\n\n`;
+        }
+      });
+
+      storageContent.textContent = content || '(no relevant data found)';
+    }
+
+    // Clear only metric selection
+    function clearMetricSelection() {
+      try {
+        // Get current storage
+        const storage = localStorage.getItem('financial-data-storage');
+        if (storage) {
+          const data = JSON.parse(storage);
+          // Clear selectedMetrics but keep other data
+          if (data.state && data.state.analysisForm) {
+            data.state.analysisForm.selectedMetrics = [];
+          }
+          localStorage.setItem('financial-data-storage', JSON.stringify(data));
+        }
+
+        document.getElementById('success').style.display = 'block';
+        displayCurrentState();
+        console.log('✅ Metric selection cleared');
+      } catch (error) {
+        alert('Error clearing metric selection: ' + error.message);
+      }
+    }
+
+    // Clear all financial data
+    function clearAllFinancialData() {
+      if (confirm('This will clear ALL financial data settings. Continue?')) {
+        try {
+          localStorage.removeItem('financial-data-storage');
+          localStorage.removeItem('metric-selection-order');
+
+          document.getElementById('success').style.display = 'block';
+          displayCurrentState();
+          console.log('✅ All financial data cleared');
+        } catch (error) {
+          alert('Error clearing data: ' + error.message);
+        }
+      }
+    }
+
+    // Initialize
+    displayCurrentState();
+  </script>
+</body>
+</html>

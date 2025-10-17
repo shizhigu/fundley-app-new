@@ -10,11 +10,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clerkUserId = session.user.clerkId;
+    const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    // Get user's accessible metrics via organization
+    // Get user's own metrics
     const metrics = await db`
       SELECT
         lm.id as "_id",
@@ -24,21 +24,15 @@ export async function GET(request: NextRequest) {
         lm.formula->>'sql' as "sqlFormula",
         lm.formula as "formula",
         lm.created_at as "createdAt",
-        lm.updated_at as "updatedAt",
-        o.name as "organizationName"
-      FROM users u
-      LEFT JOIN organizations o ON u.clerk_organization_id = o.clerk_organization_id
-      LEFT JOIN latex_metrics lm ON o.id = lm.organization_id
-      WHERE u.clerk_user_id = ${clerkUserId}
+        lm.updated_at as "updatedAt"
+      FROM latex_metrics lm
+      WHERE lm.user_id = ${userId}
         AND lm.is_active = true
       ORDER BY lm.name
       LIMIT ${limit}
     `;
 
-    // Filter out null results (users without organizations or metrics)
-    const validMetrics = metrics.filter(m => m._id !== null);
-
-    return NextResponse.json({ metrics: validMetrics });
+    return NextResponse.json({ metrics });
 
   } catch (error) {
     console.error('Error fetching LaTeX metrics:', error);
@@ -66,46 +60,12 @@ export async function POST(request: NextRequest) {
       category = 'custom'
     } = await request.json();
 
-    const clerkUserId = session.user.clerkId;
-
-    // Get user and organization
-    const user = await db`
-      SELECT id, clerk_organization_id
-      FROM users
-      WHERE clerk_user_id = ${clerkUserId}
-    `;
-
-    if (user.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const userId = user[0].id;
-    const clerkOrgId = user[0].clerk_organization_id;
-
-    if (!clerkOrgId) {
-      return NextResponse.json(
-        { error: 'User must belong to an organization to create metrics' },
-        { status: 400 }
-      );
-    }
-
-    // Get organization
-    const org = await db`
-      SELECT id
-      FROM organizations
-      WHERE clerk_organization_id = ${clerkOrgId}
-    `;
-
-    if (org.length === 0) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    const organizationId = org[0].id;
+    const userId = session.user.id;
 
     // Create new metric
     const newMetric = await db`
       INSERT INTO latex_metrics (
-        organization_id,
+        user_id,
         name,
         description,
         latex_code,
@@ -113,7 +73,7 @@ export async function POST(request: NextRequest) {
         created_by
       )
       VALUES (
-        ${organizationId},
+        ${userId},
         ${name},
         ${description},
         ${latexFormula},

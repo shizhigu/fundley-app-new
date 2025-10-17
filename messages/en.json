@@ -110,6 +110,9 @@
     "duplicateBlock": "Duplicate as new analysis",
     "markAsTemplate": "Mark as template",
     "deleteBlock": "Delete",
+    "pinBlock": "Pin to Top",
+    "unpinBlock": "Unpin",
+    "pinnedBlocks": "Pinned",
     "confirmDelete": "Are you sure you want to delete this analysis block?",
     "fromChat": "From chat",
     "newBlock": "New",
@@ -126,7 +129,9 @@
     "blockSymbolsHint": "Separate multiple symbols with commas",
     "create": "Create",
     "workingIn": "Working In",
-    "workingInBlock": "Analyzing"
+    "workingInBlock": "Analyzing",
+    "sortByUpdated": "Recently Updated",
+    "sortByCreated": "Recently Created"
   },
   "financialData": {
     "title": "Financial Data Analysis",

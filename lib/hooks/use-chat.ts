@@ -239,6 +239,9 @@ export function useChat(): ChatState & ChatActions {
   const loadMessages = useCallback(async (chatId: string, retryCount = 0) => {
     if (!chatId) return;
 
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [300, 500, 1000]; // 递增的延迟时间
+
     const convertMessageInternal = (msg: any): ChatMessage => {
       let parts = msg.parts || [{ type: 'text', text: msg.content || '' }];
 
@@ -309,28 +312,42 @@ export function useChat(): ChatState & ChatActions {
     };
 
     try {
-      setIsLoading(true);
+      // 只在第一次尝试时设置loading状态
+      if (retryCount === 0) {
+        setIsLoading(true);
+      }
+
       const response = await fetch(`/api/chats/${chatId}/messages`);
 
-      // 如果是404且是首次尝试，可能是新chat的数据库同步问题，重试一次
+      // 改进的重试机制：对所有失败情况都支持重试（最多3次）
       if (!response.ok) {
-        if (response.status === 404 && retryCount === 0) {
-          console.warn('📍 Chat not found (new user sync issue), retrying after 200ms...');
-          await new Promise(resolve => setTimeout(resolve, 200));
+        if (retryCount < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[retryCount] || 1000;
+          console.warn(`⚠️ Failed to fetch messages (status: ${response.status}), retrying in ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+
+          // 在重试期间保持loading状态，不显示错误
+          await new Promise(resolve => setTimeout(resolve, delay));
           return loadMessages(chatId, retryCount + 1); // 递归重试
         }
-        throw new Error('Failed to fetch messages');
+
+        // 所有重试都失败后才抛出错误
+        throw new Error(`Failed to fetch messages after ${MAX_RETRIES} attempts`);
       }
 
       const data = await response.json();
       const convertedMessages = data.messages.map(convertMessageInternal);
       setMessages(convertedMessages);
       setError(null); // 清除之前的错误
+      setIsLoading(false); // 成功后清除loading
+      console.log(`✅ Successfully loaded ${convertedMessages.length} messages`);
     } catch (err) {
       console.error('Error loading messages:', err);
-      setError('Failed to load messages');
-    } finally {
-      setIsLoading(false);
+      // 只在所有重试都失败后才设置错误状态
+      if (retryCount >= MAX_RETRIES) {
+        setError('Failed to load messages. Please refresh the page.');
+        setIsLoading(false); // 最终失败后清除loading
+      }
+      // 否则继续保持loading状态，等待重试
     }
   }, []);
 
@@ -742,9 +759,23 @@ export function useChat(): ChatState & ChatActions {
   // 删除自动创建聊天的逻辑
 
   // 当聊天ID改变时，加载对应的消息
+  // 添加初始延迟，确保认证完全就绪
   useEffect(() => {
     if (currentChatId) {
-      loadMessages(currentChatId);
+      // 如果是从localStorage恢复的，给认证系统一些准备时间
+      const isRestoredFromStorage = typeof window !== 'undefined' &&
+        localStorage.getItem('lastSelectedChatId') === currentChatId;
+
+      if (isRestoredFromStorage) {
+        console.log('📌 Restored chatId from localStorage, waiting 500ms before loading messages...');
+        const timer = setTimeout(() => {
+          loadMessages(currentChatId);
+        }, 500);
+        return () => clearTimeout(timer);
+      } else {
+        // 新选择的chat，立即加载
+        loadMessages(currentChatId);
+      }
     }
   }, [currentChatId, loadMessages]);
 
