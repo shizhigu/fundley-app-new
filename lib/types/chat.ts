@@ -97,6 +97,8 @@ import type {
 export interface FinancialSessionState {
   financial_metrics_data?: FinancialDataPoint[];
   available_metrics?: AvailableMetric[];
+  current_block_id?: string; // 当前工作的 Analysis Block ID
+  current_block_content?: any; // 当前 Block 的完整内容
 }
 
 // ============ 组件Props类型 ============
