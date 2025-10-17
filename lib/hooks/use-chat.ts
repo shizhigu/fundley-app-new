@@ -131,6 +131,11 @@ export function useChat(): ChatState & ChatActions {
       if (!response.ok) throw new Error('Failed to create chat');
 
       const data = await response.json();
+
+      // 为新用户添加小延迟，确保数据库同步完成
+      // 这解决了新用户首次创建chat时的"Failed to load messages"错误
+      await new Promise(resolve => setTimeout(resolve, 150));
+
       await refreshChats(); // 刷新聊天列表
       return data.chat.id;
     } catch (err) {
@@ -231,17 +236,96 @@ export function useChat(): ChatState & ChatActions {
 
   // ============ 消息管理操作 ============
 
-  const loadMessages = useCallback(async (chatId: string) => {
+  const loadMessages = useCallback(async (chatId: string, retryCount = 0) => {
     if (!chatId) return;
+
+    const convertMessageInternal = (msg: any): ChatMessage => {
+      let parts = msg.parts || [{ type: 'text', text: msg.content || '' }];
+
+      // 处理工具结果
+      if (msg.role === 'tool' && msg.tool_result) {
+        let toolResult;
+        try {
+          toolResult =
+            typeof msg.tool_result === 'string'
+              ? JSON.parse(msg.tool_result)
+              : msg.tool_result;
+        } catch (e) {
+          toolResult = msg.tool_result;
+        }
+
+        // 前端可视化
+        if (
+          toolResult?.type === 'frontend_visualization' &&
+          toolResult.chartjsConfig
+        ) {
+          parts = [
+            {
+              type: 'visualization',
+              chartjsConfig: toolResult.chartjsConfig,
+              title: toolResult.title || 'Chart',
+              description: toolResult.description || 'Generated visualization',
+            },
+          ];
+        }
+        // 网络搜索
+        else if (msg.tool_name === 'web_search' && toolResult) {
+          const query = msg.tool_args?.query || 'Search results';
+          const results =
+            toolResult.citations?.map((url: string) => ({
+              title: new URL(url).hostname,
+              url,
+              snippet: '',
+              source: new URL(url).hostname,
+            })) || [];
+
+          parts = [
+            {
+              type: 'web_search',
+              query,
+              results,
+              summary: toolResult.content || toolResult.summary,
+            },
+          ];
+        }
+        // 其他工具
+        else if (msg.tool_name) {
+          parts = [
+            {
+              type: 'tool_status',
+              name: msg.tool_name,
+              status: 'completed',
+              displayResult: msg.content || 'Tool completed successfully',
+              formattedData: toolResult,
+            },
+          ];
+        }
+      }
+
+      return {
+        ...msg,
+        parts,
+      };
+    };
 
     try {
       setIsLoading(true);
       const response = await fetch(`/api/chats/${chatId}/messages`);
-      if (!response.ok) throw new Error('Failed to fetch messages');
+
+      // 如果是404且是首次尝试，可能是新chat的数据库同步问题，重试一次
+      if (!response.ok) {
+        if (response.status === 404 && retryCount === 0) {
+          console.warn('📍 Chat not found (new user sync issue), retrying after 200ms...');
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return loadMessages(chatId, retryCount + 1); // 递归重试
+        }
+        throw new Error('Failed to fetch messages');
+      }
 
       const data = await response.json();
-      const convertedMessages = data.messages.map(convertMessage);
+      const convertedMessages = data.messages.map(convertMessageInternal);
       setMessages(convertedMessages);
+      setError(null); // 清除之前的错误
     } catch (err) {
       console.error('Error loading messages:', err);
       setError('Failed to load messages');
