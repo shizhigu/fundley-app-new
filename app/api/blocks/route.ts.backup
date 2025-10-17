@@ -1,0 +1,294 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/clerk';
+import { db } from '@/lib/db/config';
+
+// GET /api/blocks - List user's analysis blocks
+// Supports two views:
+// - contextual: Blocks from a specific chat (Phase 1)
+// - library: All user's blocks with search/filter (Phase 2)
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const searchParams = request.nextUrl.searchParams;
+    const view = searchParams.get('view') || 'contextual';
+    const chatId = searchParams.get('chatId');
+    const search = searchParams.get('search');
+    const symbols = searchParams.get('symbols')?.split(',').filter(Boolean);
+    const tags = searchParams.get('tags')?.split(',').filter(Boolean);
+    const isTemplate = searchParams.get('isTemplate');
+
+    // Contextual view: Blocks from specific chat
+    if (view === 'contextual') {
+      if (!chatId) {
+        return NextResponse.json(
+          { error: 'chatId is required for contextual view' },
+          { status: 400 }
+        );
+      }
+
+      // Option 1: Use source_chat_id (new field for notebook workflow)
+      // Option 2: Use chat_id (existing field for backward compatibility)
+      // We'll support both for migration period
+      const blocks = await db`
+        SELECT
+          ab.id,
+          ab.chat_id as "chatId",
+          ab.user_id as "userId",
+          ab.source_chat_id as "sourceChatId",
+          ab.created_in_message_id as "createdInMessageId",
+          ab.title,
+          ab.notebook_path as "notebookPath",
+          ab.symbols,
+          ab.tags,
+          ab.description,
+          ab.is_template as "isTemplate",
+          ab.template_category as "templateCategory",
+          ab.created_at as "createdAt",
+          ab.updated_at as "updatedAt",
+          ab.last_accessed_at as "lastAccessedAt",
+          ab.content,
+          -- Include source chat info for traceability
+          c.id as "sourceChat.id",
+          c.title as "sourceChat.title"
+        FROM analysis_blocks ab
+        LEFT JOIN chats c ON ab.source_chat_id = c.id
+        WHERE (ab.source_chat_id = ${chatId} OR ab.chat_id = ${chatId})
+          AND (ab.user_id = ${userId} OR ab.user_id IS NULL)
+        ORDER BY ab.created_at DESC
+      `;
+
+      // Transform flat result to nested structure
+      const transformedBlocks = blocks.map((block: any) => {
+        // Fallback: if title is null, try to get it from content.title (legacy data)
+        const title = block.title || block.content?.title || 'Untitled Analysis';
+
+        return {
+          id: block.id,
+          userId: block.userId,
+          sourceChatId: block.sourceChatId || block.chatId, // Fallback to chatId for legacy data
+          createdInMessageId: block.createdInMessageId,
+          title,
+          notebookPath: block.notebookPath,
+          symbols: block.symbols || [],
+          tags: block.tags || [],
+          description: block.description || block.content?.text?.substring(0, 100), // Fallback to content.text preview
+          isTemplate: block.isTemplate || false,
+          templateCategory: block.templateCategory,
+          createdAt: block.createdAt,
+          updatedAt: block.updatedAt || block.createdAt,
+          lastAccessedAt: block.lastAccessedAt,
+          content: block.content,
+          // Legacy field names for backward compatibility with AnalysisBlockRenderer
+          created_at: block.createdAt,
+          updated_at: block.updatedAt || block.createdAt,
+          chat_id: block.sourceChatId || block.chatId,
+          sourceChat: block['sourceChat.id']
+            ? {
+                id: block['sourceChat.id'],
+                title: block['sourceChat.title'],
+              }
+            : undefined,
+        };
+      });
+
+      return NextResponse.json({ blocks: transformedBlocks });
+    }
+
+    // Library view: All user's blocks with filters (Phase 2)
+    if (view === 'library') {
+      const limit = parseInt(searchParams.get('limit') || '50', 10);
+      const offset = parseInt(searchParams.get('offset') || '0', 10);
+
+      let query = db`
+        SELECT
+          ab.id,
+          ab.user_id as "userId",
+          ab.source_chat_id as "sourceChatId",
+          ab.created_in_message_id as "createdInMessageId",
+          ab.title,
+          ab.notebook_path as "notebookPath",
+          ab.symbols,
+          ab.tags,
+          ab.description,
+          ab.is_template as "isTemplate",
+          ab.template_category as "templateCategory",
+          ab.created_at as "createdAt",
+          ab.updated_at as "updatedAt",
+          ab.last_accessed_at as "lastAccessedAt",
+          ab.content,
+          c.id as "sourceChat.id",
+          c.title as "sourceChat.title"
+        FROM analysis_blocks ab
+        LEFT JOIN chats c ON ab.source_chat_id = c.id
+        WHERE ab.user_id = ${userId}
+        ORDER BY ab.created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      // Apply filters
+      const conditions = [];
+
+      if (search) {
+        conditions.push(db`(
+          ab.title ILIKE ${`%${search}%`} OR
+          ab.description ILIKE ${`%${search}%`}
+        )`);
+      }
+
+      if (symbols && symbols.length > 0) {
+        conditions.push(db`ab.symbols && ${symbols}`);
+      }
+
+      if (tags && tags.length > 0) {
+        conditions.push(db`ab.tags && ${tags}`);
+      }
+
+      if (isTemplate !== null) {
+        conditions.push(db`ab.is_template = ${isTemplate === 'true'}`);
+      }
+
+      // Note: This is a simplified version. In production, you'd use a proper query builder
+      // For now, fetch all and filter in memory for Phase 2
+      const blocks = await query;
+
+      // Transform flat result to nested structure
+      const transformedBlocks = blocks.map((block: any) => ({
+        id: block.id,
+        userId: block.userId,
+        sourceChatId: block.sourceChatId,
+        createdInMessageId: block.createdInMessageId,
+        title: block.title,
+        notebookPath: block.notebookPath,
+        symbols: block.symbols || [],
+        tags: block.tags || [],
+        description: block.description,
+        isTemplate: block.isTemplate || false,
+        templateCategory: block.templateCategory,
+        createdAt: block.createdAt,
+        updatedAt: block.updatedAt,
+        lastAccessedAt: block.lastAccessedAt,
+        content: block.content,
+        // Legacy field names for backward compatibility with AnalysisBlockRenderer
+        created_at: block.createdAt,
+        updated_at: block.updatedAt,
+        chat_id: block.sourceChatId,
+        sourceChat: block['sourceChat.id']
+          ? {
+              id: block['sourceChat.id'],
+              title: block['sourceChat.title'],
+            }
+          : undefined,
+      }));
+
+      return NextResponse.json({ blocks: transformedBlocks });
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid view parameter' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Error fetching blocks:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch blocks' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/blocks - Create new analysis block
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const body = await request.json();
+
+    const {
+      sourceChatId,
+      createdInMessageId,
+      title,
+      notebookPath,
+      symbols,
+      tags,
+      description,
+      isTemplate,
+      templateCategory,
+      content,
+    } = body;
+
+    if (!title) {
+      return NextResponse.json(
+        { error: 'title is required' },
+        { status: 400 }
+      );
+    }
+
+    // Create new block
+    const newBlock = await db`
+      INSERT INTO analysis_blocks (
+        id,
+        user_id,
+        source_chat_id,
+        created_in_message_id,
+        title,
+        notebook_path,
+        symbols,
+        tags,
+        description,
+        is_template,
+        template_category,
+        content,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        uuid_generate_v4(),
+        ${userId},
+        ${sourceChatId || null},
+        ${createdInMessageId || null},
+        ${title},
+        ${notebookPath || null},
+        ${symbols || []},
+        ${tags || []},
+        ${description || null},
+        ${isTemplate || false},
+        ${templateCategory || null},
+        ${JSON.stringify(content || {})},
+        NOW(),
+        NOW()
+      )
+      RETURNING
+        id,
+        user_id as "userId",
+        source_chat_id as "sourceChatId",
+        created_in_message_id as "createdInMessageId",
+        title,
+        notebook_path as "notebookPath",
+        symbols,
+        tags,
+        description,
+        is_template as "isTemplate",
+        template_category as "templateCategory",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+    `;
+
+    return NextResponse.json({ block: newBlock[0] });
+  } catch (error) {
+    console.error('Error creating block:', error);
+    return NextResponse.json(
+      { error: 'Failed to create block' },
+      { status: 500 }
+    );
+  }
+}

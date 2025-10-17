@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
 import { InvocationGroup } from '@/components/invocation-group';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
+import { useBlockViewStore } from '@/stores/block-view-store';
 import type { ChatMessage } from '@/lib/types/chat';
 import type { MessageInvocation, Attachment } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -18,7 +19,7 @@ interface NewChatInterfaceProps {
   groupedMessages?: MessageInvocation[]; // Add grouped messages support
   isLoading: boolean;
   error: string | null;
-  onSendMessage: (content: string, files?: File[]) => Promise<void>;
+  onSendMessage: (content: string, files?: File[], blockId?: string) => Promise<void>;
   isReadonly?: boolean;
 }
 
@@ -38,10 +39,23 @@ export function NewChatInterface({
 }: NewChatInterfaceProps) {
   const t = useTranslations('common');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const { activeBlockId } = useBlockViewStore();
 
   // 滚动控制
   const { containerRef, endRef, isAtBottom, scrollToBottom } =
     useScrollToBottom();
+
+  // Auto-scroll to bottom when chat changes or messages load
+  useEffect(() => {
+    // Wait for messages to render, then scroll to bottom
+    const timer = setTimeout(() => {
+      if (messages.length > 0) {
+        scrollToBottom();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [chatId, messages.length, scrollToBottom]);
 
   // 发送消息处理
   const handleSendMessage = async (
@@ -56,8 +70,10 @@ export function NewChatInterface({
         ?.map((attachment) => attachment.file)
         .filter(Boolean) as File[];
 
-      // 调用外部的发送消息函数
-      await onSendMessage(content, files);
+      console.log('🔵 Sending message with activeBlockId:', activeBlockId);
+
+      // 调用外部的发送消息函数，传递当前激活的 blockId
+      await onSendMessage(content, files, activeBlockId || undefined);
 
       // 发送后清空attachments
       setAttachments([]);

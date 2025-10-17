@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
+import { useBlockViewStore } from '@/stores/block-view-store';
 import type {
   Chat,
   ChatMessage,
@@ -35,11 +36,23 @@ export function useChat(): ChatState & ChatActions {
     null,
   );
 
+  // 跟踪 block 工具调用，用于触发轮询
+  const [blockToolCalled, setBlockToolCalled] = useState<number>(0);
+
   // ============ 财务数据集成 ============
   const financialData = useFinancialDataStore((state) => state.data);
   const availableMetrics = useFinancialDataStore(
     (state) => state.availableMetrics,
   );
+
+  // ============ Block 数据集成 ============
+  const activeBlockId = useBlockViewStore((state) => state.activeBlockId);
+  const activeBlockContent = useBlockViewStore((state) => state.activeBlockContent);
+
+  // Debug: Log store state
+  useEffect(() => {
+    console.log('🔍 Block store state in useChat:', { activeBlockId, hasContent: !!activeBlockContent });
+  }, [activeBlockId, activeBlockContent]);
 
   // 构建财务数据会话状态 - 不使用useCallback，确保每次都获取最新数据
   const buildSessionState = (): FinancialSessionState => {
@@ -238,7 +251,7 @@ export function useChat(): ChatState & ChatActions {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string, files?: File[]) => {
+    async (content: string, files?: File[], blockId?: string) => {
       if (!currentChatId || !content.trim()) return;
 
       // 记录发送消息时的 chatId，用于验证流式响应
@@ -253,8 +266,44 @@ export function useChat(): ChatState & ChatActions {
 
         // 构建请求
         const sessionState = buildSessionState();
+
+        // 实时从 localStorage 读取 activeBlockId（避免 React state 同步问题）
+        const storedBlockId = typeof window !== 'undefined' ? localStorage.getItem('activeBlockId') : null;
+        const storedBlockContent = typeof window !== 'undefined' ? localStorage.getItem('activeBlockContent') : null;
+
+        console.log('📍 localStorage check before sending:', {
+          storedBlockId,
+          hasStoredContent: !!storedBlockContent,
+          paramBlockId: blockId
+        });
+
+        // 优先使用参数传入的 blockId，其次使用 localStorage
+        const workingBlockId = blockId || storedBlockId;
+
+        if (workingBlockId) {
+          sessionState['current_block_id'] = workingBlockId;
+
+          // 如果有完整的 block 内容，也添加到 sessionState
+          if (storedBlockContent) {
+            try {
+              sessionState['current_block_content'] = JSON.parse(storedBlockContent);
+            } catch (e) {
+              console.warn('Failed to parse stored block content:', e);
+            }
+          }
+
+          console.log('📌 Working in block (from localStorage):', {
+            blockId: workingBlockId,
+            hasContent: !!sessionState['current_block_content']
+          });
+        }
+
+        console.log('📤 Final sessionState keys:', Object.keys(sessionState));
         console.log('📤 Sending message with sessionState:', {
           chatId: messageChatId,
+          blockId: blockId || 'none',
+          hasBlockId: !!sessionState['current_block_id'],
+          hasBlockContent: !!sessionState['current_block_content'],
           hasFinancialData: !!sessionState['financial_metrics_data']?.length,
           financialDataLength:
             sessionState['financial_metrics_data']?.length || 0,
@@ -388,6 +437,15 @@ export function useChat(): ChatState & ChatActions {
                 return [...prev, convertedMessage];
               }
             });
+
+            // 检测 block 工具调用，触发轮询
+            if (event.type === 'tool_complete' && event.message.tool_name) {
+              const toolName = event.message.tool_name;
+              if (toolName === 'create_analysis_block' || toolName === 'update_analysis_block') {
+                console.log(`🎯 Block tool called: ${toolName}, triggering polling`);
+                setBlockToolCalled(prev => prev + 1); // 增量更新触发轮询
+              }
+            }
           }
           break;
 
@@ -649,6 +707,7 @@ export function useChat(): ChatState & ChatActions {
     groupedMessages, // 新增分组消息
     isLoading,
     error,
+    blockToolCalled, // Block 工具调用触发器
 
     // 操作
     createChat,

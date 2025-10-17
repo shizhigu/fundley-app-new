@@ -57,6 +57,55 @@ export interface VisualizationCache {
   updatedAt: number;
 }
 
+// Analysis Blocks (Notebook-based workflow)
+export interface AnalysisBlock {
+  id: string;
+  userId: string;
+
+  // Mixed approach: Independent storage with source tracking
+  sourceChatId?: string;
+  createdInMessageId?: string;
+
+  // Notebook workflow
+  title: string;
+  notebookPath?: string;
+
+  // Metadata for organization and discovery
+  symbols?: string[];
+  tags?: string[];
+  description?: string;
+
+  // Template features
+  isTemplate: boolean;
+  templateCategory?: string;
+
+  // Flexible content (JSONB)
+  content?: any;
+
+  // Legacy field for backward compatibility
+  chatId?: string;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  lastAccessedAt?: string;
+
+  // Resolved relationships
+  sourceChat?: {
+    id: string;
+    title: string;
+  };
+}
+
+// Block references for knowledge graph (Phase 3)
+export interface BlockReference {
+  id: string;
+  fromBlockId: string;
+  toBlockId: string;
+  referenceType?: string;
+  createdAt: string;
+}
+
 // Legacy types for backward compatibility
 export interface Suggestion {
   id: string;

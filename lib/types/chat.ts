@@ -66,6 +66,7 @@ export interface ChatState {
   groupedMessages: import('@/lib/types').MessageInvocation[]; // Add grouped messages
   isLoading: boolean;
   error: string | null;
+  blockToolCalled: number; // Block 工具调用计数器，用于触发轮询
 }
 
 export interface ChatActions {

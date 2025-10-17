@@ -40,7 +40,6 @@
 }
 
 /* Import other styles */
-@import '../styles/tiptap.css';
 @import '../styles/memo-styles.css';
 
 @tailwind base;
@@ -228,4 +227,3 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
-

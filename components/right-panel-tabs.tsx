@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
 import { AnalysisBlocksPanel } from './analysis-blocks-panel';
 import { ScreenerPanel } from './screener-panel';
+import { WatchlistPanel } from './watchlist-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist';
 
 interface Tab {
   id: TabType;
@@ -27,9 +28,15 @@ function RightPanelTabsComponent() {
   const tabs: Tab[] = [
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
+    { id: 'watchlist', label: t('watchlist'), icon: Star },
     { id: 'screener', label: t('screener'), icon: Search },
     { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
+
+  // Handle tab change
+  const handleTabChange = (tabId: TabType) => {
+    setActiveTab(tabId);
+  };
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
@@ -46,7 +53,7 @@ function RightPanelTabsComponent() {
               role="tab"
               aria-selected={isActive}
               aria-controls={`${tab.id}-panel`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
                 isActive
@@ -78,6 +85,12 @@ function RightPanelTabsComponent() {
                 Select a chat to view analysis blocks
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'watchlist' && (
+          <div id="watchlist-panel" role="tabpanel" aria-labelledby="watchlist-tab" className="h-full">
+            <WatchlistPanel />
           </div>
         )}
 

@@ -23,6 +23,7 @@ import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 import { StockLoader } from './stock-loader';
+import { CollapsibleUserMessage } from './collapsible-user-message';
 
 // Chart.js visualization engine for frontend execution
 const JSVisualizationEngine = {
@@ -504,7 +505,7 @@ const PurePreviewMessage = ({
                         })}
                       >
                         {message.role === 'user' ? (
-                          <div className="whitespace-pre-wrap">{parsedMessage.content}</div>
+                          <CollapsibleUserMessage content={parsedMessage.content} />
                         ) : (
                           <Markdown>{parsedMessage.content}</Markdown>
                         )}

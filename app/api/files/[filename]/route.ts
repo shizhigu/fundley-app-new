@@ -5,9 +5,9 @@ import { db } from '@/lib/db/config'
 /**
  * API endpoint to serve files from analysis blocks
  *
- * GET /api/files/[filename]?session_id={chatId}
+ * GET /api/files/[filename]?block_id={blockId}
  *
- * Files are stored on Python server at: /tmp/fundley/{user_id}/{session_id}/{filename}
+ * Files are stored on Python server at: /tmp/fundley/{user_id}/blocks/{block_id}/{filename}
  * This endpoint acts as a proxy to the Python file service
  */
 export async function GET(
@@ -21,14 +21,14 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Get session_id (chat_id) and download flag from query params
+    // 2. Get block_id and download flag from query params
     const searchParams = request.nextUrl.searchParams
-    const sessionId = searchParams.get('session_id')
+    const blockId = searchParams.get('block_id')
     const download = searchParams.get('download') === 'true'
     const blockTitle = searchParams.get('title') || 'analysis'
 
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
+    if (!blockId) {
+      return NextResponse.json({ error: 'Missing block_id' }, { status: 400 })
     }
 
     // 3. Validate filename (security check)
@@ -50,9 +50,9 @@ export async function GET(
 
     // 5. Forward request to Python file service
     const pythonServiceUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8012'
-    const pythonFileUrl = `${pythonServiceUrl}/api/v1/analysis/files/${dbUserId}/${sessionId}/${filename}`
+    const pythonFileUrl = `${pythonServiceUrl}/api/v1/analysis/files/${dbUserId}/blocks/${blockId}/${filename}`
 
-    console.log(`📁 [File Proxy] Fetching: ${filename} for user ${dbUserId}, session ${sessionId}`)
+    console.log(`📁 [File Proxy] Fetching: ${filename} for user ${dbUserId}, block ${blockId}`)
 
     const response = await fetch(pythonFileUrl)
 
