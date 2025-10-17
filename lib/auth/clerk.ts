@@ -1,4 +1,4 @@
-import { auth as clerkAuth, currentUser } from '@clerk/nextjs/server';
+import { auth as clerkAuth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/lib/db/config';
 
 export type UserType = 'guest' | 'regular';
@@ -71,13 +71,16 @@ export async function auth(): Promise<AuthSession> {
         } else {
           // Create new organization in our database
           try {
+            // Generate slug from clerk org ID (remove 'org_' prefix and take first 12 chars)
+            const slugFromClerkId = clerkOrgId.replace('org_', '').substring(0, 12).toLowerCase();
+
             const newOrgs = await db`
-              INSERT INTO organizations (id, name, clerk_organization_id, created_at, updated_at)
-              VALUES (uuid_generate_v4(), 'Organization', ${clerkOrgId}, NOW(), NOW())
+              INSERT INTO organizations (id, name, slug, clerk_organization_id, created_at, updated_at)
+              VALUES (uuid_generate_v4(), 'Organization', ${slugFromClerkId}, ${clerkOrgId}, NOW(), NOW())
               RETURNING id
             `;
             organizationId = newOrgs[0].id;
-            console.log(`✅ [Auth] Created new organization: ${organizationId} for Clerk org: ${clerkOrgId}`);
+            console.log(`✅ [Auth] Created new organization: ${organizationId} (slug: ${slugFromClerkId}) for Clerk org: ${clerkOrgId}`);
           } catch (orgError) {
             console.error(`⚠️ [Auth] Failed to create organization for ${clerkOrgId}:`, orgError);
             // Continue without organization_id - user can still be created
@@ -135,13 +138,16 @@ export async function auth(): Promise<AuthSession> {
           organizationId = existingOrgs[0].id;
         } else {
           try {
+            // Generate slug from clerk org ID (remove 'org_' prefix and take first 12 chars)
+            const slugFromClerkId = clerkOrgId.replace('org_', '').substring(0, 12).toLowerCase();
+
             const newOrgs = await db`
-              INSERT INTO organizations (id, name, clerk_organization_id, created_at, updated_at)
-              VALUES (uuid_generate_v4(), 'Organization', ${clerkOrgId}, NOW(), NOW())
+              INSERT INTO organizations (id, name, slug, clerk_organization_id, created_at, updated_at)
+              VALUES (uuid_generate_v4(), 'Organization', ${slugFromClerkId}, ${clerkOrgId}, NOW(), NOW())
               RETURNING id
             `;
             organizationId = newOrgs[0].id;
-            console.log(`✅ [Auth] Created new organization: ${organizationId} for Clerk org: ${clerkOrgId}`);
+            console.log(`✅ [Auth] Created new organization: ${organizationId} (slug: ${slugFromClerkId}) for Clerk org: ${clerkOrgId}`);
           } catch (orgError) {
             console.error(`⚠️ [Auth] Failed to create organization for ${clerkOrgId}:`, orgError);
           }

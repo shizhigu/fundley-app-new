@@ -15,7 +15,10 @@
       "Bash(pnpm exec next lint:*)",
       "Bash(python:*)",
       "Bash(python3:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(psql $DATABASE_URL -c \"\\d organizations\")",
+      "WebSearch",
+      "WebFetch(domain:clerk.com)"
     ],
     "deny": [],
     "ask": [],

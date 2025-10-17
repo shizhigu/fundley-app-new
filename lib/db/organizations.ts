@@ -28,6 +28,10 @@ export async function createOrUpdateOrganization(data: {
       console.log(`✅ [PG] Organization updated: ${data.name} (${data.clerkOrganizationId})`);
     } else {
       // Create new organization
+      // Generate slug from clerk org ID if not provided
+      const slug = data.slug || data.clerkOrganizationId.replace('org_', '').substring(0, 12).toLowerCase();
+      const name = data.name || 'Organization';
+
       await db`
         INSERT INTO organizations (
           id,
@@ -39,14 +43,14 @@ export async function createOrUpdateOrganization(data: {
         )
         VALUES (
           uuid_generate_v4(),
-          ${data.name || ''},
-          ${data.slug || ''},
+          ${name},
+          ${slug},
           ${data.clerkOrganizationId},
           NOW(),
           NOW()
         )
       `;
-      console.log(`✅ [PG] Organization created: ${data.name} (${data.clerkOrganizationId})`);
+      console.log(`✅ [PG] Organization created: ${name} (slug: ${slug}, clerk_id: ${data.clerkOrganizationId})`);
     }
   } catch (error) {
     console.error('❌ [PG] Error creating/updating organization:', error);
