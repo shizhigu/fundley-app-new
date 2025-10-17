@@ -22,6 +22,7 @@ import {
  * - organization.updated: Update organization details
  * - organization.deleted: Mark organization as deleted (soft delete)
  * - organizationMembership.created: Link user to organization
+ * - organizationMembership.updated: Update user-organization relationship (e.g., role changes)
  * - organizationMembership.deleted: Unlink user from organization
  */
 export async function POST(req: Request) {
@@ -139,6 +140,20 @@ export async function POST(req: Request) {
         if (public_user_data?.user_id) {
           await unlinkUserFromOrganization(public_user_data.user_id);
           console.log(`✅ [Webhook] User ${public_user_data.user_id} unlinked from organization`);
+        }
+        break;
+      }
+
+      case 'organizationMembership.updated': {
+        const { organization, public_user_data } = evt.data;
+
+        // 当用户的组织成员关系更新时（如角色变更），确保关联正确
+        if (organization?.id && public_user_data?.user_id) {
+          await linkUserToOrganization(
+            public_user_data.user_id,
+            organization.id
+          );
+          console.log(`✅ [Webhook] User ${public_user_data.user_id} membership updated in org ${organization.id}`);
         }
         break;
       }
