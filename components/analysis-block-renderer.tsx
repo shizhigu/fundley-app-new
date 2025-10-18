@@ -49,6 +49,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -812,7 +819,7 @@ export function AnalysisBlockRenderer({
             )}
             {charts.map((chartFile: string, index: number) => (
               <div
-                key={chartFile}
+                key={`${chartFile}-${index}`}
                 className="border rounded-lg overflow-hidden w-full max-w-full"
               >
                 <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -902,7 +909,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {reports.map((reportFile: string, index: number) => (
                 <Button
-                  key={index}
+                  key={`${reportFile}-${index}`}
                   onClick={() => handleDownloadPDF(reportFile)}
                   variant="outline"
                   className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
@@ -978,23 +985,28 @@ export function AnalysisBlockRenderer({
               </div>
             </div>
 
-            {/* Tab navigation for multiple data files */}
+            {/* Dropdown selector for multiple data files */}
             {isDataExpanded && dataFiles.length > 1 && (
-              <div className="flex gap-1 px-3 py-2 bg-muted/50 border-t overflow-x-auto">
-                {dataFiles.map((file: string, index: number) => (
-                  <button
-                    key={file}
-                    onClick={() => setSelectedDataIndex(index)}
-                    className={cn(
-                      'px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap',
-                      selectedDataIndex === index
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
-                    )}
-                  >
-                    {tAnalysis('table')} {index + 1}
-                  </button>
-                ))}
+              <div className="px-3 py-2 bg-muted/50 border-t">
+                <Select
+                  value={selectedDataIndex.toString()}
+                  onValueChange={(value) => setSelectedDataIndex(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[280px] h-8">
+                    <SelectValue placeholder="Select table" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dataFiles.map((file: string, index: number) => {
+                      // Remove .json extension for display
+                      const displayName = file.replace('.json', '');
+                      return (
+                        <SelectItem key={`${file}-${index}`} value={index.toString()}>
+                          {displayName}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

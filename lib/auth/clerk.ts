@@ -28,7 +28,22 @@ export async function auth(): Promise<AuthSession> {
   }
 
   // Get Clerk user details
-  const clerkUser = await currentUser();
+  let clerkUser;
+  try {
+    clerkUser = await currentUser();
+  } catch (clerkError: any) {
+    console.error('❌ [Auth] Clerk API error:', {
+      message: clerkError?.message,
+      status: clerkError?.status,
+      errors: clerkError?.errors,
+      clerkTraceId: clerkError?.clerkTraceId
+    });
+    // Return null session on Clerk API errors
+    return {
+      user: null,
+      getToken: async () => null
+    };
+  }
 
   if (!clerkUser) {
     return {

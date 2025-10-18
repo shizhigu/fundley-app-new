@@ -30,7 +30,9 @@
       "WebFetch(domain:support.stripe.com)",
       "Bash(pnpm dlx:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "WebFetch(domain:aider.chat)",
+      "Bash(pgrep:*)"
     ],
     "deny": [],
     "ask": [],

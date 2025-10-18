@@ -386,6 +386,7 @@ export function useChat(): ChatState & ChatActions {
         setIsLoading(true);
         setError(null);
         setActiveStreamChatId(messageChatId); // 标记活跃的stream
+        setCurrentDisplayMessage(null); // 清空之前的 display message
 
         // 删除前端检查逻辑，移到后端处理
 
@@ -578,9 +579,6 @@ export function useChat(): ChatState & ChatActions {
 
         case 'assistant_start':
           // assistant_start：创建空消息占位，不显示初始内容
-          // 清空 display_message（agent 开始回复，工具执行已完成）
-          setCurrentDisplayMessage(null);
-
           if (event.message) {
             const convertedMessage = convertMessage(event.message);
             setMessages((prev) => {
@@ -605,9 +603,6 @@ export function useChat(): ChatState & ChatActions {
 
         case 'assistant_content':
           // assistant_content：增量追加内容
-          // 清空 display_message（agent 开始返回内容，工具执行已完成）
-          setCurrentDisplayMessage(null);
-
           if (event.messageId && event.content) {
             setMessages((prev) =>
               prev.map((msg) =>
