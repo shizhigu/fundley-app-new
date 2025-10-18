@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import { useBlockViewStore } from '@/stores/block-view-store';
 import type {
@@ -30,6 +31,15 @@ export function useChat(): ChatState & ChatActions {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Metrics 状态 - 存储当前对话的 token 使用情况
+  const [currentMetrics, setCurrentMetrics] = useState<{
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    total_tokens: number;
+    cost: number; // 按 GPT-5 定价计算的成本（美元）
+  } | null>(null);
 
   // 跟踪活跃的stream，用于检测用户切换chat
   const [activeStreamChatId, setActiveStreamChatId] = useState<string | null>(
@@ -116,7 +126,9 @@ export function useChat(): ChatState & ChatActions {
       setChats(data.chats || []);
     } catch (err) {
       console.error('Error fetching chats:', err);
-      setError('Failed to load chats');
+      const errorMessage = 'Failed to load chats';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   }, []);
 
@@ -140,7 +152,9 @@ export function useChat(): ChatState & ChatActions {
       return data.chat.id;
     } catch (err) {
       console.error('Error creating chat:', err);
-      setError('Failed to create chat');
+      const errorMessage = 'Failed to create chat';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     }
   }, [refreshChats]);
@@ -158,6 +172,7 @@ export function useChat(): ChatState & ChatActions {
       localStorage.setItem('lastSelectedChatId', chatId);
     }
     setMessages([]); // 清空当前消息，等待加载
+    setCurrentMetrics(null); // 清空 metrics
     // loadMessages 会被 useEffect 自动触发，不需要在这里重复调用
   }, []);
 
@@ -202,7 +217,9 @@ export function useChat(): ChatState & ChatActions {
         }
       } catch (err) {
         console.error('Error deleting chat:', err);
-        setError('Failed to delete chat');
+        const errorMessage = 'Failed to delete chat';
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     },
     [currentChatId],
@@ -230,7 +247,9 @@ export function useChat(): ChatState & ChatActions {
       );
     } catch (err) {
       console.error('Error renaming chat:', err);
-      setError('Failed to rename chat');
+      const errorMessage = 'Failed to rename chat';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   }, []);
 
@@ -344,7 +363,9 @@ export function useChat(): ChatState & ChatActions {
       console.error('Error loading messages:', err);
       // 只在所有重试都失败后才设置错误状态
       if (retryCount >= MAX_RETRIES) {
-        setError('Failed to load messages. Please refresh the page.');
+        const errorMessage = 'Failed to load messages. Please refresh the page.';
+        setError(errorMessage);
+        toast.error(errorMessage);
         setIsLoading(false); // 最终失败后清除loading
       }
       // 否则继续保持loading状态，等待重试
@@ -452,7 +473,9 @@ export function useChat(): ChatState & ChatActions {
         await handleStreamResponse(response, messageChatId);
       } catch (err) {
         console.error('Error sending message:', err);
-        setError(err instanceof Error ? err.message : 'Failed to send message');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+        setError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setIsLoading(false);
         setActiveStreamChatId(null); // 清除活跃stream标记
@@ -596,8 +619,39 @@ export function useChat(): ChatState & ChatActions {
           }
           break;
 
+        case 'run_metrics':
+          // 处理 metrics 数据并计算成本
+          if (event.metrics) {
+            const inputTokens = event.metrics.input_tokens || 0;
+            const outputTokens = event.metrics.output_tokens || 0;
+            const reasoningTokens = event.metrics.reasoning_tokens || 0;
+            const totalTokens = event.metrics.total_tokens || 0;
+
+            // 按 GPT-5 定价计算成本：$1.25/M input + $10/M (output + reasoning)
+            const cost = (inputTokens * 1.25 + (outputTokens + reasoningTokens) * 10) / 1_000_000;
+
+            setCurrentMetrics({
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              reasoning_tokens: reasoningTokens,
+              total_tokens: totalTokens,
+              cost: cost,
+            });
+
+            console.log('📊 Metrics received:', {
+              input: inputTokens,
+              output: outputTokens,
+              reasoning: reasoningTokens,
+              total: totalTokens,
+              cost: `$${cost.toFixed(6)}`,
+            });
+          }
+          break;
+
         case 'error':
-          setError(event.error || 'Unknown error occurred');
+          const errorMessage = event.error || 'Unknown error occurred';
+          setError(errorMessage);
+          toast.error(errorMessage);
           break;
       }
     },
@@ -823,6 +877,7 @@ export function useChat(): ChatState & ChatActions {
     isLoading,
     error,
     blockToolCalled, // Block 工具调用触发器
+    currentMetrics, // Token 使用和成本统计
 
     // 操作
     createChat,

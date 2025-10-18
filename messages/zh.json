@@ -116,6 +116,14 @@
     "pinnedBlocks": "已置顶",
     "confirmDelete": "确定要删除这个分析块吗？",
     "fromChat": "来自对话",
+    "runMetrics": "运行指标",
+    "inputTokens": "输入 Tokens",
+    "outputTokens": "输出 Tokens",
+    "reasoningTokens": "推理 Tokens",
+    "totalTokens": "总 Tokens",
+    "estimatedCost": "预估成本",
+    "basedOnGPT5Pricing": "基于 GPT-5 定价（$1.25/M 输入 + $10/M 输出/推理）",
+    "noMetricsAvailable": "当前会话暂无指标数据",
     "newBlock": "新建",
     "blockCount": "此对话中的 {count} 个块",
     "libraryComingSoon": "分析库视图即将推出",
@@ -171,5 +179,73 @@
     "light": "浅色模式",
     "dark": "深色模式",
     "system": "跟随系统"
+  },
+  "pricing": {
+    "title": "选择您的方案",
+    "subtitle": "简单透明的定价，满足各种需求",
+    "monthly": "每月",
+    "getStarted": "开始使用",
+    "currentPlan": "当前方案",
+    "popular": "热门",
+    "perMonth": "/月",
+    "credits": "积分",
+    "credit": "积分",
+    "oneCredit": "1 积分 = ¥1.4",
+    "starter": {
+      "name": "入门版",
+      "description": "适合偶尔进行分析的用户",
+      "features": [
+        "每月 50 积分",
+        "约 178 万 tokens 使用量",
+        "财务数据访问",
+        "基础分析工具",
+        "邮件支持"
+      ]
+    },
+    "pro": {
+      "name": "专业版",
+      "description": "适合专业分析师和活跃投资者",
+      "features": [
+        "每月 200 积分",
+        "约 711 万 tokens 使用量",
+        "入门版所有功能",
+        "高级分析工具",
+        "优先支持",
+        "导出到 Excel"
+      ]
+    },
+    "institutional": {
+      "name": "机构版",
+      "description": "适合投资机构和企业",
+      "features": [
+        "无限积分",
+        "无限使用",
+        "专业版所有功能",
+        "专属支持",
+        "自定义集成",
+        "SLA 保障"
+      ]
+    }
+  },
+  "subscription": {
+    "title": "订阅管理",
+    "yourPlan": "您的方案",
+    "credits": "积分",
+    "subscriptionCredits": "订阅积分",
+    "addonCredits": "附加积分",
+    "totalCredits": "总积分",
+    "unlimited": "无限",
+    "renewsOn": "续订日期",
+    "manageSubscription": "管理订阅",
+    "upgradePlan": "升级方案",
+    "usageHistory": "使用记录",
+    "date": "日期",
+    "description": "描述",
+    "creditsUsed": "使用积分",
+    "balance": "余额",
+    "noHistory": "暂无使用记录",
+    "internal": "内部用户",
+    "lowBalance": "余额不足 - 建议升级",
+    "clickToManage": "点击管理订阅"
   }
 }

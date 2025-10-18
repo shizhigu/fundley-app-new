@@ -39,8 +39,12 @@ import {
   DollarSign,
   Check,
   X,
+  CreditCard,
+  ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PLAN_DETAILS, type PlanType, formatCredits } from '@/lib/credits';
 
 interface Template {
   id: string;
@@ -62,7 +66,7 @@ interface TokenUsage {
   reasoning_tokens: number;
 }
 
-type SettingsTab = 'profile' | 'templates';
+type SettingsTab = 'profile' | 'templates' | 'pricing' | 'subscription';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -74,7 +78,12 @@ const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const t = useTranslations('settings');
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const tPricing = useTranslations('pricing');
+  const tSubscription = useTranslations('subscription');
+
+  // Set default tab based on brand
+  const isFundley = process.env.NEXT_PUBLIC_BRAND === 'fundley';
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isFundley ? 'templates' : 'profile');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -83,12 +92,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [loadingTokens, setLoadingTokens] = useState(false);
 
+  // Pricing & Subscription states
+  const [pricingLoading, setPricingLoading] = useState<PlanType | null>(null);
+  const [creditBalance, setCreditBalance] = useState<any>(null);
+  const [creditHistory, setCreditHistory] = useState<any[]>([]);
+  const [portalLoading, setPortalLoading] = useState(false);
+
   useEffect(() => {
     if (open && activeTab === 'templates') {
       fetchTemplates();
     }
-    if (open && activeTab === 'profile') {
+    if (open && activeTab === 'profile' && !isFundley) {
       fetchTokenUsage();
+    }
+    if (open && activeTab === 'subscription' && isFundley) {
+      fetchCreditData();
     }
   }, [open, activeTab]);
 
@@ -150,6 +168,79 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       toast.error('Failed to load templates');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCreditData = async () => {
+    try {
+      // Fetch credit balance
+      const balanceRes = await fetch('/api/credits/balance');
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json();
+        setCreditBalance(balanceData);
+      }
+
+      // Fetch usage history
+      const historyRes = await fetch('/api/credits/history?limit=10');
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        setCreditHistory(historyData.transactions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching credit data:', error);
+      toast.error('Failed to load credit information');
+    }
+  };
+
+  const handleSubscribe = async (planType: PlanType) => {
+    try {
+      setPricingLoading(planType);
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_type: planType }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to start checkout');
+      setPricingLoading(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      setPortalLoading(true);
+
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to open customer portal');
+      }
+
+      // Redirect to Stripe Customer Portal
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to open subscription management'
+      );
+      setPortalLoading(false);
     }
   };
 
@@ -255,10 +346,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     toast.success(`Template "${template.title}" ready to use`);
   };
 
-  const tabs = [
-    { id: 'profile' as const, label: t('profile'), icon: User },
-    { id: 'templates' as const, label: t('templates'), icon: FileText },
+  // Determine which tabs to show based on brand (using isFundley from component state)
+  const allTabs = [
+    { id: 'profile' as const, label: t('tokenUsage'), icon: User, showFor: ['foga'] },
+    { id: 'templates' as const, label: t('templates'), icon: FileText, showFor: ['fundley', 'foga'] },
+    { id: 'pricing' as const, label: tPricing('title'), icon: Sparkles, showFor: ['fundley'] },
+    { id: 'subscription' as const, label: tSubscription('title'), icon: CreditCard, showFor: ['fundley'] },
   ];
+
+  // Filter tabs based on brand
+  const brand = isFundley ? 'fundley' : 'foga';
+  const tabs = allTabs.filter(tab => tab.showFor.includes(brand));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -297,7 +395,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* Main Content */}
           <div className="flex-1 overflow-auto min-w-0 bg-background">
-            {activeTab === 'profile' && (
+            {activeTab === 'profile' && !isFundley && (
               <div className="p-8">
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-foreground">{t('tokenUsage')}</h2>
@@ -687,6 +785,278 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                   </TooltipProvider>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'pricing' && isFundley && (
+              <div className="p-8">
+                <div className="mb-8 text-center">
+                  <h2 className="text-2xl font-semibold text-foreground mb-2">
+                    {tPricing('title')}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {tPricing('subtitle')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {tPricing('oneCredit')}
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                  {(['starter', 'pro', 'institutional'] as const).map((planType, idx) => {
+                    const plan = PLAN_DETAILS[planType];
+                    const isPopular = planType === 'pro';
+                    const features = tPricing.raw(`${planType}.features`) as string[] || [];
+
+                    return (
+                      <div
+                        key={planType}
+                        className={`relative border rounded-lg p-6 ${
+                          isPopular
+                            ? 'border-brand-primary shadow-lg'
+                            : 'border-border'
+                        }`}
+                      >
+                        {isPopular && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                            <span className="bg-brand-primary text-white px-3 py-1 rounded-full text-xs font-semibold">
+                              {tPricing('popular')}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="text-center mb-6">
+                          <h3 className="text-lg font-bold mb-1">
+                            {tPricing(`${planType}.name`)}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {tPricing(`${planType}.description`)}
+                          </p>
+                        </div>
+
+                        <div className="text-center mb-6">
+                          <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-3xl font-bold">${plan.price}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {tPricing('perMonth')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {plan.monthly_credits >= 999999
+                              ? tSubscription('unlimited')
+                              : `${plan.monthly_credits} ${tPricing('credits')}`}
+                          </p>
+                        </div>
+
+                        <ul className="space-y-2 mb-6">
+                          {features.map((feature: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2 text-xs">
+                              <Check className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        <Button
+                          className="w-full"
+                          variant={isPopular ? 'default' : 'outline'}
+                          onClick={() => handleSubscribe(planType)}
+                          disabled={pricingLoading !== null}
+                        >
+                          {pricingLoading === planType ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Loading...
+                            </span>
+                          ) : (
+                            tPricing('getStarted')
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="text-center mt-8 text-xs text-muted-foreground">
+                  <p>All plans include access to financial data and analysis tools.</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'subscription' && isFundley && (
+              <div className="p-8">
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {tSubscription('title')}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your plan and view usage
+                  </p>
+                </div>
+
+                {/* Credit Balance Card */}
+                <div className="border border-border rounded-lg p-6 mb-6 bg-background">
+                  <div className="flex items-start justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">
+                        {tSubscription('credits')}
+                      </h3>
+                      {creditBalance?.is_internal && (
+                        <span className="inline-block px-2 py-1 text-xs bg-brand-primary/10 text-brand-primary rounded">
+                          {tSubscription('internal')}
+                        </span>
+                      )}
+                    </div>
+                    <CreditCard className="w-6 h-6 text-muted-foreground" />
+                  </div>
+
+                  {creditBalance ? (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          {tSubscription('subscriptionCredits')}
+                        </p>
+                        <p className="text-xl font-bold">
+                          {formatCredits(creditBalance.subscription_credits)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          {tSubscription('addonCredits')}
+                        </p>
+                        <p className="text-xl font-bold">
+                          {formatCredits(creditBalance.addon_credits)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          {tSubscription('totalCredits')}
+                        </p>
+                        <p className="text-xl font-bold text-brand-primary">
+                          {formatCredits(creditBalance.total_credits)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Subscription Management */}
+                <div className="border border-border rounded-lg p-6 mb-6 bg-background">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {tSubscription('yourPlan')}
+                  </h3>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Manage your subscription in Stripe Customer Portal
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• Update payment method</li>
+                        <li>• Change plan</li>
+                        <li>• Cancel subscription</li>
+                        <li>• View invoices</li>
+                      </ul>
+                    </div>
+
+                    <Button
+                      onClick={handleManageSubscription}
+                      disabled={portalLoading}
+                      className="shrink-0"
+                    >
+                      {portalLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                      )}
+                      {tSubscription('manageSubscription')}
+                    </Button>
+                  </div>
+
+                  {!creditBalance && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Don't have a subscription yet?
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab('pricing')}
+                        size="sm"
+                      >
+                        View Plans
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Usage History */}
+                <div className="border border-border rounded-lg p-6 bg-background">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {tSubscription('usageHistory')}
+                  </h3>
+
+                  {creditHistory.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8 text-sm">
+                      {tSubscription('noHistory')}
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">
+                              {tSubscription('date')}
+                            </th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">
+                              {tSubscription('description')}
+                            </th>
+                            <th className="text-right py-2 px-2 text-xs font-semibold text-muted-foreground">
+                              {tSubscription('creditsUsed')}
+                            </th>
+                            <th className="text-right py-2 px-2 text-xs font-semibold text-muted-foreground">
+                              {tSubscription('balance')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {creditHistory.map((transaction: any) => (
+                            <tr key={transaction.id} className="border-b border-border last:border-0">
+                              <td className="py-2 px-2 text-xs text-muted-foreground">
+                                {new Date(transaction.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="py-2 px-2 text-xs">
+                                {transaction.description}
+                              </td>
+                              <td className="py-2 px-2 text-xs text-right">
+                                <span
+                                  className={
+                                    transaction.amount < 0
+                                      ? 'text-red-600'
+                                      : 'text-green-600'
+                                  }
+                                >
+                                  {transaction.amount > 0 ? '+' : ''}
+                                  {transaction.amount.toFixed(4)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2 text-xs text-right font-medium">
+                                {transaction.balance_after != null
+                                  ? formatCredits(transaction.balance_after)
+                                  : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

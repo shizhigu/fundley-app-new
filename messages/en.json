@@ -115,6 +115,14 @@
     "pinnedBlocks": "Pinned",
     "confirmDelete": "Are you sure you want to delete this analysis block?",
     "fromChat": "From chat",
+    "runMetrics": "Run Metrics",
+    "inputTokens": "Input Tokens",
+    "outputTokens": "Output Tokens",
+    "reasoningTokens": "Reasoning Tokens",
+    "totalTokens": "Total Tokens",
+    "estimatedCost": "Estimated Cost",
+    "basedOnGPT5Pricing": "Based on GPT-5 pricing ($1.25/M input + $10/M output/reasoning)",
+    "noMetricsAvailable": "No metrics available for this session",
     "newBlock": "New",
     "blockCount": "{count} blocks in this conversation",
     "libraryComingSoon": "Library view coming soon",
@@ -170,5 +178,73 @@
     "light": "Light Mode",
     "dark": "Dark Mode",
     "system": "System"
+  },
+  "pricing": {
+    "title": "Choose Your Plan",
+    "subtitle": "Simple, transparent pricing for every team",
+    "monthly": "Monthly",
+    "getStarted": "Get Started",
+    "currentPlan": "Current Plan",
+    "popular": "Popular",
+    "perMonth": "/month",
+    "credits": "credits",
+    "credit": "credit",
+    "oneCredit": "1 Credit = $0.20",
+    "starter": {
+      "name": "Starter",
+      "description": "Perfect for occasional analysis",
+      "features": [
+        "50 credits per month",
+        "~1.78M tokens usage",
+        "Financial data access",
+        "Basic analysis tools",
+        "Email support"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For serious analysts and active investors",
+      "features": [
+        "200 credits per month",
+        "~7.11M tokens usage",
+        "Everything in Starter",
+        "Advanced analysis tools",
+        "Priority support",
+        "Export to Excel"
+      ]
+    },
+    "institutional": {
+      "name": "Institutional",
+      "description": "For institutions and investment firms",
+      "features": [
+        "Unlimited credits",
+        "Unlimited usage",
+        "Everything in Pro",
+        "Dedicated support",
+        "Custom integrations",
+        "SLA guarantee"
+      ]
+    }
+  },
+  "subscription": {
+    "title": "Subscription Management",
+    "yourPlan": "Your Plan",
+    "credits": "Credits",
+    "subscriptionCredits": "Subscription Credits",
+    "addonCredits": "Add-on Credits",
+    "totalCredits": "Total Credits",
+    "unlimited": "Unlimited",
+    "renewsOn": "Renews on",
+    "manageSubscription": "Manage Subscription",
+    "upgradePlan": "Upgrade Plan",
+    "usageHistory": "Usage History",
+    "date": "Date",
+    "description": "Description",
+    "creditsUsed": "Credits Used",
+    "balance": "Balance",
+    "noHistory": "No usage history yet",
+    "internal": "Internal User",
+    "lowBalance": "Low balance - consider upgrading",
+    "clickToManage": "Click to manage subscription"
   }
 }

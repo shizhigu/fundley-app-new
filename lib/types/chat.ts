@@ -67,6 +67,13 @@ export interface ChatState {
   isLoading: boolean;
   error: string | null;
   blockToolCalled: number; // Block 工具调用计数器，用于触发轮询
+  currentMetrics: {
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    total_tokens: number;
+    cost: number;
+  } | null; // Token 使用和成本统计
 }
 
 export interface ChatActions {
@@ -147,9 +154,18 @@ export interface StreamEvent {
     | 'tool_start'
     | 'tool_complete'
     | 'conversation_complete'
+    | 'run_metrics'
     | 'error';
   message?: ChatMessage;
   messageId?: string;
   content?: string;
   error?: string;
+  metrics?: {
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    total_tokens: number;
+    time_to_first_token?: number;
+    duration?: number;
+  };
 }

@@ -24,6 +24,9 @@ import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
 import { StockLoader } from './stock-loader';
 import { CollapsibleUserMessage } from './collapsible-user-message';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { useChatContext } from '@/lib/contexts/chat-context';
+import { useTranslations } from 'next-intl';
 
 // Chart.js visualization engine for frontend execution
 const JSVisualizationEngine = {
@@ -332,6 +335,11 @@ const PurePreviewMessage = ({
   const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
   const [showFullVerification, setShowFullVerification] = useState(false);
 
+  // Metrics dialog state
+  const [showMetricsDialog, setShowMetricsDialog] = useState(false);
+  const { currentMetrics } = useChatContext();
+  const tAnalysis = useTranslations('analysis');
+
   // Collect attachments from two sources
   const attachmentsFromParts = message.parts?.filter(
     (part: any) => part.type === 'file',
@@ -432,9 +440,17 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === 'assistant' && (
-            <div className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20">
-              <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowMetricsDialog(true)}
+                  className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20 hover:ring-2 hover:ring-primary/30 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>View run metrics</TooltipContent>
+            </Tooltip>
           )}
 
           <div
@@ -1056,6 +1072,50 @@ const PurePreviewMessage = ({
             )}
           </div>
         </div>
+
+        {/* Metrics Dialog */}
+        <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{tAnalysis('runMetrics')}</DialogTitle>
+            </DialogHeader>
+            {currentMetrics ? (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">{tAnalysis('inputTokens')}</span>
+                    <span className="text-sm font-mono">{currentMetrics.input_tokens.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">{tAnalysis('outputTokens')}</span>
+                    <span className="text-sm font-mono">{currentMetrics.output_tokens.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">{tAnalysis('reasoningTokens')}</span>
+                    <span className="text-sm font-mono">{currentMetrics.reasoning_tokens.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">{tAnalysis('totalTokens')}</span>
+                    <span className="text-sm font-mono font-semibold">{currentMetrics.total_tokens.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <span className="text-sm font-semibold text-primary">{tAnalysis('estimatedCost')}</span>
+                    <span className="text-lg font-mono font-bold text-primary">
+                      ${currentMetrics.cost.toFixed(6)}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  {tAnalysis('basedOnGPT5Pricing')}
+                </p>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                {tAnalysis('noMetricsAvailable')}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </AnimatePresence>
   );

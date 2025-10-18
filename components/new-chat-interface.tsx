@@ -82,19 +82,8 @@ export function NewChatInterface({
     }
   };
 
-  // 显示错误状态
-  if (error) {
-    return (
-      <div className="flex flex-col h-full w-full max-w-full relative">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-red-500 mb-2">{t('error')}</div>
-            <div className="text-muted-foreground">{error}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // 不再显示错误覆盖整个页面，改用 toast 通知
+  // error 信息会在 use-chat hook 中通过 toast 显示
 
   // 显示加载状态（当没有消息且正在加载时）
   if (messages.length === 0 && isLoading) {

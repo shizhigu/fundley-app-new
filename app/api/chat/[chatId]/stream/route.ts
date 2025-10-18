@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/clerk';
 import { db } from '@/lib/db/config';
+import { getUserCreditBalance, deductUserCredits } from '@/lib/credits/db';
+import { hasSufficientCredits } from '@/lib/credits';
 
 // Disable timeout for streaming responses (unlimited for self-hosted)
 export const maxDuration = 0; // 0 = unlimited timeout
@@ -299,7 +301,45 @@ export async function POST(
         }, 5000);
 
         try {
-          // 0. 检查是否是第一条消息（用于自动命名）
+          // 0. 检查用户 credit 余额
+          const creditBalance = await getUserCreditBalance(userId);
+          if (!creditBalance) {
+            safeEnqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'error',
+                  error: 'Unable to verify credit balance. Please contact support.',
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+            clearInterval(heartbeatInterval);
+            return;
+          }
+
+          // 检查是否有足够的 credits（预估最低 0.01 credit）
+          // 内部用户或有充足余额的用户可以继续
+          const minRequired = 0.01;
+          if (!hasSufficientCredits(creditBalance, minRequired)) {
+            safeEnqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'error',
+                  error: 'Insufficient credits. Please upgrade your plan or purchase addon credits.',
+                  insufficient_credits: true,
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+            clearInterval(heartbeatInterval);
+            return;
+          }
+
+          console.log(
+            `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits (subscription: ${creditBalance.subscription_credits.toFixed(2)}, addon: ${creditBalance.addon_credits.toFixed(2)}, internal: ${creditBalance.is_internal})`,
+          );
+
+          // 1. 检查是否是第一条消息（用于自动命名）
           const existingMessages = await db`
             SELECT COUNT(*) as count FROM messages WHERE chat_id = ${chatId}
           `;
@@ -568,6 +608,60 @@ export async function POST(
                         })}\n\n`,
                       ),
                     );
+                  }
+
+                  // 捕获 RunCompleted 事件以获取 metrics 并扣费
+                  if (
+                    eventData.event === 'RunCompleted' ||
+                    eventData.event === 'TeamRunCompleted'
+                  ) {
+                    const metrics = eventData.metrics || eventData.data?.metrics;
+                    if (metrics) {
+                      console.log('📊 Run metrics:', metrics);
+
+                      // 扣除 credits
+                      try {
+                        const deduction = await deductUserCredits(userId, chatId, {
+                          input_tokens: metrics.input_tokens || 0,
+                          output_tokens: metrics.output_tokens || 0,
+                          reasoning_tokens: metrics.reasoning_tokens || 0,
+                          total_tokens: metrics.total_tokens || 0,
+                        });
+
+                        if (deduction) {
+                          console.log(
+                            `💳 Deducted ${deduction.credits_used.toFixed(4)} credits (from ${deduction.source_type}). Remaining: subscription ${deduction.remaining_subscription_credits.toFixed(2)}, addon ${deduction.remaining_addon_credits.toFixed(2)}`,
+                          );
+
+                          // 将扣费信息附加到 metrics 中发送给前端
+                          safeEnqueue(
+                            encoder.encode(
+                              `data: ${JSON.stringify({
+                                type: 'run_metrics',
+                                metrics: {
+                                  ...metrics,
+                                  credits_used: deduction.credits_used,
+                                  remaining_subscription_credits: deduction.remaining_subscription_credits,
+                                  remaining_addon_credits: deduction.remaining_addon_credits,
+                                  source_type: deduction.source_type,
+                                },
+                              })}\n\n`,
+                            ),
+                          );
+                        }
+                      } catch (error) {
+                        console.error('❌ Failed to deduct credits:', error);
+                        // 即使扣费失败，也继续发送 metrics（避免中断用户体验）
+                        safeEnqueue(
+                          encoder.encode(
+                            `data: ${JSON.stringify({
+                              type: 'run_metrics',
+                              metrics: metrics,
+                            })}\n\n`,
+                          ),
+                        );
+                      }
+                    }
                   }
                 } catch (err) {
                   console.warn('Failed to parse SSE data:', line, err);
