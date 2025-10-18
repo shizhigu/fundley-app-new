@@ -4,7 +4,8 @@
  * POST /api/stripe/webhook
  *
  * Handles Stripe events:
- * - checkout.session.completed - New subscription created
+ * - checkout.session.completed - New subscription created via Checkout
+ * - customer.subscription.created - Subscription created (any method)
  * - customer.subscription.updated - Subscription status changed
  * - customer.subscription.deleted - Subscription canceled
  * - invoice.payment_succeeded - Monthly billing successful → Reset credits
@@ -50,6 +51,10 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed':
         await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+
+      case 'customer.subscription.created':
+        await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
         break;
 
       case 'customer.subscription.updated':
@@ -135,6 +140,67 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   `;
 
   // Grant initial subscription credits
+  await resetSubscriptionCredits(userId, plan.monthly_credits);
+
+  console.log(`[Stripe Webhook] Subscription created for user ${userId}, plan: ${planType}`);
+}
+
+/**
+ * Handle customer.subscription.created
+ * Create subscription record and grant initial credits
+ * (This is called for any subscription creation, not just via Checkout)
+ */
+async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
+  console.log('[Stripe Webhook] Processing customer.subscription.created:', subscription.id);
+
+  const userId = subscription.metadata?.user_id;
+  const planType = subscription.metadata?.plan_type as keyof typeof PLAN_DETAILS;
+
+  if (!userId || !planType) {
+    console.error('[Stripe Webhook] Missing metadata in subscription, skipping');
+    return;
+  }
+
+  const plan = PLAN_DETAILS[planType];
+
+  // Get billing period from first subscription item
+  const firstItem = subscription.items.data[0];
+  const currentPeriodStart = firstItem?.current_period_start;
+  const currentPeriodEnd = firstItem?.current_period_end;
+
+  // Create or update subscription in database (ON CONFLICT prevents duplicates)
+  await sql`
+    INSERT INTO subscriptions (
+      user_id,
+      stripe_customer_id,
+      stripe_subscription_id,
+      plan_type,
+      status,
+      monthly_credits,
+      current_period_start,
+      current_period_end
+    )
+    VALUES (
+      ${userId},
+      ${subscription.customer as string},
+      ${subscription.id},
+      ${planType},
+      ${subscription.status},
+      ${plan.monthly_credits},
+      to_timestamp(${currentPeriodStart}),
+      to_timestamp(${currentPeriodEnd})
+    )
+    ON CONFLICT (stripe_subscription_id)
+    DO UPDATE SET
+      status = ${subscription.status},
+      plan_type = ${planType},
+      monthly_credits = ${plan.monthly_credits},
+      current_period_start = to_timestamp(${currentPeriodStart}),
+      current_period_end = to_timestamp(${currentPeriodEnd}),
+      updated_at = NOW()
+  `;
+
+  // Grant initial subscription credits (idempotent - safe to call multiple times)
   await resetSubscriptionCredits(userId, plan.monthly_credits);
 
   console.log(`[Stripe Webhook] Subscription created for user ${userId}, plan: ${planType}`);
