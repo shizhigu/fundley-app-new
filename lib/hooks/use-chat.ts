@@ -566,7 +566,7 @@ export function useChat(): ChatState & ChatActions {
             });
 
             // 检测 block 工具调用，触发轮询
-            if (event.type === 'tool_complete' && event.message.tool_name) {
+            if (event.type === 'tool_complete' && event.message && typeof event.message !== 'string') {
               const toolName = event.message.tool_name;
               if (toolName === 'create_analysis_block' || toolName === 'update_analysis_block') {
                 console.log(`🎯 Block tool called: ${toolName}, triggering polling`);
@@ -659,7 +659,7 @@ export function useChat(): ChatState & ChatActions {
 
         case 'display_message':
           // 更新实时状态显示
-          if (event.message) {
+          if (event.message && typeof event.message === 'string') {
             setCurrentDisplayMessage(event.message);
           }
           break;
