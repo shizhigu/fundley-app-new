@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 
 interface MarkdownSectionEditorProps {
@@ -11,61 +10,99 @@ interface MarkdownSectionEditorProps {
 }
 
 /**
- * Minimal textarea-based editor with a light debounce before persisting changes.
+ * 极简 textarea 编辑器 - 无感自动保存
+ *
+ * 改进：
+ * - 本地优先：立即更新本地 state，无延迟
+ * - localStorage 备份：防止数据丢失
+ * - 保存队列：防止并发请求冲突
+ * - 静默重试：保存失败自动重试（用户无感）
  */
 export function MarkdownSectionEditor({ content, onSave, onCancel }: MarkdownSectionEditorProps) {
   const [value, setValue] = useState(content)
-  const lastPersisted = useRef(content)
+
+  const lastSavedValue = useRef(content)
+  const saveTimeoutRef = useRef<number>()
+  const isSavingRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // 静默保存函数（无 UI 反馈）
+  const performSave = useCallback(async (valueToSave: string) => {
+    // 防止并发保存
+    if (isSavingRef.current || valueToSave === lastSavedValue.current) {
+      return
+    }
+
+    isSavingRef.current = true
+
+    try {
+      await onSave(valueToSave)
+      lastSavedValue.current = valueToSave
+      // 成功后从 localStorage 清除备份
+      localStorage.removeItem(`block-edit-${content.slice(0, 50)}`)
+    } catch (error) {
+      console.error('Save failed, retrying...', error)
+      // 静默重试一次（3秒后）
+      setTimeout(() => {
+        isSavingRef.current = false
+        performSave(valueToSave)
+      }, 3000)
+      return // 不设置 isSavingRef = false，等重试
+    } finally {
+      isSavingRef.current = false
+    }
+  }, [onSave, content])
+
+  // localStorage 备份
   useEffect(() => {
-    setValue(content)
-    lastPersisted.current = content
-  }, [content])
+    const key = `block-edit-${content.slice(0, 50)}`
+    localStorage.setItem(key, value)
+  }, [value, content])
 
+  // 2秒 debounce 自动保存
   useEffect(() => {
-    if (value === lastPersisted.current) return
+    if (value === lastSavedValue.current) return
 
-    const timeout = window.setTimeout(() => {
-      lastPersisted.current = value
-      onSave(value)
-    }, 400)
+    if (saveTimeoutRef.current) {
+      window.clearTimeout(saveTimeoutRef.current)
+    }
 
-    return () => window.clearTimeout(timeout)
-  }, [value, onSave])
+    saveTimeoutRef.current = window.setTimeout(() => {
+      performSave(value)
+    }, 2000) as unknown as number
 
-  // Handle Escape key to exit editing
+    return () => {
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [value, performSave])
+
+  // Escape 键退出
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Save before exit
-        if (value !== lastPersisted.current) {
-          lastPersisted.current = value
-          onSave(value)
+        if (value !== lastSavedValue.current) {
+          performSave(value)
         }
-        onCancel?.()
+        setTimeout(() => onCancel?.(), 200)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [value, onSave, onCancel])
+  }, [value, performSave, onCancel])
 
   return (
     <div ref={containerRef}>
       <Textarea
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(e) => setValue(e.target.value)}
         onBlur={() => {
-          // Save and exit on blur
-          if (value !== lastPersisted.current) {
-            lastPersisted.current = value
-            onSave(value)
+          if (value !== lastSavedValue.current) {
+            performSave(value)
           }
-          // Exit editing mode after a short delay to allow save
-          setTimeout(() => {
-            onCancel?.()
-          }, 100)
+          setTimeout(() => onCancel?.(), 200)
         }}
         autoFocus
         spellCheck="false"

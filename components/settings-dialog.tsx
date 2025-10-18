@@ -97,6 +97,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [creditBalance, setCreditBalance] = useState<any>(null);
   const [creditHistory, setCreditHistory] = useState<any[]>([]);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
 
   useEffect(() => {
     if (open && activeTab === 'templates') {
@@ -108,7 +110,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (open && activeTab === 'subscription' && isFundley) {
       fetchCreditData();
     }
+    if (open && activeTab === 'pricing' && isFundley) {
+      checkSubscriptionStatus();
+    }
   }, [open, activeTab]);
+
+  const checkSubscriptionStatus = async () => {
+    setCheckingSubscription(true);
+    try {
+      const response = await fetch('/api/subscription/status');
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubscriptionStatus(data);
+
+        // If user has active subscription, redirect to subscription tab
+        if (data.hasSubscription) {
+          setTimeout(() => {
+            setActiveTab('subscription');
+            toast.info('You already have an active subscription. Visit "Subscription Management" to change your plan.');
+          }, 100);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+    } finally {
+      setCheckingSubscription(false);
+    }
+  };
 
   const fetchTokenUsage = async () => {
     setLoadingTokens(true);
@@ -208,8 +237,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      // Open Stripe Checkout in popup window
+      const width = 800;
+      const height = 900;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+      window.open(
+        data.url,
+        'stripe-checkout',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
     } catch (error) {
       console.error('Error creating checkout session:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to start checkout');
@@ -231,8 +268,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         throw new Error(data.error || 'Failed to open customer portal');
       }
 
-      // Redirect to Stripe Customer Portal
-      window.location.href = data.url;
+      // Open Stripe Customer Portal in popup window
+      const width = 900;
+      const height = 800;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+      window.open(
+        data.url,
+        'stripe-portal',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast.error(
@@ -796,9 +841,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {tPricing('subtitle')}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {tPricing('oneCredit')}
                   </p>
                 </div>
 

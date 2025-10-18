@@ -180,7 +180,7 @@
     "system": "System"
   },
   "pricing": {
-    "title": "Choose Your Plan",
+    "title": "Plans",
     "subtitle": "Simple, transparent pricing for every team",
     "monthly": "Monthly",
     "getStarted": "Get Started",
@@ -227,7 +227,7 @@
     }
   },
   "subscription": {
-    "title": "Subscription Management",
+    "title": "Billing",
     "yourPlan": "Your Plan",
     "credits": "Credits",
     "subscriptionCredits": "Subscription Credits",

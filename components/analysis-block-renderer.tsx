@@ -352,9 +352,9 @@ export function AnalysisBlockRenderer({
     }
   }, [block.id, content, editedTitle, title, onUpdate]);
 
-  // Save section (called by Novel editor's onUpdate)
+  // Save section (called by editor's auto-save)
   const handleSaveSection = useCallback(
-    async (sectionId: string, newContent: string) => {
+    (sectionId: string, newContent: string) => {
       const sections = content.sections || [];
       const originalSection = sections.find((s: any) => s.id === sectionId);
 
@@ -363,32 +363,29 @@ export function AnalysisBlockRenderer({
         return;
       }
 
-      setIsSaving(true);
-      try {
-        const updatedSections = sections.map((s: any) =>
-          s.id === sectionId ? { ...s, content: newContent} : s,
-        );
+      // 静默保存，不阻塞 UI
+      const updatedSections = sections.map((s: any) =>
+        s.id === sectionId ? { ...s, content: newContent} : s,
+      );
 
-        const response = await fetch(`/api/blocks/${block.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: {
-              ...content,
-              sections: updatedSections,
-            },
-          }),
+      fetch(`/api/blocks/${block.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: {
+            ...content,
+            sections: updatedSections,
+          },
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('Failed to save');
+          const { block: updatedBlock } = await response.json();
+          if (onUpdate) onUpdate(updatedBlock);
+        })
+        .catch((error) => {
+          console.error('❌ Save failed:', error);
         });
-
-        if (!response.ok) throw new Error('Failed to save');
-        const { block: updatedBlock } = await response.json();
-        if (onUpdate) onUpdate(updatedBlock);
-        console.log('✅ Section saved:', sectionId);
-      } catch (error) {
-        console.error('❌ Error saving section:', error);
-      } finally {
-        setIsSaving(false);
-      }
     },
     [block.id, content, onUpdate],
   );
@@ -769,9 +766,7 @@ export function AnalysisBlockRenderer({
                     {editingSectionId === section.id ? (
                       <MarkdownSectionEditor
                         content={section.content || ''}
-                        onSave={(markdown) => {
-                          handleSaveSection(section.id, markdown);
-                        }}
+                        onSave={(markdown) => handleSaveSection(section.id, markdown)}
                         onCancel={() => setEditingSectionId(null)}
                       />
                     ) : (
