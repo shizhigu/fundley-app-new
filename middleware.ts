@@ -17,6 +17,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',  // For Clerk webhooks
+  '/api/stripe/webhook',  // For Stripe webhooks
   '/api/metadata',  // For metadata extraction
   '/api/stock/chart-data',  // For TradingView chart data
   '/api/motherduck-proxy',  // For DuckDB queries (internal use)
