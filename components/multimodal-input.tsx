@@ -69,7 +69,7 @@ const StreamingTimer = memo(() => {
     >
       <div className="flex items-center gap-3">
         {/* Stock K-line animation */}
-        <StockLoader size={12} />
+        {/* <StockLoader size={12} /> */}
 
         {/* Timer display */}
         <motion.div
@@ -348,9 +348,10 @@ function PureMultimodalInput({
   return (
     <div className="relative w-full max-w-3xl mx-auto flex flex-col gap-4">
       {/* ==================== Streaming Timer ==================== */}
-      <AnimatePresence>
+      {/* Removed: Timer now shown in DisplayMessageBox component */}
+      {/* <AnimatePresence>
         {status === 'streaming' && <StreamingTimer />}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       {/* ==================== Scroll to Bottom Button ==================== */}
       <AnimatePresence>

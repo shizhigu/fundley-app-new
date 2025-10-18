@@ -105,6 +105,8 @@ export function ChatManager({ user }: ChatManagerProps) {
             isLoading={chat.isLoading}
             error={chat.error}
             onSendMessage={chat.sendMessage}
+            setLoading={chat.setLoading}
+            currentDisplayMessage={chat.currentDisplayMessage}
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-background">

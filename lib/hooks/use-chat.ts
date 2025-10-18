@@ -49,6 +49,9 @@ export function useChat(): ChatState & ChatActions {
   // 跟踪 block 工具调用，用于触发轮询
   const [blockToolCalled, setBlockToolCalled] = useState<number>(0);
 
+  // 跟踪最新的display_message（实时状态显示）
+  const [currentDisplayMessage, setCurrentDisplayMessage] = useState<string | null>(null);
+
   // ============ 财务数据集成 ============
   const financialData = useFinancialDataStore((state) => state.data);
   const availableMetrics = useFinancialDataStore(
@@ -575,6 +578,9 @@ export function useChat(): ChatState & ChatActions {
 
         case 'assistant_start':
           // assistant_start：创建空消息占位，不显示初始内容
+          // 清空 display_message（agent 开始回复，工具执行已完成）
+          setCurrentDisplayMessage(null);
+
           if (event.message) {
             const convertedMessage = convertMessage(event.message);
             setMessages((prev) => {
@@ -599,6 +605,9 @@ export function useChat(): ChatState & ChatActions {
 
         case 'assistant_content':
           // assistant_content：增量追加内容
+          // 清空 display_message（agent 开始返回内容，工具执行已完成）
+          setCurrentDisplayMessage(null);
+
           if (event.messageId && event.content) {
             setMessages((prev) =>
               prev.map((msg) =>
@@ -648,10 +657,22 @@ export function useChat(): ChatState & ChatActions {
           }
           break;
 
+        case 'display_message':
+          // 更新实时状态显示
+          if (event.message) {
+            setCurrentDisplayMessage(event.message);
+          }
+          break;
+
         case 'error':
           const errorMessage = event.error || 'Unknown error occurred';
           setError(errorMessage);
           toast.error(errorMessage);
+          break;
+
+        case 'conversation_complete':
+          // 对话完成时清空display_message
+          setCurrentDisplayMessage(null);
           break;
       }
     },
@@ -878,6 +899,7 @@ export function useChat(): ChatState & ChatActions {
     error,
     blockToolCalled, // Block 工具调用触发器
     currentMetrics, // Token 使用和成本统计
+    currentDisplayMessage, // 实时状态显示
 
     // 操作
     createChat,

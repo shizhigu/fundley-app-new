@@ -291,7 +291,9 @@ export async function POST(
               ) {
                 isControllerClosed = true;
                 clientDisconnected = true;
-                console.warn('⚠️ Controller closed, but continuing backend processing...');
+                console.warn(
+                  '⚠️ Controller closed, but continuing backend processing...',
+                );
               } else {
                 throw error;
               }
@@ -309,7 +311,9 @@ export async function POST(
         const connectionMonitor = setInterval(() => {
           if (request.signal.aborted && !clientDisconnected) {
             clientDisconnected = true;
-            console.warn('⚠️ Client disconnected, but backend will continue processing to ensure credit deduction');
+            console.warn(
+              '⚠️ Client disconnected, but backend will continue processing to ensure credit deduction',
+            );
           }
         }, 1000);
 
@@ -321,7 +325,8 @@ export async function POST(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'error',
-                  error: 'Unable to verify credit balance. Please contact support.',
+                  error:
+                    'Unable to verify credit balance. Please contact support.',
                 })}\n\n`,
               ),
             );
@@ -338,7 +343,8 @@ export async function POST(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'error',
-                  error: 'Insufficient credits. Please upgrade your plan or purchase addon credits.',
+                  error:
+                    'Insufficient credits. Please upgrade your plan or purchase addon credits.',
                   insufficient_credits: true,
                 })}\n\n`,
               ),
@@ -581,6 +587,32 @@ export async function POST(
                     }
                   }
 
+                  // 提取并发送 display_message（实时状态更新）
+                  if (
+                    eventData.event === 'TeamToolCallStarted' ||
+                    eventData.event === 'ToolCallStarted'
+                  ) {
+                    const toolData = eventData.tool || eventData.data?.tool;
+                    const toolArgs = toolData?.tool_args || toolData?.arguments;
+
+                    const displayMessage = toolArgs?.display_message;
+
+                    if (displayMessage) {
+                      console.log(
+                        '📢 Sending display_message:',
+                        displayMessage,
+                      );
+                      safeEnqueue(
+                        encoder.encode(
+                          `data: ${JSON.stringify({
+                            type: 'display_message',
+                            message: displayMessage,
+                          })}\n\n`,
+                        ),
+                      );
+                    }
+                  }
+
                   if (
                     eventData.event === 'TeamToolCallCompleted' ||
                     eventData.event === 'ToolCallCompleted'
@@ -630,22 +662,29 @@ export async function POST(
                     eventData.event === 'RunCompleted' ||
                     eventData.event === 'TeamRunCompleted'
                   ) {
-                    const metrics = eventData.metrics || eventData.data?.metrics;
+                    const metrics =
+                      eventData.metrics || eventData.data?.metrics;
                     if (metrics) {
                       console.log('📊 Run metrics received:', metrics);
 
                       // ✅ CRITICAL: Deduct credits regardless of client connection status
                       // This ensures we never lose billing even if user refreshes/closes tab
                       try {
-                        const deduction = await deductUserCredits(userId, chatId, {
-                          input_tokens: metrics.input_tokens || 0,
-                          output_tokens: metrics.output_tokens || 0,
-                          reasoning_tokens: metrics.reasoning_tokens || 0,
-                          total_tokens: metrics.total_tokens || 0,
-                        });
+                        const deduction = await deductUserCredits(
+                          userId,
+                          chatId,
+                          {
+                            input_tokens: metrics.input_tokens || 0,
+                            output_tokens: metrics.output_tokens || 0,
+                            reasoning_tokens: metrics.reasoning_tokens || 0,
+                            total_tokens: metrics.total_tokens || 0,
+                          },
+                        );
 
                         if (deduction) {
-                          const disconnectStatus = clientDisconnected ? ' [Client Disconnected ✓]' : '';
+                          const disconnectStatus = clientDisconnected
+                            ? ' [Client Disconnected ✓]'
+                            : '';
                           console.log(
                             `💳 Deducted ${deduction.credits_used.toFixed(4)} credits (from ${deduction.source_type}). Remaining: subscription ${deduction.remaining_subscription_credits.toFixed(2)}, addon ${deduction.remaining_addon_credits.toFixed(2)}${disconnectStatus}`,
                           );
@@ -658,8 +697,10 @@ export async function POST(
                                 metrics: {
                                   ...metrics,
                                   credits_used: deduction.credits_used,
-                                  remaining_subscription_credits: deduction.remaining_subscription_credits,
-                                  remaining_addon_credits: deduction.remaining_addon_credits,
+                                  remaining_subscription_credits:
+                                    deduction.remaining_subscription_credits,
+                                  remaining_addon_credits:
+                                    deduction.remaining_addon_credits,
                                   source_type: deduction.source_type,
                                 },
                               })}\n\n`,
@@ -778,7 +819,9 @@ export async function POST(
 
           // Log completion status
           if (clientDisconnected) {
-            console.log('✅ Stream processing completed despite client disconnect - credits deducted successfully');
+            console.log(
+              '✅ Stream processing completed despite client disconnect - credits deducted successfully',
+            );
           }
 
           if (!isControllerClosed) {

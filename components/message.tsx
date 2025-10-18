@@ -615,7 +615,7 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId} className="bg-card border border-border/50 rounded-lg p-3">
                       <div className="flex items-center gap-2 text-sm">
-                        <StockLoader size={14} />
+                        {/* <StockLoader size={14} /> */}
                         <span>Creating visualization: {input?.title}</span>
                       </div>
                     </div>
@@ -744,7 +744,7 @@ const PurePreviewMessage = ({
 
                   return (
                     <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-avatar border border-brand-primary/20 text-sm not-prose">
-                      <StockLoader size={12} />
+                      {/* <StockLoader size={12} /> */}
                       <span className="text-brand-primary font-medium">
                         Computing LaTeX metric {metricName}...
                       </span>
@@ -923,7 +923,7 @@ const PurePreviewMessage = ({
 
                   return (
                     <div key={toolCallId} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 text-sm not-prose">
-                      <StockLoader size={12} />
+                      {/* <StockLoader size={12} /> */}
                       <span className="text-foreground font-medium">
                         Computing {metricName}{symbols.length > 0 ? ` for ${symbols.join(', ')}` : ''}...
                       </span>
@@ -971,7 +971,7 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId} className="border border-border/50 rounded-lg p-4 bg-card">
                       <div className="flex items-center gap-2 mb-2">
-                        <StockLoader size={14} />
+                        {/* <StockLoader size={14} /> */}
                         <span className="font-medium text-brand-primary">
                           Searching the web...
                         </span>
@@ -1153,7 +1153,7 @@ export const ThinkingMessage = () => {
 
         <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center gap-4">
-            <StockLoader size={16} />
+            {/* <StockLoader size={16} /> */}
             <span className="text-sm text-muted-foreground">Thinking...</span>
           </div>
         </div>

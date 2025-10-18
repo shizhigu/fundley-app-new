@@ -74,6 +74,7 @@ export interface ChatState {
     total_tokens: number;
     cost: number;
   } | null; // Token 使用和成本统计
+  currentDisplayMessage: string | null; // 实时状态显示
 }
 
 export interface ChatActions {
@@ -155,8 +156,9 @@ export interface StreamEvent {
     | 'tool_complete'
     | 'conversation_complete'
     | 'run_metrics'
+    | 'display_message'
     | 'error';
-  message?: ChatMessage;
+  message?: ChatMessage | string; // Can be ChatMessage or string for display_message
   messageId?: string;
   content?: string;
   error?: string;
