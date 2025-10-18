@@ -1,7 +1,7 @@
 /**
- * Get user's credit transaction history
+ * Get user's credit transaction history with pagination
  *
- * GET /api/credits/history?limit=50
+ * GET /api/credits/history?limit=10&offset=0
  */
 
 import { auth } from '@clerk/nextjs/server';
@@ -18,10 +18,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    const history = await getCreditTransactionHistory(userId, limit);
+    const { transactions, total } = await getCreditTransactionHistory(userId, limit, offset);
 
-    return NextResponse.json({ transactions: history });
+    return NextResponse.json({ transactions, total });
   } catch (error) {
     console.error('[Credits] Error fetching history:', error);
     return NextResponse.json(

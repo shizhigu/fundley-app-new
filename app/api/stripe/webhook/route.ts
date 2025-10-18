@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
 /**
  * Handle checkout.session.completed
- * Create subscription record and grant initial credits
+ * Create subscription record (credits will be granted by invoice.payment_succeeded)
  */
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('[Stripe Webhook] Processing checkout.session.completed:', session.id);
@@ -139,15 +139,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       updated_at = NOW()
   `;
 
-  // Grant initial subscription credits
-  await resetSubscriptionCredits(userId, plan.monthly_credits);
-
-  console.log(`[Stripe Webhook] Subscription created for user ${userId}, plan: ${planType}`);
+  // NOTE: Credits are granted by invoice.payment_succeeded (to avoid duplication)
+  console.log(`[Stripe Webhook] Subscription record created for user ${userId}, plan: ${planType}`);
 }
 
 /**
  * Handle customer.subscription.created
- * Create subscription record and grant initial credits
+ * Create subscription record (credits will be granted by invoice.payment_succeeded)
  * (This is called for any subscription creation, not just via Checkout)
  */
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
@@ -200,10 +198,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
       updated_at = NOW()
   `;
 
-  // Grant initial subscription credits (idempotent - safe to call multiple times)
-  await resetSubscriptionCredits(userId, plan.monthly_credits);
-
-  console.log(`[Stripe Webhook] Subscription created for user ${userId}, plan: ${planType}`);
+  // NOTE: Credits are granted by invoice.payment_succeeded (to avoid duplication)
+  console.log(`[Stripe Webhook] Subscription record created for user ${userId}, plan: ${planType}`);
 }
 
 /**

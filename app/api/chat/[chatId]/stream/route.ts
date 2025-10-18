@@ -275,9 +275,13 @@ export async function POST(
         // Track if controller is closed to prevent writing to closed stream
         let isControllerClosed = false;
 
+        // Track if client has disconnected (but we continue processing)
+        let clientDisconnected = false;
+
         // Safe enqueue wrapper that checks if controller is still open
         const safeEnqueue = (data: Uint8Array) => {
-          if (!isControllerClosed) {
+          // Only send to client if still connected
+          if (!isControllerClosed && !clientDisconnected) {
             try {
               controller.enqueue(data);
             } catch (error) {
@@ -286,7 +290,8 @@ export async function POST(
                 error.message.includes('Controller is already closed')
               ) {
                 isControllerClosed = true;
-                console.warn('⚠️ Controller closed, stopping stream writes');
+                clientDisconnected = true;
+                console.warn('⚠️ Controller closed, but continuing backend processing...');
               } else {
                 throw error;
               }
@@ -299,6 +304,14 @@ export async function POST(
         const heartbeatInterval = setInterval(() => {
           safeEnqueue(encoder.encode(': heartbeat\n\n'));
         }, 5000);
+
+        // Monitor client connection status
+        const connectionMonitor = setInterval(() => {
+          if (request.signal.aborted && !clientDisconnected) {
+            clientDisconnected = true;
+            console.warn('⚠️ Client disconnected, but backend will continue processing to ensure credit deduction');
+          }
+        }, 1000);
 
         try {
           // 0. 检查用户 credit 余额
@@ -476,6 +489,8 @@ export async function POST(
           let lastDbUpdateLength = 0; // Track last DB update to reduce frequency
 
           // 4. 处理AgentOS的流式响应
+          // ⚠️ IMPORTANT: Continue reading stream even if client disconnects
+          // to ensure we capture metrics for credit deduction
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -617,9 +632,10 @@ export async function POST(
                   ) {
                     const metrics = eventData.metrics || eventData.data?.metrics;
                     if (metrics) {
-                      console.log('📊 Run metrics:', metrics);
+                      console.log('📊 Run metrics received:', metrics);
 
-                      // 扣除 credits
+                      // ✅ CRITICAL: Deduct credits regardless of client connection status
+                      // This ensures we never lose billing even if user refreshes/closes tab
                       try {
                         const deduction = await deductUserCredits(userId, chatId, {
                           input_tokens: metrics.input_tokens || 0,
@@ -629,8 +645,9 @@ export async function POST(
                         });
 
                         if (deduction) {
+                          const disconnectStatus = clientDisconnected ? ' [Client Disconnected ✓]' : '';
                           console.log(
-                            `💳 Deducted ${deduction.credits_used.toFixed(4)} credits (from ${deduction.source_type}). Remaining: subscription ${deduction.remaining_subscription_credits.toFixed(2)}, addon ${deduction.remaining_addon_credits.toFixed(2)}`,
+                            `💳 Deducted ${deduction.credits_used.toFixed(4)} credits (from ${deduction.source_type}). Remaining: subscription ${deduction.remaining_subscription_credits.toFixed(2)}, addon ${deduction.remaining_addon_credits.toFixed(2)}${disconnectStatus}`,
                           );
 
                           // 将扣费信息附加到 metrics 中发送给前端
@@ -755,8 +772,14 @@ export async function POST(
             ),
           );
         } finally {
-          // Clear heartbeat interval
+          // Clear all intervals
           clearInterval(heartbeatInterval);
+          clearInterval(connectionMonitor);
+
+          // Log completion status
+          if (clientDisconnected) {
+            console.log('✅ Stream processing completed despite client disconnect - credits deducted successfully');
+          }
 
           if (!isControllerClosed) {
             controller.close();

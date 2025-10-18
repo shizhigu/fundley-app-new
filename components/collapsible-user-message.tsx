@@ -49,21 +49,21 @@ export function CollapsibleUserMessage({
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-md",
-          "text-xs font-medium text-muted-foreground",
-          "hover:text-foreground hover:bg-muted/50",
-          "transition-all duration-150"
+          'inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-md',
+          'text-xs font-medium text-muted-foreground',
+          'hover:text-foreground hover:bg-muted/50',
+          'transition-all duration-150',
         )}
       >
         {isExpanded ? (
           <>
             <ChevronUp className="h-3 w-3" />
-            <span>收起</span>
+            <span>Collapse</span>
           </>
         ) : (
           <>
             <ChevronDown className="h-3 w-3" />
-            <span>展开</span>
+            <span>Expand</span>
           </>
         )}
       </button>

@@ -20,18 +20,26 @@ interface Tab {
 }
 
 function RightPanelTabsComponent() {
+  // 检查品牌配置
+  const isFundley = process.env.NEXT_PUBLIC_BRAND === 'fundley';
+
   // 默认显示分析块
   const [activeTab, setActiveTab] = useState<TabType>('blocks');
   const { currentChatId } = useChatContext();
   const t = useTranslations('panels');
 
-  const tabs: Tab[] = [
+  const allTabs: Tab[] = [
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     { id: 'screener', label: t('screener'), icon: Search },
     { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
+
+  // Fundley 品牌只显示 Analysis Blocks（第二个tab）
+  const tabs = isFundley
+    ? allTabs.filter(tab => tab.id === 'blocks')
+    : allTabs;
 
   // Handle tab change
   const handleTabChange = (tabId: TabType) => {
@@ -40,7 +48,7 @@ function RightPanelTabsComponent() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
-      {/* Tab Navigation */}
+      {/* Tab Navigation - fundley 品牌下只显示 Analysis Blocks 一个选项 */}
       <nav className="flex gap-1 p-2 border-b border-border bg-card" role="tablist">
         {tabs.map((tab) => {
           const Icon = tab.icon;

@@ -238,14 +238,28 @@ export async function resetSubscriptionCredits(
 }
 
 /**
- * Get user's credit transaction history
+ * Get user's credit transaction history with pagination
  *
  * @param userId User ID
  * @param limit Number of transactions to fetch
- * @returns Transaction history
+ * @param offset Number of transactions to skip
+ * @returns Transaction history with total count
  */
-export async function getCreditTransactionHistory(userId: string, limit: number = 50) {
+export async function getCreditTransactionHistory(
+  userId: string,
+  limit: number = 50,
+  offset: number = 0
+) {
   try {
+    // Get total count
+    const countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM credit_transactions
+      WHERE user_id = (SELECT id FROM users WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId} LIMIT 1)
+    `;
+    const total = parseInt(countResult[0]?.total || '0', 10);
+
+    // Get paginated results
     const result = await sql`
       SELECT
         id,
@@ -263,9 +277,10 @@ export async function getCreditTransactionHistory(userId: string, limit: number 
       WHERE user_id = (SELECT id FROM users WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId} LIMIT 1)
       ORDER BY created_at DESC
       LIMIT ${limit}
+      OFFSET ${offset}
     `;
 
-    return result.map(row => ({
+    const transactions = result.map(row => ({
       id: row.id,
       amount: parseFloat(row.amount),
       transaction_type: row.transaction_type,
@@ -278,6 +293,8 @@ export async function getCreditTransactionHistory(userId: string, limit: number 
       balance_after: row.balance_after ? parseFloat(row.balance_after) : null,
       created_at: row.created_at,
     }));
+
+    return { transactions, total };
   } catch (error) {
     console.error('[Credits] Failed to get transaction history:', error);
     throw error;

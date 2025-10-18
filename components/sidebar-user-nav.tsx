@@ -40,6 +40,14 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const displayEmail = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || 'User';
 
   const handleSignOut = async () => {
+    // 清空 localStorage，防止数据泄露给下一个登录用户
+    try {
+      localStorage.clear();
+      console.log('✅ localStorage cleared on sign out');
+    } catch (error) {
+      console.error('Failed to clear localStorage:', error);
+    }
+
     await signOut();
     router.push('/');
   };

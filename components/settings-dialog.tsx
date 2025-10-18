@@ -96,6 +96,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [pricingLoading, setPricingLoading] = useState<PlanType | null>(null);
   const [creditBalance, setCreditBalance] = useState<any>(null);
   const [creditHistory, setCreditHistory] = useState<any[]>([]);
+  const [creditHistoryPage, setCreditHistoryPage] = useState(1);
+  const [creditHistoryTotal, setCreditHistoryTotal] = useState(0);
+  const HISTORY_PAGE_SIZE = 10;
   const [portalLoading, setPortalLoading] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
@@ -200,7 +203,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   };
 
-  const fetchCreditData = async () => {
+  const fetchCreditData = async (page = 1) => {
     try {
       // Fetch credit balance
       const balanceRes = await fetch('/api/credits/balance');
@@ -209,11 +212,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         setCreditBalance(balanceData);
       }
 
-      // Fetch usage history
-      const historyRes = await fetch('/api/credits/history?limit=10');
+      // Fetch usage history with pagination
+      const offset = (page - 1) * HISTORY_PAGE_SIZE;
+      const historyRes = await fetch(
+        `/api/credits/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`
+      );
       if (historyRes.ok) {
         const historyData = await historyRes.json();
         setCreditHistory(historyData.transactions || []);
+        setCreditHistoryTotal(historyData.total || 0);
+        setCreditHistoryPage(page);
       }
     } catch (error) {
       console.error('Error fetching credit data:', error);
@@ -1038,65 +1046,103 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
 
                 {/* Usage History */}
-                <div className="border border-border rounded-lg p-6 bg-background">
-                  <h3 className="text-lg font-semibold mb-4">
-                    {tSubscription('usageHistory')}
-                  </h3>
+                <div className="border border-border rounded-lg bg-background">
+                  <div className="p-6 border-b border-border">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">
+                        {tSubscription('usageHistory')}
+                      </h3>
+                      {creditHistoryTotal > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {((creditHistoryPage - 1) * HISTORY_PAGE_SIZE) + 1}-
+                          {Math.min(creditHistoryPage * HISTORY_PAGE_SIZE, creditHistoryTotal)} of {creditHistoryTotal}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   {creditHistory.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8 text-sm">
+                    <p className="text-muted-foreground text-center py-8 text-sm px-6">
                       {tSubscription('noHistory')}
                     </p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">
-                              {tSubscription('date')}
-                            </th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">
-                              {tSubscription('description')}
-                            </th>
-                            <th className="text-right py-2 px-2 text-xs font-semibold text-muted-foreground">
-                              {tSubscription('creditsUsed')}
-                            </th>
-                            <th className="text-right py-2 px-2 text-xs font-semibold text-muted-foreground">
-                              {tSubscription('balance')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {creditHistory.map((transaction: any) => (
-                            <tr key={transaction.id} className="border-b border-border last:border-0">
-                              <td className="py-2 px-2 text-xs text-muted-foreground">
-                                {new Date(transaction.created_at).toLocaleDateString()}
-                              </td>
-                              <td className="py-2 px-2 text-xs">
-                                {transaction.description}
-                              </td>
-                              <td className="py-2 px-2 text-xs text-right">
-                                <span
-                                  className={
-                                    transaction.amount < 0
-                                      ? 'text-red-600'
-                                      : 'text-green-600'
-                                  }
-                                >
-                                  {transaction.amount > 0 ? '+' : ''}
-                                  {transaction.amount.toFixed(4)}
-                                </span>
-                              </td>
-                              <td className="py-2 px-2 text-xs text-right font-medium">
-                                {transaction.balance_after != null
-                                  ? formatCredits(transaction.balance_after)
-                                  : '-'}
-                              </td>
+                    <>
+                      {/* Fixed height scrollable table */}
+                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-background z-10">
+                            <tr className="border-b border-border">
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground">
+                                {tSubscription('date')}
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground">
+                                {tSubscription('description')}
+                              </th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground">
+                                {tSubscription('creditsUsed')}
+                              </th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground">
+                                {tSubscription('balance')}
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {creditHistory.map((transaction: any) => (
+                              <tr key={transaction.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                                <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                                  {new Date(transaction.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="py-3 px-4 text-xs">
+                                  {transaction.description}
+                                </td>
+                                <td className="py-3 px-4 text-xs text-right font-mono">
+                                  <span
+                                    className={
+                                      transaction.amount < 0
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-green-600 dark:text-green-400'
+                                    }
+                                  >
+                                    {transaction.amount > 0 ? '+' : ''}
+                                    {transaction.amount.toFixed(4)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-xs text-right font-medium font-mono">
+                                  {transaction.balance_after != null
+                                    ? formatCredits(transaction.balance_after)
+                                    : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {creditHistoryTotal > HISTORY_PAGE_SIZE && (
+                        <div className="flex items-center justify-between p-4 border-t border-border">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchCreditData(creditHistoryPage - 1)}
+                            disabled={creditHistoryPage === 1}
+                          >
+                            Previous
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            Page {creditHistoryPage} of {Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchCreditData(creditHistoryPage + 1)}
+                            disabled={creditHistoryPage >= Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

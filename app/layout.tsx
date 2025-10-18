@@ -6,6 +6,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getBranding } from '@/lib/config/branding';
 import { I18nProvider } from '@/lib/i18n-provider';
+import { UserSessionGuard } from '@/components/user-session-guard';
 
 import './globals.css';
 
@@ -105,6 +106,7 @@ export default async function RootLayout({
     >
       <body className="antialiased">
         <ClerkProvider>
+          <UserSessionGuard />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
