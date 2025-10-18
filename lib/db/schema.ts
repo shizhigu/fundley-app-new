@@ -74,6 +74,7 @@ export interface AnalysisBlock {
   symbols?: string[];
   tags?: string[];
   description?: string;
+  primarySymbol?: string;  // Primary ticker symbol for logo display
 
   // Template features
   isTemplate: boolean;

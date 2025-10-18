@@ -520,9 +520,21 @@ export function AnalysisBlockRenderer({
             >
           <CardContent className="p-5">
             <div className="flex items-start gap-3 min-w-0">
-              {/* Block icon - purely decorative now */}
-              <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center">
-                <BarChart className="h-6 w-6 text-brand-primary" />
+              {/* Block logo/icon */}
+              <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center overflow-hidden">
+                {block.primary_symbol ? (
+                  <img
+                    src={`https://images.financialmodelingprep.com/symbol/${block.primary_symbol}.png`}
+                    alt={block.primary_symbol}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <BarChart className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`} />
               </div>
 
               {/* Content preview - clickable to open detail view */}
@@ -666,27 +678,35 @@ export function AnalysisBlockRenderer({
     >
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          {/* Selection button */}
+          {/* Block logo/icon - clickable to select/deselect */}
           <button
             onClick={(e) => {
-              console.log('🔵 Selection button clicked (expanded)!', block.id);
+              console.log('🔵 Logo clicked (expanded)!', block.id);
               e.stopPropagation();
               e.preventDefault();
               onSelect?.();
             }}
             className={cn(
-              'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 relative z-10',
+              'flex-shrink-0 w-12 h-12 p-1 rounded-full flex items-center justify-center overflow-hidden transition-all hover:scale-105 relative z-10',
               isActive
-                ? 'bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/50'
-                : 'bg-muted hover:bg-primary/20 border-2 border-transparent hover:border-primary/30',
+                ? 'bg-brand-avatar ring-2 ring-primary/50 shadow-lg'
+                : 'bg-brand-avatar hover:ring-2 hover:ring-primary/30',
             )}
             title={isActive ? 'Deselect block' : 'Select block for work'}
           >
-            {isActive ? (
-              <div className="size-3 rounded-full bg-white animate-pulse" />
-            ) : (
-              <BarChart className="h-5 w-5" />
-            )}
+            {block.primary_symbol ? (
+              <img
+                src={`https://images.financialmodelingprep.com/symbol/${block.primary_symbol}.png`}
+                alt={block.primary_symbol}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback to icon if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <BarChart className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`} />
           </button>
 
           {/* Title - Notion-style inline editing */}

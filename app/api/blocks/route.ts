@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         ab.updated_at as "updatedAt",
         ab.is_pinned as "isPinned",
         ab.pinned_at as "pinnedAt",
+        ab.primary_symbol as "primarySymbol",
         ab.content,
         c.title as "sourceChatTitle",
         -- Get list of chats that modified this block
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
         updatedAt: block.updatedAt,
         isPinned: block.isPinned || false,
         pinnedAt: block.pinnedAt,
+        primarySymbol: block.primarySymbol,
         content: block.content,
         // Computed fields for UI
         title,
@@ -85,6 +87,7 @@ export async function GET(request: NextRequest) {
         created_at: block.createdAt,
         updated_at: block.updatedAt,
         chat_id: block.sourceChatId || block.chatId,
+        primary_symbol: block.primarySymbol,
       };
     });
 
