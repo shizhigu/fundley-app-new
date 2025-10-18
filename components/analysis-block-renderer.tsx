@@ -102,6 +102,7 @@ interface AnalysisBlockProps {
     created_at: string;
     chat_id?: string; // Added to pass session ID
     isPinned?: boolean;
+    primary_symbol?: string; // Primary ticker symbol for logo display
     sourceChat?: {
       id: string;
       title: string;
