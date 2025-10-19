@@ -196,7 +196,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
           const blocksRes = await fetch('/api/blocks')
           if (blocksRes.ok) {
             const { blocks: allBlocks } = await blocksRes.json()
-            targetBlock = allBlocks.find(b => b.id === block_id)
+            targetBlock = allBlocks.find((b: any) => b.id === block_id)
             setBlocks(allBlocks)
           }
         }
