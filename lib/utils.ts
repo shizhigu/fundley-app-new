@@ -164,3 +164,7 @@ export function getTextFromMessage(message: ChatMessage): string {
     .map((part) => part.text)
     .join('');
 }
+
+// ============ Block History Management ============
+// Note: Block history is now managed by Redis (backend)
+// Use /api/user/active-block API instead of localStorage

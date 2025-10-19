@@ -35,7 +35,9 @@
       "Bash(pgrep:*)",
       "Bash(git checkout:*)",
       "Bash(git restore:*)",
-      "Read(//Users/gushizhi/**)"
+      "Read(//Users/gushizhi/**)",
+      "Bash(pnpm dev:turbo:*)",
+      "Bash(node -e \"\nconst { createClient } = require(''redis'');\n\nasync function test() {\n  try {\n    console.log(''Creating Redis client...'');\n    console.log(''URL:'', process.env.REDIS_URL);\n    const client = createClient({\n      url: ''rediss://red-d3imkvbuibrs73d1qsk0:jF4QDcoFvKd717IKyclA1HUwBeSREK4y@oregon-keyvalue.render.com:6379'',\n    });\n\n    client.on(''error'', (err) => console.error(''Redis Error:'', err.message));\n    \n    console.log(''Connecting...'');\n    await client.connect();\n    console.log(''Connected!'');\n    \n    await client.set(''test'', ''value'');\n    console.log(''Set test key'');\n    \n    const val = await client.get(''test'');\n    console.log(''Got value:'', val);\n    \n    await client.disconnect();\n  } catch (e) {\n    console.error(''Error:'', e.message, e.code);\n  }\n}\n\ntest();\n\")"
     ],
     "deny": [],
     "ask": [],

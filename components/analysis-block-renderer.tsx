@@ -100,6 +100,7 @@ interface AnalysisBlockProps {
     id: string;
     content: any;
     created_at: string;
+    updated_at?: string; // Added for cache-busting
     chat_id?: string; // Added to pass session ID
     isPinned?: boolean;
     primary_symbol?: string; // Primary ticker symbol for logo display
@@ -139,7 +140,7 @@ export function AnalysisBlockRenderer({
 }: AnalysisBlockProps) {
   const { content } = block;
   const tAnalysis = useTranslations('analysis');
-  const { selectChat } = useChatContext();
+  const { selectChat, blockToolCalled } = useChatContext();
 
   // Block ID for file fetching
   const blockId = block.id;
@@ -164,7 +165,7 @@ export function AnalysisBlockRenderer({
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   // State for collapsible sections (only used when block is expanded)
-  const [isChartExpanded, setIsChartExpanded] = useState(true);
+  const [expandedCharts, setExpandedCharts] = useState<Set<number>>(new Set([0])); // Track which charts are expanded (default: first chart)
   const [isDataExpanded, setIsDataExpanded] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [tableData, setTableData] = useState<any[]>([]);
@@ -184,6 +185,11 @@ export function AnalysisBlockRenderer({
     return [];
   }, [content.files]);
 
+  // Cache-busting version based on block's update time
+  const blockVersion = React.useMemo(() => {
+    return new Date(block.updated_at || block.created_at).getTime();
+  }, [block.updated_at, block.created_at]);
+
   const dataFiles = React.useMemo(() => {
     if (Array.isArray(content.files?.data)) return content.files.data; // Multiple files
     if (content.files?.data) return [content.files.data]; // Single file (backward compatible)
@@ -196,11 +202,25 @@ export function AnalysisBlockRenderer({
     return [];
   }, [content.files]);
 
-  // Other artifacts (images, CSV, Excel, etc.)
+  // Other artifacts (images, CSV, Excel, Python scripts, etc.)
   const artifacts = React.useMemo(() => {
-    if (Array.isArray(content.files?.artifacts)) return content.files.artifacts;
-    if (content.files?.artifact) return [content.files.artifact];
-    return [];
+    const filesList: string[] = [];
+
+    // Collect from artifacts array/single
+    if (Array.isArray(content.files?.artifacts)) {
+      filesList.push(...content.files.artifacts);
+    } else if (content.files?.artifact) {
+      filesList.push(content.files.artifact);
+    }
+
+    // Collect Python scripts
+    if (Array.isArray(content.files?.scripts)) {
+      filesList.push(...content.files.scripts);
+    } else if (content.files?.script) {
+      filesList.push(content.files.script);
+    }
+
+    return filesList;
   }, [content.files]);
 
   // Fetch JSON data from backend
@@ -304,6 +324,7 @@ export function AnalysisBlockRenderer({
       xlsx: { label: 'Excel', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
       txt: { label: 'TXT', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
       md: { label: 'Markdown', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+      py: { label: 'Python', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
     };
     return fileTypes[ext] || { label: ext.toUpperCase(), color: 'bg-gray-100 dark:bg-gray-800 text-gray-500' };
   }, []);
@@ -324,23 +345,21 @@ export function AnalysisBlockRenderer({
 
   const [refreshingChart, setRefreshingChart] = useState<string | null>(null);
 
-  // Refresh chart by reloading iframe
-  const handleRefreshChart = useCallback((chartFile: string) => {
+  // Refresh chart by reloading iframe (manual refresh adds extra timestamp)
+  const handleRefreshChart = useCallback((chartFile: string, chartIndex: number) => {
     setRefreshingChart(chartFile);
-    // Find the iframe and reload it
-    const iframes = document.querySelectorAll('iframe');
-    for (const iframe of iframes) {
-      if (iframe.src.includes(chartFile)) {
-        // Add timestamp to force reload
-        const url = new URL(iframe.src);
-        url.searchParams.set('t', Date.now().toString());
-        iframe.src = url.toString();
-        break;
-      }
+    // Find the specific iframe by ID
+    const iframeId = `chart-iframe-${block.id}-${chartIndex}`;
+    const iframe = document.getElementById(iframeId) as HTMLIFrameElement;
+    if (iframe) {
+      // Add extra timestamp for manual refresh
+      const url = new URL(iframe.src);
+      url.searchParams.set('refresh', Date.now().toString());
+      iframe.src = url.toString();
     }
     // Reset refreshing state after a delay
     setTimeout(() => setRefreshingChart(null), 1000);
-  }, []);
+  }, [block.id]);
 
   // Export HTML file directly
   const handleExportHtml = useCallback(
@@ -870,7 +889,15 @@ export function AnalysisBlockRenderer({
               >
                 <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
                   <button
-                    onClick={() => setIsChartExpanded(!isChartExpanded)}
+                    onClick={() => {
+                      const newExpanded = new Set(expandedCharts);
+                      if (newExpanded.has(index)) {
+                        newExpanded.delete(index);
+                      } else {
+                        newExpanded.add(index);
+                      }
+                      setExpandedCharts(newExpanded);
+                    }}
                     className="flex items-center gap-2 flex-1"
                   >
                     <BarChart className="h-4 w-4" />
@@ -879,7 +906,7 @@ export function AnalysisBlockRenderer({
                         ? 'Visualization'
                         : `Visualization ${index + 1}`}
                     </span>
-                    {isChartExpanded ? (
+                    {expandedCharts.has(index) ? (
                       <ChevronUp className="h-4 w-4 ml-2" />
                     ) : (
                       <ChevronDown className="h-4 w-4 ml-2" />
@@ -891,7 +918,7 @@ export function AnalysisBlockRenderer({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRefreshChart(chartFile);
+                        handleRefreshChart(chartFile, index);
                       }}
                       disabled={refreshingChart === chartFile}
                       className="h-8 w-8 p-0"
@@ -928,11 +955,12 @@ export function AnalysisBlockRenderer({
                   </div>
                 </div>
 
-                {isChartExpanded && (
+                {expandedCharts.has(index) && (
                   <div className="w-full h-[400px] bg-white overflow-auto">
                     <iframe
+                      key={`chart-${block.id}-${index}-${blockVersion}`}
                       id={`chart-iframe-${block.id}-${index}`}
-                      src={`/api/files/${chartFile}?block_id=${blockId}`}
+                      src={`/api/files/${chartFile}?block_id=${blockId}&v=${blockVersion}`}
                       className="w-full h-full border-0 min-w-0"
                       title={`Visualization ${index + 1}`}
                       sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
@@ -976,7 +1004,7 @@ export function AnalysisBlockRenderer({
           </div>
         )}
 
-        {/* Other Artifacts (Images, CSV, Excel, etc.) */}
+        {/* Other Artifacts (Images, CSV, Excel, Python scripts, etc.) */}
         {artifacts.length > 0 && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1232,8 +1260,9 @@ export function AnalysisBlockRenderer({
           <div className="w-full h-[calc(90vh-8rem)] bg-white">
             {maximizedChart && (
               <iframe
+                key={`chart-maximized-${block.id}-${blockVersion}`}
                 id={`chart-iframe-${block.id}-maximized`}
-                src={`/api/files/${maximizedChart}?block_id=${blockId}`}
+                src={`/api/files/${maximizedChart}?block_id=${blockId}&v=${blockVersion}`}
                 className="w-full h-full border-0"
                 title="Visualization (Maximized)"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"

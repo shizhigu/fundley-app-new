@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl'
 import { Input } from '@/components/ui/input'
 import { useBlockViewStore } from '@/stores/block-view-store'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useActiveBlock } from '@/lib/hooks/use-active-block'
 
 interface AnalysisBlocksPanelProps {
   chatId: string
@@ -19,13 +20,16 @@ interface AnalysisBlocksPanelProps {
 
 export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPanelProps) {
   const t = useTranslations('analysis')
-  const { isLoading: isChatStreaming, blockToolCalled } = useChatContext()
+  const { isLoading: isChatStreaming, blockToolCalled, switchedBlockId } = useChatContext()
   const { activeBlockId, setActiveBlock } = useBlockViewStore()
+
+  // Redis sync for active block (auto-restore on mount, manual sync on open/close)
+  const { activeBlock: redisActiveBlock, setActive: syncToRedis, clearActive: clearRedis } = useActiveBlock()
 
   // Quick filter for "This Chat" blocks
   const [showCurrentChatOnly, setShowCurrentChatOnly] = useState(false)
 
-  // Sort order - restore from localStorage
+  // Sort order - restore from localStorage (keep this for UI preference)
   type SortOrder = 'updated' | 'created'
   const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
     if (typeof window !== 'undefined') {
@@ -35,19 +39,27 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
     return 'updated'
   })
 
-  // Restore last opened block from localStorage
-  const restoredBlockId = typeof window !== 'undefined' ? localStorage.getItem('activeBlockId') : null;
-
   const [blocks, setBlocks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null)
-  const [detailViewBlockId, setDetailViewBlockId] = useState<string | null>(() => {
-    // Restore last opened block from localStorage on mount
-    return restoredBlockId;
-  })
+  const [detailViewBlockId, setDetailViewBlockId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const lastTimestampRef = useRef<string | null>(null)
+  const hasRestoredRef = useRef(false)
+
+  // Restore active block from Redis once on mount (after page refresh)
+  useEffect(() => {
+    if (redisActiveBlock?.block_id && blocks.length > 0 && !hasRestoredRef.current) {
+      const block = blocks.find(b => b.id === redisActiveBlock.block_id);
+      if (block) {
+        setDetailViewBlockId(redisActiveBlock.block_id);
+        setActiveBlock(redisActiveBlock.block_id, redisActiveBlock.content || block);
+        hasRestoredRef.current = true;
+        console.log('🔄 Restored active block from Redis:', redisActiveBlock.block_id);
+      }
+    }
+  }, [redisActiveBlock, blocks, setActiveBlock])
 
   // 过滤和排序blocks - 根据搜索关键词、"This Chat" 过滤器和排序顺序
   // 分离置顶和普通块
@@ -148,6 +160,67 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
     loadInitialBlocks()
   }, []) // Empty deps - load once on mount
 
+  // Track if we have a pending switch request
+  const pendingSwitchRef = useRef<string | null>(null)
+
+  // 监听 switch_analysis_block 工具调用，从 Redis 读取最新状态
+  useEffect(() => {
+    if (!switchedBlockId) return
+
+    const handleSwitch = async () => {
+      console.log(`🔄 Switch detected (timestamp: ${switchedBlockId.timestamp})`)
+
+      // Mark as pending switch (to prevent Redis overwrite)
+      pendingSwitchRef.current = 'switching'
+
+      try {
+        // Fetch latest active block from Redis (backend has already updated it)
+        const response = await fetch('/api/user/active-block')
+        if (!response.ok) throw new Error('Failed to fetch from Redis')
+
+        const { block_id, content } = await response.json()
+
+        if (!block_id) {
+          console.warn('⚠️ No active block in Redis')
+          pendingSwitchRef.current = null
+          return
+        }
+
+        console.log('📥 Redis active block:', block_id)
+
+        // Find the block in current list or reload
+        let targetBlock = blocks.find(b => b.id === block_id)
+
+        if (!targetBlock) {
+          console.log('⏳ Block not in list, reloading...')
+          const blocksRes = await fetch('/api/blocks')
+          if (blocksRes.ok) {
+            const { blocks: allBlocks } = await blocksRes.json()
+            targetBlock = allBlocks.find(b => b.id === block_id)
+            setBlocks(allBlocks)
+          }
+        }
+
+        if (targetBlock) {
+          console.log(`✅ Switching to: ${content?.title || targetBlock.title}`)
+          setDetailViewBlockId(block_id)
+          setActiveBlock(block_id, content || targetBlock)
+        }
+
+        // Clear pending flag after a delay to ensure useEffect doesn't overwrite
+        setTimeout(() => {
+          pendingSwitchRef.current = null
+          console.log('🔓 Switch complete, Redis sync re-enabled')
+        }, 500)
+      } catch (err) {
+        console.error('❌ Switch failed:', err)
+        pendingSwitchRef.current = null
+      }
+    }
+
+    handleSwitch()
+  }, [switchedBlockId, blocks, setActiveBlock])
+
   // 被动触发式轮询：只在 block 工具调用后轮询
   useEffect(() => {
     if (blockToolCalled === 0) return // 没有工具调用，不启动轮询
@@ -230,7 +303,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
       const fetchedBlocks = data.blocks || []
 
       let foundNewOrUpdated = false
-      const currentActiveBlockId = activeBlockId || (typeof window !== 'undefined' ? localStorage.getItem('activeBlockId') : null)
+      const currentActiveBlockId = activeBlockId
 
       setBlocks(prevBlocks => {
         // Find new blocks (not in previous list)
@@ -240,15 +313,8 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
         if (uniqueNewBlocks.length > 0) {
           console.log(`📊 Polling: Found ${uniqueNewBlocks.length} new blocks`)
           foundNewOrUpdated = true
-          // Auto-open latest new block in detail view
-          const latestBlock = uniqueNewBlocks[uniqueNewBlocks.length - 1]
-          setDetailViewBlockId(latestBlock.id)
-
-          // Immediately update localStorage (don't wait for useEffect)
-          localStorage.setItem('activeBlockId', latestBlock.id)
-          localStorage.setItem('activeBlockContent', JSON.stringify(latestBlock))
-          setActiveBlock(latestBlock.id, latestBlock)
-          console.log(`🔓 Auto-opened new block and set as active: ${latestBlock.id}`)
+          // Note: Auto-open is now handled by Redis-based switch detection
+          // Polling only updates the blocks list for display
         }
 
         // Check for updated blocks (content/title changed)
@@ -260,10 +326,9 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
               console.log(`🔄 Block ${newBlock.id} updated`)
               foundNewOrUpdated = true
 
-              // If this is the currently active block, update localStorage immediately
+              // If this is the currently active block, update store (Redis sync happens in detailView useEffect)
               if (newBlock.id === currentActiveBlockId) {
-                console.log(`📝 Updating active block content in localStorage: ${newBlock.id}`)
-                localStorage.setItem('activeBlockContent', JSON.stringify(newBlock))
+                console.log(`📝 Updating active block content in store: ${newBlock.id}`)
                 setActiveBlock(newBlock.id, newBlock)
               }
             }
@@ -293,26 +358,37 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
   // Get the block for detail view
   const detailBlock = detailViewBlockId ? blocks.find(b => b.id === detailViewBlockId) : null
 
-  // Auto-set active block with full content when opening detail view
+  // Auto-set active block when opening detail view (sync to Redis)
   useEffect(() => {
     if (detailViewBlockId && detailBlock) {
-      // Store in localStorage for reliable access across components
-      localStorage.setItem('activeBlockId', detailViewBlockId);
-      localStorage.setItem('activeBlockContent', JSON.stringify(detailBlock));
-      console.log('✅ Stored active block in localStorage:', detailViewBlockId);
+      // CRITICAL: Don't sync to Redis if we're in the middle of a switch
+      // This prevents overwriting the correct block_id with stale data
+      if (pendingSwitchRef.current) {
+        console.log('⏸️  Skipping Redis sync during switch (pending:', pendingSwitchRef.current, ')');
+        return;
+      }
 
-      // Also update Zustand store for UI state
+      // Only sync if the IDs match (prevents race condition where detailBlock lags behind detailViewBlockId)
+      if (detailBlock.id !== detailViewBlockId) {
+        console.log('⏸️  Skipping Redis sync - block data mismatch:', {
+          detailViewBlockId,
+          detailBlockId: detailBlock.id
+        });
+        return;
+      }
+
+      // Update Zustand store for UI state
       setActiveBlock(detailViewBlockId, detailBlock);
-    } else if (!detailViewBlockId) {
-      // Only clear localStorage when explicitly closing (detailViewBlockId is null)
-      // Don't clear when blocks haven't loaded yet (detailViewBlockId exists but detailBlock is null)
-      localStorage.removeItem('activeBlockId');
-      localStorage.removeItem('activeBlockContent');
-      console.log('❌ Cleared active block from localStorage');
 
-      // Also clear Zustand store
-      setActiveBlock(null, null);
+      // Sync minimal data to Redis for backend pre-hook (only id, title, content)
+      const blockTitle = detailBlock.content?.title || detailBlock.title || 'Untitled Block';
+      const minimalContent = {
+        title: blockTitle,
+        content: detailBlock.content, // Only the content field
+      };
+      syncToRedis(detailViewBlockId, minimalContent, blockTitle);
     }
+    // Note: We don't clear Redis here when closing - that's done explicitly in the "Back to list" button
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailViewBlockId, detailBlock]);
 
@@ -324,8 +400,10 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
         <div className="flex items-center gap-3 p-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <button
             onClick={() => {
-              console.log('🔙 Back to list clicked - clearing detail view and localStorage');
+              console.log('🔙 Back to list clicked - clearing detail view and Redis');
               setDetailViewBlockId(null);
+              setActiveBlock(null, null);
+              clearRedis(); // Clear from Redis when user explicitly closes
             }}
             className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
           >
@@ -416,9 +494,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                     setBlocks(prev => [block, ...prev])
                     setDetailViewBlockId(block.id)
 
-                    // Immediately update localStorage (don't wait for useEffect)
-                    localStorage.setItem('activeBlockId', block.id)
-                    localStorage.setItem('activeBlockContent', JSON.stringify(block))
+                    // Update Zustand store (Redis sync will happen in detailView useEffect)
                     setActiveBlock(block.id, block)
                     console.log('✅ Created new block and set as active:', block.id)
                   } catch (error) {

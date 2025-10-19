@@ -67,6 +67,7 @@ export interface ChatState {
   isLoading: boolean;
   error: string | null;
   blockToolCalled: number; // Block 工具调用计数器，用于触发轮询
+  switchedBlockId: { id: string; timestamp: number } | null; // 切换到的 block ID（用于 switch_analysis_block 工具）
   currentMetrics: {
     input_tokens: number;
     output_tokens: number;

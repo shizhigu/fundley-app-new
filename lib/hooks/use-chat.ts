@@ -49,6 +49,10 @@ export function useChat(): ChatState & ChatActions {
   // 跟踪 block 工具调用，用于触发轮询
   const [blockToolCalled, setBlockToolCalled] = useState<number>(0);
 
+  // 跟踪切换到的 block ID（用于 switch_analysis_block 工具）
+  // 使用对象包含 timestamp 确保每次切换都能触发 useEffect
+  const [switchedBlockId, setSwitchedBlockId] = useState<{ id: string; timestamp: number } | null>(null);
+
   // 跟踪最新的display_message（实时状态显示）
   const [currentDisplayMessage, setCurrentDisplayMessage] = useState<string | null>(null);
 
@@ -59,13 +63,8 @@ export function useChat(): ChatState & ChatActions {
   );
 
   // ============ Block 数据集成 ============
-  const activeBlockId = useBlockViewStore((state) => state.activeBlockId);
-  const activeBlockContent = useBlockViewStore((state) => state.activeBlockContent);
-
-  // Debug: Log store state
-  useEffect(() => {
-    console.log('🔍 Block store state in useChat:', { activeBlockId, hasContent: !!activeBlockContent });
-  }, [activeBlockId, activeBlockContent]);
+  // Note: Block state is now managed by Redis and loaded by backend pre-hook
+  // No need to read from frontend store anymore
 
   // 构建财务数据会话状态 - 不使用useCallback，确保每次都获取最新数据
   const buildSessionState = (): FinancialSessionState => {
@@ -393,43 +392,11 @@ export function useChat(): ChatState & ChatActions {
         // 构建请求
         const sessionState = buildSessionState();
 
-        // 实时从 localStorage 读取 activeBlockId（避免 React state 同步问题）
-        const storedBlockId = typeof window !== 'undefined' ? localStorage.getItem('activeBlockId') : null;
-        const storedBlockContent = typeof window !== 'undefined' ? localStorage.getItem('activeBlockContent') : null;
-
-        console.log('📍 localStorage check before sending:', {
-          storedBlockId,
-          hasStoredContent: !!storedBlockContent,
-          paramBlockId: blockId
-        });
-
-        // 优先使用参数传入的 blockId，其次使用 localStorage
-        const workingBlockId = blockId || storedBlockId;
-
-        if (workingBlockId) {
-          sessionState['current_block_id'] = workingBlockId;
-
-          // 如果有完整的 block 内容，也添加到 sessionState
-          if (storedBlockContent) {
-            try {
-              sessionState['current_block_content'] = JSON.parse(storedBlockContent);
-            } catch (e) {
-              console.warn('Failed to parse stored block content:', e);
-            }
-          }
-
-          console.log('📌 Working in block (from localStorage):', {
-            blockId: workingBlockId,
-            hasContent: !!sessionState['current_block_content']
-          });
-        }
-
-        console.log('📤 Final sessionState keys:', Object.keys(sessionState));
+        // Note: Block state (current_block_id, current_block_content, block_history) is now
+        // automatically loaded from Redis by the backend pre-hook. No need to send from frontend.
+        console.log('📤 Sending sessionState (block state loaded from Redis by backend):', Object.keys(sessionState));
         console.log('📤 Sending message with sessionState:', {
           chatId: messageChatId,
-          blockId: blockId || 'none',
-          hasBlockId: !!sessionState['current_block_id'],
-          hasBlockContent: !!sessionState['current_block_content'],
           hasFinancialData: !!sessionState['financial_metrics_data']?.length,
           financialDataLength:
             sessionState['financial_metrics_data']?.length || 0,
@@ -499,30 +466,65 @@ export function useChat(): ChatState & ChatActions {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let lastActivity = Date.now();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // Timeout detection: 30 seconds without any data (including heartbeats)
+      const HEARTBEAT_INTERVAL = 5000; // Backend sends heartbeat every 5 seconds
+      const TIMEOUT_MULTIPLIER = 6; // 6 × 5s = 30 seconds
+      const TIMEOUT_THRESHOLD = HEARTBEAT_INTERVAL * TIMEOUT_MULTIPLIER;
 
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
+      const timeoutCheck = setInterval(() => {
+        const timeSinceLastActivity = Date.now() - lastActivity;
+        if (timeSinceLastActivity > TIMEOUT_THRESHOLD) {
+          console.error(
+            `❌ Stream timeout - no data received for ${TIMEOUT_THRESHOLD / 1000} seconds`
+          );
+          setError('Connection lost. Please try again.');
+          reader.cancel();
+          clearInterval(timeoutCheck);
+        }
+      }, 5000);
 
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        for (const line of lines) {
-          if (line.trim() === '' || !line.startsWith('data: ')) continue;
+          // Update activity timestamp on any data received
+          lastActivity = Date.now();
 
-          try {
-            const jsonData = line.slice(6);
-            if (jsonData === '[DONE]') break;
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
 
-            const eventData: StreamEvent = JSON.parse(jsonData);
-            handleStreamEvent(eventData, expectedChatId);
-          } catch (err) {
-            console.warn('Failed to parse SSE data:', line, err);
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            // Skip empty lines
+            if (line.trim() === '') continue;
+
+            // Handle SSE comments (heartbeats) - silently ignore
+            if (line.startsWith(':')) {
+              // Heartbeat received, connection is alive
+              continue;
+            }
+
+            // Only process data lines
+            if (!line.startsWith('data: ')) continue;
+
+            try {
+              const jsonData = line.slice(6);
+              if (jsonData === '[DONE]') break;
+
+              const eventData: StreamEvent = JSON.parse(jsonData);
+              handleStreamEvent(eventData, expectedChatId);
+            } catch (err) {
+              console.warn('Failed to parse SSE data:', line, err);
+            }
           }
         }
+      } finally {
+        clearInterval(timeoutCheck);
       }
     },
     [],
@@ -566,12 +568,21 @@ export function useChat(): ChatState & ChatActions {
               }
             });
 
-            // 检测 block 工具调用，触发轮询
+            // 检测 block 工具调用
             if (event.type === 'tool_complete' && event.message && typeof event.message !== 'string') {
               const toolName = event.message.tool_name;
-              if (toolName === 'create_analysis_block' || toolName === 'update_analysis_block') {
-                console.log(`🎯 Block tool called: ${toolName}, triggering polling`);
-                setBlockToolCalled(prev => prev + 1); // 增量更新触发轮询
+
+              // Create/Switch: 从 Redis 读取（后端已同步）
+              if (toolName === 'create_analysis_block' || toolName === 'switch_analysis_block') {
+                console.log(`🎯 ${toolName} detected, fetching from Redis`);
+                // 使用 timestamp 确保每次都触发（即使是同一个 block）
+                setSwitchedBlockId({ id: 'fetch-from-redis', timestamp: Date.now() });
+              }
+
+              // Update: 仅触发轮询更新（不切换 block）
+              if (toolName === 'update_analysis_block') {
+                console.log(`🎯 Update detected, triggering polling`);
+                setBlockToolCalled(prev => prev + 1);
               }
             }
           }
@@ -893,6 +904,7 @@ export function useChat(): ChatState & ChatActions {
     isLoading,
     error,
     blockToolCalled, // Block 工具调用触发器
+    switchedBlockId, // 切换到的 block ID（用于 switch_analysis_block 工具）
     currentMetrics, // Token 使用和成本统计
     currentDisplayMessage, // 实时状态显示
 
