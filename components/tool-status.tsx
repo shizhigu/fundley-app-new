@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PythonIcon } from './icons';
+import { useDevModeStore } from '@/stores/dev-mode-store';
 
 export interface ToolStatusProps {
   name: string;
@@ -149,7 +150,10 @@ export function ToolStatus({ name, status, displayAction }: ToolStatusProps) {
 }
 
 export function ToolStatusList({ tools }: { tools: ToolStatusProps[] }) {
-  if (tools.length === 0) return null;
+  const { isEnabled: devModeEnabled } = useDevModeStore();
+
+  // Only show tool badges in developer mode
+  if (!devModeEnabled || tools.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2 my-3">

@@ -33,7 +33,8 @@
       "Bash(xargs kill:*)",
       "WebFetch(domain:aider.chat)",
       "Bash(pgrep:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": [],

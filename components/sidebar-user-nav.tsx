@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronUp, Settings, Moon, Sun, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import { useClerk, useUser } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { LoaderIcon } from './icons';
 import { SettingsDialog } from './settings-dialog';
 import { cn } from '@/lib/utils';
+import { useDevModeStore } from '@/stores/dev-mode-store';
 
 interface SidebarUserNavProps {
   user?: {
@@ -37,7 +39,53 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const { setTheme, resolvedTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Developer mode activation (Easter egg: click avatar 5 times)
+  const { isEnabled: devModeEnabled, toggle: toggleDevMode } = useDevModeStore();
+  const clickCountRef = useRef(0);
+  const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const displayEmail = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || 'User';
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    // Increment click count
+    clickCountRef.current += 1;
+
+    // Clear existing reset timer
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+    }
+
+    // Check if reached 5 clicks
+    if (clickCountRef.current === 5) {
+      toggleDevMode();
+      toast.success(
+        devModeEnabled
+          ? '👨‍💻 Developer mode disabled'
+          : '🛠️ Developer mode enabled',
+        {
+          description: devModeEnabled
+            ? 'Tool call details hidden'
+            : 'Tool call details are now visible',
+          duration: 3000,
+        }
+      );
+      clickCountRef.current = 0;
+    } else {
+      // Reset counter after 2 seconds of no clicks
+      resetTimerRef.current = setTimeout(() => {
+        clickCountRef.current = 0;
+      }, 2000);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSignOut = async () => {
     // 清空 localStorage，防止数据泄露给下一个登录用户
@@ -78,13 +126,19 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
               className="w-full h-auto py-2 px-3 bg-card border border-border rounded-lg hover:bg-muted hover:border-brand-primary/20 transition-all duration-200"
             >
               <div className="flex items-start gap-2 flex-1 min-w-0">
-                <Image
-                  src={clerkUser?.imageUrl || `https://avatar.vercel.sh/${displayEmail}`}
-                  alt={displayEmail ?? 'User Avatar'}
-                  width={32}
-                  height={32}
-                  className="rounded-full flex-shrink-0"
-                />
+                <div
+                  onClick={handleAvatarClick}
+                  className="cursor-pointer rounded-full"
+                  title="Click 5 times to toggle developer mode"
+                >
+                  <Image
+                    src={clerkUser?.imageUrl || `https://avatar.vercel.sh/${displayEmail}`}
+                    alt={displayEmail ?? 'User Avatar'}
+                    width={32}
+                    height={32}
+                    className="rounded-full flex-shrink-0"
+                  />
+                </div>
                 <div className="flex flex-col flex-1 min-w-0 text-left">
                   <span
                     data-testid="user-email"

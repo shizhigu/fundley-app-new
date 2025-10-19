@@ -50,7 +50,8 @@ export async function PATCH(
         chat_id as "chatId",
         source_chat_id as "sourceChatId",
         created_at as "createdAt",
-        content
+        content,
+        primary_symbol
     `;
 
     return NextResponse.json({ block: updated[0] });
