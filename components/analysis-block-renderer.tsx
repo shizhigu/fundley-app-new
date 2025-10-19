@@ -196,6 +196,13 @@ export function AnalysisBlockRenderer({
     return [];
   }, [content.files]);
 
+  // Other artifacts (images, CSV, Excel, etc.)
+  const artifacts = React.useMemo(() => {
+    if (Array.isArray(content.files?.artifacts)) return content.files.artifacts;
+    if (content.files?.artifact) return [content.files.artifact];
+    return [];
+  }, [content.files]);
+
   // Fetch JSON data from backend
   const loadTableData = useCallback(
     async (filename: string) => {
@@ -271,8 +278,8 @@ export function AnalysisBlockRenderer({
     return fallback;
   }, [hasSections, content.sections, content.text]);
 
-  // PDF download handler
-  const handleDownloadPDF = useCallback(
+  // Generic file download handler
+  const handleDownloadFile = useCallback(
     (filename: string) => {
       const url = `/api/files/${filename}?block_id=${blockId}`;
       const link = document.createElement('a');
@@ -282,6 +289,24 @@ export function AnalysisBlockRenderer({
     },
     [blockId],
   );
+
+  // Get file type label and icon based on extension
+  const getFileInfo = useCallback((filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const fileTypes: Record<string, { label: string; color: string }> = {
+      pdf: { label: 'PDF', color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
+      png: { label: 'PNG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      jpg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      jpeg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      svg: { label: 'SVG', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' },
+      gif: { label: 'GIF', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+      csv: { label: 'CSV', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
+      xlsx: { label: 'Excel', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+      txt: { label: 'TXT', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+      md: { label: 'Markdown', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+    };
+    return fileTypes[ext] || { label: ext.toUpperCase(), color: 'bg-gray-100 dark:bg-gray-800 text-gray-500' };
+  }, []);
 
   // Excel export handler
   const handleExportExcel = useCallback(() => {
@@ -928,22 +953,57 @@ export function AnalysisBlockRenderer({
             </div>
 
             <div className="space-y-2">
-              {reports.map((reportFile: string, index: number) => (
-                <Button
-                  key={`${reportFile}-${index}`}
-                  onClick={() => handleDownloadPDF(reportFile)}
-                  variant="outline"
-                  className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="flex-1 text-left truncate">
-                    {reportFile}
-                  </span>
-                  <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">
-                    PDF
-                  </span>
-                </Button>
-              ))}
+              {reports.map((reportFile: string, index: number) => {
+                const fileInfo = getFileInfo(reportFile);
+                return (
+                  <Button
+                    key={`${reportFile}-${index}`}
+                    onClick={() => handleDownloadFile(reportFile)}
+                    variant="outline"
+                    className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="flex-1 text-left truncate">
+                      {reportFile}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}>
+                      {fileInfo.label}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Other Artifacts (Images, CSV, Excel, etc.) */}
+        {artifacts.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Artifact{artifacts.length > 1 ? 's' : ''}</span>
+            </div>
+
+            <div className="space-y-2">
+              {artifacts.map((artifactFile: string, index: number) => {
+                const fileInfo = getFileInfo(artifactFile);
+                return (
+                  <Button
+                    key={`${artifactFile}-${index}`}
+                    onClick={() => handleDownloadFile(artifactFile)}
+                    variant="outline"
+                    className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="flex-1 text-left truncate">
+                      {artifactFile}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}>
+                      {fileInfo.label}
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
         )}

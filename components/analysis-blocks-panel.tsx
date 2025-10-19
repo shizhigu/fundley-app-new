@@ -313,7 +313,8 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
       // Also clear Zustand store
       setActiveBlock(null, null);
     }
-  }, [detailViewBlockId, detailBlock, setActiveBlock]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailViewBlockId, detailBlock]);
 
   // Detail view - full screen single block
   if (detailViewBlockId && detailBlock) {

@@ -34,7 +34,8 @@
       "WebFetch(domain:aider.chat)",
       "Bash(pgrep:*)",
       "Bash(git checkout:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Read(//Users/gushizhi/**)"
     ],
     "deny": [],
     "ask": [],
