@@ -44,7 +44,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PLAN_DETAILS, type PlanType, formatCredits } from '@/lib/credits';
+import { type PlanType, formatCredits } from '@/lib/credits';
 
 interface Template {
   id: string;
@@ -413,10 +413,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] min-w-[800px] w-fit h-[80vh] p-0 gap-0 bg-popover border border-border rounded-lg">
+      <DialogContent className="max-w-6xl w-[90vw] h-[85vh] p-0 gap-0 bg-popover border border-border rounded-lg overflow-hidden">
         <div className="flex h-full">
           {/* Left Sidebar */}
-          <div className="w-48 border-r border-border bg-background p-4 space-y-1">
+          <div className="w-48 shrink-0 border-r border-border bg-background p-4 space-y-1 overflow-y-auto">
             <DialogHeader className="px-2 mb-6">
               <DialogTitle className="text-base font-semibold text-foreground">
                 {t('title')}
@@ -447,7 +447,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 overflow-auto min-w-0 bg-background">
+          <div className="flex-1 overflow-y-auto min-w-0 bg-background">
             {activeTab === 'profile' && !isFundley && (
               <div className="p-8">
                 <div className="mb-8">
@@ -842,100 +842,126 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             )}
 
             {activeTab === 'pricing' && isFundley && (
-              <div className="p-8">
-                <div className="mb-8 text-center">
-                  <h2 className="text-2xl font-semibold text-foreground mb-2">
-                    {tPricing('title')}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {tPricing('subtitle')}
+              <div className="p-8 lg:p-12 bg-[#0A0F1C] min-h-full flex flex-col items-center justify-center">
+                {/* Header */}
+                <div className="mb-8 text-center max-w-4xl">
+                  <div className="inline-block mb-4">
+                    <span className="px-4 py-1.5 rounded-full text-xs font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                      No BS Pricing
+                    </span>
+                  </div>
+                  <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+                    Just credits. Full capability.
+                  </h1>
+                  <p className="text-lg text-gray-400">
+                    Same AI features, same data, same power. Only difference? How many credits you need.
                   </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                  {(['starter', 'pro', 'institutional'] as const).map((planType, idx) => {
-                    const plan = PLAN_DETAILS[planType];
-                    const isPopular = planType === 'pro';
-                    const features = tPricing.raw(`${planType}.features`) as string[] || [];
+                {/* Pricing Table */}
+                <div className="w-full max-w-5xl">
+                  <div className="bg-[#0F1419] rounded-2xl border border-[#2A2F3E] overflow-hidden">
+                    {/* Table Header */}
+                    <div className="grid grid-cols-4 gap-4 px-8 py-4 border-b border-[#2A2F3E]">
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Plan</div>
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Credits/Mo</div>
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Price/Mo</div>
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Action</div>
+                    </div>
 
-                    return (
-                      <div
-                        key={planType}
-                        className={`relative border rounded-lg p-6 ${
-                          isPopular
-                            ? 'border-brand-primary shadow-lg'
-                            : 'border-border'
-                        }`}
-                      >
-                        {isPopular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                            <span className="bg-brand-primary text-white px-3 py-1 rounded-full text-xs font-semibold">
-                              {tPricing('popular')}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="text-center mb-6">
-                          <h3 className="text-lg font-bold mb-1">
-                            {tPricing(`${planType}.name`)}
-                          </h3>
-                          <p className="text-xs text-muted-foreground">
-                            {tPricing(`${planType}.description`)}
-                          </p>
-                        </div>
-
-                        <div className="text-center mb-6">
-                          <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-3xl font-bold">${plan.price}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {tPricing('perMonth')}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {plan.monthly_credits >= 999999
-                              ? tSubscription('unlimited')
-                              : `${plan.monthly_credits} ${tPricing('credits')}`}
-                          </p>
-                        </div>
-
-                        <ul className="space-y-2 mb-6">
-                          {features.map((feature: string, i: number) => (
-                            <li key={i} className="flex items-start gap-2 text-xs">
-                              <Check className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-
+                    {/* Starter Row */}
+                    <div className="grid grid-cols-4 gap-4 px-8 py-6 border-b border-[#2A2F3E] items-center hover:bg-[#1A1F2E]/50 transition-colors">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Starter</h3>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-brand-primary">75</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-white">$99</span>
+                      </div>
+                      <div className="text-center">
                         <Button
-                          className="w-full"
-                          variant={isPopular ? 'default' : 'outline'}
-                          onClick={() => handleSubscribe(planType)}
+                          className="px-8 py-2 rounded-lg font-semibold text-sm bg-transparent border-2 border-[#2A2F3E] text-white hover:border-brand-primary hover:bg-brand-primary/10 transition-all"
+                          variant="outline"
+                          onClick={() => handleSubscribe('starter')}
                           disabled={pricingLoading !== null}
                         >
-                          {pricingLoading === planType ? (
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Loading...
-                            </span>
+                          {pricingLoading === 'starter' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            tPricing('getStarted')
+                            'Start'
                           )}
                         </Button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
 
-                <div className="text-center mt-8 text-xs text-muted-foreground">
-                  <p>All plans include access to financial data and analysis tools.</p>
+                    {/* Pro Row - Most Popular */}
+                    <div className="grid grid-cols-4 gap-4 px-8 py-6 border-b border-[#2A2F3E] items-center bg-[#1A1F2E] relative">
+                      <div className="absolute -top-3 left-8">
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-primary text-white">
+                          Most Popular
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Pro</h3>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-brand-primary">300</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-white">$249</span>
+                      </div>
+                      <div className="text-center">
+                        <Button
+                          className="px-8 py-2 rounded-lg font-semibold text-sm bg-brand-primary hover:bg-brand-primary/90 text-white transition-all"
+                          onClick={() => handleSubscribe('pro')}
+                          disabled={pricingLoading !== null}
+                        >
+                          {pricingLoading === 'pro' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Start'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Institutional Row */}
+                    <div className="grid grid-cols-4 gap-4 px-8 py-6 items-center hover:bg-[#1A1F2E]/50 transition-colors">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Institutional</h3>
+                        <p className="text-xs text-gray-400 mt-1">Custom data sources, white-label, API access & dedicated support</p>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-2xl font-bold text-brand-primary">Unlimited</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-white">$1249</span>
+                      </div>
+                      <div className="text-center">
+                        <Button
+                          className="px-8 py-2 rounded-lg font-semibold text-sm bg-transparent border-2 border-[#2A2F3E] text-white hover:border-brand-primary hover:bg-brand-primary/10 transition-all"
+                          variant="outline"
+                          onClick={() => handleSubscribe('institutional')}
+                          disabled={pricingLoading !== null}
+                        >
+                          {pricingLoading === 'institutional' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Contact'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {activeTab === 'subscription' && isFundley && (
-              <div className="p-8">
-                <div className="mb-8">
+              <div className="p-4 sm:p-6 lg:p-8">
+                <div className="mb-6 sm:mb-8">
                   <h2 className="text-xl font-semibold text-foreground">
                     {tSubscription('title')}
                   </h2>
@@ -945,10 +971,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
 
                 {/* Credit Balance Card */}
-                <div className="border border-border rounded-lg p-6 mb-6 bg-background">
-                  <div className="flex items-start justify-between mb-6">
+                <div className="border border-border rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-background">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3">
                     <div>
-                      <h3 className="text-lg font-semibold mb-1">
+                      <h3 className="text-base sm:text-lg font-semibold mb-1">
                         {tSubscription('credits')}
                       </h3>
                       {creditBalance?.is_internal && (
@@ -957,16 +983,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         </span>
                       )}
                     </div>
-                    <CreditCard className="w-6 h-6 text-muted-foreground" />
+                    <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                   </div>
 
                   {creditBalance ? (
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">
                           {tSubscription('subscriptionCredits')}
                         </p>
-                        <p className="text-xl font-bold">
+                        <p className="text-lg sm:text-xl font-bold">
                           {formatCredits(creditBalance.subscription_credits)}
                         </p>
                       </div>
@@ -975,7 +1001,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <p className="text-xs text-muted-foreground">
                           {tSubscription('addonCredits')}
                         </p>
-                        <p className="text-xl font-bold">
+                        <p className="text-lg sm:text-xl font-bold">
                           {formatCredits(creditBalance.addon_credits)}
                         </p>
                       </div>
@@ -984,7 +1010,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <p className="text-xs text-muted-foreground">
                           {tSubscription('totalCredits')}
                         </p>
-                        <p className="text-xl font-bold text-brand-primary">
+                        <p className="text-lg sm:text-xl font-bold text-brand-primary">
                           {formatCredits(creditBalance.total_credits)}
                         </p>
                       </div>
@@ -997,13 +1023,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
 
                 {/* Subscription Management */}
-                <div className="border border-border rounded-lg p-6 mb-6 bg-background">
-                  <h3 className="text-lg font-semibold mb-4">
+                <div className="border border-border rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-background">
+                  <h3 className="text-base sm:text-lg font-semibold mb-4">
                     {tSubscription('yourPlan')}
                   </h3>
 
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex-1">
                       <p className="text-xs text-muted-foreground mb-2">
                         Manage your subscription in Stripe Customer Portal
                       </p>
@@ -1018,7 +1044,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Button
                       onClick={handleManageSubscription}
                       disabled={portalLoading}
-                      className="shrink-0"
+                      className="shrink-0 w-full sm:w-auto"
                     >
                       {portalLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1038,6 +1064,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         variant="outline"
                         onClick={() => setActiveTab('pricing')}
                         size="sm"
+                        className="w-full sm:w-auto"
                       >
                         View Plans
                       </Button>
@@ -1047,9 +1074,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 {/* Usage History */}
                 <div className="border border-border rounded-lg bg-background">
-                  <div className="p-6 border-b border-border">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
+                  <div className="p-4 sm:p-6 border-b border-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h3 className="text-base sm:text-lg font-semibold">
                         {tSubscription('usageHistory')}
                       </h3>
                       {creditHistoryTotal > 0 && (
@@ -1062,40 +1089,42 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
 
                   {creditHistory.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8 text-sm px-6">
+                    <p className="text-muted-foreground text-center py-8 text-sm px-4 sm:px-6">
                       {tSubscription('noHistory')}
                     </p>
                   ) : (
                     <>
-                      {/* Fixed height scrollable table */}
-                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                      {/* Scrollable table */}
+                      <div className="overflow-x-auto max-h-[300px] sm:max-h-[400px] overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 bg-background z-10">
                             <tr className="border-b border-border">
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground">
+                              <th className="text-left py-3 px-3 sm:px-4 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                                 {tSubscription('date')}
                               </th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground">
+                              <th className="text-left py-3 px-3 sm:px-4 text-xs font-semibold text-muted-foreground">
                                 {tSubscription('description')}
                               </th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground">
+                              <th className="text-right py-3 px-3 sm:px-4 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                                 {tSubscription('creditsUsed')}
                               </th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground">
+                              <th className="text-right py-3 px-3 sm:px-4 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                                 {tSubscription('balance')}
                               </th>
                             </tr>
                           </thead>
                           <tbody>
                             {creditHistory.map((transaction: any) => (
-                              <tr key={transaction.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                                <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                              <tr key={transaction.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                                <td className="py-2.5 sm:py-3 px-3 sm:px-4 text-xs text-muted-foreground whitespace-nowrap">
                                   {new Date(transaction.created_at).toLocaleDateString()}
                                 </td>
-                                <td className="py-3 px-4 text-xs">
-                                  {transaction.description}
+                                <td className="py-2.5 sm:py-3 px-3 sm:px-4 text-xs">
+                                  <div className="line-clamp-2">
+                                    {transaction.description}
+                                  </div>
                                 </td>
-                                <td className="py-3 px-4 text-xs text-right font-mono">
+                                <td className="py-2.5 sm:py-3 px-3 sm:px-4 text-xs text-right font-mono whitespace-nowrap">
                                   <span
                                     className={
                                       transaction.amount < 0
@@ -1107,7 +1136,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                     {transaction.amount.toFixed(4)}
                                   </span>
                                 </td>
-                                <td className="py-3 px-4 text-xs text-right font-medium font-mono">
+                                <td className="py-2.5 sm:py-3 px-3 sm:px-4 text-xs text-right font-medium font-mono whitespace-nowrap">
                                   {transaction.balance_after != null
                                     ? formatCredits(transaction.balance_after)
                                     : '-'}
@@ -1120,16 +1149,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                       {/* Pagination */}
                       {creditHistoryTotal > HISTORY_PAGE_SIZE && (
-                        <div className="flex items-center justify-between p-4 border-t border-border">
+                        <div className="flex items-center justify-between p-3 sm:p-4 border-t border-border gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => fetchCreditData(creditHistoryPage - 1)}
                             disabled={creditHistoryPage === 1}
+                            className="text-xs"
                           >
                             Previous
                           </Button>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
                             Page {creditHistoryPage} of {Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
                           </span>
                           <Button
@@ -1137,6 +1167,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             size="sm"
                             onClick={() => fetchCreditData(creditHistoryPage + 1)}
                             disabled={creditHistoryPage >= Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
+                            className="text-xs"
                           >
                             Next
                           </Button>

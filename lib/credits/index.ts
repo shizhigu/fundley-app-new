@@ -6,8 +6,8 @@
  * - GPT-5: $1.25/M input, $10/M output/reasoning
  *
  * Plans:
- * - Starter ($99): 50 credits/month
- * - Pro ($249): 200 credits/month
+ * - Starter ($99): 75 credits/month
+ * - Pro ($249): 300 credits/month
  * - Institutional ($1,249): Unlimited
  */
 
@@ -151,13 +151,13 @@ export const PLAN_DETAILS = {
   starter: {
     name: 'Starter',
     price: 99,
-    monthly_credits: 50,
+    monthly_credits: 75,
     stripe_price_id: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID || '',
   },
   pro: {
     name: 'Pro',
     price: 249,
-    monthly_credits: 200,
+    monthly_credits: 300,
     stripe_price_id: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
   },
   institutional: {

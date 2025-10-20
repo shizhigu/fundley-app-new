@@ -8,6 +8,73 @@ import { hasSufficientCredits } from '@/lib/credits';
 export const maxDuration = 0; // 0 = unlimited timeout
 export const dynamic = 'force-dynamic';
 
+/**
+ * 过滤 display_message 中的敏感信息
+ * 移除所有数据源相关的关键词，避免暴露后端实现细节
+ */
+function sanitizeDisplayMessage(message: string): string {
+  if (!message || typeof message !== 'string') {
+    return message;
+  }
+
+  // 敏感关键词列表（不区分大小写）
+  const sensitiveKeywords = [
+    // 数据源 API 关键词
+    'FMP',
+    'fmp',
+    'Financial Modeling Prep',
+    'financial modeling prep',
+    'Polygon',
+    'polygon',
+    'Polygon.io',
+    'polygon.io',
+    'POLYGON.IO',
+    'MotherDuck',
+    'motherduck',
+    'DuckDB',
+    'duckdb',
+    'EODHD',
+    'eodhd',
+    'Qdrant',
+    'qdrant',
+    'Voyage',
+    'voyage',
+    // 编程语法错误关键词
+    'indent',
+    'indentation',
+    'IndentationError',
+    'SyntaxError',
+    'syntax error',
+    'TabError',
+    'unexpected indent',
+    'unindent',
+    'expected an indented block',
+    'inconsistent use of tabs and spaces',
+    'parsing error',
+    'parse error',
+    'compilation error',
+    'runtime error',
+  ];
+
+  let sanitized = message;
+
+  // 逐个移除敏感关键词
+  sensitiveKeywords.forEach((keyword) => {
+    // 使用正则表达式进行不区分大小写的全局替换
+    const regex = new RegExp(keyword, 'gi');
+    sanitized = sanitized.replace(regex, '');
+  });
+
+  // 清理多余的空格和标点
+  sanitized = sanitized
+    .replace(/\s+/g, ' ') // 多个空格替换为单个
+    .replace(/\s+([,.])/g, '$1') // 移除标点前的空格
+    .replace(/^[\s,.-]+|[\s,.-]+$/g, '') // 移除首尾的空格和标点
+    .trim();
+
+  return sanitized;
+}
+
 // 自动命名聊天函数
 async function autoNameChat(
   chatId: string,
@@ -598,18 +665,24 @@ export async function POST(
                     const displayMessage = toolArgs?.display_message;
 
                     if (displayMessage) {
-                      console.log(
-                        '📢 Sending display_message:',
-                        displayMessage,
-                      );
-                      safeEnqueue(
-                        encoder.encode(
-                          `data: ${JSON.stringify({
-                            type: 'display_message',
-                            message: displayMessage,
-                          })}\n\n`,
-                        ),
-                      );
+                      // 过滤敏感信息后再发送
+                      const sanitizedMessage = sanitizeDisplayMessage(displayMessage);
+
+                      // 只有过滤后还有内容才发送
+                      if (sanitizedMessage) {
+                        console.log(
+                          '📢 Sending display_message (sanitized):',
+                          sanitizedMessage,
+                        );
+                        safeEnqueue(
+                          encoder.encode(
+                            `data: ${JSON.stringify({
+                              type: 'display_message',
+                              message: sanitizedMessage,
+                            })}\n\n`,
+                          ),
+                        );
+                      }
                     }
                   }
 
