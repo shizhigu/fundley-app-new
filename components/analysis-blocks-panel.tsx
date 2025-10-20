@@ -6,6 +6,7 @@ import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, BarChart3, Database, Search, X, MessageSquare, Library, ChevronDown, RefreshCw, Plus, Pin, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { MovingBorder } from '@/components/aceternity/moving-border'
 import { useChatContext } from '@/lib/contexts/chat-context'
 import { useTranslations } from 'next-intl'
 import { Input } from '@/components/ui/input'
@@ -480,8 +481,11 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
               {t('analysisBlocks')}
             </h3>
             <div className="flex items-center gap-3">
-              {/* Create new block button */}
-              <button
+              {/* Create new block button with MovingBorder effect */}
+              <MovingBorder
+                duration={2500}
+                borderRadius="0.75rem"
+                className="p-2"
                 onClick={async () => {
                   try {
                     const placeholder = t('startTyping') || 'Start typing...'
@@ -521,11 +525,10 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                     console.error('Error creating block:', error)
                   }
                 }}
-                className="neuro-raised-sm p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
                 title={t('createBlock') || 'Create new block'}
               >
-                <Plus className="h-4 w-4" />
-              </button>
+                <Plus className="h-4 w-4 text-primary" />
+              </MovingBorder>
 
               {/* Refresh button */}
               <button
@@ -693,23 +696,30 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {pinnedBlocks.map((block) => (
-                    <AnalysisBlockRenderer
+                    <div
                       key={block.id}
-                      block={block}
-                      isExpanded={false}
-                      isActive={activeBlockId === block.id}
-                      onToggle={() => setDetailViewBlockId(block.id)}
-                      onSelect={() => {}}
-                      onUpdate={(updatedBlock) => {
-                        setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
-                        console.log('✅ Block updated without page reload:', updatedBlock.id)
-                      }}
-                      onDelete={(blockId) => {
-                        setBlocks(prev => prev.filter(b => b.id !== blockId))
-                        console.log('✅ Block removed from list:', blockId)
-                      }}
-                      onPin={handlePin}
-                    />
+                      className="group relative transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10"
+                    >
+                      {/* Subtle shimmer effect on hover */}
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      <AnalysisBlockRenderer
+                        block={block}
+                        isExpanded={false}
+                        isActive={activeBlockId === block.id}
+                        onToggle={() => setDetailViewBlockId(block.id)}
+                        onSelect={() => {}}
+                        onUpdate={(updatedBlock) => {
+                          setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
+                          console.log('✅ Block updated without page reload:', updatedBlock.id)
+                        }}
+                        onDelete={(blockId) => {
+                          setBlocks(prev => prev.filter(b => b.id !== blockId))
+                          console.log('✅ Block removed from list:', blockId)
+                        }}
+                        onPin={handlePin}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -729,23 +739,30 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {unpinnedBlocks.map((block) => (
-                    <AnalysisBlockRenderer
+                    <div
                       key={block.id}
-                      block={block}
-                      isExpanded={false}
-                      isActive={activeBlockId === block.id}
-                      onToggle={() => setDetailViewBlockId(block.id)}
-                      onSelect={() => {}}
-                      onUpdate={(updatedBlock) => {
-                        setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
-                        console.log('✅ Block updated without page reload:', updatedBlock.id)
-                      }}
-                      onDelete={(blockId) => {
-                        setBlocks(prev => prev.filter(b => b.id !== blockId))
-                        console.log('✅ Block removed from list:', blockId)
-                      }}
-                      onPin={handlePin}
-                    />
+                      className="group relative transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10"
+                    >
+                      {/* Subtle shimmer effect on hover */}
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      <AnalysisBlockRenderer
+                        block={block}
+                        isExpanded={false}
+                        isActive={activeBlockId === block.id}
+                        onToggle={() => setDetailViewBlockId(block.id)}
+                        onSelect={() => {}}
+                        onUpdate={(updatedBlock) => {
+                          setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
+                          console.log('✅ Block updated without page reload:', updatedBlock.id)
+                        }}
+                        onDelete={(blockId) => {
+                          setBlocks(prev => prev.filter(b => b.id !== blockId))
+                          console.log('✅ Block removed from list:', blockId)
+                        }}
+                        onPin={handlePin}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

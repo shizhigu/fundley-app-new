@@ -3,7 +3,7 @@
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
-import { PencilEditIcon, LoaderIcon } from './icons';
+import { LoaderIcon } from './icons';
 import { Shield, Heart } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
@@ -12,7 +12,6 @@ import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
 import { JSVisualizationMessage } from './js-visualization-message';
 import { WebSearchResultCard } from './web-search-result-card';
@@ -27,6 +26,7 @@ import { CollapsibleUserMessage } from './collapsible-user-message';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { useTranslations } from 'next-intl';
+import { BorderBeam } from './ui/border-beam';
 
 // Chart.js visualization engine for frontend execution
 const JSVisualizationEngine = {
@@ -325,7 +325,6 @@ const PurePreviewMessage = ({
   addToolResult?: UseChatHelpers<ChatMessage>['addToolResult'];
   requiresScrollPadding: boolean;
 }) => {
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [extractedMetadata, setExtractedMetadata] = useState<{
     tickers?: string[],
     suggestions?: { text: string, containsRealData: boolean, verificationMessage?: string }[],
@@ -426,18 +425,26 @@ const PurePreviewMessage = ({
       <motion.div
         data-testid={`message-${message.role}`}
         className="w-full mx-auto max-w-3xl px-4 group/message"
-        initial={{ y: 5, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={
+          message.role === 'user'
+            ? { x: 20, opacity: 0, scale: 0.95 }
+            : { y: 10, opacity: 0 }
+        }
+        animate={
+          message.role === 'user'
+            ? { x: 0, opacity: 1, scale: 1 }
+            : { y: 0, opacity: 1 }
+        }
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 25,
+          opacity: { duration: 0.2 },
+        }}
         data-role={message.role}
       >
         <div
-          className={cn(
-            'flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl',
-            {
-              'w-full': mode === 'edit',
-              'group-data-[role=user]/message:w-fit': mode !== 'edit',
-            },
-          )}
+          className="flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:w-fit"
         >
           {message.role === 'assistant' && (
             <Tooltip>
@@ -487,123 +494,100 @@ const PurePreviewMessage = ({
               }
 
               if (type === 'text') {
-                if (mode === 'view') {
-                  let cleanedText = part.text;
-                  const suggestionsTagRegex = /<suggestions>[\s\S]*?<\/suggestions>/g;
-                  cleanedText = cleanedText.replace(suggestionsTagRegex, '').trim();
+                let cleanedText = part.text;
+                const suggestionsTagRegex = /<suggestions>[\s\S]*?<\/suggestions>/g;
+                cleanedText = cleanedText.replace(suggestionsTagRegex, '').trim();
 
-                  const parsedMessage = { content: sanitizeText(cleanedText), metadata: {} as MessageMetadata };
+                const parsedMessage = { content: sanitizeText(cleanedText), metadata: {} as MessageMetadata };
 
-                  return (
-                    <div key={key} className="flex flex-row gap-2 items-start">
-                      {message.role === 'user' && !isReadonly && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              data-testid="message-edit-button"
-                              variant="ghost"
-                              className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100 transition-opacity duration-150"
-                              onClick={() => {
-                                setMode('edit');
-                              }}
-                            >
-                              <PencilEditIcon />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit message</TooltipContent>
-                        </Tooltip>
-                      )}
-
+                return (
+                  <div key={key} className="flex flex-row gap-2 items-start">
+                    <div className={cn({ 'relative': message.role === 'user' })}>
                       <div
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
-                          'user-message-gunmetal px-4 py-3 rounded-lg border-2 border-border bg-muted/30': message.role === 'user',
+                          'user-message-gunmetal px-4 py-3 rounded-lg border-2 border-border bg-muted/30 shadow-lg shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 transition-shadow duration-300': message.role === 'user',
                         })}
                       >
-                        {message.role === 'user' ? (
-                          <CollapsibleUserMessage content={parsedMessage.content} />
-                        ) : (
-                          <Markdown>{parsedMessage.content}</Markdown>
-                        )}
+                      {message.role === 'user' ? (
+                        <CollapsibleUserMessage content={parsedMessage.content} />
+                      ) : (
+                        <Markdown>{parsedMessage.content}</Markdown>
+                      )}
 
-                        {hasMetadata(parsedMessage.metadata) && (
-                          <div className="flex flex-col gap-3 mt-2">
-                            {parsedMessage.metadata.tickers && (
-                              <TickerButtonGroup
-                                tickers={parsedMessage.metadata.tickers}
-                                className="not-prose"
-                              />
-                            )}
+                      {hasMetadata(parsedMessage.metadata) && (
+                        <div className="flex flex-col gap-3 mt-2">
+                          {parsedMessage.metadata.tickers && (
+                            <TickerButtonGroup
+                              tickers={parsedMessage.metadata.tickers}
+                              className="not-prose"
+                            />
+                          )}
 
-                            {parsedMessage.metadata.suggestions && (
-                              <SuggestionButtonGroup
-                                suggestions={parsedMessage.metadata.suggestions}
-                                onSuggestionClick={(suggestion) => {
-                                  const selectors = [
-                                    'textarea[data-testid="multimodal-input"]',
-                                    'textarea[name="message"]',
-                                    'textarea[placeholder*="market"]',
-                                    'textarea[placeholder*="Ask"]',
-                                    '.professional-input',
-                                    'form textarea'
-                                  ];
+                          {parsedMessage.metadata.suggestions && (
+                            <SuggestionButtonGroup
+                              suggestions={parsedMessage.metadata.suggestions}
+                              onSuggestionClick={(suggestion) => {
+                                const selectors = [
+                                  'textarea[data-testid="multimodal-input"]',
+                                  'textarea[name="message"]',
+                                  'textarea[placeholder*="market"]',
+                                  'textarea[placeholder*="Ask"]',
+                                  '.professional-input',
+                                  'form textarea'
+                                ];
 
-                                  let input: HTMLTextAreaElement | null = null;
-                                  for (const selector of selectors) {
-                                    input = document.querySelector(selector) as HTMLTextAreaElement;
-                                    if (input) break;
-                                  }
+                                let input: HTMLTextAreaElement | null = null;
+                                for (const selector of selectors) {
+                                  input = document.querySelector(selector) as HTMLTextAreaElement;
+                                  if (input) break;
+                                }
 
-                                  if (input) {
-                                    const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-                                    nativeTextAreaValueSetter?.call(input, suggestion);
+                                if (input) {
+                                  const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+                                  nativeTextAreaValueSetter?.call(input, suggestion);
 
-                                    const inputEvent = new Event('input', { bubbles: true });
-                                    input.dispatchEvent(inputEvent);
+                                  const inputEvent = new Event('input', { bubbles: true });
+                                  input.dispatchEvent(inputEvent);
 
-                                    const changeEvent = new Event('change', { bubbles: true });
-                                    input.dispatchEvent(changeEvent);
+                                  const changeEvent = new Event('change', { bubbles: true });
+                                  input.dispatchEvent(changeEvent);
 
-                                    input.focus();
-                                    input.selectionStart = input.selectionEnd = suggestion.length;
-                                  } else {
-                                    console.warn('Could not find textarea input element');
-                                  }
-                                }}
-                                className="not-prose"
-                              />
-                            )}
+                                  input.focus();
+                                  input.selectionStart = input.selectionEnd = suggestion.length;
+                                } else {
+                                  console.warn('Could not find textarea input element');
+                                }
+                              }}
+                              className="not-prose"
+                            />
+                          )}
 
-                            {message.role === 'assistant' && extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
-                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-brand-primary/20 w-fit text-xs">
-                                <Shield className="w-3.5 h-3.5 text-brand-primary" />
-                                <span className="text-brand-primary font-medium">
-                                  {extractedMetadata.verificationMessage}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          {message.role === 'assistant' && extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-brand-primary/20 w-fit text-xs">
+                              <Shield className="w-3.5 h-3.5 text-brand-primary" />
+                              <span className="text-brand-primary font-medium">
+                                {extractedMetadata.verificationMessage}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       </div>
-                    </div>
-                  );
-                }
 
-                if (mode === 'edit') {
-                  return (
-                    <div key={key} className="flex flex-row gap-2 items-start">
-                      <div className="size-8" />
-
-                      <MessageEditor
-                        key={message.id}
-                        message={message}
-                        setMode={setMode}
-                        setMessages={setMessages}
-                        regenerate={regenerate}
-                      />
+                      {/* BorderBeam effect for user messages */}
+                      {message.role === 'user' && (
+                        <BorderBeam
+                          size={200}
+                          duration={10}
+                          delay={0}
+                          colorFrom="hsl(var(--primary))"
+                          colorTo="hsl(var(--primary)/0.3)"
+                        />
+                      )}
                     </div>
-                  );
-                }
+                  </div>
+                );
               }
 
               // JS Visualization Tool

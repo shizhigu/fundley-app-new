@@ -12,6 +12,17 @@ const config: Config = {
     extend: {
       animation: {
         'stock-pulse': 'stock-pulse 1.5s ease-in-out infinite',
+        aurora: 'aurora 60s linear infinite',
+      },
+      keyframes: {
+        aurora: {
+          from: {
+            backgroundPosition: '50% 50%, 50% 50%',
+          },
+          to: {
+            backgroundPosition: '350% 50%, 350% 50%',
+          },
+        },
       },
       fontFamily: {
         sans: ['Montserrat', 'Noto Sans SC', 'system-ui', '-apple-system', 'sans-serif'],

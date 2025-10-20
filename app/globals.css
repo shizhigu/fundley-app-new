@@ -56,33 +56,33 @@
     --brand-primary: 18 100% 55%; /* #FF6B1A - Fundley Orange */
     --brand-secondary: 38 94% 51%; /* #F59E0B - Amber */
 
-    /* === LIGHT MODE COLORS === */
-    --background: 0 0% 100%;           /* Pure white */
+    /* === LIGHT MODE COLORS - Warm Cream Theme === */
+    --background: 40 20% 97%;          /* Soft cream #FAFAF8 (warm off-white) */
     --foreground: 0 0% 9%;             /* Near black #171717 */
 
-    --card: 0 0% 98%;                  /* Light gray #FAFAFA */
+    --card: 40 25% 99%;                /* Lighter cream card #FEFEFE */
     --card-foreground: 0 0% 9%;        /* Near black */
 
-    --popover: 0 0% 100%;              /* White */
+    --popover: 40 25% 99%;             /* Cream white */
     --popover-foreground: 0 0% 9%;     /* Near black */
 
     --primary: var(--brand-primary);
-    --primary-foreground: 0 0% 100%;   /* White */
+    --primary-foreground: 0 0% 100%;   /* Pure white */
 
-    --secondary: 0 0% 96%;             /* Very light gray #F5F5F5 */
+    --secondary: 40 15% 95%;           /* Light warm gray #F5F4F2 */
     --secondary-foreground: 0 0% 9%;   /* Near black */
 
-    --muted: 0 0% 96%;                 /* Very light gray #F5F5F5 */
+    --muted: 40 15% 95%;               /* Light warm gray #F5F4F2 */
     --muted-foreground: 0 0% 45%;      /* Medium gray #737373 */
 
     --accent: var(--brand-primary);
-    --accent-foreground: 0 0% 100%;    /* White */
+    --accent-foreground: 0 0% 100%;    /* Pure white */
 
     --destructive: 0 84% 60%;          /* Red */
-    --destructive-foreground: 0 0% 100%; /* White */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
 
-    --border: 0 0% 90%;                /* Light border #E5E5E5 */
-    --input: 0 0% 90%;                 /* Light border */
+    --border: 40 10% 88%;              /* Warm light border #E3E2DF */
+    --input: 40 10% 88%;               /* Warm light border */
     --ring: var(--brand-primary);
 
     --radius: 0.75rem;
@@ -90,24 +90,24 @@
   }
 
   .dark {
-    /* === DARK MODE COLORS === */
-    --background: 0 0% 7%;             /* Very dark gray #121212 */
-    --foreground: 0 0% 98%;            /* Off-white #FAFAFA */
+    /* === DARK MODE COLORS - Deep Space Blue Theme === */
+    --background: 218 47% 7%;          /* Deep space blue #0A0F1C (rgb(10, 15, 28)) */
+    --foreground: 210 20% 96%;         /* Soft white with blue tint #F0F4F8 */
 
-    --card: 0 0% 10%;                  /* Dark card #1A1A1A */
-    --card-foreground: 0 0% 98%;       /* Off-white */
+    --card: 218 40% 11%;               /* Slightly lighter #12182B */
+    --card-foreground: 210 20% 96%;    /* Soft white */
 
-    --popover: 0 0% 10%;               /* Dark gray */
-    --popover-foreground: 0 0% 98%;    /* Off-white */
+    --popover: 218 40% 11%;            /* Dark blue */
+    --popover-foreground: 210 20% 96%; /* Soft white */
 
     --primary: var(--brand-primary);
     --primary-foreground: 0 0% 98%;    /* Off-white */
 
-    --secondary: 0 0% 15%;             /* Dark gray #262626 */
-    --secondary-foreground: 0 0% 98%;  /* Off-white */
+    --secondary: 218 35% 15%;          /* Medium deep blue #1A2338 */
+    --secondary-foreground: 210 20% 96%; /* Soft white */
 
-    --muted: 0 0% 15%;                 /* Dark gray #262626 */
-    --muted-foreground: 0 0% 60%;      /* Medium gray #999999 */
+    --muted: 218 35% 15%;              /* Medium deep blue #1A2338 */
+    --muted-foreground: 217 10% 64%;   /* Muted blue-gray #9CA3B0 */
 
     --accent: var(--brand-primary);
     --accent-foreground: 0 0% 98%;     /* Off-white */
@@ -115,8 +115,8 @@
     --destructive: 0 62% 50%;          /* Darker red */
     --destructive-foreground: 0 0% 98%; /* Off-white */
 
-    --border: 0 0% 20%;                /* Dark border #333333 */
-    --input: 0 0% 20%;                 /* Dark border */
+    --border: 218 30% 19%;             /* Subtle blue border #232E47 */
+    --input: 218 30% 19%;              /* Subtle blue border */
     --ring: var(--brand-primary);
   }
 }
