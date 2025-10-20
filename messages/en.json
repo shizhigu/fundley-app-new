@@ -25,7 +25,7 @@
     "signOut": "Sign Out"
   },
   "chat": {
-    "placeholder": "Ask me anything about your data...",
+    "placeholder": "Ask me anything about the market...",
     "sendMessage": "Send",
     "thinking": "Thinking...",
     "noMessages": "No messages yet",
@@ -90,7 +90,7 @@
     "noBlocksYet": "No analysis blocks yet",
     "agentsWillCreate": "AI agents will create blocks as they analyze data",
     "analysisBlocks": "Analysis Blocks",
-    "blocksPanelHint": "This is where AI delivers analysis results. AI automatically creates workspaces and fills them with reports, charts, and data. You can switch between them anytime.",
+    "blocksPanelHint": "This is where AI delivers analysis results. AI automatically manages workspaces and fills them with reports, charts, and data. You can switch between them anytime.",
     "live": "Live",
     "blocks": "blocks",
     "block": "block",

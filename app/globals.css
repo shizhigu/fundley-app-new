@@ -146,6 +146,17 @@
     color: hsl(var(--muted-foreground));
     opacity: 0.6;
   }
+
+  /* Text selection colors - better contrast in both modes */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  ::-moz-selection {
+    background-color: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
 }
 
 /* ============================================

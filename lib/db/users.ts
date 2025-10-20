@@ -25,12 +25,13 @@ export async function createOrUpdateUser(data: {
       `;
       console.log(`✅ [PG] User updated: ${data.email} (${data.clerkUserId})`);
     } else {
-      // Create new user
+      // Create new user with 10 free addon credits
       await db`
         INSERT INTO users (
           id,
           email,
           clerk_user_id,
+          addon_credits,
           created_at,
           updated_at
         )
@@ -38,11 +39,12 @@ export async function createOrUpdateUser(data: {
           uuid_generate_v4(),
           ${data.email || ''},
           ${data.clerkUserId},
+          10,
           NOW(),
           NOW()
         )
       `;
-      console.log(`✅ [PG] User created: ${data.email} (${data.clerkUserId})`);
+      console.log(`✅ [PG] User created with 10 free credits: ${data.email} (${data.clerkUserId})`);
     }
   } catch (error) {
     console.error('❌ [PG] Error creating/updating user:', error);
