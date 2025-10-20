@@ -4,7 +4,10 @@
       "Bash(pnpm build:*)",
       "Bash(pkill:*)",
       "Bash(npx shadcn@latest add https://ui.aceternity.com/components/aurora-background)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": [],

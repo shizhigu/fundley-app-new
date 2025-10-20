@@ -506,7 +506,7 @@ const PurePreviewMessage = ({
                       <div
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
-                          'user-message-gunmetal px-4 py-3 rounded-lg border-2 border-border bg-muted/30 shadow-lg shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 transition-shadow duration-300': message.role === 'user',
+                          'user-message-gunmetal px-4 py-3 rounded-lg border-2 border-primary/20 bg-card/60 backdrop-blur-sm shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/15 hover:border-primary/30 transition-all duration-300': message.role === 'user',
                         })}
                       >
                       {message.role === 'user' ? (
