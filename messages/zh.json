@@ -90,7 +90,7 @@
     "noBlocksYet": "还没有分析块",
     "agentsWillCreate": "AI代理将在分析数据时创建块",
     "analysisBlocks": "分析块",
-    "blocksPanelHint": "分析块是 AI 交付结果的工作区。AI 会自动创建并打开它们，在其中生成报告、图表和数据。你也可以随时手动切换到其他分析块。",
+    "blocksPanelHint": "这里是 AI 交付分析结果的地方。AI 会自动创建工作区并把报告、图表、数据放进去。你可以随时切换查看。",
     "live": "实时",
     "blocks": "个块",
     "block": "个块",
