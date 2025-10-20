@@ -4,8 +4,9 @@ import { db } from '@/lib/db/config';
 import { getUserCreditBalance, deductUserCredits } from '@/lib/credits/db';
 import { hasSufficientCredits } from '@/lib/credits';
 
-// Disable timeout for streaming responses (unlimited for self-hosted)
-export const maxDuration = 0; // 0 = unlimited timeout
+// DISABLE ALL TIMEOUTS - Frontend never interrupts backend, regardless of duration
+// The only timeout should be in the backend (Python sandbox: 3 minutes per script)
+export const maxDuration = 0; // 0 = UNLIMITED (never timeout, even if backend takes hours)
 export const dynamic = 'force-dynamic';
 
 /**
@@ -384,6 +385,9 @@ export async function POST(
           }
         }, 1000);
 
+        // Backend monitor will be initialized when we start reading from Python backend
+        let backendMonitor: NodeJS.Timeout | null = null;
+
         try {
           // 0. 检查用户 credit 余额
           const creditBalance = await getUserCreditBalance(userId);
@@ -478,6 +482,17 @@ export async function POST(
           // Create AbortController with no timeout (infinite)
           const abortController = new AbortController();
 
+          // Configure fetch options with NO TIMEOUTS (unlimited wait)
+          // Frontend will wait indefinitely for backend response
+          // The only timeout is in Python backend (sandbox: 3 minutes per script)
+          const fetchOptions: RequestInit & { bodyTimeout?: number; headersTimeout?: number } = {
+            method: 'POST',
+            signal: abortController.signal,
+            // CRITICAL: Set to 0 for UNLIMITED timeout (never interrupt backend)
+            bodyTimeout: 0, // 0 = UNLIMITED (no timeout)
+            headersTimeout: 0, // 0 = UNLIMITED (no timeout)
+          };
+
           if (files.length > 0) {
             // 有文件时使用FormData
             const formData = new FormData();
@@ -505,12 +520,8 @@ export async function POST(
             agentResponse = await fetch(
               `${agentosUrl}/agents/financial-analyst/runs`,
               {
-                method: 'POST',
+                ...fetchOptions,
                 body: formData,
-                signal: abortController.signal,
-                // @ts-ignore - Next.js undici fetch extensions
-                bodyTimeout: 0, // Disable body timeout
-                headersTimeout: 0, // Disable headers timeout
               },
             );
           } else {
@@ -534,15 +545,11 @@ export async function POST(
             agentResponse = await fetch(
               `${agentosUrl}/agents/financial-analyst/runs`,
               {
-                method: 'POST',
+                ...fetchOptions,
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams(requestParams).toString(),
-                signal: abortController.signal,
-                // @ts-ignore - Next.js undici fetch extensions
-                bodyTimeout: 0, // Disable body timeout
-                headersTimeout: 0, // Disable headers timeout
               },
             );
           }
@@ -561,12 +568,31 @@ export async function POST(
           let assistantContent = '';
           let lastDbUpdateLength = 0; // Track last DB update to reduce frequency
 
+          // Track last data received time to detect backend stalls
+          let lastDataReceivedTime = Date.now();
+          const BACKEND_STALL_THRESHOLD = 30000; // 30 seconds
+
+          // Monitor backend responsiveness
+          // This monitor will be cleared in the finally block
+          backendMonitor = setInterval(() => {
+            const timeSinceLastData = Date.now() - lastDataReceivedTime;
+            if (timeSinceLastData > BACKEND_STALL_THRESHOLD) {
+              console.warn(
+                `⚠️ No data from Python backend for ${Math.round(timeSinceLastData / 1000)}s - sending extra heartbeat`,
+              );
+              safeEnqueue(encoder.encode(': backend-stall-heartbeat\n\n'));
+            }
+          }, 10000); // Check every 10 seconds
+
           // 4. 处理AgentOS的流式响应
           // ⚠️ IMPORTANT: Continue reading stream even if client disconnects
           // to ensure we capture metrics for credit deduction
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
+            // Update last data received time
+            lastDataReceivedTime = Date.now();
 
             const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
@@ -889,6 +915,9 @@ export async function POST(
           // Clear all intervals
           clearInterval(heartbeatInterval);
           clearInterval(connectionMonitor);
+          if (backendMonitor) {
+            clearInterval(backendMonitor);
+          }
 
           // Log completion status
           if (clientDisconnected) {
