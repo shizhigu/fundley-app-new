@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageSquare, TrendingUp } from 'lucide-react';
+import { MessageSquare, BarChart3 } from 'lucide-react';
 import { ChatManager } from '@/components/chat-manager';
-import { TradingChart } from '@/components/trading-chart';
+import { RightPanelTabs } from '@/components/right-panel-tabs';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,7 @@ interface MobileTabsProps {
   user: AuthSession['user'];
 }
 
-type TabType = 'chat' | 'chart';
+type TabType = 'chat' | 'analysis';
 
 export function MobileTabs({ user }: MobileTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -23,9 +23,9 @@ export function MobileTabs({ user }: MobileTabsProps) {
       icon: MessageSquare,
     },
     {
-      id: 'chart' as const,
-      label: 'Chart',
-      icon: TrendingUp,
+      id: 'analysis' as const,
+      label: 'Analysis',
+      icon: BarChart3,
     },
   ];
 
@@ -79,17 +79,17 @@ export function MobileTabs({ user }: MobileTabsProps) {
           <ChatManager user={user} />
         </div>
 
-        {/* Chart Panel */}
+        {/* Analysis Panel */}
         <div
-          id="chart-panel"
+          id="analysis-panel"
           role="tabpanel"
-          aria-labelledby="chart-tab"
+          aria-labelledby="analysis-tab"
           className={cn(
             'h-full',
-            activeTab === 'chart' ? 'block' : 'hidden'
+            activeTab === 'analysis' ? 'block' : 'hidden'
           )}
         >
-          <TradingChart />
+          <RightPanelTabs onCollapse={() => {}} />
         </div>
       </div>
     </div>
