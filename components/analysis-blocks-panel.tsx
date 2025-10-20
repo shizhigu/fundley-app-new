@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { AnalysisBlockRenderer } from './analysis-block-renderer'
 import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, BarChart3, Database, Search, X, MessageSquare, Library, ChevronDown, RefreshCw, Plus, Pin } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AlertCircle, BarChart3, Database, Search, X, MessageSquare, Library, ChevronDown, RefreshCw, Plus, Pin, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useChatContext } from '@/lib/contexts/chat-context'
 import { useTranslations } from 'next-intl'
 import { Input } from '@/components/ui/input'
@@ -392,10 +392,22 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailViewBlockId, detailBlock]);
 
-  // Detail view - full screen single block
-  if (detailViewBlockId && detailBlock) {
-    return (
-      <div className={`h-full ${className} flex flex-col`} style={{ width: '100%' }}>
+  return (
+    <AnimatePresence mode="wait">
+      {detailViewBlockId && detailBlock ? (
+        // Detail view - full screen single block
+        <motion.div
+          key={`detail-${detailViewBlockId}`} // Key ensures animation triggers on block change
+          initial={{ opacity: 0, x: 60, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 60, scale: 0.95 }}
+          transition={{
+            duration: 0.5,
+            ease: [0.34, 1.56, 0.64, 1], // 弹性曲线 (cubic-bezier)
+          }}
+          className={`h-full ${className} flex flex-col`}
+          style={{ width: '100%' }}
+        >
         {/* Detail view header with back button */}
         <div className="flex items-center gap-3 p-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <button
@@ -444,13 +456,21 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
             onPin={handlePin}
           />
         </div>
-      </div>
-    )
-  }
-
-  // List view - grid of cards
-  return (
-    <div className={`h-full ${className}`} style={{ width: '100%', overflow: 'auto' }}>
+      </motion.div>
+      ) : (
+        // List view - grid of cards
+        <motion.div
+          key="list-view"
+          initial={{ opacity: 0, x: -60, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: -60, scale: 0.95 }}
+          transition={{
+            duration: 0.5,
+            ease: [0.34, 1.56, 0.64, 1], // 弹性曲线 (cubic-bezier)
+          }}
+          className={`h-full ${className}`}
+          style={{ width: '100%', overflow: 'auto' }}
+        >
       <div className="space-y-4 p-4" style={{ maxWidth: '100%' }}>
         <div className="space-y-4 mb-6">
           {/* Header */}
@@ -584,23 +604,35 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
 
           {/* Search Bar - Only when blocks exist */}
           {blocks.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('searchBlocks')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 h-10"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder={t('searchBlocks')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9 h-10"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Educational Hint */}
+              <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40">
+                <div className="shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4 text-primary/70" />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t('blocksPanelHint')}
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -721,6 +753,8 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

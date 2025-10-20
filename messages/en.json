@@ -90,6 +90,7 @@
     "noBlocksYet": "No analysis blocks yet",
     "agentsWillCreate": "AI agents will create blocks as they analyze data",
     "analysisBlocks": "Analysis Blocks",
+    "blocksPanelHint": "Analysis blocks are workspaces where AI delivers results. Agent can automatically manage them, generating reports, charts, and data inside. You can also manually edit the analysis anytime.",
     "live": "Live",
     "blocks": "blocks",
     "block": "block",

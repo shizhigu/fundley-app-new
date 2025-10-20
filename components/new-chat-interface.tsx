@@ -10,6 +10,7 @@ import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import { useBlockViewStore } from '@/stores/block-view-store';
 import { TextAnimate } from '@/components/ui/text-animate';
 import { BorderBeam } from '@/components/ui/border-beam';
+import { LoadingDots } from '@/components/ui/loading-dots';
 import type { ChatMessage } from '@/lib/types/chat';
 import type { MessageInvocation, Attachment } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -80,8 +81,8 @@ function DisplayMessageBox({ message }: { message?: string | null }) {
             {formatTime(elapsed)}
           </motion.span>
 
-          {/* Message text with TextAnimate - Only show if message exists */}
-          {message && (
+          {/* Message text with TextAnimate OR Loading Dots */}
+          {message ? (
             <TextAnimate
               key={animationKey}
               animation="blurInUp"
@@ -91,6 +92,8 @@ function DisplayMessageBox({ message }: { message?: string | null }) {
             >
               {message}
             </TextAnimate>
+          ) : (
+            <LoadingDots />
           )}
         </div>
 
