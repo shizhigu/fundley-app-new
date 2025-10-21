@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
-import { analysisBlocks, blockModificationHistory } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { auth } from '@/lib/auth/clerk';
+import { db } from '@/lib/db/config';
 
 // POST /api/blocks/[id]/touch
 // Touch a block to update its updated_at timestamp (for manual cache-busting)
@@ -12,45 +10,48 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const session = await auth();
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const userId = session.user.id;
+    const { id: blockId } = await params;
 
     // First verify the block exists and belongs to the user
-    const block = await db
-      .select()
-      .from(analysisBlocks)
-      .where(
-        and(
-          eq(analysisBlocks.id, id),
-          eq(analysisBlocks.user_id, userId)
-        )
-      )
-      .limit(1);
+    const block = await db`
+      SELECT chat_id FROM analysis_blocks
+      WHERE id = ${blockId} AND user_id = ${userId}
+    `;
 
     if (block.length === 0) {
       return NextResponse.json({ error: 'Block not found' }, { status: 404 });
     }
 
+    const chatId = block[0].chat_id;
+
     // Insert a modification history record with type 'manual_refresh'
     // This will trigger the database trigger that automatically updates analysis_blocks.updated_at
     // Same mechanism as Agent's update_analysis_block tool
-    await db.insert(blockModificationHistory).values({
-      block_id: id,
-      chat_id: block[0].chat_id, // Use the block's original chat_id
-      user_id: userId,
-      modification_type: 'manual_refresh',
-    });
+    await db`
+      INSERT INTO block_modification_history (
+        block_id,
+        chat_id,
+        user_id,
+        modification_type
+      )
+      VALUES (
+        ${blockId},
+        ${chatId},
+        ${userId},
+        'manual_refresh'
+      )
+    `;
 
     // Fetch the updated block to get the new updated_at timestamp
-    const updatedBlock = await db
-      .select()
-      .from(analysisBlocks)
-      .where(eq(analysisBlocks.id, id))
-      .limit(1);
+    const updatedBlock = await db`
+      SELECT updated_at FROM analysis_blocks WHERE id = ${blockId}
+    `;
 
     return NextResponse.json({
       success: true,

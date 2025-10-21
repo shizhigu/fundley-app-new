@@ -9,7 +9,8 @@
       "Bash(pnpm add:*)",
       "Bash(git restore:*)",
       "Bash(find:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(wait:*)"
     ],
     "deny": [],
     "ask": [],
