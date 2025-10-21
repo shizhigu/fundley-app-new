@@ -75,6 +75,14 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
+// Format filename for display: remove extension, replace separators, uppercase
+const formatFileName = (filename: string): string => {
+  return filename
+    .replace(/\.(html|json|csv|png|jpg|jpeg|pdf)$/i, '') // Remove extension
+    .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
+    .toUpperCase(); // All uppercase for financial dashboard style
+};
+
 const extractPlainText = (value: string) => {
   if (!value) return '';
 
@@ -902,9 +910,7 @@ export function AnalysisBlockRenderer({
                   >
                     <BarChart className="h-4 w-4" />
                     <span className="text-sm font-medium">
-                      {charts.length === 1
-                        ? 'Visualization'
-                        : `Visualization ${index + 1}`}
+                      {formatFileName(chartFile)}
                     </span>
                     {expandedCharts.has(index) ? (
                       <ChevronUp className="h-4 w-4 ml-2" />
