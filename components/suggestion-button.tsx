@@ -27,7 +27,7 @@ export function SuggestionButton({
       onClick={onClick}
       className={cn(
         // Clean button base
-        'group inline-flex items-center gap-2 px-3 py-2 rounded-lg',
+        'group inline-flex items-start gap-2 px-3 py-2 rounded-lg',
         // Minimal styling
         'bg-card border border-border',
         'text-sm text-foreground',
@@ -39,10 +39,10 @@ export function SuggestionButton({
       )}
       title={containsRealData && verificationMessage ? verificationMessage : undefined}
     >
-      <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-brand-primary" />
-      <span className="truncate font-medium">{text}</span>
+      <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-brand-primary mt-0.5" />
+      <span className="flex-1 text-left font-medium break-words">{text}</span>
       <ArrowRight className={cn(
-        "w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1",
+        "w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1 mt-0.5",
         "group-hover:opacity-50 group-hover:translate-x-0",
         "transition-all duration-200"
       )} />
