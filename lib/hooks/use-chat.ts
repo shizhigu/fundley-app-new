@@ -584,6 +584,15 @@ export function useChat(): ChatState & ChatActions {
                 console.log(`🎯 Update detected, triggering polling`);
                 setBlockToolCalled(prev => prev + 1);
               }
+
+              // Script execution: 触发轮询（文件可能已更新）
+              // 延迟 1.5 秒等待文件下载和 auto-touch 完成
+              if (toolName === 'run_script' || toolName === 'run_pipeline') {
+                console.log(`🎯 ${toolName} detected, will trigger polling after file download`);
+                setTimeout(() => {
+                  setBlockToolCalled(prev => prev + 1);
+                }, 1500);
+              }
             }
           }
           break;

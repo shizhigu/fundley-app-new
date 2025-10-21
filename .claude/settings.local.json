@@ -8,7 +8,8 @@
       "Bash(npm install:*)",
       "Bash(pnpm add:*)",
       "Bash(git restore:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

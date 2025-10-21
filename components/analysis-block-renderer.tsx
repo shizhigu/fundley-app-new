@@ -124,6 +124,7 @@ interface AnalysisBlockProps {
   onUpdate?: (updatedBlock: any) => void;
   onDelete?: (blockId: string) => void;
   onPin?: (blockId: string, isPinned: boolean) => void;
+  onManualRefresh?: () => Promise<boolean>;
 }
 
 /**
@@ -145,6 +146,7 @@ export function AnalysisBlockRenderer({
   onUpdate,
   onDelete,
   onPin,
+  onManualRefresh,
 }: AnalysisBlockProps) {
   const { content } = block;
   const tAnalysis = useTranslations('analysis');
@@ -354,20 +356,28 @@ export function AnalysisBlockRenderer({
   const [refreshingChart, setRefreshingChart] = useState<string | null>(null);
 
   // Refresh chart by reloading iframe (manual refresh adds extra timestamp)
-  const handleRefreshChart = useCallback((chartFile: string, chartIndex: number) => {
+  const handleRefreshChart = useCallback(async (chartFile: string, chartIndex: number) => {
     setRefreshingChart(chartFile);
-    // Find the specific iframe by ID
-    const iframeId = `chart-iframe-${block.id}-${chartIndex}`;
-    const iframe = document.getElementById(iframeId) as HTMLIFrameElement;
-    if (iframe) {
-      // Add extra timestamp for manual refresh
-      const url = new URL(iframe.src);
-      url.searchParams.set('refresh', Date.now().toString());
-      iframe.src = url.toString();
+
+    try {
+      // Touch the block to update its updated_at timestamp
+      await fetch(`/api/blocks/${block.id}/touch`, {
+        method: 'POST',
+      });
+
+      // Trigger parent component to refresh blocks list
+      // This will fetch the updated block with new updated_at timestamp
+      // causing blockVersion to change and all iframes to reload
+      if (onManualRefresh) {
+        await onManualRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to refresh chart:', error);
+    } finally {
+      // Reset refreshing state after a delay
+      setTimeout(() => setRefreshingChart(null), 1000);
     }
-    // Reset refreshing state after a delay
-    setTimeout(() => setRefreshingChart(null), 1000);
-  }, [block.id]);
+  }, [block.id, onManualRefresh]);
 
   // Export HTML file directly
   const handleExportHtml = useCallback(

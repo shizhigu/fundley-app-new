@@ -442,6 +442,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
             isActive={false} // No need to show active state in detail view
             onToggle={() => {}} // No-op in detail view
             onSelect={() => {}} // No-op, auto-managed now
+            onManualRefresh={checkForNewBlocks} // Trigger refresh when user manually refreshes files
             onUpdate={(updatedBlock) => {
               // Update blocks state with the updated block
               setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
@@ -709,6 +710,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                         isActive={activeBlockId === block.id}
                         onToggle={() => setDetailViewBlockId(block.id)}
                         onSelect={() => {}}
+                        onManualRefresh={checkForNewBlocks}
                         onUpdate={(updatedBlock) => {
                           setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
                           console.log('✅ Block updated without page reload:', updatedBlock.id)
@@ -752,6 +754,7 @@ export function AnalysisBlocksPanel({ chatId, className = '' }: AnalysisBlocksPa
                         isActive={activeBlockId === block.id}
                         onToggle={() => setDetailViewBlockId(block.id)}
                         onSelect={() => {}}
+                        onManualRefresh={checkForNewBlocks}
                         onUpdate={(updatedBlock) => {
                           setBlocks(prev => prev.map(b => b.id === updatedBlock.id ? updatedBlock : b))
                           console.log('✅ Block updated without page reload:', updatedBlock.id)
