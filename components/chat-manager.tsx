@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Menu } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X } from 'lucide-react';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { SimpleChatSelector } from '@/components/simple-chat-selector';
 import { NewChatInterface } from '@/components/new-chat-interface';
@@ -10,28 +10,40 @@ import type { ChatManagerProps } from '@/lib/types/chat';
 
 /**
  * Chat Manager Component
- * Manages sidebar and chat interface with unified chat context
+ * Floating sidebar design - no responsive layout shifts
  */
 export function ChatManager({ user }: ChatManagerProps) {
-  // Desktop: expanded by default, Mobile: collapsed by default
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return true; // SSR default
-    return window.innerWidth >= 1024; // lg breakpoint
-  });
-
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const chat = useChatContext();
 
-  // Responsive: auto-collapse sidebar on mobile
+  // Close sidebar when clicking outside
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isSidebarOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
         setIsSidebarOpen(false);
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSidebarOpen]);
+
+  // Close sidebar on Escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isSidebarOpen]);
 
   const handleSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -39,12 +51,14 @@ export function ChatManager({ user }: ChatManagerProps) {
 
   const handleChatSelect = (chatId: string) => {
     chat.selectChat(chatId);
+    setIsSidebarOpen(false);
   };
 
   const handleNewChat = async () => {
     try {
       const newChatId = await chat.createChat();
       chat.selectChat(newChatId);
+      setIsSidebarOpen(false);
     } catch (error) {
       console.error('Failed to create new chat:', error);
     }
@@ -59,12 +73,37 @@ export function ChatManager({ user }: ChatManagerProps) {
   };
 
   return (
-    <div className="flex h-full relative overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-full w-full relative overflow-hidden">
+      {/* Menu Button - Always visible in top-left */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleSidebarToggle}
+        className="absolute left-4 top-4 z-[60] hover:bg-accent/80 transition-colors"
+        title={isSidebarOpen ? 'Close chat list' : 'Open chat list'}
+      >
+        {isSidebarOpen ? (
+          <X className="w-5 h-5" />
+        ) : (
+          <Menu className="w-5 h-5" />
+        )}
+      </Button>
+
+      {/* Backdrop overlay - only show when sidebar is open */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[55] transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Floating Sidebar - slides in from left */}
       <div
+        ref={sidebarRef}
         className={`
-          ${isSidebarOpen ? 'w-80' : 'w-0'}
-          transition-all duration-300 overflow-hidden
+          fixed left-0 top-0 h-full w-80 bg-background border-r border-border
+          shadow-2xl z-[60] transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         <SimpleChatSelector
@@ -81,21 +120,8 @@ export function ChatManager({ user }: ChatManagerProps) {
         />
       </div>
 
-      {/* Sidebar Toggle Button - Show when sidebar is collapsed */}
-      {!isSidebarOpen && (
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleSidebarToggle}
-          className="absolute left-2 top-4 z-50 bg-card border-border hover:border-brand-primary/30 shadow-sm"
-          title="Expand chat list"
-        >
-          <Menu className="w-4 h-4" />
-        </Button>
-      )}
-
-      {/* Chat Interface */}
-      <div className="flex-1 min-w-0 overflow-hidden">
+      {/* Chat Interface - always full width, no responsive shifts */}
+      <div className="flex-1 w-full min-w-0 overflow-hidden">
         {chat.currentChatId ? (
           <NewChatInterface
             chatId={chat.currentChatId}

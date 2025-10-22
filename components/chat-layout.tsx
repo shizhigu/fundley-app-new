@@ -10,7 +10,7 @@ import { AuroraBackground } from '@/components/ui/aurora-background';
 
 /**
  * Ultra-Clean 2025 Chat Layout
- * Desktop: Resizable split panel (chat | data)
+ * Desktop: Resizable split panel (chat | analysis) with floating chat selector
  * Mobile: Tab-based navigation
  */
 export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
@@ -22,9 +22,9 @@ export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
           <EnhancedResizablePanel
             leftPanel={<ChatManager user={user} />}
             rightPanel={(onCollapse) => <RightPanelTabs onCollapse={onCollapse} />}
-            defaultLeftSize={55}
-            minLeftSize={30}
-            minRightSize={25}
+            defaultLeftSize={40}
+            minLeftSize={25}
+            minRightSize={30}
             className="w-full h-full"
           />
         </div>

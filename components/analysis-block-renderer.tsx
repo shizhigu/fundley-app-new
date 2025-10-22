@@ -900,6 +900,7 @@ export function AnalysisBlockRenderer({
                 </span>
               </div>
             )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {charts.map((chartFile: string, index: number) => (
               <div
                 key={`${chartFile}-${index}`}
@@ -985,6 +986,7 @@ export function AnalysisBlockRenderer({
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
 
