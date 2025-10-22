@@ -20,11 +20,21 @@ export function ChatManager({ user }: ChatManagerProps) {
   // Close sidebar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isSidebarOpen &&
-        sidebarRef.current &&
-        !sidebarRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+
+      // Don't close if clicking inside the sidebar
+      if (sidebarRef.current?.contains(target)) {
+        return;
+      }
+
+      // Don't close if clicking on a dropdown menu (Radix portals)
+      const isDropdownClick = (target as Element).closest('[role="menu"]') !== null;
+      if (isDropdownClick) {
+        return;
+      }
+
+      // Close sidebar if clicking outside and sidebar is open
+      if (isSidebarOpen) {
         setIsSidebarOpen(false);
       }
     };
