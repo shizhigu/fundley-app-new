@@ -20,16 +20,23 @@ export function ChatManager({ user }: ChatManagerProps) {
   // Close sidebar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
+      const target = event.target as HTMLElement;
 
       // Don't close if clicking inside the sidebar
       if (sidebarRef.current?.contains(target)) {
         return;
       }
 
-      // Don't close if clicking on a dropdown menu (Radix portals)
-      const isDropdownClick = (target as Element).closest('[role="menu"]') !== null;
-      if (isDropdownClick) {
+      // Don't close if clicking on Radix UI portals (dropdown menus, dialogs)
+      // Check for common Radix portal markers
+      const isPortalClick =
+        target.closest('[role="menu"]') !== null ||
+        target.closest('[data-radix-popper-content-wrapper]') !== null ||
+        target.closest('[data-radix-portal]') !== null ||
+        // Settings dialog portal
+        target.closest('[role="dialog"]') !== null;
+
+      if (isPortalClick) {
         return;
       }
 
@@ -89,7 +96,7 @@ export function ChatManager({ user }: ChatManagerProps) {
         variant="ghost"
         size="icon"
         onClick={handleSidebarToggle}
-        className="absolute left-4 top-4 z-[60] hover:bg-accent/80 transition-colors"
+        className="absolute left-4 top-4 z-[70] hover:bg-accent/80 transition-colors"
         title={isSidebarOpen ? 'Close chat list' : 'Open chat list'}
       >
         {isSidebarOpen ? (
@@ -102,7 +109,7 @@ export function ChatManager({ user }: ChatManagerProps) {
       {/* Backdrop overlay - only show when sidebar is open */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[55] transition-opacity"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -115,6 +122,7 @@ export function ChatManager({ user }: ChatManagerProps) {
           shadow-2xl z-[60] transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
+        style={{ pointerEvents: isSidebarOpen ? 'auto' : 'none' }}
       >
         <SimpleChatSelector
           chats={chat.chats}

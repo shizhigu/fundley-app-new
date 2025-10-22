@@ -68,7 +68,7 @@ export function SimpleChatSelector({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border">
+    <div className="flex flex-col h-full bg-background border-r border-border relative z-10">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
@@ -233,7 +233,7 @@ export function SimpleChatSelector({
       </div>
 
       {/* User navigation */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border relative z-20">
         <SidebarUserNav user={user} />
       </div>
     </div>
