@@ -198,7 +198,7 @@ export function AnalysisBlockRenderer({
   // Initialize all charts as expanded when charts array changes
   React.useEffect(() => {
     if (charts.length > 0) {
-      setExpandedCharts(new Set(charts.map((_, index) => index)));
+      setExpandedCharts(new Set(charts.map((_: string, index: number) => index)));
     }
   }, [charts.length]);
 
