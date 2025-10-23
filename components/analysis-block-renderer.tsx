@@ -174,8 +174,15 @@ export function AnalysisBlockRenderer({
   // Track which section is being edited
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
+  // Normalize files to arrays (support both single file and multiple files)
+  const charts = React.useMemo(() => {
+    if (content.files?.charts) return content.files.charts; // Multiple files
+    if (content.files?.chart) return [content.files.chart]; // Single file (backward compatible)
+    return [];
+  }, [content.files]);
+
   // State for collapsible sections (only used when block is expanded)
-  const [expandedCharts, setExpandedCharts] = useState<Set<number>>(new Set([0])); // Track which charts are expanded (default: first chart)
+  const [expandedCharts, setExpandedCharts] = useState<Set<number>>(new Set());
   const [isDataExpanded, setIsDataExpanded] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [tableData, setTableData] = useState<any[]>([]);
@@ -188,12 +195,12 @@ export function AnalysisBlockRenderer({
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
   const [isDataMaximized, setIsDataMaximized] = useState(false);
 
-  // Normalize files to arrays (support both single file and multiple files)
-  const charts = React.useMemo(() => {
-    if (content.files?.charts) return content.files.charts; // Multiple files
-    if (content.files?.chart) return [content.files.chart]; // Single file (backward compatible)
-    return [];
-  }, [content.files]);
+  // Initialize all charts as expanded when charts array changes
+  React.useEffect(() => {
+    if (charts.length > 0) {
+      setExpandedCharts(new Set(charts.map((_, index) => index)));
+    }
+  }, [charts.length]);
 
   // Cache-busting version based on block's update time
   const blockVersion = React.useMemo(() => {
@@ -972,6 +979,7 @@ export function AnalysisBlockRenderer({
                   </div>
                 </div>
 
+                {/* Show iframe only when expanded */}
                 {expandedCharts.has(index) && (
                   <div className="w-full h-[400px] bg-white overflow-auto">
                     <iframe
