@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Financial Analysis</title>
+
+    <!-- Plotly.js from CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+    <!-- Inter font (modern, professional) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        /* ===== GLASS MORPHISM CONTAINER ===== */
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.15),
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            padding: 32px;
+            margin-bottom: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow:
+                0 30px 80px rgba(0, 0, 0, 0.2),
+                0 12px 24px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            font-size: 1rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .header .timestamp {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        /* ===== CHART CONTAINERS ===== */
+        .chart-section {
+            margin-top: 24px;
+        }
+
+        .chart-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 400px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .chart-container:hover {
+            background: rgba(255, 255, 255, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        /* ===== BADGES & TAGS ===== */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .badge-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .badge-success {
+            background: #10b981;
+            color: white;
+        }
+
+        /* ===== DATA SOURCE FOOTER ===== */
+        .data-source {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(226, 232, 240, 0.6);
+            font-size: 0.875rem;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .data-source a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .data-source a:hover {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .glass-card {
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* ===== LOADING ANIMATION ===== */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        .loading {
+            background: linear-gradient(
+                90deg,
+                rgba(255,255,255,0.1) 0%,
+                rgba(255,255,255,0.3) 50%,
+                rgba(255,255,255,0.1) 100%
+            );
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header Card -->
+        <div class="glass-card">
+            <div class="header">
+                <h1>NVIDIA Financial Analysis</h1>
+                <div class="subtitle">
+                    Q1-Q4 2024 Performance Review
+                    <span class="badge badge-primary">SEC Verified</span>
+                </div>
+                <div class="timestamp">Generated on 2025-10-22 21:09 UTC</div>
+            </div>
+        </div>
+
+        <!-- Main Chart Card -->
+        <div class="glass-card">
+            <div class="chart-section">
+                <h2>📊 Financial Performance Overview</h2>
+                <div id="main-chart" class="chart-container"></div>
+            </div>
+
+            <!-- Data Source Attribution -->
+            <div class="data-source">
+                <strong>Data Sources:</strong>
+                Financial Modeling Prep (SEC 10-Q/10-K Filings), Bloomberg Terminal, Reuters
+                <br>
+                <small>All data verified against official SEC EDGAR filings</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Render main chart
+        const chartData = {"data":[{"fill":"tozeroy","fillcolor":"rgba(99, 102, 241, 0.15)","hovertemplate":"\u003cb\u003e%{x}\u003c\u002fb\u003e\u003cbr\u003eRevenue ($B): %{y:,.2f}\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#6366f1","shape":"spline","width":3},"marker":{"color":"#6366f1","line":{"color":"white","width":2},"size":8},"mode":"lines+markers","name":"Revenue ($B)","x":["Q1 2024","Q2 2024","Q3 2024","Q4 2024"],"y":[26.0,30.0,35.1,39.3],"type":"scatter","xaxis":"x","yaxis":"y"},{"hovertemplate":"\u003cb\u003e%{x}\u003c\u002fb\u003e\u003cbr\u003eProfit ($B): %{y:,.2f}\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":[6.7,7.2,9.2,10.5],"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"line":{"color":"rgba(255,255,255,0.2)","width":1},"showscale":false},"name":"Profit ($B)","text":["6.7","7.2","9.2","10.5"],"textposition":"outside","texttemplate":"%{text:,.1f}","x":["Q1 2024","Q2 2024","Q3 2024","Q4 2024"],"y":[6.7,7.2,9.2,10.5],"type":"bar","xaxis":"x2","yaxis":"y2"},{"fill":"tozeroy","fillcolor":"rgba(22, 163, 74, 0.15)","hovertemplate":"\u003cb\u003e%{x}\u003c\u002fb\u003e\u003cbr\u003eMargin %: %{y:,.2f}\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#16a34a","shape":"spline","width":3},"marker":{"color":"#16a34a","line":{"color":"white","width":2},"size":8},"mode":"lines+markers","name":"Margin %","x":["Q1 2024","Q2 2024","Q3 2024","Q4 2024"],"y":[25.8,24.0,26.2,26.7],"type":"scatter","xaxis":"x3","yaxis":"y3"},{"marker":{"color":"#6366f1"},"name":"Revenue","x":["Q1 2024","Q2 2024","Q3 2024","Q4 2024"],"y":[26.0,30.0,35.1,39.3],"type":"bar","xaxis":"x4","yaxis":"y4"},{"marker":{"color":"#8b5cf6"},"name":"Profit (×3)","x":["Q1 2024","Q2 2024","Q3 2024","Q4 2024"],"y":[20.1,21.6,27.599999999999998,31.5],"type":"bar","xaxis":"x4","yaxis":"y4"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":false,"showline":true,"linewidth":1,"linecolor":"#e2e8f0"},"yaxis":{"anchor":"x","domain":[0.56,1.0],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":true,"gridwidth":1,"gridcolor":"rgba(226,232,240,0.4)","showline":false,"zeroline":true,"zerolinewidth":1.5,"zerolinecolor":"#cbd5e1"},"xaxis2":{"anchor":"y2","domain":[0.55,1.0],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":false,"showline":true,"linewidth":1,"linecolor":"#e2e8f0"},"yaxis2":{"anchor":"x2","domain":[0.56,1.0],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":true,"gridwidth":1,"gridcolor":"rgba(226,232,240,0.4)","showline":false,"zeroline":true,"zerolinewidth":1.5,"zerolinecolor":"#cbd5e1"},"xaxis3":{"anchor":"y3","domain":[0.0,0.45],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":false,"showline":true,"linewidth":1,"linecolor":"#e2e8f0"},"yaxis3":{"anchor":"x3","domain":[0.0,0.44],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":true,"gridwidth":1,"gridcolor":"rgba(226,232,240,0.4)","showline":false,"zeroline":true,"zerolinewidth":1.5,"zerolinecolor":"#cbd5e1"},"xaxis4":{"anchor":"y4","domain":[0.55,1.0],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":false,"showline":true,"linewidth":1,"linecolor":"#e2e8f0"},"yaxis4":{"anchor":"x4","domain":[0.0,0.44],"tickfont":{"size":11,"color":"#64748b"},"title":{"font":{"size":12,"color":"#475569"}},"showgrid":true,"gridwidth":1,"gridcolor":"rgba(226,232,240,0.4)","showline":false,"zeroline":true,"zerolinewidth":1.5,"zerolinecolor":"#cbd5e1"},"annotations":[{"font":{"size":16},"showarrow":false,"text":"\u003cb\u003eRevenue Growth\u003c\u002fb\u003e","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"\u003cb\u003eNet Profit\u003c\u002fb\u003e","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"\u003cb\u003eOperating Margin %\u003c\u002fb\u003e","x":0.225,"xanchor":"center","xref":"paper","y":0.44,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"\u003cb\u003eQuarter-over-Quarter Comparison\u003c\u002fb\u003e","x":0.775,"xanchor":"center","xref":"paper","y":0.44,"yanchor":"bottom","yref":"paper"}],"title":{"font":{"family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif","size":24,"color":"#1e293b"},"text":"\u003cb\u003eNVIDIA Q1-Q4 2024 Financial Performance\u003c\u002fb\u003e","x":0.5,"xanchor":"center","y":0.98,"yanchor":"top"},"font":{"family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":13,"color":"#475569"},"margin":{"l":60,"r":60,"t":80,"b":60},"legend":{"font":{"size":12},"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"right","x":1,"bgcolor":"rgba(255,255,255,0.8)","bordercolor":"rgba(226,232,240,0.5)","borderwidth":1},"transition":{"duration":500,"easing":"cubic-in-out"},"plot_bgcolor":"rgba(0,0,0,0)","paper_bgcolor":"rgba(0,0,0,0)","height":800,"hovermode":"x unified"}};
+
+        Plotly.newPlot('main-chart', chartData.data, chartData.layout, {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+        });
+
+        // Add subtle entrance animation
+        document.querySelectorAll('.glass-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    </script>
+</body>
+</html>

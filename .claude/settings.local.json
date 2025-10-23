@@ -10,7 +10,8 @@
       "Bash(git restore:*)",
       "Bash(find:*)",
       "Bash(python:*)",
-      "Bash(wait:*)"
+      "Bash(wait:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": [],
