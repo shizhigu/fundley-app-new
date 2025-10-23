@@ -36,9 +36,10 @@ export default clerkMiddleware(async (auth, req) => {
     const { userId } = await auth();
 
     if (!userId) {
-      // Redirect to sign-in page
+      // Redirect to sign-in page with relative path only
       const signInUrl = new URL('/sign-in', req.url);
-      signInUrl.searchParams.set('redirect_url', req.url);
+      // Use pathname + search instead of full URL to avoid localhost in production
+      signInUrl.searchParams.set('redirect_url', pathname + req.nextUrl.search);
       return NextResponse.redirect(signInUrl);
     }
   }
