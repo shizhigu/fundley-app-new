@@ -104,6 +104,8 @@ import type {
 } from '@/lib/types/financial-data';
 
 export interface FinancialSessionState {
+  user_timezone?: string; // User's timezone (IANA format, e.g., "Asia/Shanghai")
+  user_current_time?: string; // User's current timestamp (ISO format)
   financial_metrics_data?: FinancialDataPoint[];
   available_metrics?: AvailableMetric[];
   current_block_id?: string; // 当前工作的 Analysis Block ID
