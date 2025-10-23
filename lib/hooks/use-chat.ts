@@ -81,6 +81,10 @@ export function useChat(): ChatState & ChatActions {
 
     const sessionState: FinancialSessionState = {};
 
+    // Add user's current timezone and timestamp (auto-detected from browser)
+    sessionState['user_timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    sessionState['user_current_time'] = new Date().toISOString();
+
     // 压缩财务数据：删除YoY/QoQ，限制数字精度为3位小数
     if (currentFinancialData && currentFinancialData.length > 0) {
       sessionState['financial_metrics_data'] = currentFinancialData.map(

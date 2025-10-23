@@ -11,7 +11,11 @@
       "Bash(find:*)",
       "Bash(python:*)",
       "Bash(wait:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pnpm create:*)",
+      "Bash(tree:*)",
+      "Bash(psql:*)",
+      "Bash(conda run:*)"
     ],
     "deny": [],
     "ask": [],

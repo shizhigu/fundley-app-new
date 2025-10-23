@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth/clerk';
+import { TimezoneUpdater } from '@/components/timezone-updater';
 
 export const experimental_ppr = true;
 
@@ -11,6 +12,7 @@ export default async function Layout({
 
   return (
     <div className="flex-1 overflow-hidden max-w-full min-w-0">
+      {session?.user && <TimezoneUpdater />}
       {children}
     </div>
   );
