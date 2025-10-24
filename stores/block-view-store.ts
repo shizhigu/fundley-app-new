@@ -31,7 +31,10 @@ interface BlockViewState {
   // Sort preferences
   sortBy: 'created_at' | 'updated_at' | 'last_accessed_at' | 'title';
   sortOrder: 'asc' | 'desc';
-  setSorting: (sortBy: BlockViewState['sortBy'], sortOrder: BlockViewState['sortOrder']) => void;
+  setSorting: (
+    sortBy: BlockViewState['sortBy'],
+    sortOrder: BlockViewState['sortOrder'],
+  ) => void;
 }
 
 export const useBlockViewStore = create<BlockViewState>((set) => ({
@@ -47,14 +50,9 @@ export const useBlockViewStore = create<BlockViewState>((set) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
 
   setActiveBlock: (id, content = null) => {
-    console.log('🔧 setActiveBlock called:', {
-      id,
-      hasContent: !!content,
-      contentKeys: content ? Object.keys(content) : []
-    });
     set({
       activeBlockId: id,
-      activeBlockContent: content
+      activeBlockContent: content,
     });
   },
 
@@ -65,7 +63,7 @@ export const useBlockViewStore = create<BlockViewState>((set) => ({
 
   updateFilter: (key, value) =>
     set((state) => ({
-      filters: { ...state.filters, [key]: value }
+      filters: { ...state.filters, [key]: value },
     })),
 
   clearFilters: () => set({ filters: {} }),

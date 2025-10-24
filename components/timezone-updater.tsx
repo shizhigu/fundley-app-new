@@ -21,12 +21,6 @@ export function TimezoneUpdater() {
           },
           body: JSON.stringify({ timezone }),
         });
-
-        if (response.ok) {
-          console.log('✅ Timezone updated:', timezone);
-        } else {
-          console.warn('⚠️ Failed to update timezone');
-        }
       } catch (error) {
         console.error('❌ Error updating timezone:', error);
       }

@@ -74,6 +74,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 
 // Format filename for display: remove extension, replace separators, uppercase
 const formatFileName = (filename: string): string => {
@@ -198,7 +199,9 @@ export function AnalysisBlockRenderer({
   // Initialize all charts as expanded when charts array changes
   React.useEffect(() => {
     if (charts.length > 0) {
-      setExpandedCharts(new Set(charts.map((_: string, index: number) => index)));
+      setExpandedCharts(
+        new Set(charts.map((_: string, index: number) => index)),
+      );
     }
   }, [charts.length]);
 
@@ -240,7 +243,7 @@ export function AnalysisBlockRenderer({
     return filesList;
   }, [content.files]);
 
-  // Fetch JSON data from backend
+  // Fetch data from backend (supports CSV and JSON)
   const loadTableData = useCallback(
     async (filename: string) => {
       setDataLoading(true);
@@ -250,8 +253,22 @@ export function AnalysisBlockRenderer({
         );
 
         if (response.ok) {
-          // JSON files contain array of records directly
-          if (filename.endsWith('.json')) {
+          if (filename.endsWith('.csv')) {
+            // CSV files - parse with papaparse
+            const csvText = await response.text();
+            const parsed = Papa.parse(csvText, {
+              header: true, // First row as column names
+              dynamicTyping: true, // Auto-convert numbers and booleans
+              skipEmptyLines: true, // Skip empty lines
+            });
+
+            if (parsed.errors.length > 0) {
+              console.error('CSV parsing errors:', parsed.errors);
+            }
+
+            setTableData(parsed.data || []);
+          } else if (filename.endsWith('.json')) {
+            // JSON files (legacy support)
             const data = await response.json();
             // Data should be in format: [{col1: val1, col2: val2}, ...]
             setTableData(Array.isArray(data) ? data : []);
@@ -331,19 +348,65 @@ export function AnalysisBlockRenderer({
   const getFileInfo = useCallback((filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const fileTypes: Record<string, { label: string; color: string }> = {
-      pdf: { label: 'PDF', color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
-      png: { label: 'PNG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      jpg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      jpeg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      svg: { label: 'SVG', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' },
-      gif: { label: 'GIF', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
-      csv: { label: 'CSV', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
-      xlsx: { label: 'Excel', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
-      txt: { label: 'TXT', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
-      md: { label: 'Markdown', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
-      py: { label: 'Python', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      pdf: {
+        label: 'PDF',
+        color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+      },
+      png: {
+        label: 'PNG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      jpg: {
+        label: 'JPG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      jpeg: {
+        label: 'JPG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      svg: {
+        label: 'SVG',
+        color:
+          'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+      },
+      gif: {
+        label: 'GIF',
+        color:
+          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+      },
+      csv: {
+        label: 'CSV',
+        color:
+          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+      },
+      xlsx: {
+        label: 'Excel',
+        color:
+          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+      },
+      txt: {
+        label: 'TXT',
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+      },
+      md: {
+        label: 'Markdown',
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+      },
+      py: {
+        label: 'Python',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
     };
-    return fileTypes[ext] || { label: ext.toUpperCase(), color: 'bg-gray-100 dark:bg-gray-800 text-gray-500' };
+    return (
+      fileTypes[ext] || {
+        label: ext.toUpperCase(),
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
+      }
+    );
   }, []);
 
   // Excel export handler
@@ -363,28 +426,31 @@ export function AnalysisBlockRenderer({
   const [refreshingChart, setRefreshingChart] = useState<string | null>(null);
 
   // Refresh chart by reloading iframe (manual refresh adds extra timestamp)
-  const handleRefreshChart = useCallback(async (chartFile: string, chartIndex: number) => {
-    setRefreshingChart(chartFile);
+  const handleRefreshChart = useCallback(
+    async (chartFile: string, chartIndex: number) => {
+      setRefreshingChart(chartFile);
 
-    try {
-      // Touch the block to update its updated_at timestamp
-      await fetch(`/api/blocks/${block.id}/touch`, {
-        method: 'POST',
-      });
+      try {
+        // Touch the block to update its updated_at timestamp
+        await fetch(`/api/blocks/${block.id}/touch`, {
+          method: 'POST',
+        });
 
-      // Trigger parent component to refresh blocks list
-      // This will fetch the updated block with new updated_at timestamp
-      // causing blockVersion to change and all iframes to reload
-      if (onManualRefresh) {
-        await onManualRefresh();
+        // Trigger parent component to refresh blocks list
+        // This will fetch the updated block with new updated_at timestamp
+        // causing blockVersion to change and all iframes to reload
+        if (onManualRefresh) {
+          await onManualRefresh();
+        }
+      } catch (error) {
+        console.error('Failed to refresh chart:', error);
+      } finally {
+        // Reset refreshing state after a delay
+        setTimeout(() => setRefreshingChart(null), 1000);
       }
-    } catch (error) {
-      console.error('Failed to refresh chart:', error);
-    } finally {
-      // Reset refreshing state after a delay
-      setTimeout(() => setRefreshingChart(null), 1000);
-    }
-  }, [block.id, onManualRefresh]);
+    },
+    [block.id, onManualRefresh],
+  );
 
   // Export HTML file directly
   const handleExportHtml = useCallback(
@@ -442,7 +508,7 @@ export function AnalysisBlockRenderer({
 
       // 静默保存，不阻塞 UI
       const updatedSections = sections.map((s: any) =>
-        s.id === sectionId ? { ...s, content: newContent} : s,
+        s.id === sectionId ? { ...s, content: newContent } : s,
       );
 
       fetch(`/api/blocks/${block.id}`, {
@@ -503,7 +569,10 @@ export function AnalysisBlockRenderer({
 
       if (!response.ok) throw new Error('Failed to toggle pin');
 
-      console.log(`📌 Block ${newPinStatus ? 'pinned' : 'unpinned'}:`, block.id);
+      console.log(
+        `📌 Block ${newPinStatus ? 'pinned' : 'unpinned'}:`,
+        block.id,
+      );
 
       // Notify parent component to update block list
       if (onPin) onPin(block.id, newPinStatus);
@@ -588,96 +657,99 @@ export function AnalysisBlockRenderer({
                   : 'border-border hover:border-brand-primary/30',
               )}
             >
-          <CardContent className="p-5">
-            <div className="flex items-start gap-3 min-w-0">
-              {/* Block logo/icon */}
-              <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center overflow-hidden">
-                {block.primary_symbol ? (
-                  <img
-                    src={`https://images.financialmodelingprep.com/symbol/${block.primary_symbol}.png`}
-                    alt={block.primary_symbol}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      // Fallback to icon if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                ) : null}
-                <BarChart className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`} />
-              </div>
-
-              {/* Content preview - clickable to open detail view */}
-              <div
-                className="flex-1 min-w-0 cursor-pointer"
-                onClick={(e) => {
-                  console.log('🟡 Card clicked, opening detail view...');
-                  onToggle();
-                }}
-              >
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {isActive && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-md border border-primary/20 flex-shrink-0">
-                        <span className="text-xs font-medium text-primary">
-                          {tAnalysis('workingIn')}
-                        </span>
-                      </div>
-                    )}
-                    <h3 className="font-semibold text-base truncate min-w-0">
-                      {title}
-                    </h3>
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Block logo/icon */}
+                  <div className="flex-shrink-0 w-12 h-12 p-1 rounded-full bg-brand-avatar flex items-center justify-center overflow-hidden">
+                    {block.primary_symbol ? (
+                      <img
+                        src={`https://images.financialmodelingprep.com/symbol/${block.primary_symbol}.png`}
+                        alt={block.primary_symbol}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove(
+                            'hidden',
+                          );
+                        }}
+                      />
+                    ) : null}
+                    <BarChart
+                      className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`}
+                    />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-                </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
-                  {summary}
-                </p>
-
-                {/* Source chat jump button - only show if sourceChat exists */}
-                {block.sourceChat && (
-                  <button
+                  {/* Content preview - clickable to open detail view */}
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent card expansion
-                      selectChat(block.sourceChat!.id);
+                      onToggle();
                     }}
-                    className="inline-flex items-center gap-1.5 mb-2 text-xs px-2.5 py-1.5 rounded-md border border-border/60 bg-background/80 text-foreground/70 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all group shadow-sm"
-                    title="Jump to source chat"
                   >
-                    <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    <span className="font-medium">Jump to chat</span>
-                  </button>
-                )}
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {isActive && (
+                          <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-md border border-primary/20 flex-shrink-0">
+                            <span className="text-xs font-medium text-primary">
+                              {tAnalysis('workingIn')}
+                            </span>
+                          </div>
+                        )}
+                        <h3 className="font-semibold text-base truncate min-w-0">
+                          {title}
+                        </h3>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                    </div>
 
-                {/* Content type badges - simple unified style */}
-                <div className="flex items-center gap-2 text-xs">
-                  {hasText && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                      <FileText className="h-3 w-3" />
-                      Text
-                    </span>
-                  )}
-                  {hasChart && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                      <BarChart className="h-3 w-3" />
-                      Chart
-                    </span>
-                  )}
-                  {hasData && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                      <FileText className="h-3 w-3" />
-                      Data
-                    </span>
-                  )}
-                  <span className="text-muted-foreground ml-auto font-medium">
-                    {new Date(block.created_at).toLocaleDateString()}
-                  </span>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
+                      {summary}
+                    </p>
+
+                    {/* Source chat jump button - only show if sourceChat exists */}
+                    {block.sourceChat && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card expansion
+                          selectChat(block.sourceChat!.id);
+                        }}
+                        className="inline-flex items-center gap-1.5 mb-2 text-xs px-2.5 py-1.5 rounded-md border border-border/60 bg-background/80 text-foreground/70 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all group shadow-sm"
+                        title="Jump to source chat"
+                      >
+                        <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        <span className="font-medium">Jump to chat</span>
+                      </button>
+                    )}
+
+                    {/* Content type badges - simple unified style */}
+                    <div className="flex items-center gap-2 text-xs">
+                      {hasText && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                          <FileText className="h-3 w-3" />
+                          Text
+                        </span>
+                      )}
+                      {hasChart && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                          <BarChart className="h-3 w-3" />
+                          Chart
+                        </span>
+                      )}
+                      {hasData && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                          <FileText className="h-3 w-3" />
+                          Data
+                        </span>
+                      )}
+                      <span className="text-muted-foreground ml-auto font-medium">
+                        {new Date(block.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-48">
             <ContextMenuItem
@@ -716,12 +788,15 @@ export function AnalysisBlockRenderer({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Analysis Block?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{title}"? This action cannot be undone.
-                All associated data and modification history will be permanently removed.
+                Are you sure you want to delete "{title}"? This action cannot be
+                undone. All associated data and modification history will be
+                permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={isDeleting}
@@ -772,11 +847,15 @@ export function AnalysisBlockRenderer({
                 onError={(e) => {
                   // Fallback to icon if image fails to load
                   e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  e.currentTarget.nextElementSibling?.classList.remove(
+                    'hidden',
+                  );
                 }}
               />
             ) : null}
-            <BarChart className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`} />
+            <BarChart
+              className={`h-6 w-6 text-brand-primary ${block.primary_symbol ? 'hidden' : ''}`}
+            />
           </button>
 
           {/* Title - Notion-style inline editing */}
@@ -863,7 +942,9 @@ export function AnalysisBlockRenderer({
                     {editingSectionId === section.id ? (
                       <MarkdownSectionEditor
                         content={section.content || ''}
-                        onSave={(markdown) => handleSaveSection(section.id, markdown)}
+                        onSave={(markdown) =>
+                          handleSaveSection(section.id, markdown)
+                        }
                         onCancel={() => setEditingSectionId(null)}
                       />
                     ) : (
@@ -908,92 +989,92 @@ export function AnalysisBlockRenderer({
               </div>
             )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {charts.map((chartFile: string, index: number) => (
-              <div
-                key={`${chartFile}-${index}`}
-                className="border rounded-lg overflow-hidden w-full max-w-full"
-              >
-                <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
-                  <button
-                    onClick={() => {
-                      const newExpanded = new Set(expandedCharts);
-                      if (newExpanded.has(index)) {
-                        newExpanded.delete(index);
-                      } else {
-                        newExpanded.add(index);
-                      }
-                      setExpandedCharts(newExpanded);
-                    }}
-                    className="flex items-center gap-2 flex-1"
-                  >
-                    <BarChart className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {formatFileName(chartFile)}
-                    </span>
-                    {expandedCharts.has(index) ? (
-                      <ChevronUp className="h-4 w-4 ml-2" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                    )}
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRefreshChart(chartFile, index);
+              {charts.map((chartFile: string, index: number) => (
+                <div
+                  key={`${chartFile}-${index}`}
+                  className="border rounded-lg overflow-hidden w-full max-w-full"
+                >
+                  <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <button
+                      onClick={() => {
+                        const newExpanded = new Set(expandedCharts);
+                        if (newExpanded.has(index)) {
+                          newExpanded.delete(index);
+                        } else {
+                          newExpanded.add(index);
+                        }
+                        setExpandedCharts(newExpanded);
                       }}
-                      disabled={refreshingChart === chartFile}
-                      className="h-8 w-8 p-0"
-                      title="Refresh"
+                      className="flex items-center gap-2 flex-1"
                     >
-                      <RefreshCw
-                        className={`h-4 w-4 ${refreshingChart === chartFile ? 'animate-spin' : ''}`}
-                      />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleExportHtml(chartFile);
-                      }}
-                      className="h-8 w-8 p-0"
-                      title="Download HTML"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMaximizedChart(chartFile);
-                      }}
-                      className="h-8 w-8 p-0"
-                      title="Fullscreen"
-                    >
-                      <Maximize2 className="h-4 w-4" />
-                    </Button>
+                      <BarChart className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {formatFileName(chartFile)}
+                      </span>
+                      {expandedCharts.has(index) ? (
+                        <ChevronUp className="h-4 w-4 ml-2" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-2" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRefreshChart(chartFile, index);
+                        }}
+                        disabled={refreshingChart === chartFile}
+                        className="h-8 w-8 p-0"
+                        title="Refresh"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${refreshingChart === chartFile ? 'animate-spin' : ''}`}
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportHtml(chartFile);
+                        }}
+                        className="h-8 w-8 p-0"
+                        title="Download HTML"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMaximizedChart(chartFile);
+                        }}
+                        className="h-8 w-8 p-0"
+                        title="Fullscreen"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Show iframe only when expanded */}
-                {expandedCharts.has(index) && (
-                  <div className="w-full h-[400px] bg-white overflow-auto">
-                    <iframe
-                      key={`chart-${block.id}-${index}-${blockVersion}`}
-                      id={`chart-iframe-${block.id}-${index}`}
-                      src={`/api/files/${chartFile}?block_id=${blockId}&v=${blockVersion}`}
-                      className="w-full h-full border-0 min-w-0"
-                      title={`Visualization ${index + 1}`}
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+                  {/* Show iframe only when expanded */}
+                  {expandedCharts.has(index) && (
+                    <div className="w-full h-[400px] bg-white overflow-auto">
+                      <iframe
+                        key={`chart-${block.id}-${index}-${blockVersion}`}
+                        id={`chart-iframe-${block.id}-${index}`}
+                        src={`/api/files/${chartFile}?block_id=${blockId}&v=${blockVersion}`}
+                        className="w-full h-full border-0 min-w-0"
+                        title={`Visualization ${index + 1}`}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1020,7 +1101,9 @@ export function AnalysisBlockRenderer({
                     <span className="flex-1 text-left truncate">
                       {reportFile}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
+                    >
                       {fileInfo.label}
                     </span>
                   </Button>
@@ -1052,7 +1135,9 @@ export function AnalysisBlockRenderer({
                     <span className="flex-1 text-left truncate">
                       {artifactFile}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
+                    >
                       {fileInfo.label}
                     </span>
                   </Button>
@@ -1125,7 +1210,9 @@ export function AnalysisBlockRenderer({
               <div className="px-3 py-2 bg-muted/50 border-t">
                 <Select
                   value={selectedDataIndex.toString()}
-                  onValueChange={(value) => setSelectedDataIndex(parseInt(value))}
+                  onValueChange={(value) =>
+                    setSelectedDataIndex(parseInt(value))
+                  }
                 >
                   <SelectTrigger className="w-[280px] h-8">
                     <SelectValue placeholder="Select table" />
@@ -1135,7 +1222,10 @@ export function AnalysisBlockRenderer({
                       // Remove .json extension for display
                       const displayName = file.replace('.json', '');
                       return (
-                        <SelectItem key={`${file}-${index}`} value={index.toString()}>
+                        <SelectItem
+                          key={`${file}-${index}`}
+                          value={index.toString()}
+                        >
                           {displayName}
                         </SelectItem>
                       );
@@ -1432,8 +1522,9 @@ export function AnalysisBlockRenderer({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Analysis Block?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{title}"? This action cannot be undone.
-              All associated data and modification history will be permanently removed.
+              Are you sure you want to delete "{title}"? This action cannot be
+              undone. All associated data and modification history will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

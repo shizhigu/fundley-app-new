@@ -24,12 +24,6 @@ export function ChatManager({ user }: ChatManagerProps) {
     const handleClickOutside = (event: Event) => {
       const target = event.target as HTMLElement;
 
-      console.log('Click detected:', {
-        target: target.tagName,
-        className: target.className,
-        sidebarContains: sidebarRef.current?.contains(target)
-      });
-
       // Don't close if clicking the toggle button
       if (target.closest('[data-sidebar-toggle]')) {
         console.log('Click on toggle button - not closing');
@@ -38,7 +32,6 @@ export function ChatManager({ user }: ChatManagerProps) {
 
       // Don't close if clicking sidebar action buttons (New Chat, chat selection)
       if (target.closest('[data-sidebar-action]')) {
-        console.log('Click on sidebar action - not closing');
         return;
       }
 
@@ -82,7 +75,6 @@ export function ChatManager({ user }: ChatManagerProps) {
   };
 
   const handleNewChat = async () => {
-    console.log('handleNewChat called');
     try {
       const newChatId = await chat.createChat();
       console.log('New chat created:', newChatId);
@@ -121,9 +113,7 @@ export function ChatManager({ user }: ChatManagerProps) {
 
       {/* Backdrop overlay - visual only, clicks handled by useEffect */}
       {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity pointer-events-none"
-        />
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity pointer-events-none" />
       )}
 
       {/* Floating Sidebar - slides in from left */}

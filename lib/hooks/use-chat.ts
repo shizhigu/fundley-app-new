@@ -51,10 +51,15 @@ export function useChat(): ChatState & ChatActions {
 
   // 跟踪切换到的 block ID（用于 switch_analysis_block 工具）
   // 使用对象包含 timestamp 确保每次切换都能触发 useEffect
-  const [switchedBlockId, setSwitchedBlockId] = useState<{ id: string; timestamp: number } | null>(null);
+  const [switchedBlockId, setSwitchedBlockId] = useState<{
+    id: string;
+    timestamp: number;
+  } | null>(null);
 
   // 跟踪最新的display_message（实时状态显示）
-  const [currentDisplayMessage, setCurrentDisplayMessage] = useState<string | null>(null);
+  const [currentDisplayMessage, setCurrentDisplayMessage] = useState<
+    string | null
+  >(null);
 
   // ============ 财务数据集成 ============
   const financialData = useFinancialDataStore((state) => state.data);
@@ -82,7 +87,8 @@ export function useChat(): ChatState & ChatActions {
     const sessionState: FinancialSessionState = {};
 
     // Add user's current timezone and timestamp (auto-detected from browser)
-    sessionState['user_timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    sessionState['user_timezone'] =
+      Intl.DateTimeFormat().resolvedOptions().timeZone;
     sessionState['user_current_time'] = new Date().toISOString();
 
     // 压缩财务数据：删除YoY/QoQ，限制数字精度为3位小数
@@ -152,7 +158,7 @@ export function useChat(): ChatState & ChatActions {
 
       // 为新用户添加小延迟，确保数据库同步完成
       // 这解决了新用户首次创建chat时的"Failed to load messages"错误
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       await refreshChats(); // 刷新聊天列表
       return data.chat.id;
@@ -348,15 +354,19 @@ export function useChat(): ChatState & ChatActions {
       if (!response.ok) {
         if (retryCount < MAX_RETRIES) {
           const delay = RETRY_DELAYS[retryCount] || 1000;
-          console.warn(`⚠️ Failed to fetch messages (status: ${response.status}), retrying in ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          console.warn(
+            `⚠️ Failed to fetch messages (status: ${response.status}), retrying in ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`,
+          );
 
           // 在重试期间保持loading状态，不显示错误
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return loadMessages(chatId, retryCount + 1); // 递归重试
         }
 
         // 所有重试都失败后才抛出错误
-        throw new Error(`Failed to fetch messages after ${MAX_RETRIES} attempts`);
+        throw new Error(
+          `Failed to fetch messages after ${MAX_RETRIES} attempts`,
+        );
       }
 
       const data = await response.json();
@@ -364,12 +374,12 @@ export function useChat(): ChatState & ChatActions {
       setMessages(convertedMessages);
       setError(null); // 清除之前的错误
       setIsLoading(false); // 成功后清除loading
-      console.log(`✅ Successfully loaded ${convertedMessages.length} messages`);
     } catch (err) {
       console.error('Error loading messages:', err);
       // 只在所有重试都失败后才设置错误状态
       if (retryCount >= MAX_RETRIES) {
-        const errorMessage = 'Failed to load messages. Please refresh the page.';
+        const errorMessage =
+          'Failed to load messages. Please refresh the page.';
         setError(errorMessage);
         toast.error(errorMessage);
         setIsLoading(false); // 最终失败后清除loading
@@ -398,7 +408,10 @@ export function useChat(): ChatState & ChatActions {
 
         // Note: Block state (current_block_id, current_block_content, block_history) is now
         // automatically loaded from Redis by the backend pre-hook. No need to send from frontend.
-        console.log('📤 Sending sessionState (block state loaded from Redis by backend):', Object.keys(sessionState));
+        console.log(
+          '📤 Sending sessionState (block state loaded from Redis by backend):',
+          Object.keys(sessionState),
+        );
         console.log('📤 Sending message with sessionState:', {
           chatId: messageChatId,
           hasFinancialData: !!sessionState['financial_metrics_data']?.length,
@@ -448,7 +461,8 @@ export function useChat(): ChatState & ChatActions {
         await handleStreamResponse(response, messageChatId);
       } catch (err) {
         console.error('Error sending message:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to send message';
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
@@ -481,7 +495,7 @@ export function useChat(): ChatState & ChatActions {
         const timeSinceLastActivity = Date.now() - lastActivity;
         if (timeSinceLastActivity > TIMEOUT_THRESHOLD) {
           console.error(
-            `❌ Stream timeout - no data received for ${TIMEOUT_THRESHOLD / 1000} seconds`
+            `❌ Stream timeout - no data received for ${TIMEOUT_THRESHOLD / 1000} seconds`,
           );
           setError('Connection lost. Please try again.');
           reader.cancel();
@@ -573,28 +587,40 @@ export function useChat(): ChatState & ChatActions {
             });
 
             // 检测 block 工具调用
-            if (event.type === 'tool_complete' && event.message && typeof event.message !== 'string') {
+            if (
+              event.type === 'tool_complete' &&
+              event.message &&
+              typeof event.message !== 'string'
+            ) {
               const toolName = event.message.tool_name;
 
               // Create/Switch: 从 Redis 读取（后端已同步）
-              if (toolName === 'create_analysis_block' || toolName === 'switch_analysis_block') {
+              if (
+                toolName === 'create_analysis_block' ||
+                toolName === 'switch_analysis_block'
+              ) {
                 console.log(`🎯 ${toolName} detected, fetching from Redis`);
                 // 使用 timestamp 确保每次都触发（即使是同一个 block）
-                setSwitchedBlockId({ id: 'fetch-from-redis', timestamp: Date.now() });
+                setSwitchedBlockId({
+                  id: 'fetch-from-redis',
+                  timestamp: Date.now(),
+                });
               }
 
               // Update: 仅触发轮询更新（不切换 block）
               if (toolName === 'update_analysis_block') {
                 console.log(`🎯 Update detected, triggering polling`);
-                setBlockToolCalled(prev => prev + 1);
+                setBlockToolCalled((prev) => prev + 1);
               }
 
               // Script execution: 触发轮询（文件可能已更新）
               // 延迟 1.5 秒等待文件下载和 auto-touch 完成
               if (toolName === 'run_script' || toolName === 'run_pipeline') {
-                console.log(`🎯 ${toolName} detected, will trigger polling after file download`);
+                console.log(
+                  `🎯 ${toolName} detected, will trigger polling after file download`,
+                );
                 setTimeout(() => {
-                  setBlockToolCalled(prev => prev + 1);
+                  setBlockToolCalled((prev) => prev + 1);
                 }, 1500);
               }
             }
@@ -656,7 +682,9 @@ export function useChat(): ChatState & ChatActions {
             const totalTokens = event.metrics.total_tokens || 0;
 
             // 按 GPT-5 定价计算成本：$1.25/M input + $10/M (output + reasoning)
-            const cost = (inputTokens * 1.25 + (outputTokens + reasoningTokens) * 10) / 1_000_000;
+            const cost =
+              (inputTokens * 1.25 + (outputTokens + reasoningTokens) * 10) /
+              1_000_000;
 
             setCurrentMetrics({
               input_tokens: inputTokens,
@@ -664,14 +692,6 @@ export function useChat(): ChatState & ChatActions {
               reasoning_tokens: reasoningTokens,
               total_tokens: totalTokens,
               cost: cost,
-            });
-
-            console.log('📊 Metrics received:', {
-              input: inputTokens,
-              output: outputTokens,
-              reasoning: reasoningTokens,
-              total: totalTokens,
-              cost: `$${cost.toFixed(6)}`,
             });
           }
           break;
@@ -857,11 +877,11 @@ export function useChat(): ChatState & ChatActions {
   useEffect(() => {
     if (currentChatId) {
       // 如果是从localStorage恢复的，给认证系统一些准备时间
-      const isRestoredFromStorage = typeof window !== 'undefined' &&
+      const isRestoredFromStorage =
+        typeof window !== 'undefined' &&
         localStorage.getItem('lastSelectedChatId') === currentChatId;
 
       if (isRestoredFromStorage) {
-        console.log('📌 Restored chatId from localStorage, waiting 500ms before loading messages...');
         const timer = setTimeout(() => {
           loadMessages(currentChatId);
         }, 500);

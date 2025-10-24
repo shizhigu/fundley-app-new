@@ -40,11 +40,11 @@ function DisplayMessageBox({ message }: { message?: string | null }) {
   useEffect(() => {
     if (message) {
       // Immediate first animation
-      setAnimationKey(prev => prev + 1);
+      setAnimationKey((prev) => prev + 1);
 
       // Then loop every 4 seconds
       const loopInterval = setInterval(() => {
-        setAnimationKey(prev => prev + 1);
+        setAnimationKey((prev) => prev + 1);
       }, 4000);
 
       return () => clearInterval(loopInterval);
@@ -104,7 +104,7 @@ function DisplayMessageBox({ message }: { message?: string | null }) {
           borderWidth={2}
           className="from-blue-500 via-purple-500 to-blue-500"
           transition={{
-            type: "spring",
+            type: 'spring',
             stiffness: 50,
             damping: 15,
           }}
@@ -121,7 +121,11 @@ interface NewChatInterfaceProps {
   groupedMessages?: MessageInvocation[]; // Add grouped messages support
   isLoading: boolean;
   error: string | null;
-  onSendMessage: (content: string, files?: File[], blockId?: string) => Promise<void>;
+  onSendMessage: (
+    content: string,
+    files?: File[],
+    blockId?: string,
+  ) => Promise<void>;
   setLoading?: (loading: boolean) => void; // 立即设置loading状态
   isReadonly?: boolean;
   currentDisplayMessage?: string | null; // 实时状态显示
@@ -181,8 +185,6 @@ export function NewChatInterface({
         ?.map((attachment) => attachment.file)
         .filter(Boolean) as File[];
 
-      console.log('🔵 Sending message with activeBlockId:', activeBlockId);
-
       // 调用外部的发送消息函数，传递当前激活的 blockId
       await onSendMessage(content, files, activeBlockId || undefined);
 
@@ -233,7 +235,9 @@ export function NewChatInterface({
                 <h2 className="text-2xl font-bold text-foreground mb-2">
                   {t('welcome')}
                 </h2>
-                <p className="text-muted-foreground">{t('welcomeDescription')}</p>
+                <p className="text-muted-foreground">
+                  {t('welcomeDescription')}
+                </p>
               </div>
             </div>
           )}
@@ -262,9 +266,7 @@ export function NewChatInterface({
         <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 md:pb-6 pt-4">
           {/* 实时状态显示框 - 在输入框上方，相对定位 */}
           <AnimatePresence>
-            {isLoading && (
-              <DisplayMessageBox message={currentDisplayMessage} />
-            )}
+            {isLoading && <DisplayMessageBox message={currentDisplayMessage} />}
           </AnimatePresence>
 
           <MultimodalInput

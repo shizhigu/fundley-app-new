@@ -29,14 +29,15 @@ export function useActiveBlock() {
 
         if (!response.ok) {
           if (response.status === 401) return; // Not logged in yet
-          throw new Error(`Failed to fetch active block: ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch active block: ${response.statusText}`,
+          );
         }
 
         const data: ActiveBlockData = await response.json();
 
         if (data.block_id) {
           setActiveBlock(data);
-          console.log('🔄 Restored active block from Redis:', data.block_id);
         }
       } catch (err) {
         // Non-fatal: no active block to restore
@@ -65,8 +66,6 @@ export function useActiveBlock() {
       if (!response.ok) {
         throw new Error(`Failed to set active block: ${response.statusText}`);
       }
-
-      console.log('✅ Synced active block to Redis:', blockId);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +87,6 @@ export function useActiveBlock() {
       }
 
       setActiveBlock(null);
-      console.log('❌ Cleared active block from Redis');
     } finally {
       setIsLoading(false);
     }
