@@ -12,7 +12,7 @@ export async function GET() {
 
     const userId = session.user.id; // This is already the database UUID from auth()
 
-    // Get user's chats with ADK session mapping
+    // Get user's chats with ADK session mapping (exclude system chats)
     const chats = await db`
       SELECT
         c.id,
@@ -22,6 +22,7 @@ export async function GET() {
         c.updated_at as "updatedAt"
       FROM chats c
       WHERE c.user_id = ${userId}
+        AND (c.visibility IS NULL OR c.visibility = TRUE)
       ORDER BY c.updated_at DESC
     `;
 

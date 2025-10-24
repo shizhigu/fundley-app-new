@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { SimpleChatSelector } from '@/components/simple-chat-selector';
@@ -13,9 +13,9 @@ import type { ChatManagerProps } from '@/lib/types/chat';
  * Floating sidebar design - no responsive layout shifts
  */
 export function ChatManager({ user }: ChatManagerProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const chat = useChatContext();
+  const { isSidebarOpen, setSidebarOpen } = chat;
 
   // Close sidebar when clicking outside
   useEffect(() => {
@@ -42,7 +42,7 @@ export function ChatManager({ user }: ChatManagerProps) {
 
       // Close sidebar if clicking outside and sidebar is open
       if (isSidebarOpen) {
-        setIsSidebarOpen(false);
+        setSidebarOpen(false);
       }
     };
 
@@ -54,21 +54,21 @@ export function ChatManager({ user }: ChatManagerProps) {
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isSidebarOpen) {
-        setIsSidebarOpen(false);
+        setSidebarOpen(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isSidebarOpen]);
+  }, [isSidebarOpen, setSidebarOpen]);
 
   const handleSidebarToggle = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setSidebarOpen(!isSidebarOpen);
   };
 
   const handleChatSelect = (chatId: string) => {
     chat.selectChat(chatId);
-    setIsSidebarOpen(false);
+    setSidebarOpen(false);
   };
 
   const handleNewChat = async () => {

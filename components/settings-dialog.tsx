@@ -413,7 +413,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[90vw] h-[85vh] p-0 gap-0 bg-popover border border-border rounded-lg overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-full h-[85vh] p-0 gap-0 bg-popover border border-border rounded-lg overflow-hidden">
         <div className="flex h-full">
           {/* Left Sidebar */}
           <div className="w-48 shrink-0 border-r border-border bg-background p-4 space-y-1 overflow-y-auto">
@@ -684,7 +684,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                               <TableHead className="text-muted-foreground font-medium">
                                 {t('created_column')}
                               </TableHead>
-                              <TableHead className="text-muted-foreground font-medium">
+                              <TableHead className="min-w-[120px] text-muted-foreground font-medium">
                                 {t('action_column')}
                               </TableHead>
                             </TableRow>
@@ -1073,7 +1073,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
 
                 {/* Usage History */}
-                <div className="border border-border rounded-lg bg-background">
+                <div className="border border-border rounded-lg bg-background mb-6">
                   <div className="p-4 sm:p-6 border-b border-border">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <h3 className="text-base sm:text-lg font-semibold">
@@ -1095,7 +1095,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   ) : (
                     <>
                       {/* Scrollable table */}
-                      <div className="overflow-x-auto max-h-[300px] sm:max-h-[400px] overflow-y-auto">
+                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 bg-background z-10">
                             <tr className="border-b border-border">
@@ -1146,34 +1146,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           </tbody>
                         </table>
                       </div>
-
-                      {/* Pagination */}
-                      {creditHistoryTotal > HISTORY_PAGE_SIZE && (
-                        <div className="flex items-center justify-between p-3 sm:p-4 border-t border-border gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fetchCreditData(creditHistoryPage - 1)}
-                            disabled={creditHistoryPage === 1}
-                            className="text-xs"
-                          >
-                            Previous
-                          </Button>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            Page {creditHistoryPage} of {Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fetchCreditData(creditHistoryPage + 1)}
-                            disabled={creditHistoryPage >= Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
-                            className="text-xs"
-                          >
-                            Next
-                          </Button>
-                        </div>
-                      )}
                     </>
+                  )}
+
+                  {/* Pagination - always visible when there are multiple pages */}
+                  {creditHistory.length > 0 && creditHistoryTotal > HISTORY_PAGE_SIZE && (
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-t border-border gap-2 bg-background">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchCreditData(creditHistoryPage - 1)}
+                        disabled={creditHistoryPage === 1}
+                        className="text-xs"
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        Page {creditHistoryPage} of {Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchCreditData(creditHistoryPage + 1)}
+                        disabled={creditHistoryPage >= Math.ceil(creditHistoryTotal / HISTORY_PAGE_SIZE)}
+                        className="text-xs"
+                      >
+                        Next
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

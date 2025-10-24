@@ -21,6 +21,7 @@ import { LoaderIcon } from './icons';
 import { SettingsDialog } from './settings-dialog';
 import { cn } from '@/lib/utils';
 import { useDevModeStore } from '@/stores/dev-mode-store';
+import { useChatContext } from '@/lib/contexts/chat-context';
 
 interface SidebarUserNavProps {
   user?: {
@@ -38,6 +39,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
   const { isLoaded, user: clerkUser } = useUser();
   const { setTheme, resolvedTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { setSidebarOpen } = useChatContext();
 
   // Developer mode activation (Easter egg: click avatar 5 times)
   const { isEnabled: devModeEnabled, toggle: toggleDevMode } = useDevModeStore();
@@ -161,7 +163,10 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
         >
           <DropdownMenuItem
             className="cursor-pointer flex items-center gap-2"
-            onSelect={() => setSettingsOpen(true)}
+            onSelect={() => {
+              setSidebarOpen(false); // Close chat sidebar when opening settings
+              setSettingsOpen(true);
+            }}
           >
             <Settings className="w-4 h-4" />
             <span>{t('settings')}</span>

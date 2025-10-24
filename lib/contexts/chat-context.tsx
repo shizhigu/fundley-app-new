@@ -1,10 +1,15 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState } from 'react';
 import { useChat } from '@/lib/hooks/use-chat';
 import type { ChatState, ChatActions } from '@/lib/types/chat';
 
-type ChatContextType = (ChatState & ChatActions) | null;
+interface SidebarState {
+  isSidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+}
+
+type ChatContextType = (ChatState & ChatActions & SidebarState) | null;
 
 const ChatContext = createContext<ChatContextType>(null);
 
@@ -14,9 +19,14 @@ const ChatContext = createContext<ChatContextType>(null);
  */
 export function ChatProvider({ children }: { children: ReactNode }) {
   const chat = useChat();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const setSidebarOpen = (open: boolean) => {
+    setIsSidebarOpen(open);
+  };
 
   return (
-    <ChatContext.Provider value={chat}>
+    <ChatContext.Provider value={{ ...chat, isSidebarOpen, setSidebarOpen }}>
       {children}
     </ChatContext.Provider>
   );
