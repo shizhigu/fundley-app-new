@@ -110,7 +110,7 @@ export function ChatManager({ user }: ChatManagerProps) {
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
