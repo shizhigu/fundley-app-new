@@ -195,7 +195,6 @@ export function AnalysisBlocksPanel({
           : b,
       ),
     );
-    console.log(`📌 Block ${isPinned ? 'pinned' : 'unpinned'}:`, blockId);
 
     // Refresh from server to get accurate state
     await loadInitialBlocks();
@@ -214,10 +213,6 @@ export function AnalysisBlocksPanel({
     if (!switchedBlockId) return;
 
     const handleSwitch = async () => {
-      console.log(
-        `🔄 Switch detected (timestamp: ${switchedBlockId.timestamp})`,
-      );
-
       // Mark as pending switch (to prevent Redis overwrite)
       pendingSwitchRef.current = 'switching';
 
@@ -229,18 +224,14 @@ export function AnalysisBlocksPanel({
         const { block_id, content } = await response.json();
 
         if (!block_id) {
-          console.warn('⚠️ No active block in Redis');
           pendingSwitchRef.current = null;
           return;
         }
-
-        console.log('📥 Redis active block:', block_id);
 
         // Find the block in current list or reload
         let targetBlock = blocks.find((b) => b.id === block_id);
 
         if (!targetBlock) {
-          console.log('⏳ Block not in list, reloading...');
           const blocksRes = await fetch('/api/blocks');
           if (blocksRes.ok) {
             const { blocks: allBlocks } = await blocksRes.json();
@@ -250,9 +241,6 @@ export function AnalysisBlocksPanel({
         }
 
         if (targetBlock) {
-          console.log(
-            `✅ Switching to: ${content?.title || targetBlock.title}`,
-          );
           setDetailViewBlockId(block_id);
           setActiveBlock(block_id, content || targetBlock);
         }
@@ -260,7 +248,6 @@ export function AnalysisBlocksPanel({
         // Clear pending flag after a delay to ensure useEffect doesn't overwrite
         setTimeout(() => {
           pendingSwitchRef.current = null;
-          console.log('🔓 Switch complete, Redis sync re-enabled');
         }, 500);
       } catch (err) {
         console.error('❌ Switch failed:', err);
@@ -275,8 +262,6 @@ export function AnalysisBlocksPanel({
   useEffect(() => {
     if (blockToolCalled === 0) return; // 没有工具调用，不启动轮询
 
-    console.log('🎯 Block tool called detected, starting limited polling...');
-
     let pollCount = 0;
     const MAX_POLLS = 3;
     const POLL_INTERVAL = 5000;
@@ -284,14 +269,12 @@ export function AnalysisBlocksPanel({
     const startPolling = async () => {
       for (let i = 0; i < MAX_POLLS; i++) {
         pollCount++;
-        console.log(`📊 Polling attempt ${pollCount}/${MAX_POLLS}`);
 
         // 执行轮询
         const foundNew = await checkForNewBlocks();
 
         // 如果找到新数据，立即停止
         if (foundNew) {
-          console.log('✅ New blocks found, stopping polling');
           break;
         }
 
@@ -300,8 +283,6 @@ export function AnalysisBlocksPanel({
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
         }
       }
-
-      console.log(`⏹️ Polling completed (${pollCount} attempts)`);
     };
 
     startPolling();
@@ -322,7 +303,6 @@ export function AnalysisBlocksPanel({
       const data = await response.json();
       const fetchedBlocks = data.blocks || [];
 
-      console.log('📦 Fetched blocks count:', fetchedBlocks.length);
       setBlocks(fetchedBlocks);
 
       // Record latest timestamp for polling
@@ -360,7 +340,6 @@ export function AnalysisBlocksPanel({
         );
 
         if (uniqueNewBlocks.length > 0) {
-          console.log(`📊 Polling: Found ${uniqueNewBlocks.length} new blocks`);
           foundNewOrUpdated = true;
           // Note: Auto-open is now handled by Redis-based switch detection
           // Polling only updates the blocks list for display
@@ -375,14 +354,10 @@ export function AnalysisBlocksPanel({
               JSON.stringify(existing.content) !==
               JSON.stringify(newBlock.content)
             ) {
-              console.log(`🔄 Block ${newBlock.id} updated`);
               foundNewOrUpdated = true;
 
               // If this is the currently active block, update store (Redis sync happens in detailView useEffect)
               if (newBlock.id === currentActiveBlockId) {
-                console.log(
-                  `📝 Updating active block content in store: ${newBlock.id}`,
-                );
                 setActiveBlock(newBlock.id, newBlock);
               }
             }
@@ -420,20 +395,11 @@ export function AnalysisBlocksPanel({
       // CRITICAL: Don't sync to Redis if we're in the middle of a switch
       // This prevents overwriting the correct block_id with stale data
       if (pendingSwitchRef.current) {
-        console.log(
-          '⏸️  Skipping Redis sync during switch (pending:',
-          pendingSwitchRef.current,
-          ')',
-        );
         return;
       }
 
       // Only sync if the IDs match (prevents race condition where detailBlock lags behind detailViewBlockId)
       if (detailBlock.id !== detailViewBlockId) {
-        console.log('⏸️  Skipping Redis sync - block data mismatch:', {
-          detailViewBlockId,
-          detailBlockId: detailBlock.id,
-        });
         return;
       }
 
@@ -511,15 +477,10 @@ export function AnalysisBlocksPanel({
                     b.id === updatedBlock.id ? updatedBlock : b,
                   ),
                 );
-                console.log(
-                  '✅ Block updated without page reload:',
-                  updatedBlock.id,
-                );
               }}
               onDelete={(blockId) => {
                 // Remove block from list
                 setBlocks((prev) => prev.filter((b) => b.id !== blockId));
-                console.log('✅ Block removed from list:', blockId);
                 // Also clear detail view since we just deleted it
                 setDetailViewBlockId(null);
               }}
@@ -592,10 +553,6 @@ export function AnalysisBlocksPanel({
 
                         // Update Zustand store (Redis sync will happen in detailView useEffect)
                         setActiveBlock(block.id, block);
-                        console.log(
-                          '✅ Created new block and set as active:',
-                          block.id,
-                        );
                       } catch (error) {
                         console.error('Error creating block:', error);
                       }
@@ -810,18 +767,10 @@ export function AnalysisBlocksPanel({
                                   b.id === updatedBlock.id ? updatedBlock : b,
                                 ),
                               );
-                              console.log(
-                                '✅ Block updated without page reload:',
-                                updatedBlock.id,
-                              );
                             }}
                             onDelete={(blockId) => {
                               setBlocks((prev) =>
                                 prev.filter((b) => b.id !== blockId),
-                              );
-                              console.log(
-                                '✅ Block removed from list:',
-                                blockId,
                               );
                             }}
                             onPin={handlePin}
@@ -868,18 +817,10 @@ export function AnalysisBlocksPanel({
                                   b.id === updatedBlock.id ? updatedBlock : b,
                                 ),
                               );
-                              console.log(
-                                '✅ Block updated without page reload:',
-                                updatedBlock.id,
-                              );
                             }}
                             onDelete={(blockId) => {
                               setBlocks((prev) =>
                                 prev.filter((b) => b.id !== blockId),
-                              );
-                              console.log(
-                                '✅ Block removed from list:',
-                                blockId,
                               );
                             }}
                             onPin={handlePin}

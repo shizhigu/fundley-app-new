@@ -281,6 +281,7 @@ export function NewChatInterface({
             user={user}
             isAtBottom={isAtBottom}
             scrollToBottom={scrollToBottom}
+            chatId={chatId}
           />
         </div>
       )}

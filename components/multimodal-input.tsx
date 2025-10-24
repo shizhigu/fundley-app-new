@@ -103,6 +103,7 @@ function PureMultimodalInput({
   user,
   isAtBottom,
   scrollToBottom,
+  chatId,
 }: {
   status: UseChatHelpers<ChatMessage>['status'];
   stop: () => void;
@@ -116,6 +117,7 @@ function PureMultimodalInput({
   user: AuthSession['user'];
   isAtBottom?: boolean;
   scrollToBottom?: () => void;
+  chatId?: string;
 }) {
   // ========================================================================
   // State Management
@@ -130,6 +132,101 @@ function PureMultimodalInput({
   const { width } = useWindowSize();
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '');
+
+  // ========================================================================
+  // AI Autocomplete State
+  // ========================================================================
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+  // ========================================================================
+  // AI Autocomplete - Fetch Recommendations
+  // ========================================================================
+  const fetchRecommendations = useCallback(async (text: string) => {
+    // Only fetch for inputs between 2-100 characters
+    if (text.length < 2 || text.length > 100) {
+      setShowAiSuggestions(false);
+      return;
+    }
+
+    console.log('🔍 Fetching recommendations for:', text);
+    setIsLoadingSuggestions(true);
+    try {
+      // Call our Next.js API route (which will call AgentOS with session_state)
+      const response = await fetch('/api/recommendation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: text,
+          chatId: chatId,
+          // TODO: Add sessionState from useChat hook
+          sessionState: {},
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch recommendations:', response.status);
+        setShowAiSuggestions(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('🤖 Autocomplete response:', data);
+
+      // Agent returns JSON object: { recommendations: ["prompt1", "prompt2", ...] }
+      let suggestions: string[] = [];
+
+      if (typeof data.content === 'string') {
+        try {
+          const parsed = JSON.parse(data.content);
+          suggestions = parsed.recommendations || [];
+        } catch (e) {
+          console.error('Failed to parse content as JSON:', e);
+        }
+      } else if (data.content?.recommendations && Array.isArray(data.content.recommendations)) {
+        suggestions = data.content.recommendations;
+      }
+
+      console.log('📋 Parsed suggestions:', suggestions);
+
+      if (suggestions.length > 0) {
+        setAiSuggestions(suggestions);
+        setShowAiSuggestions(true);
+      } else {
+        setShowAiSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      setShowAiSuggestions(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [chatId]);
+
+  // ========================================================================
+  // AI Autocomplete - Monitor Input with Debouncing
+  // ========================================================================
+  useEffect(() => {
+    const text = input.trim();
+    console.log('📝 Input changed:', { text, length: text.length });
+
+    // Clear suggestions if input is empty or too long (max 100 chars)
+    if (text.length === 0 || text.length > 100) {
+      setShowAiSuggestions(false);
+      return;
+    }
+
+    // Debounce: wait 1 second after user stops typing
+    const timer = setTimeout(() => {
+      console.log('⏰ Debounce timer fired (1s), calling fetchRecommendations');
+      fetchRecommendations(text);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [input, fetchRecommendations]);
 
   // ========================================================================
   // Voice & Template Handling
@@ -405,6 +502,62 @@ function PureMultimodalInput({
         />
       )}
 
+      {/* ==================== AI Autocomplete Dropdown ==================== */}
+      <AnimatePresence>
+        {showAiSuggestions && aiSuggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="w-full bg-card border border-border rounded-xl shadow-2xl overflow-hidden mb-2"
+          >
+            {/* Header */}
+            <div className="px-4 py-2 bg-muted/30 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand-primary" />
+                <span className="text-xs font-medium text-muted-foreground">
+                  {isLoadingSuggestions ? 'Loading suggestions...' : 'AI Suggestions'}
+                </span>
+              </div>
+            </div>
+
+            {/* Suggestions List */}
+            <div className="max-h-[300px] overflow-y-auto">
+              {aiSuggestions.map((prompt, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    setInput(prompt);
+                    setShowAiSuggestions(false);
+                    // Focus and adjust textarea
+                    requestAnimationFrame(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.focus();
+                        adjustTextareaHeight(textareaRef.current);
+                      }
+                    });
+                  }}
+                  className={cn(
+                    'w-full px-4 py-3 text-left transition-colors duration-150',
+                    'hover:bg-muted/50 border-b border-border last:border-b-0',
+                    'focus:outline-none focus:bg-muted/70',
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 flex-shrink-0 text-brand-primary" />
+                    <span className="text-sm text-foreground">
+                      {prompt}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ==================== Main Input Container ==================== */}
       <div
         ref={dropZoneRef}
@@ -475,6 +628,20 @@ function PureMultimodalInput({
               } else {
                 submitForm();
               }
+            }
+          }}
+          onBlur={() => {
+            // Hide suggestions when user clicks away from input
+            // Use setTimeout to allow click events on suggestions to fire first
+            setTimeout(() => {
+              setShowAiSuggestions(false);
+            }, 200);
+          }}
+          onFocus={() => {
+            // Re-show suggestions if they exist and input is valid
+            const text = input.trim();
+            if (aiSuggestions.length > 0 && text.length >= 2 && text.length <= 100) {
+              setShowAiSuggestions(true);
             }
           }}
         />
