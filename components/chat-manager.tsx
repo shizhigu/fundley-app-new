@@ -75,7 +75,7 @@ export function ChatManager({ user }: ChatManagerProps) {
     try {
       const newChatId = await chat.createChat();
       chat.selectChat(newChatId);
-      setIsSidebarOpen(false);
+      setSidebarOpen(false);
     } catch (error) {
       console.error('Failed to create new chat:', error);
     }
