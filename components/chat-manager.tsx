@@ -19,47 +19,56 @@ export function ChatManager({ user }: ChatManagerProps) {
 
   // Close sidebar when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    if (!isSidebarOpen) return;
+
+    const handleClickOutside = (event: Event) => {
       const target = event.target as HTMLElement;
+
+      console.log('Click detected:', {
+        target: target.tagName,
+        className: target.className,
+        sidebarContains: sidebarRef.current?.contains(target)
+      });
+
+      // Don't close if clicking the toggle button
+      if (target.closest('[data-sidebar-toggle]')) {
+        console.log('Click on toggle button - not closing');
+        return;
+      }
+
+      // Don't close if clicking sidebar action buttons (New Chat, chat selection)
+      if (target.closest('[data-sidebar-action]')) {
+        console.log('Click on sidebar action - not closing');
+        return;
+      }
+
+      // Don't close if clicking user menu (Portal-rendered dropdown)
+      if (target.closest('[data-sidebar-menu]')) {
+        console.log('Click on user menu - not closing');
+        return;
+      }
 
       // Don't close if clicking inside the sidebar
       if (sidebarRef.current?.contains(target)) {
+        console.log('Click inside sidebar - not closing');
         return;
       }
 
-      // Don't close if clicking on Radix UI portals (dropdown menus, dialogs)
-      // Check for common Radix portal markers
-      const isPortalClick =
-        target.closest('[role="menu"]') !== null ||
-        target.closest('[data-radix-popper-content-wrapper]') !== null ||
-        target.closest('[data-radix-portal]') !== null ||
-        // Settings dialog portal
-        target.closest('[role="dialog"]') !== null;
-
-      if (isPortalClick) {
-        return;
-      }
-
-      // Close sidebar if clicking outside and sidebar is open
-      if (isSidebarOpen) {
-        setSidebarOpen(false);
-      }
+      // Close sidebar - clicked outside
+      console.log('Click outside sidebar - closing');
+      setSidebarOpen(false);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isSidebarOpen]);
+    // Use a small delay to let the sidebar render first
+    const timeoutId = setTimeout(() => {
+      // Use 'click' event instead of 'mousedown' to let onClick handlers fire first
+      document.addEventListener('click', handleClickOutside, true);
+    }, 100);
 
-  // Close sidebar on Escape key
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isSidebarOpen) {
-        setSidebarOpen(false);
-      }
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside, true);
     };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
   }, [isSidebarOpen, setSidebarOpen]);
 
   const handleSidebarToggle = () => {
@@ -67,15 +76,18 @@ export function ChatManager({ user }: ChatManagerProps) {
   };
 
   const handleChatSelect = (chatId: string) => {
+    console.log('handleChatSelect called:', chatId);
     chat.selectChat(chatId);
-    setSidebarOpen(false);
+    // Don't close sidebar - let users select multiple chats
   };
 
   const handleNewChat = async () => {
+    console.log('handleNewChat called');
     try {
       const newChatId = await chat.createChat();
+      console.log('New chat created:', newChatId);
       chat.selectChat(newChatId);
-      setSidebarOpen(false);
+      // Don't close sidebar - let users continue working
     } catch (error) {
       console.error('Failed to create new chat:', error);
     }
@@ -96,6 +108,7 @@ export function ChatManager({ user }: ChatManagerProps) {
         variant="ghost"
         size="icon"
         onClick={handleSidebarToggle}
+        data-sidebar-toggle
         className="absolute left-4 top-4 z-[70] hover:bg-accent/80 transition-colors"
         title={isSidebarOpen ? 'Close chat list' : 'Open chat list'}
       >
@@ -106,11 +119,10 @@ export function ChatManager({ user }: ChatManagerProps) {
         )}
       </Button>
 
-      {/* Backdrop overlay - only show when sidebar is open */}
+      {/* Backdrop overlay - visual only, clicks handled by useEffect */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[40] transition-opacity pointer-events-none"
         />
       )}
 

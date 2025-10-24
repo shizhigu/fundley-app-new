@@ -108,6 +108,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
         <DropdownMenuTrigger asChild>
           {!isLoaded ? (
             <Button
+              data-sidebar-action
               variant="ghost"
               className="w-full h-auto py-2 px-3 bg-card border border-border rounded-lg justify-between hover:bg-muted transition-all duration-200"
             >
@@ -124,6 +125,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
           ) : (
             <Button
               data-testid="user-nav-button"
+              data-sidebar-action
               variant="ghost"
               className="w-full h-auto py-2 px-3 bg-card border border-border rounded-lg hover:bg-muted hover:border-brand-primary/20 transition-all duration-200"
             >
@@ -157,6 +159,7 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
 
         <DropdownMenuContent
           data-testid="user-nav-menu"
+          data-sidebar-menu
           side="top"
           align="start"
           className="w-[--radix-popper-anchor-width]"

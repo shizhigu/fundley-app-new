@@ -89,6 +89,7 @@ export function SimpleChatSelector({
         {/* New chat button */}
         <button
           onClick={onNewChat}
+          data-sidebar-action
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white rounded-lg font-medium transition-all duration-200 hover:bg-brand-primary/90 active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
@@ -119,6 +120,7 @@ export function SimpleChatSelector({
               return (
                 <div
                   key={chat.id}
+                  data-sidebar-action
                   className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
                     isSelected
                       ? 'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
