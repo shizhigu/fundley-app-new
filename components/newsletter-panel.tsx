@@ -18,6 +18,7 @@ interface NewsArticle {
   url: string
   image?: string
   sentiment?: 'positive' | 'negative' | 'neutral'
+  source_type?: 'news' | 'press_release'
 }
 
 interface NewsResponse {
@@ -27,11 +28,12 @@ interface NewsResponse {
 
 export function NewsletterPanel() {
   const t = useTranslations('newsletter')
-  const [news, setNews] = useState<NewsArticle[]>([])
+  const [allNews, setAllNews] = useState<NewsArticle[]>([]) // All news from API
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [displayCount, setDisplayCount] = useState(30) // Show 30 items initially
   const [searchQuery, setSearchQuery] = useState('')
+  const [showPressReleaseOnly, setShowPressReleaseOnly] = useState(false)
+  const [displayCount, setDisplayCount] = useState(30) // How many to display
 
   const ITEMS_PER_PAGE = 30
 
@@ -51,7 +53,7 @@ export function NewsletterPanel() {
       }
 
       const data: NewsResponse = await response.json()
-      setNews(data.news || [])
+      setAllNews(data.news || [])
     } catch (err) {
       console.error('Error fetching news:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch news')
@@ -70,8 +72,14 @@ export function NewsletterPanel() {
     setDisplayCount(prev => prev + ITEMS_PER_PAGE)
   }
 
-  // Filter news based on search query
-  const filteredNews = news.filter(article => {
+  // Filter news based on search query and press release filter (client-side filtering)
+  const filteredNews = allNews.filter(article => {
+    // Filter by press release if enabled
+    if (showPressReleaseOnly && article.source_type !== 'press_release') {
+      return false
+    }
+
+    // Filter by search query
     if (!searchQuery.trim()) return true
 
     const query = searchQuery.toLowerCase()
@@ -83,7 +91,7 @@ export function NewsletterPanel() {
     )
   })
 
-  // Get displayed news (limit by displayCount)
+  // Apply display limit (pagination on client side)
   const displayedNews = filteredNews.slice(0, displayCount)
   const hasMore = displayCount < filteredNews.length
 
@@ -139,44 +147,55 @@ export function NewsletterPanel() {
           <Newspaper className="w-5 h-5 text-brand-primary" />
           <h2 className="text-lg font-semibold">{t('title')}</h2>
           <Badge variant="secondary" className="ml-auto">
-            {displayedNews.length}/{filteredNews.length}
-            {searchQuery && ` (of ${news.length})`}
+            {searchQuery || showPressReleaseOnly ? (
+              // When searching or filtering, show filtered count
+              `${displayedNews.length} / ${filteredNews.length}`
+            ) : (
+              // When not searching/filtering, show displayed vs total
+              `${displayedNews.length} / ${allNews.length} total`
+            )}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
           {t('description')}
         </p>
 
-        {/* Search Box */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by symbol, title, or content..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setDisplayCount(ITEMS_PER_PAGE) // Reset display count when searching
-            }}
-            className="pl-10 pr-10"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery('')
-                setDisplayCount(ITEMS_PER_PAGE)
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        {/* Search Box and Filter */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by symbol, title, or content..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <Button
+            variant={showPressReleaseOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowPressReleaseOnly(!showPressReleaseOnly)}
+            className="whitespace-nowrap"
+            title="Show only press releases"
+          >
+            <Newspaper className="w-4 h-4 mr-1" />
+            PR Only
+          </Button>
         </div>
       </div>
 
       {/* News List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {news.length === 0 ? (
+        {allNews.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <Newspaper className="w-12 h-12 mb-2 opacity-20" />
             <p className="text-sm">{t('noNews')}</p>
@@ -228,6 +247,11 @@ export function NewsletterPanel() {
                     <Badge variant="outline" className="text-xs font-mono">
                       {article.symbol}
                     </Badge>
+                    {article.source_type === 'press_release' && (
+                      <Badge variant="secondary" className="text-xs">
+                        PR
+                      </Badge>
+                    )}
                     {getSentimentIcon(article.sentiment)}
                     <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
                       <Calendar className="w-3 h-3" />

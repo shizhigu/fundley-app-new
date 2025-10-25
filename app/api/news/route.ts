@@ -4,7 +4,8 @@ import { db } from '@/lib/db/config'
 
 /**
  * GET /api/news
- * Fetch news for user's watchlist symbols from FMP API
+ * Fetch news for user's watchlist symbols from FMP API (both stock news and press releases)
+ * Returns all deduplicated news sorted by date (no pagination at API level)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -36,14 +37,14 @@ export async function GET(request: NextRequest) {
     // Extract symbols
     const symbols = watchlistResult.map(row => row.symbol).join(',')
 
-    // Prepare date range (yesterday, today, tomorrow to avoid timezone issues)
+    // Prepare date range (last 7 days to get more content)
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
+    const lastWeek = new Date(today)
+    lastWeek.setDate(lastWeek.getDate() - 7)
 
-    const from = yesterday.toISOString().split('T')[0]
+    const from = lastWeek.toISOString().split('T')[0]
     const to = tomorrow.toISOString().split('T')[0]
 
     // Fetch news from FMP API
@@ -52,19 +53,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'FMP API key not configured' }, { status: 500 })
     }
 
-    const fmpUrl = `https://financialmodelingprep.com/stable/news/stock?apikey=${fmpApiKey}&symbols=${symbols}&from=${from}&to=${to}`
+    // Fetch from both endpoints in parallel (get maximum available within date range)
+    const [stockNewsResponse, pressReleasesResponse] = await Promise.all([
+      // Stock news endpoint - get last 7 days
+      fetch(`https://financialmodelingprep.com/stable/news/stock?apikey=${fmpApiKey}&symbols=${symbols}&from=${from}&to=${to}&limit=250`),
+      // Press releases endpoint - get maximum available
+      fetch(`https://financialmodelingprep.com/stable/news/press-releases?apikey=${fmpApiKey}&symbols=${symbols}&limit=250`)
+    ])
 
-    const fmpResponse = await fetch(fmpUrl)
-
-    if (!fmpResponse.ok) {
-      console.error('FMP API error:', fmpResponse.status, fmpResponse.statusText)
-      return NextResponse.json({ error: 'Failed to fetch news from FMP' }, { status: 500 })
+    if (!stockNewsResponse.ok) {
+      console.error('FMP Stock News API error:', stockNewsResponse.status, stockNewsResponse.statusText)
     }
 
-    const newsData = await fmpResponse.json()
+    if (!pressReleasesResponse.ok) {
+      console.error('FMP Press Releases API error:', pressReleasesResponse.status, pressReleasesResponse.statusText)
+    }
+
+    // Parse responses and tag with source
+    const stockNewsData = (stockNewsResponse.ok ? await stockNewsResponse.json() : []).map((item: any) => ({
+      ...item,
+      source_type: 'news' as const
+    }))
+    const pressReleasesData = (pressReleasesResponse.ok ? await pressReleasesResponse.json() : []).map((item: any) => ({
+      ...item,
+      source_type: 'press_release' as const
+    }))
+
+    // Combine both sources
+    const allNews = [...stockNewsData, ...pressReleasesData]
 
     // Convert ET time to UTC for each article
-    const newsWithUTC = (newsData || []).map((article: any) => {
+    const newsWithUTC = allNews.map((article: any) => {
       // FMP returns time in ET format: "2025-10-24 19:21:00"
       // We need to convert this to UTC ISO string for proper client-side handling
       let utcDate = article.publishedDate
@@ -118,6 +137,8 @@ export async function GET(request: NextRequest) {
     const sortedNews = uniqueNews.sort((a: any, b: any) => {
       return new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
     })
+
+    console.log(`📰 Fetched ${allNews.length} total articles (${stockNewsData.length} news + ${pressReleasesData.length} press releases), deduplicated to ${sortedNews.length}`)
 
     return NextResponse.json({
       news: sortedNews,
