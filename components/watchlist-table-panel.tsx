@@ -10,6 +10,8 @@ import {
   Trash2,
   Send,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { LoaderOne } from '@/components/ui/loader';
 import { useTranslations } from 'next-intl';
@@ -82,6 +84,7 @@ export function WatchlistTablePanel() {
   const [defaultTemplateId, setDefaultTemplateId] = useState<string>('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   // Fetch watchlist symbols on mount and load saved templates
   useEffect(() => {
@@ -233,10 +236,36 @@ export function WatchlistTablePanel() {
     }
   };
 
-  // Auto-load default template when watchlist symbols and templates are ready
+  // Auto-load template from localStorage or default template
   useEffect(() => {
-    if (watchlistSymbols.length > 0 && defaultTemplateId && !sql) {
-      // Load the default template
+    if (watchlistSymbols.length === 0 || !defaultTemplateId) return;
+
+    // Try to restore from localStorage
+    if (typeof window !== 'undefined') {
+      const cachedTemplateId = localStorage.getItem('watchlist_selected_template');
+      const cachedResult = localStorage.getItem('watchlist_cached_result');
+      const cachedSQL = localStorage.getItem('watchlist_cached_sql');
+
+      if (cachedTemplateId && cachedResult && cachedSQL) {
+        // Restore cached state
+        try {
+          setSelectedTemplate(cachedTemplateId);
+          setSql(cachedSQL);
+          setResult(JSON.parse(cachedResult));
+          console.log('✅ Restored watchlist analysis from cache');
+          return;
+        } catch (error) {
+          console.warn('Failed to restore from cache:', error);
+          // Clear invalid cache
+          localStorage.removeItem('watchlist_selected_template');
+          localStorage.removeItem('watchlist_cached_result');
+          localStorage.removeItem('watchlist_cached_sql');
+        }
+      }
+    }
+
+    // No valid cache, load default template
+    if (!sql) {
       loadTemplate(defaultTemplateId);
     }
   }, [watchlistSymbols, defaultTemplateId]);
@@ -266,13 +295,14 @@ export function WatchlistTablePanel() {
 
       setResult(queryResult);
 
-      // Save to localStorage
+      // Save to localStorage (for cache restoration)
       if (typeof window !== 'undefined') {
-        localStorage.setItem('watchlist_last_sql', sqlQuery.trim());
+        localStorage.setItem('watchlist_cached_sql', sqlQuery.trim());
         localStorage.setItem(
-          'watchlist_last_result',
+          'watchlist_cached_result',
           JSON.stringify(queryResult),
         );
+        localStorage.setItem('watchlist_selected_template', selectedTemplate);
       }
     } catch (error) {
       console.error('Watchlist query error:', error);
@@ -371,7 +401,7 @@ export function WatchlistTablePanel() {
         console.log('🔍 Market mode: Generating general SQL query');
       }
 
-      // Call screener agent
+      // Call screener agent with current SQL context
       const agentResponse = await fetch('/api/screener', {
         method: 'POST',
         headers: {
@@ -379,6 +409,9 @@ export function WatchlistTablePanel() {
         },
         body: JSON.stringify({
           query: finalQuery,
+          sessionState: {
+            current_sql: sql || '', // Pass current SQL template if available
+          },
         }),
       });
 
@@ -501,36 +534,85 @@ export function WatchlistTablePanel() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-2">
-          <Star className="w-5 h-5 text-brand-primary" />
-          <h2 className="text-lg font-semibold text-foreground">
-            {t('title')}
-          </h2>
-          {result && (
-            <span className="ml-auto text-sm text-muted-foreground">
-              {result.row_count} {result.row_count === 1 ? 'item' : 'items'}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSettingsOpen(true)}
-            title="Manage watchlist symbols"
-            className="border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-primary"
-          >
-            <Star className="w-4 h-4 mr-2 text-brand-primary" />
-            <span className="font-medium">Watchlist</span>
-          </Button>
+      {/* Collapsible Header Section */}
+      {isHeaderCollapsed ? (
+        // Collapsed state - minimal header bar
+        <div className="p-3 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-brand-primary" />
+            <h3 className="text-sm font-semibold text-foreground">
+              {t('title')}
+            </h3>
+            {result && (
+              <span className="text-xs text-muted-foreground">
+                ({result.row_count} {result.row_count === 1 ? 'item' : 'items'})
+              </span>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSettingsOpen(true)}
+                title="Manage watchlist symbols"
+                className="h-7 px-2"
+              >
+                <Star className="w-3 h-3 mr-1 text-brand-primary" />
+                <span className="text-xs">Watchlist</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsHeaderCollapsed(false)}
+                title="Expand controls"
+                className="h-7 px-2"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Analyze your watchlist with AI-powered insights
-        </p>
-      </div>
+      ) : (
+        // Expanded state - full header and controls
+        <>
+          {/* Header */}
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="w-5 h-5 text-brand-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                {t('title')}
+              </h2>
+              {result && (
+                <span className="ml-auto text-sm text-muted-foreground">
+                  {result.row_count} {result.row_count === 1 ? 'item' : 'items'}
+                </span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSettingsOpen(true)}
+                title="Manage watchlist symbols"
+                className="border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-primary"
+              >
+                <Star className="w-4 h-4 mr-2 text-brand-primary" />
+                <span className="font-medium">Watchlist</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsHeaderCollapsed(true)}
+                title="Collapse to maximize table view"
+                className="ml-2"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Analyze your watchlist with AI-powered insights
+            </p>
+          </div>
 
-      {/* Query Controls */}
-      <div className="p-4 border-b border-border">
+          {/* Query Controls */}
+          <div className="p-4 border-b border-border">
         <div className="space-y-4">
           {/* AI Query Input */}
           <form
@@ -678,6 +760,8 @@ export function WatchlistTablePanel() {
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* Results */}
       <div className="flex-1 overflow-hidden p-4 flex flex-col">

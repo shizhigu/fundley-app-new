@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Newspaper, Loader2, ExternalLink, Calendar, TrendingUp, TrendingDown } from 'lucide-react'
+import { Newspaper, Loader2, ExternalLink, Calendar, TrendingUp, TrendingDown, Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { formatDistanceToNow } from 'date-fns'
 
 interface NewsArticle {
@@ -30,6 +31,7 @@ export function NewsletterPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [displayCount, setDisplayCount] = useState(30) // Show 30 items initially
+  const [searchQuery, setSearchQuery] = useState('')
 
   const ITEMS_PER_PAGE = 30
 
@@ -68,9 +70,22 @@ export function NewsletterPanel() {
     setDisplayCount(prev => prev + ITEMS_PER_PAGE)
   }
 
+  // Filter news based on search query
+  const filteredNews = news.filter(article => {
+    if (!searchQuery.trim()) return true
+
+    const query = searchQuery.toLowerCase()
+    return (
+      article.symbol.toLowerCase().includes(query) ||
+      article.title.toLowerCase().includes(query) ||
+      article.text.toLowerCase().includes(query) ||
+      article.site.toLowerCase().includes(query)
+    )
+  })
+
   // Get displayed news (limit by displayCount)
-  const displayedNews = news.slice(0, displayCount)
-  const hasMore = displayCount < news.length
+  const displayedNews = filteredNews.slice(0, displayCount)
+  const hasMore = displayCount < filteredNews.length
 
   // Format publish time - API returns UTC ISO string, browser automatically converts to local
   const formatPublishTime = (publishedDate: string) => {
@@ -119,17 +134,44 @@ export function NewsletterPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="p-4 border-b border-border space-y-3">
+        <div className="flex items-center gap-2">
           <Newspaper className="w-5 h-5 text-brand-primary" />
           <h2 className="text-lg font-semibold">{t('title')}</h2>
           <Badge variant="secondary" className="ml-auto">
-            {displayedNews.length}/{news.length}
+            {displayedNews.length}/{filteredNews.length}
+            {searchQuery && ` (of ${news.length})`}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
           {t('description')}
         </p>
+
+        {/* Search Box */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by symbol, title, or content..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setDisplayCount(ITEMS_PER_PAGE) // Reset display count when searching
+            }}
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setDisplayCount(ITEMS_PER_PAGE)
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* News List */}
@@ -139,6 +181,19 @@ export function NewsletterPanel() {
             <Newspaper className="w-12 h-12 mb-2 opacity-20" />
             <p className="text-sm">{t('noNews')}</p>
             <p className="text-xs mt-1">{t('addSymbolsHint')}</p>
+          </div>
+        ) : filteredNews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+            <Search className="w-12 h-12 mb-2 opacity-20" />
+            <p className="text-sm">No results found for "{searchQuery}"</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchQuery('')}
+              className="mt-2"
+            >
+              Clear search
+            </Button>
           </div>
         ) : (
           <>
@@ -210,7 +265,7 @@ export function NewsletterPanel() {
                   onClick={handleLoadMore}
                   className="w-full"
                 >
-                  {t('loadMore')} ({news.length - displayCount} {t('remaining')})
+                  {t('loadMore')} ({filteredNews.length - displayCount} {t('remaining')})
                 </Button>
               </div>
             )}

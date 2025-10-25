@@ -109,8 +109,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Deduplicate by URL
+    const uniqueNews = Array.from(
+      new Map(newsWithUTC.map((article: any) => [article.url, article])).values()
+    )
+
     // Sort by published date (newest first)
-    const sortedNews = newsWithUTC.sort((a: any, b: any) => {
+    const sortedNews = uniqueNews.sort((a: any, b: any) => {
       return new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
     })
 

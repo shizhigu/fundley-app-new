@@ -27,13 +27,16 @@ export async function POST(request: NextRequest) {
       stream: 'false',
     };
 
-    // Add session_state if provided (contains custom formulas)
+    // Add session_state if provided (contains current_sql and other context)
     if (sessionState && Object.keys(sessionState).length > 0) {
       requestParams.session_state = JSON.stringify(sessionState);
       console.log(
-        '📊 Adding session_state with custom formulas:',
+        '📊 Adding session_state to screener agent:',
         Object.keys(sessionState),
       );
+      if (sessionState.current_sql) {
+        console.log('   - current_sql length:', sessionState.current_sql.length, 'chars');
+      }
     }
 
     // Call the screener agent via AgentOS (same way as main agent)

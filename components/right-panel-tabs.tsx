@@ -24,6 +24,7 @@ interface Tab {
   id: TabType;
   label: string;
   icon: React.ElementType;
+  disabled?: boolean;
 }
 
 interface RightPanelTabsComponentProps {
@@ -44,7 +45,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     { id: 'newsletter', label: t('newsletter'), icon: Newspaper },
-    { id: 'screener', label: t('screener'), icon: Search },
+    { id: 'screener', label: t('screener'), icon: Search, disabled: true },
     // Chart tab hidden but kept in code
     // { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
@@ -92,6 +93,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const isDisabled = tab.disabled;
 
             return (
               <button
@@ -100,12 +102,14 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`${tab.id}-panel`}
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => !isDisabled && handleTabChange(tab.id)}
+                disabled={isDisabled}
                 className={cn(
                   'flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
-                  isActive
+                  isDisabled && 'opacity-40 cursor-not-allowed',
+                  !isDisabled && isActive
                     ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    : !isDisabled && 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 )}
               >
                 <Icon className="w-4 h-4" />
