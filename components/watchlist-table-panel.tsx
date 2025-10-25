@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Star, Loader2, Download, Play, RefreshCw, Settings } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import * as XLSX from 'xlsx'
+import { toast } from 'sonner'
 import { SettingsDialog } from './settings-dialog'
 import {
   useReactTable,
@@ -38,7 +39,7 @@ export function WatchlistTablePanel() {
   const [settingsTab, setSettingsTab] = useState<'watchlist'>('watchlist')
 
   // Template version - increment this when template changes
-  const TEMPLATE_VERSION = '4'
+  const TEMPLATE_VERSION = '5'
 
   // Template SQL with placeholder for watchlist symbols
   const templateSQL = `WITH watchlist_symbols AS (
@@ -366,8 +367,17 @@ ORDER BY w.symbol;`
   // Refresh template with latest watchlist symbols
   const handleRefreshTemplate = async () => {
     try {
+      // Clear cache first to ensure fresh data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('watchlist_last_sql')
+        localStorage.removeItem('watchlist_last_result')
+      }
+
       const response = await fetch('/api/watchlist')
       const data = await response.json()
+
+      console.log('📥 Fetched watchlist data:', data)
+
       if (data.watchlist && data.watchlist.length > 0) {
         const symbols: string[] = data.watchlist.map((item: any) => item.symbol)
         setWatchlistSymbols(symbols)
@@ -375,13 +385,22 @@ ORDER BY w.symbol;`
         // Generate SQL with fresh symbols
         const symbolsString = symbols.map((s: string) => `('${s}')`).join(',\n        ')
         const populatedSQL = templateSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString)
+
+        console.log('🔄 Generated SQL with symbols:', symbols)
+        console.log('📝 SQL preview:', populatedSQL.substring(0, 200))
+
         setSql(populatedSQL)
+
+        // Clear results to force re-execution
+        setResult(null)
+
+        toast.success(`Template updated with ${symbols.length} symbols`)
       } else {
-        alert('No symbols in watchlist. Please add symbols first.')
+        toast.error('No symbols in watchlist. Please add symbols first.')
       }
     } catch (error) {
       console.error('Failed to refresh watchlist:', error)
-      alert('Failed to refresh watchlist. Please try again.')
+      toast.error('Failed to refresh watchlist. Please try again.')
     }
   }
 
