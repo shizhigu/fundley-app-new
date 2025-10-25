@@ -148,6 +148,7 @@ function PureMultimodalInput({
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   // ========================================================================
   // AI Autocomplete - Fetch Recommendations
@@ -204,7 +205,11 @@ function PureMultimodalInput({
 
       if (suggestions.length > 0) {
         setAiSuggestions(suggestions);
-        setShowAiSuggestions(true);
+        // Only show suggestions if textarea is currently focused
+        // Check the actual DOM focus state instead of relying on state
+        if (textareaRef.current === document.activeElement) {
+          setShowAiSuggestions(true);
+        }
       } else {
         setShowAiSuggestions(false);
       }
@@ -615,6 +620,20 @@ function PureMultimodalInput({
           value={input}
           onChange={handleInput}
           onPaste={handlePaste}
+          onFocus={() => {
+            setIsInputFocused(true);
+            // Show suggestions if we have them
+            if (aiSuggestions.length > 0) {
+              setShowAiSuggestions(true);
+            }
+          }}
+          onBlur={() => {
+            // Delay hiding to allow clicking on suggestions
+            setTimeout(() => {
+              setIsInputFocused(false);
+              setShowAiSuggestions(false);
+            }, 200);
+          }}
           className={cn(
             // Core styling - clean and minimal
             'min-h-[100px] max-h-[200px] overflow-y-auto resize-none',
@@ -647,20 +666,6 @@ function PureMultimodalInput({
               } else {
                 submitForm();
               }
-            }
-          }}
-          onBlur={() => {
-            // Hide suggestions when user clicks away from input
-            // Use setTimeout to allow click events on suggestions to fire first
-            setTimeout(() => {
-              setShowAiSuggestions(false);
-            }, 200);
-          }}
-          onFocus={() => {
-            // Re-show suggestions if they exist and input is valid
-            const text = input.trim();
-            if (aiSuggestions.length > 0 && text.length >= 2 && text.length <= 100) {
-              setShowAiSuggestions(true);
             }
           }}
         />

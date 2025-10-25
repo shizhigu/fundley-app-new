@@ -1062,7 +1062,7 @@ export function AnalysisBlockRenderer({
 
                   {/* Show iframe only when expanded */}
                   {expandedCharts.has(index) && (
-                    <div className="w-full h-[400px] bg-white overflow-auto">
+                    <div className="w-full h-[400px] bg-background overflow-auto">
                       <iframe
                         key={`chart-${block.id}-${index}-${blockVersion}`}
                         id={`chart-iframe-${block.id}-${index}`}
@@ -1082,7 +1082,7 @@ export function AnalysisBlockRenderer({
         {/* PDF Reports - Support multiple PDFs */}
         {reports.length > 0 && (
           <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <FileText className="w-4 h-4" />
               <span>Report{reports.length > 1 ? 's' : ''}</span>
             </div>
@@ -1262,16 +1262,16 @@ export function AnalysisBlockRenderer({
                       style={{ width: '100%', display: 'block' }}
                     >
                       <table
-                        className="divide-y divide-gray-200"
+                        className="divide-y divide-border"
                         style={{ width: 'max-content', minWidth: '100%' }}
                       >
-                        <thead className="bg-gray-50 sticky top-0">
+                        <thead className="bg-muted sticky top-0">
                           {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id}>
                               {headerGroup.headers.map((header) => (
                                 <th
                                   key={header.id}
-                                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                                  className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap"
                                   onClick={header.column.getToggleSortingHandler()}
                                 >
                                   {flexRender(
@@ -1287,13 +1287,13 @@ export function AnalysisBlockRenderer({
                             </tr>
                           ))}
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-background divide-y divide-border">
                           {table.getRowModel().rows.map((row) => (
-                            <tr key={row.id} className="hover:bg-gray-50">
+                            <tr key={row.id} className="hover:bg-muted/50">
                               {row.getVisibleCells().map((cell) => (
                                 <td
                                   key={cell.id}
-                                  className="px-3 py-2 whitespace-nowrap text-sm text-gray-900"
+                                  className="px-3 py-2 whitespace-nowrap text-sm text-foreground"
                                 >
                                   {flexRender(
                                     cell.column.columnDef.cell,
@@ -1308,7 +1308,7 @@ export function AnalysisBlockRenderer({
                     </div>
 
                     {/* Pagination Controls */}
-                    <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                    <div className="flex items-center justify-between p-4 border-t bg-muted/30">
                       <div className="text-sm text-muted-foreground">
                         Page {table.getState().pagination.pageIndex + 1} of{' '}
                         {table.getPageCount()}
@@ -1438,16 +1438,16 @@ export function AnalysisBlockRenderer({
                   style={{ width: '100%', display: 'block' }}
                 >
                   <table
-                    className="divide-y divide-gray-200"
+                    className="divide-y divide-border"
                     style={{ width: 'max-content', minWidth: '100%' }}
                   >
-                    <thead className="bg-gray-50 sticky top-0 z-10">
+                    <thead className="bg-muted sticky top-0 z-10">
                       {table.getHeaderGroups().map((headerGroup) => (
                         <tr key={headerGroup.id}>
                           {headerGroup.headers.map((header) => (
                             <th
                               key={header.id}
-                              className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                              className="px-4 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap"
                               onClick={header.column.getToggleSortingHandler()}
                             >
                               {flexRender(
@@ -1461,13 +1461,13 @@ export function AnalysisBlockRenderer({
                         </tr>
                       ))}
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-background divide-y divide-border">
                       {table.getRowModel().rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-gray-50">
+                        <tr key={row.id} className="hover:bg-muted/50">
                           {row.getVisibleCells().map((cell) => (
                             <td
                               key={cell.id}
-                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
+                              className="px-4 py-3 whitespace-nowrap text-sm text-foreground"
                             >
                               {flexRender(
                                 cell.column.columnDef.cell,
@@ -1482,7 +1482,7 @@ export function AnalysisBlockRenderer({
                 </div>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                <div className="flex items-center justify-between p-4 border-t bg-muted/30">
                   <div className="text-sm text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of{' '}
                     {table.getPageCount()}
