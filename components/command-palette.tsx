@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FileText, Sparkles, X, ChevronRight, Save } from 'lucide-react';
+import { Search, FileText, Sparkles, X, ChevronRight, Save, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
@@ -124,6 +124,33 @@ export function CommandPalette() {
     }
   }, [t]);
 
+  const handleCreateScheduledTask = useCallback(async () => {
+    try {
+      // Get current active block from Redis via API
+      const response = await fetch('/api/user/active-block');
+      const data = await response.json();
+
+      const blockTitle = data.content?.title;
+      const blockId = data.block_id;
+
+      let prompt: string;
+      if (!blockId || !blockTitle) {
+        prompt = t('scheduledTaskPromptNoBlock');
+      } else {
+        prompt = t('scheduledTaskPrompt', { title: blockTitle });
+      }
+
+      window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to get active block:', error);
+      // Fallback
+      const prompt = t('scheduledTaskPromptNoBlock');
+      window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
+      setIsOpen(false);
+    }
+  }, [t]);
+
   // Main menu items
   const mainMenuItems = [
     {
@@ -142,6 +169,13 @@ export function CommandPalette() {
       description: t('saveCurrentAnalysisDesc'),
       icon: Save,
       action: handleSaveCurrentAnalysis
+    },
+    {
+      id: 'scheduled-task',
+      title: t('createScheduledTask'),
+      description: t('createScheduledTaskDesc'),
+      icon: Clock,
+      action: handleCreateScheduledTask
     },
     // TODO: Add more menu items later
   ];
@@ -254,7 +288,7 @@ export function CommandPalette() {
                   return (
                     <button
                       key={item.id}
-                      ref={(el) => (itemRefs.current[index] = el)}
+                      ref={(el) => { itemRefs.current[index] = el; }}
                       onClick={item.action}
                       className={cn(
                         'w-full px-4 py-3 text-left transition-colors',
@@ -302,7 +336,7 @@ export function CommandPalette() {
                     {filteredTemplates.map((template, index) => (
                       <button
                         key={template.id}
-                        ref={(el) => (itemRefs.current[index] = el)}
+                        ref={(el) => { itemRefs.current[index] = el; }}
                         onClick={() => handleSelectTemplate(template)}
                         className={cn(
                           'w-full px-4 py-3 text-left transition-colors',
