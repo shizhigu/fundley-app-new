@@ -16,7 +16,8 @@
       "Bash(tree:*)",
       "Bash(psql:*)",
       "Bash(conda run:*)",
-      "Bash(pnpm build:next:*)"
+      "Bash(pnpm build:next:*)",
+      "Bash(node -e \"const d = ''2025-10-25 03:15:00''; const [date, time] = d.split('' ''); const etDate = new Date(date + ''T'' + time); const etStr = etDate.toLocaleString(''en-US'', { timeZone: ''America/New_York'' }); const utcStr = etDate.toLocaleString(''en-US'', { timeZone: ''UTC'' }); console.log(''ET:'', etStr); console.log(''UTC:'', utcStr); console.log(''Parsed as local:'', etDate.toISOString());\")"
     ],
     "deny": [],
     "ask": [],

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/watchlist
- * Add item to watchlist
+ * Add item(s) to watchlist (supports batch)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -61,26 +61,42 @@ export async function POST(request: NextRequest) {
     const userId = userResult[0].id
 
     // Parse request body
-    const body: Omit<WatchlistInsert, 'user_id'> = await request.json()
-    const { symbol, name, asset_type = 'stock', notes, tags = [], alert_price_high, alert_price_low, position_size } = body
+    const body = await request.json()
+    const { symbols, asset_type = 'stock' } = body
 
-    if (!symbol) {
-      return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
+    if (!symbols || symbols.length === 0) {
+      return NextResponse.json({ error: 'Symbols are required' }, { status: 400 })
     }
 
-    // Insert watchlist item (ON CONFLICT DO NOTHING to prevent duplicates)
-    const result = await db`
-      INSERT INTO watchlist (user_id, symbol, name, asset_type, notes, tags, alert_price_high, alert_price_low, position_size)
-      VALUES (${userId}, ${symbol.toUpperCase()}, ${name || null}, ${asset_type}, ${notes || null}, ${JSON.stringify(tags)}, ${alert_price_high || null}, ${alert_price_low || null}, ${position_size || null})
-      ON CONFLICT (user_id, symbol) DO NOTHING
-      RETURNING *
-    `
+    // Batch insert watchlist items (ON CONFLICT DO NOTHING to prevent duplicates)
+    const inserted = []
+    const skipped = []
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: 'Symbol already in watchlist' }, { status: 409 })
+    for (const symbol of symbols) {
+      const symbolUpper = symbol.toUpperCase().trim()
+      if (!symbolUpper) continue
+
+      const result = await db`
+        INSERT INTO watchlist (user_id, symbol, asset_type)
+        VALUES (${userId}, ${symbolUpper}, ${asset_type})
+        ON CONFLICT (user_id, symbol) DO NOTHING
+        RETURNING *
+      `
+
+      if (result.length > 0) {
+        inserted.push(result[0])
+      } else {
+        skipped.push(symbolUpper)
+      }
     }
 
-    return NextResponse.json({ item: result[0] }, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      inserted: inserted.length,
+      skipped: skipped.length,
+      skipped_symbols: skipped,
+      items: inserted
+    }, { status: 201 })
   } catch (error) {
     console.error('Error adding to watchlist:', error)
     return NextResponse.json(

@@ -13,8 +13,7 @@ export function WatchlistPanel() {
   const t = useTranslations('watchlist')
   const [watchlist, setWatchlist] = useState<Watchlist[]>([])
   const [loading, setLoading] = useState(true)
-  const [addSymbol, setAddSymbol] = useState('')
-  const [addName, setAddName] = useState('')
+  const [addSymbols, setAddSymbols] = useState('')
   const [adding, setAdding] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -37,31 +36,48 @@ export function WatchlistPanel() {
   }
 
   const handleAdd = async () => {
-    if (!addSymbol.trim()) return
+    if (!addSymbols.trim()) return
 
     try {
       setAdding(true)
+
+      // Parse symbols - split by space, comma, or both
+      const symbolsArray = addSymbols
+        .split(/[\s,]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(s => s.length > 0)
+
+      if (symbolsArray.length === 0) {
+        return
+      }
+
       const response = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          symbol: addSymbol.toUpperCase(),
-          name: addName || undefined,
+          symbols: symbolsArray,
           asset_type: 'stock'
         })
       })
 
       if (response.ok) {
-        setAddSymbol('')
-        setAddName('')
+        const result = await response.json()
+        setAddSymbols('')
         await fetchWatchlist()
+
+        // Show feedback
+        if (result.inserted > 0 && result.skipped > 0) {
+          alert(`Added ${result.inserted} symbol(s). ${result.skipped} already in watchlist: ${result.skipped_symbols.join(', ')}`)
+        } else if (result.skipped > 0) {
+          alert(`All symbols already in watchlist: ${result.skipped_symbols.join(', ')}`)
+        }
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to add symbol')
+        alert(error.error || 'Failed to add symbols')
       }
     } catch (error) {
-      console.error('Failed to add symbol:', error)
-      alert('Failed to add symbol')
+      console.error('Failed to add symbols:', error)
+      alert('Failed to add symbols')
     } finally {
       setAdding(false)
     }
@@ -106,35 +122,26 @@ export function WatchlistPanel() {
           </Badge>
         </div>
 
-        {/* Add New Symbol */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Symbol (e.g., AAPL)"
-              value={addSymbol}
-              onChange={(e) => setAddSymbol(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleAdd}
-              disabled={!addSymbol.trim() || adding}
-              size="sm"
-            >
-              {adding ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
+        {/* Add New Symbols */}
+        <div className="flex gap-2">
           <Input
-            placeholder="Name (optional)"
-            value={addName}
-            onChange={(e) => setAddName(e.target.value)}
+            placeholder="Symbols (e.g., AAPL MSFT GOOGL or AAPL,MSFT,GOOGL)"
+            value={addSymbols}
+            onChange={(e) => setAddSymbols(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            className="text-sm"
+            className="flex-1"
           />
+          <Button
+            onClick={handleAdd}
+            disabled={!addSymbols.trim() || adding}
+            size="sm"
+          >
+            {adding ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+          </Button>
         </div>
 
         {/* Search */}

@@ -68,8 +68,18 @@
     "financialData": "Financial Data",
     "analysis": "Analysis",
     "watchlist": "Watchlist",
+    "newsletter": "Newsletter",
     "screener": "Screener",
     "chart": "Chart"
+  },
+  "newsletter": {
+    "title": "Newsletter",
+    "description": "Latest news from your watchlist",
+    "noNews": "No news available",
+    "addSymbolsHint": "Add symbols to your watchlist to see news",
+    "retry": "Retry",
+    "loadMore": "Load More",
+    "remaining": "more"
   },
   "screener": {
     "title": "Financial Screener",
@@ -269,5 +279,16 @@
     "internal": "Internal User",
     "lowBalance": "Low balance - consider upgrading",
     "clickToManage": "Click to manage subscription"
+  },
+  "watchlist": {
+    "title": "Watchlist",
+    "addSymbols": "Add symbols",
+    "symbolsPlaceholder": "Symbols (e.g., AAPL MSFT GOOGL or AAPL,MSFT,GOOGL)",
+    "search": "Search symbols...",
+    "empty": "Your watchlist is empty",
+    "emptyHint": "Add symbols to start tracking",
+    "noMatching": "No matching symbols",
+    "tryDifferent": "Try a different search"
   }
 }
+

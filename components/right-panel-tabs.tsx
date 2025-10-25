@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
 import { AnalysisBlocksPanel } from './analysis-blocks-panel';
 import { ScreenerPanel } from './screener-panel';
-import { WatchlistPanel } from './watchlist-panel';
+import { WatchlistTablePanel } from './watchlist-table-panel';
+import { NewsletterPanel } from './newsletter-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -17,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist' | 'newsletter';
 
 interface Tab {
   id: TabType;
@@ -42,8 +43,10 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
+    { id: 'newsletter', label: t('newsletter'), icon: Newspaper },
     { id: 'screener', label: t('screener'), icon: Search },
-    { id: 'chart', label: t('chart'), icon: TrendingUp },
+    // Chart tab hidden but kept in code
+    // { id: 'chart', label: t('chart'), icon: TrendingUp },
   ];
 
   // Fundley 品牌只显示 Analysis Blocks（第二个tab）
@@ -135,7 +138,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
 
         {activeTab === 'watchlist' && (
           <div id="watchlist-panel" role="tabpanel" aria-labelledby="watchlist-tab" className="h-full">
-            <WatchlistPanel />
+            <WatchlistTablePanel />
           </div>
         )}
 
@@ -145,6 +148,13 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
           </div>
         )}
 
+        {activeTab === 'newsletter' && (
+          <div id="newsletter-panel" role="tabpanel" aria-labelledby="newsletter-tab" className="h-full">
+            <NewsletterPanel />
+          </div>
+        )}
+
+        {/* Chart tab kept in code but hidden from UI */}
         {activeTab === 'chart' && (
           <div id="chart-panel" role="tabpanel" aria-labelledby="chart-tab" className="h-full">
             <TradingChart />

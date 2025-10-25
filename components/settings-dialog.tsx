@@ -42,6 +42,9 @@ import {
   CreditCard,
   ExternalLink,
   Sparkles,
+  Star,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type PlanType, formatCredits } from '@/lib/credits';
@@ -66,24 +69,26 @@ interface TokenUsage {
   reasoning_tokens: number;
 }
 
-type SettingsTab = 'profile' | 'templates' | 'pricing' | 'subscription';
+type SettingsTab = 'profile' | 'templates' | 'pricing' | 'subscription' | 'watchlist';
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: SettingsTab;
 }
 
 const TEMPLATES_CACHE_KEY = 'analysis_templates_cache';
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialogProps) {
   const t = useTranslations('settings');
   const tPricing = useTranslations('pricing');
   const tSubscription = useTranslations('subscription');
 
-  // Set default tab based on brand
+  // Set default tab based on brand or initialTab prop
   const isFundley = process.env.NEXT_PUBLIC_BRAND === 'fundley';
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isFundley ? 'templates' : 'profile');
+  const defaultTab = initialTab || (isFundley ? 'templates' : 'profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(defaultTab);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -103,6 +108,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
 
+  // Watchlist states
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [loadingWatchlist, setLoadingWatchlist] = useState(false);
+  const [addSymbols, setAddSymbols] = useState('');
+  const [addingSymbols, setAddingSymbols] = useState(false);
+  const [watchlistSearch, setWatchlistSearch] = useState('');
+
+  // Update active tab when initialTab changes (e.g., from Manage button)
+  useEffect(() => {
+    if (initialTab && open) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, open]);
+
   useEffect(() => {
     if (open && activeTab === 'templates') {
       fetchTemplates();
@@ -115,6 +134,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
     if (open && activeTab === 'pricing' && isFundley) {
       checkSubscriptionStatus();
+    }
+    if (open && activeTab === 'watchlist') {
+      fetchWatchlist();
     }
   }, [open, activeTab]);
 
@@ -399,10 +421,100 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     toast.success(`Template "${template.title}" ready to use`);
   };
 
+  // Watchlist functions
+  const fetchWatchlist = async () => {
+    setLoadingWatchlist(true);
+    try {
+      const response = await fetch('/api/watchlist');
+      const data = await response.json();
+      if (response.ok) {
+        setWatchlist(data.watchlist || []);
+      } else {
+        toast.error('Failed to load watchlist');
+      }
+    } catch (error) {
+      console.error('Error fetching watchlist:', error);
+      toast.error('Failed to load watchlist');
+    } finally {
+      setLoadingWatchlist(false);
+    }
+  };
+
+  const handleAddSymbols = async () => {
+    if (!addSymbols.trim()) return;
+
+    try {
+      setAddingSymbols(true);
+
+      // Parse symbols - split by space, comma, or both
+      const symbolsArray = addSymbols
+        .split(/[\s,]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+
+      if (symbolsArray.length === 0) {
+        return;
+      }
+
+      const response = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols: symbolsArray,
+          asset_type: 'stock',
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAddSymbols('');
+        await fetchWatchlist();
+
+        // Show feedback
+        if (result.inserted > 0 && result.skipped > 0) {
+          toast.success(
+            `Added ${result.inserted} symbol(s). ${result.skipped} already in watchlist.`
+          );
+        } else if (result.skipped > 0) {
+          toast.info(`All symbols already in watchlist.`);
+        } else {
+          toast.success(`Added ${result.inserted} symbol(s) to watchlist.`);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to add symbols');
+      }
+    } catch (error) {
+      console.error('Failed to add symbols:', error);
+      toast.error('Failed to add symbols');
+    } finally {
+      setAddingSymbols(false);
+    }
+  };
+
+  const handleRemoveSymbol = async (symbol: string) => {
+    try {
+      const response = await fetch(`/api/watchlist?symbol=${symbol}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await fetchWatchlist();
+        toast.success(`Removed ${symbol} from watchlist`);
+      } else {
+        toast.error('Failed to remove symbol');
+      }
+    } catch (error) {
+      console.error('Failed to remove symbol:', error);
+      toast.error('Failed to remove symbol');
+    }
+  };
+
   // Determine which tabs to show based on brand (using isFundley from component state)
   const allTabs = [
     { id: 'profile' as const, label: t('tokenUsage'), icon: User, showFor: ['foga'] },
     { id: 'templates' as const, label: t('templates'), icon: FileText, showFor: ['fundley', 'foga'] },
+    { id: 'watchlist' as const, label: 'Watchlist', icon: Star, showFor: ['fundley', 'foga'] },
     { id: 'pricing' as const, label: tPricing('title'), icon: Sparkles, showFor: ['fundley'] },
     { id: 'subscription' as const, label: tSubscription('title'), icon: CreditCard, showFor: ['fundley'] },
   ];
@@ -1174,6 +1286,165 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         Next
                       </Button>
                     </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Watchlist Tab */}
+            {activeTab === 'watchlist' && (
+              <div className="p-8">
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-foreground">Watchlist Management</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Add and remove symbols from your watchlist
+                  </p>
+                </div>
+
+                {/* Add Symbols Section */}
+                <div className="border border-border rounded-lg p-6 mb-6 bg-background">
+                  <h3 className="text-base font-semibold mb-3 text-foreground">Add Symbols</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Enter stock symbols separated by spaces or commas (e.g., AAPL MSFT GOOGL)
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={addSymbols}
+                      onChange={(e) => setAddSymbols(e.target.value)}
+                      placeholder="AAPL, MSFT, GOOGL"
+                      className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      disabled={addingSymbols}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && addSymbols.trim()) {
+                          handleAddSymbols()
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={handleAddSymbols}
+                      disabled={addingSymbols || !addSymbols.trim()}
+                      className="bg-brand-primary text-white hover:bg-brand-primary/90"
+                    >
+                      {addingSymbols ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Symbols List */}
+                <div className="border border-border rounded-lg bg-background">
+                  <div className="p-4 border-b border-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-base font-semibold text-foreground">Your Watchlist</h3>
+                      <span className="text-sm text-muted-foreground">
+                        {watchlist.filter(item => {
+                          if (!watchlistSearch.trim()) return true;
+                          const searchSymbols = watchlistSearch
+                            .split(/[\s,]+/)
+                            .map(s => s.trim().toUpperCase())
+                            .filter(s => s.length > 0);
+                          if (searchSymbols.length === 0) return true;
+                          return searchSymbols.some(searchSym =>
+                            item.symbol.toUpperCase().includes(searchSym)
+                          );
+                        }).length} / {watchlist.length} {watchlist.length === 1 ? 'symbol' : 'symbols'}
+                      </span>
+                    </div>
+                    {/* Search Input */}
+                    <input
+                      type="text"
+                      value={watchlistSearch}
+                      onChange={(e) => setWatchlistSearch(e.target.value)}
+                      placeholder="Search symbols (e.g., AAPL, MSFT, GOOGL)..."
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                  </div>
+
+                  {loadingWatchlist ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : watchlist.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Star className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">No symbols in your watchlist</p>
+                      <p className="text-xs mt-1">Add some symbols above to get started</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Scrollable table container with max height */}
+                      <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted sticky top-0 z-10">
+                            <tr className="border-b border-border">
+                              <th className="text-left py-3 px-4 font-medium text-foreground">Symbol</th>
+                              <th className="text-left py-3 px-4 font-medium text-foreground">Asset Type</th>
+                              <th className="text-left py-3 px-4 font-medium text-foreground">Added</th>
+                              <th className="text-right py-3 px-4 font-medium text-foreground">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {watchlist
+                              .filter(item => {
+                                if (!watchlistSearch.trim()) return true;
+                                const searchSymbols = watchlistSearch
+                                  .split(/[\s,]+/)
+                                  .map(s => s.trim().toUpperCase())
+                                  .filter(s => s.length > 0);
+                                if (searchSymbols.length === 0) return true;
+                                return searchSymbols.some(searchSym =>
+                                  item.symbol.toUpperCase().includes(searchSym)
+                                );
+                              })
+                              .map((item: any) => (
+                                <tr key={item.id} className="border-b border-border hover:bg-muted/50">
+                                  <td className="py-3 px-4 font-medium text-foreground">{item.symbol}</td>
+                                  <td className="py-3 px-4 text-muted-foreground">{item.asset_type || 'stock'}</td>
+                                  <td className="py-3 px-4 text-muted-foreground">
+                                    {new Date(item.added_at).toLocaleDateString()}
+                                  </td>
+                                  <td className="py-3 px-4 text-right">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRemoveSymbol(item.symbol)}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Show message when filtered list is empty */}
+                      {watchlist.filter(item => {
+                        if (!watchlistSearch.trim()) return true;
+                        const searchSymbols = watchlistSearch
+                          .split(/[\s,]+/)
+                          .map(s => s.trim().toUpperCase())
+                          .filter(s => s.length > 0);
+                        if (searchSymbols.length === 0) return true;
+                        return searchSymbols.some(searchSym =>
+                          item.symbol.toUpperCase().includes(searchSym)
+                        );
+                      }).length === 0 && watchlistSearch.trim() && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p className="text-sm">No symbols match your search</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

@@ -68,8 +68,18 @@
     "financialData": "财务数据",
     "analysis": "分析块",
     "watchlist": "关注列表",
+    "newsletter": "资讯",
     "screener": "筛选器",
     "chart": "图表"
+  },
+  "newsletter": {
+    "title": "资讯",
+    "description": "您关注的股票最新资讯",
+    "noNews": "暂无资讯",
+    "addSymbolsHint": "添加股票到关注列表以查看资讯",
+    "retry": "重试",
+    "loadMore": "加载更多",
+    "remaining": "条"
   },
   "screener": {
     "title": "财务筛选器",
@@ -270,5 +280,15 @@
     "internal": "内部用户",
     "lowBalance": "余额不足 - 建议升级",
     "clickToManage": "点击管理订阅"
+  },
+  "watchlist": {
+    "title": "关注列表",
+    "addSymbols": "添加股票",
+    "symbolsPlaceholder": "股票代码（例如：AAPL MSFT GOOGL 或 AAPL,MSFT,GOOGL）",
+    "search": "搜索股票...",
+    "empty": "关注列表为空",
+    "emptyHint": "添加股票开始追踪",
+    "noMatching": "没有匹配的股票",
+    "tryDifferent": "尝试不同的搜索"
   }
 }
