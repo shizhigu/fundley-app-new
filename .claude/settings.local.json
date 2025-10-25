@@ -15,7 +15,8 @@
       "Bash(pnpm create:*)",
       "Bash(tree:*)",
       "Bash(psql:*)",
-      "Bash(conda run:*)"
+      "Bash(conda run:*)",
+      "Bash(pnpm build:next:*)"
     ],
     "deny": [],
     "ask": [],

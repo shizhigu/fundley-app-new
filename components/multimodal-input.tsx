@@ -134,6 +134,15 @@ function PureMultimodalInput({
   const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '');
 
   // ========================================================================
+  // Detect OS for keyboard shortcut hint
+  // ========================================================================
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+  }, []);
+
+  // ========================================================================
   // AI Autocomplete State
   // ========================================================================
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
@@ -152,6 +161,7 @@ function PureMultimodalInput({
 
     console.log('🔍 Fetching recommendations for:', text);
     setIsLoadingSuggestions(true);
+    setAiSuggestions([]); // Clear old suggestions when starting new fetch
     try {
       // Call our Next.js API route (which will call AgentOS with session_state)
       const response = await fetch('/api/recommendation', {
@@ -219,11 +229,11 @@ function PureMultimodalInput({
       return;
     }
 
-    // Debounce: wait 1 second after user stops typing
+    // Debounce: wait 2.5 seconds after user stops typing
     const timer = setTimeout(() => {
-      console.log('⏰ Debounce timer fired (1s), calling fetchRecommendations');
+      console.log('⏰ Debounce timer fired (2.5s), calling fetchRecommendations');
       fetchRecommendations(text);
-    }, 1000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [input, fetchRecommendations]);
@@ -524,35 +534,44 @@ function PureMultimodalInput({
 
             {/* Suggestions List */}
             <div className="max-h-[300px] overflow-y-auto">
-              {aiSuggestions.map((prompt, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => {
-                    setInput(prompt);
-                    setShowAiSuggestions(false);
-                    // Focus and adjust textarea
-                    requestAnimationFrame(() => {
-                      if (textareaRef.current) {
-                        textareaRef.current.focus();
-                        adjustTextareaHeight(textareaRef.current);
-                      }
-                    });
-                  }}
-                  className={cn(
-                    'w-full px-4 py-3 text-left transition-colors duration-150',
-                    'hover:bg-muted/50 border-b border-border last:border-b-0',
-                    'focus:outline-none focus:bg-muted/70',
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 flex-shrink-0 text-brand-primary" />
-                    <span className="text-sm text-foreground">
-                      {prompt}
-                    </span>
+              {isLoadingSuggestions && aiSuggestions.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Loading suggestions...</span>
                   </div>
-                </button>
-              ))}
+                </div>
+              ) : (
+                aiSuggestions.map((prompt, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setInput(prompt);
+                      setShowAiSuggestions(false);
+                      // Focus and adjust textarea
+                      requestAnimationFrame(() => {
+                        if (textareaRef.current) {
+                          textareaRef.current.focus();
+                          adjustTextareaHeight(textareaRef.current);
+                        }
+                      });
+                    }}
+                    className={cn(
+                      'w-full px-4 py-3 text-left transition-colors duration-150',
+                      'hover:bg-muted/50 border-b border-border last:border-b-0',
+                      'focus:outline-none focus:bg-muted/70',
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 flex-shrink-0 text-brand-primary" />
+                      <span className="text-sm text-foreground">
+                        {prompt}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           </motion.div>
         )}
@@ -592,7 +611,7 @@ function PureMultimodalInput({
         <Textarea
           data-testid="multimodal-input"
           ref={textareaRef}
-          placeholder={t('placeholder')}
+          placeholder={`${t('placeholder')} (${isMac ? '⌘' : 'Ctrl'}+K for quick actions)`}
           value={input}
           onChange={handleInput}
           onPaste={handlePaste}

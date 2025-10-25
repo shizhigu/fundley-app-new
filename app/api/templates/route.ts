@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { neon } from '@neondatabase/serverless';
 
@@ -58,6 +58,101 @@ export async function GET() {
     console.error('Error fetching templates:', error);
     return NextResponse.json(
       { error: 'Failed to fetch templates' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/templates - Save current analysis as template
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { blockId, title, description, category, isPublic = false } = body;
+
+    if (!blockId) {
+      return NextResponse.json(
+        { error: 'blockId is required' },
+        { status: 400 }
+      );
+    }
+
+    const sql = neon(process.env.DATABASE_URL!);
+
+    // Get user's internal UUID
+    const userResult = await sql`
+      SELECT id FROM users WHERE clerk_user_id = ${userId} LIMIT 1
+    `;
+
+    if (userResult.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const internalUserId = userResult[0].id;
+
+    // Get the analysis block
+    const blockResult = await sql`
+      SELECT * FROM analysis_blocks
+      WHERE id = ${blockId} AND user_id = ${internalUserId}
+      LIMIT 1
+    `;
+
+    if (blockResult.length === 0) {
+      return NextResponse.json(
+        { error: 'Analysis block not found' },
+        { status: 404 }
+      );
+    }
+
+    const block = blockResult[0];
+
+    // Create template from the analysis block
+    const templateName = `template_${Date.now()}`;
+    const templateTitle = title || block.title || 'Untitled Template';
+    const templateDescription = description || block.description || '';
+    const templateCategory = category || 'general';
+
+    const result = await sql`
+      INSERT INTO analysis_templates (
+        user_id,
+        template_name,
+        title,
+        description,
+        category,
+        code,
+        is_public,
+        metadata
+      ) VALUES (
+        ${internalUserId},
+        ${templateName},
+        ${templateTitle},
+        ${templateDescription},
+        ${templateCategory},
+        '',
+        ${isPublic},
+        ${JSON.stringify({
+          source_block_id: blockId,
+          symbols: block.symbols || [],
+          created_from: 'command_palette'
+        })}
+      )
+      RETURNING id, title, description, category, created_at
+    `;
+
+    return NextResponse.json({
+      success: true,
+      template: result[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating template:', error);
+    return NextResponse.json(
+      { error: 'Failed to create template' },
       { status: 500 }
     );
   }

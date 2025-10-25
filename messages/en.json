@@ -33,6 +33,24 @@
     "attachFile": "Attach file",
     "stopRecording": "Stop"
   },
+  "commandPalette": {
+    "searchPlaceholder": "Search templates or type a command...",
+    "browseTemplates": "Browse Templates",
+    "browseTemplatesDesc": "Use saved analysis templates",
+    "saveCurrentAnalysis": "Save Current Analysis",
+    "saveCurrentAnalysisDesc": "Save as reusable template",
+    "noCurrentAnalysis": "No analysis block selected",
+    "templateSaved": "Template saved successfully",
+    "templateSaveFailed": "Failed to save template",
+    "savePrompt": "Please save the current analysis block \"{title}\" as a reusable template",
+    "savePromptNoBlock": "Please save the current analysis as a reusable template",
+    "footer": {
+      "navigate": "navigate",
+      "select": "select",
+      "back": "back",
+      "close": "close"
+    }
+  },
   "sidebar": {
     "chats": "Chats",
     "today": "Today",

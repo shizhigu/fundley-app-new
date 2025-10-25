@@ -33,6 +33,24 @@
     "attachFile": "添加附件",
     "stopRecording": "停止"
   },
+  "commandPalette": {
+    "searchPlaceholder": "搜索模板或输入命令...",
+    "browseTemplates": "浏览模板",
+    "browseTemplatesDesc": "使用已保存的分析模板",
+    "saveCurrentAnalysis": "保存当前分析",
+    "saveCurrentAnalysisDesc": "保存为可复用模板",
+    "noCurrentAnalysis": "未选择分析块",
+    "templateSaved": "模板保存成功",
+    "templateSaveFailed": "模板保存失败",
+    "savePrompt": "请将当前分析块「{title}」保存为可复用模板",
+    "savePromptNoBlock": "请将当前分析保存为可复用模板",
+    "footer": {
+      "navigate": "导航",
+      "select": "选择",
+      "back": "返回",
+      "close": "关闭"
+    }
+  },
   "sidebar": {
     "chats": "对话列表",
     "today": "今天",
