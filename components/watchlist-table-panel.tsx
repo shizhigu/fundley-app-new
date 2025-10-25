@@ -501,6 +501,10 @@ export function WatchlistTablePanel() {
   // Refresh template with latest watchlist symbols
   const handleRefreshTemplate = async () => {
     try {
+      // Clear result and show loading immediately
+      setResult(null);
+      setIsLoading(true);
+
       const response = await fetch('/api/watchlist');
       const data = await response.json();
 
@@ -521,13 +525,16 @@ export function WatchlistTablePanel() {
           await loadTemplate(defaultTemplateId);
           toast.success(`Default template loaded with ${symbols.length} symbols`);
         } else {
+          setIsLoading(false);
           toast.error('No template available to refresh');
         }
       } else {
+        setIsLoading(false);
         toast.error('No symbols in watchlist. Please add symbols first.');
       }
     } catch (error) {
       console.error('Failed to refresh watchlist:', error);
+      setIsLoading(false);
       toast.error('Failed to refresh watchlist. Please try again.');
     }
   };
