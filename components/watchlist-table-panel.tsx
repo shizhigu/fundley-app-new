@@ -1,11 +1,45 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Star, Loader2, Download, Play, RefreshCw, Settings } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import * as XLSX from 'xlsx'
-import { toast } from 'sonner'
-import { SettingsDialog } from './settings-dialog'
+import { useState, useEffect } from 'react';
+import {
+  Star,
+  Loader2,
+  Download,
+  RefreshCw,
+  Save,
+  Trash2,
+  Send,
+  Sparkles,
+} from 'lucide-react';
+import { LoaderOne } from '@/components/ui/loader';
+import { useTranslations } from 'next-intl';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
+import { SettingsDialog } from './settings-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useReactTable,
   getCoreRowModel,
@@ -16,261 +50,203 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
-} from '@tanstack/react-table'
+} from '@tanstack/react-table';
 
 interface QueryResult {
-  success: boolean
-  data: Record<string, any>[]
-  columns: string[]
-  row_count: number
-  error?: string
+  success: boolean;
+  data: Record<string, any>[];
+  columns: string[];
+  row_count: number;
+  error?: string;
 }
 
 export function WatchlistTablePanel() {
-  const t = useTranslations('watchlist')
-  const [sql, setSql] = useState('')
-  const [result, setResult] = useState<QueryResult | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
-  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([])
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'watchlist'>('watchlist')
+  const t = useTranslations('watchlist');
+  const [sql, setSql] = useState('');
+  const [result, setResult] = useState<QueryResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'watchlist'>('watchlist');
+  const [savedTemplates, setSavedTemplates] = useState<
+    Array<{ id?: string; name: string; sql: string; description?: string }>
+  >([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [aiQuery, setAiQuery] = useState('');
+  const [isGeneratingSQL, setIsGeneratingSQL] = useState(false);
+  const [useWatchlistPlaceholder, setUseWatchlistPlaceholder] = useState(true);
+  const [aiExplanation, setAiExplanation] = useState<string>('');
+  const [defaultTemplateId, setDefaultTemplateId] = useState<string>('');
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
 
-  // Template version - increment this when template changes
-  const TEMPLATE_VERSION = '5'
-
-  // Template SQL with placeholder for watchlist symbols
-  const templateSQL = `WITH watchlist_symbols AS (
-    SELECT * FROM (VALUES
-        {{WATCHLIST_SYMBOLS}}
-    ) AS t(symbol)
-),
-latest_dates AS (
-    SELECT
-        e.symbol,
-        MAX(e.date) AS latest_date
-    FROM eod_data e
-    JOIN watchlist_symbols w ON e.symbol = w.symbol
-    GROUP BY e.symbol
-),
-latest_prices AS (
-    SELECT
-        e.symbol,
-        e.close AS close_price,
-        e.date AS price_date
-    FROM eod_data e
-    JOIN latest_dates ld ON e.symbol = ld.symbol AND e.date = ld.latest_date
-),
-price_26w AS (
-    SELECT
-        e.symbol,
-        MAX(e.high) AS high_26w
-    FROM eod_data e
-    JOIN latest_dates ld ON e.symbol = ld.symbol
-    WHERE e.date >= ld.latest_date - INTERVAL '182 days'
-    GROUP BY e.symbol
-),
-normalized AS (
-    SELECT
-        TRIM(fs.symbol) AS symbol,
-        fs.fiscalyear,
-        fs.period,
-        CASE fs.period
-            WHEN 'Q1' THEN 1
-            WHEN 'Q2' THEN 2
-            WHEN 'Q3' THEN 3
-            WHEN 'Q4' THEN 4
-            ELSE NULL
-        END AS quarter_order,
-        fs.ebit,
-        fs.totalassets,
-        fs.totalcurrentliabilities
-    FROM financial_statements fs
-    JOIN watchlist_symbols w ON TRIM(fs.symbol) = w.symbol
-    WHERE fs.period IN ('Q1', 'Q2', 'Q3', 'Q4')
-      AND fs.ebit IS NOT NULL
-      AND fs.totalassets IS NOT NULL
-      AND fs.totalcurrentliabilities IS NOT NULL
-),
-fs_roce AS (
-    SELECT
-        symbol,
-        fiscalyear,
-        period,
-        quarter_order,
-        (ebit * 100 / NULLIF(
-            ((totalassets + LAG(totalassets, 1) OVER (PARTITION BY symbol ORDER BY fiscalyear, quarter_order)) / 2.0)
-            - ((totalcurrentliabilities + LAG(totalcurrentliabilities, 1) OVER (PARTITION BY symbol ORDER BY fiscalyear, quarter_order)) / 2.0)
-        , 0))::NUMERIC AS roce_value
-    FROM normalized
-    WHERE quarter_order IS NOT NULL
-),
-recent AS (
-    SELECT
-        symbol,
-        fiscalyear,
-        period,
-        quarter_order,
-        roce_value,
-        ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY fiscalyear DESC, quarter_order DESC) AS quarter_rank
-    FROM fs_roce
-),
-latest_roce AS (
-    SELECT
-        symbol,
-        CONCAT(fiscalyear, '年', period) AS latest_quarter,
-        roce_value
-    FROM recent
-    WHERE quarter_rank = 1
-),
-ttm_roce AS (
-    SELECT
-        symbol,
-        SUM(roce_value) AS sum_roce,
-        COUNT(*) AS quarter_count
-    FROM recent
-    WHERE quarter_rank <= 4
-    GROUP BY symbol
-),
-company_data AS (
-    SELECT
-        TRIM(cp.symbol) AS symbol,
-        cp.companyname,
-        cp.marketcap,
-        cp.industry
-    FROM company_profiles cp
-    JOIN watchlist_symbols w ON TRIM(cp.symbol) = w.symbol
-),
-atm_put_options AS (
-    SELECT
-        oe.underlying_symbol AS symbol,
-        oe.expiration_date,
-        oe.strike_price,
-        oe.close AS option_premium,
-        lp.close_price AS stock_price,
-        ABS(DATE_DIFF('day', CURRENT_DATE, CAST(oe.expiration_date AS DATE)) - 30) AS days_diff_from_30,
-        ABS(oe.strike_price - lp.close_price) AS strike_diff,
-        ROW_NUMBER() OVER (
-            PARTITION BY oe.underlying_symbol
-            ORDER BY
-                ABS(DATE_DIFF('day', CURRENT_DATE, CAST(oe.expiration_date AS DATE)) - 30),
-                ABS(oe.strike_price - lp.close_price)
-        ) AS option_rank
-    FROM options_eod_data oe
-    JOIN latest_prices lp ON oe.underlying_symbol = lp.symbol
-    JOIN watchlist_symbols w ON oe.underlying_symbol = w.symbol
-    WHERE oe.option_type = 'put'
-      AND CAST(oe.expiration_date AS DATE) > CURRENT_DATE
-      AND CAST(oe.expiration_date AS DATE) <= CURRENT_DATE + INTERVAL 60 DAY
-),
-selected_options AS (
-    SELECT
-        symbol,
-        expiration_date,
-        strike_price,
-        option_premium,
-        stock_price,
-        ROUND((option_premium / NULLIF(strike_price, 0)) * 100, 2) AS premium_pct
-    FROM atm_put_options
-    WHERE option_rank = 1
-)
-SELECT
-    w.symbol AS "股票代码",
-    cd.companyname AS "公司名称",
-    ROUND(cd.marketcap, 2) AS "市值(美元)",
-    ROUND(lp.close_price, 2) AS "前一日收盘价(美元)",
-    ROUND(p26.high_26w, 2) AS "26周内最高价(美元)",
-    CASE
-        WHEN p26.high_26w IS NULL OR p26.high_26w = 0 THEN NULL
-        ELSE CONCAT(ROUND(lp.close_price * 100.0 / p26.high_26w, 1), '%')
-    END AS "收盘价/26周高点",
-    ROUND(lr.roce_value, 1) AS "最新季度ROCE(%)",
-    CASE WHEN tr.quarter_count = 4 THEN ROUND(tr.sum_roce, 1) ELSE NULL END AS "ROCE TTM(%)",
-    so.expiration_date AS "Put期权到期日",
-    ROUND(so.strike_price, 2) AS "Put行权价(美元)",
-    ROUND(so.option_premium, 2) AS "Put权利金(美元)",
-    so.premium_pct AS "权利金/行权价(%)"
-FROM watchlist_symbols w
-LEFT JOIN company_data cd ON w.symbol = cd.symbol
-LEFT JOIN latest_prices lp ON w.symbol = lp.symbol
-LEFT JOIN price_26w p26 ON w.symbol = p26.symbol
-LEFT JOIN latest_roce lr ON w.symbol = lr.symbol
-LEFT JOIN ttm_roce tr ON w.symbol = tr.symbol
-LEFT JOIN selected_options so ON w.symbol = so.symbol
-ORDER BY w.symbol;`
-
-  // Fetch watchlist symbols on mount
+  // Fetch watchlist symbols on mount and load saved templates
   useEffect(() => {
-    fetchWatchlistSymbols()
-  }, [])
+    fetchWatchlistSymbols();
+    loadSavedTemplates();
+  }, []);
+
+  const loadSavedTemplates = async () => {
+    try {
+      const response = await fetch('/api/sql-templates');
+      const data = await response.json();
+      if (data.templates) {
+        const templates = data.templates.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          sql: t.sql_query,
+          description: t.description,
+        }));
+        setSavedTemplates(templates);
+
+        // Find and set default template
+        const defaultTemplate = templates.find(
+          (t: any) => t.name === 'Default Analysis (ROCE + Options)',
+        );
+        if (defaultTemplate?.id) {
+          setDefaultTemplateId(defaultTemplate.id);
+          setSelectedTemplate(defaultTemplate.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load saved templates:', error);
+    }
+  };
+
+  const saveCurrentTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      toast.error('Template name cannot be empty');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/sql-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTemplateName.trim(),
+          sql_query: sql,
+          description: aiExplanation || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to save template');
+        return;
+      }
+
+      const { template } = await response.json();
+
+      // Add to local state
+      const newTemplate = {
+        id: template.id,
+        name: template.name,
+        sql: template.sql_query,
+        description: template.description,
+      };
+      setSavedTemplates([...savedTemplates, newTemplate]);
+      setSelectedTemplate(template.id);
+
+      toast.success(`Template "${newTemplateName.trim()}" saved successfully`);
+
+      // Reset and close dialog
+      setSaveDialogOpen(false);
+      setNewTemplateName('');
+      setAiExplanation(''); // Clear AI explanation after saving
+    } catch (error) {
+      console.error('Failed to save template:', error);
+      toast.error('Failed to save template');
+    }
+  };
+
+  const loadTemplate = async (id: string) => {
+    const template = savedTemplates.find((t) => t.id === id);
+    if (template) {
+      // Replace {{WATCHLIST_SYMBOLS}} with actual symbols
+      let finalSQL = template.sql;
+      if (template.sql.includes('{{WATCHLIST_SYMBOLS}}')) {
+        if (watchlistSymbols.length === 0) {
+          toast.error('Your watchlist is empty. Please add symbols first.');
+          return;
+        }
+        const symbolsString = watchlistSymbols
+          .map((s: string) => `('${s}')`)
+          .join(',\n        ');
+        finalSQL = template.sql.replace(
+          '{{WATCHLIST_SYMBOLS}}',
+          symbolsString,
+        );
+      }
+
+      setSql(finalSQL);
+      setSelectedTemplate(id);
+      setAiExplanation(''); // Clear AI explanation when loading template
+
+      // Immediately execute the template
+      await executeSQL(finalSQL);
+      toast.success(`Template "${template.name}" loaded and executed`);
+    }
+  };
+
+  const deleteTemplate = async (id: string) => {
+    const template = savedTemplates.find((t) => t.id === id);
+    if (!template) return;
+
+    try {
+      const response = await fetch(`/api/sql-templates?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        toast.error('Failed to delete template');
+        return;
+      }
+
+      // Remove from local state
+      setSavedTemplates(savedTemplates.filter((t) => t.id !== id));
+
+      if (selectedTemplate === id) {
+        setSelectedTemplate('default');
+      }
+
+      toast.success(`Template "${template.name}" deleted`);
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+      toast.error('Failed to delete template');
+    }
+  };
 
   const fetchWatchlistSymbols = async () => {
     try {
-      const response = await fetch('/api/watchlist')
-      const data = await response.json()
+      const response = await fetch('/api/watchlist');
+      const data = await response.json();
       if (data.watchlist) {
-        const symbols = data.watchlist.map((item: any) => item.symbol)
-        setWatchlistSymbols(symbols)
+        const symbols = data.watchlist.map((item: any) => item.symbol);
+        setWatchlistSymbols(symbols);
       }
     } catch (error) {
-      console.error('Failed to fetch watchlist:', error)
+      console.error('Failed to fetch watchlist:', error);
     }
-  }
+  };
 
-  // Load saved SQL or use template when watchlist symbols are loaded
+  // Auto-load default template when watchlist symbols and templates are ready
   useEffect(() => {
-    if (watchlistSymbols.length === 0) return
-
-    if (typeof window !== 'undefined') {
-      const savedVersion = localStorage.getItem('watchlist_template_version')
-      const savedSQL = localStorage.getItem('watchlist_last_sql')
-      const savedResult = localStorage.getItem('watchlist_last_result')
-
-      // If template version changed, clear cache and use new template
-      if (savedVersion !== TEMPLATE_VERSION) {
-        console.log('Template version updated, clearing cache...')
-        localStorage.removeItem('watchlist_last_sql')
-        localStorage.removeItem('watchlist_last_result')
-        localStorage.setItem('watchlist_template_version', TEMPLATE_VERSION)
-
-        // Generate new SQL from template
-        const symbolsString = watchlistSymbols.map((s: string) => `('${s}')`).join(',\n        ')
-        const populatedSQL = templateSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString)
-        setSql(populatedSQL)
-      } else if (savedSQL) {
-        setSql(savedSQL)
-
-        if (savedResult) {
-          try {
-            const parsed = JSON.parse(savedResult)
-            setResult(parsed)
-          } catch (e) {
-            console.warn('Failed to parse saved watchlist result:', e)
-          }
-        }
-      } else {
-        // Use template SQL with symbols replaced
-        const symbolsString = watchlistSymbols.map((s: string) => `('${s}')`).join(',\n        ')
-        const populatedSQL = templateSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString)
-        setSql(populatedSQL)
-      }
+    if (watchlistSymbols.length > 0 && defaultTemplateId && !sql) {
+      // Load the default template
+      loadTemplate(defaultTemplateId);
     }
-  }, [watchlistSymbols])
+  }, [watchlistSymbols, defaultTemplateId]);
 
-  // Auto-execute query on mount if no saved result
-  useEffect(() => {
-    if (!result && sql && watchlistSymbols.length > 0) {
-      handleExecute()
-    }
-  }, [sql])
+  // Helper function to execute SQL query
+  const executeSQL = async (sqlQuery: string) => {
+    if (!sqlQuery.trim() || isLoading) return;
 
-  const handleExecute = async () => {
-    if (!sql.trim() || isLoading) return
-
-    setIsLoading(true)
-    setResult(null)
+    setIsLoading(true);
+    setResult(null);
 
     try {
       const queryResponse = await fetch('/api/query', {
@@ -278,36 +254,39 @@ ORDER BY w.symbol;`
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sql: sql.trim() }),
-      })
+        body: JSON.stringify({ sql: sqlQuery.trim() }),
+      });
 
       if (!queryResponse.ok) {
-        const errorText = await queryResponse.text()
-        throw new Error(`Failed to execute SQL query: ${errorText}`)
+        const errorText = await queryResponse.text();
+        throw new Error(`Failed to execute SQL query: ${errorText}`);
       }
 
-      const queryResult: QueryResult = await queryResponse.json()
+      const queryResult: QueryResult = await queryResponse.json();
 
-      setResult(queryResult)
+      setResult(queryResult);
 
       // Save to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('watchlist_last_sql', sql.trim())
-        localStorage.setItem('watchlist_last_result', JSON.stringify(queryResult))
+        localStorage.setItem('watchlist_last_sql', sqlQuery.trim());
+        localStorage.setItem(
+          'watchlist_last_result',
+          JSON.stringify(queryResult),
+        );
       }
     } catch (error) {
-      console.error('Watchlist query error:', error)
+      console.error('Watchlist query error:', error);
       setResult({
         success: false,
         data: [],
         columns: [],
         row_count: 0,
         error: error instanceof Error ? error.message : 'Unknown error',
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Dynamic columns from result
   const columns: ColumnDef<Record<string, any>>[] =
@@ -315,18 +294,22 @@ ORDER BY w.symbol;`
       accessorKey: col,
       header: col.charAt(0).toUpperCase() + col.slice(1).replace(/_/g, ' '),
       cell: ({ getValue }) => {
-        const value = getValue()
+        const value = getValue();
         // Format numbers
         if (typeof value === 'number') {
-          return value.toLocaleString()
+          return value.toLocaleString();
         }
         // Format dates
-        if (col.includes('_at') && value && (typeof value === 'string' || typeof value === 'number')) {
-          return new Date(value).toLocaleDateString()
+        if (
+          col.includes('_at') &&
+          value &&
+          (typeof value === 'string' || typeof value === 'number')
+        ) {
+          return new Date(value).toLocaleDateString();
         }
-        return value ?? '-'
+        return value ?? '-';
       },
-    })) || []
+    })) || [];
 
   const table = useReactTable({
     data: result?.data || [],
@@ -348,61 +331,173 @@ ORDER BY w.symbol;`
         pageSize: 20,
       },
     },
-  })
+  });
 
   // Export to Excel function
   const handleExportExcel = () => {
-    if (!result?.data || result.data.length === 0) return
+    if (!result?.data || result.data.length === 0) return;
 
-    const ws = XLSX.utils.json_to_sheet(result.data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Watchlist')
+    const ws = XLSX.utils.json_to_sheet(result.data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Watchlist');
 
-    const timestamp = new Date().toISOString().slice(0, 10)
-    const filename = `watchlist_${timestamp}.xlsx`
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `watchlist_${timestamp}.xlsx`;
 
-    XLSX.writeFile(wb, filename)
-  }
+    XLSX.writeFile(wb, filename);
+  };
+
+  // Generate SQL using AI and immediately run it
+  const handleGenerateAndRun = async () => {
+    if (!aiQuery.trim() || isGeneratingSQL || isLoading) return;
+
+    setIsGeneratingSQL(true);
+    setIsLoading(true);
+
+    try {
+      // Modify query based on toggle
+      let finalQuery = aiQuery.trim();
+      if (useWatchlistPlaceholder) {
+        if (watchlistSymbols.length === 0) {
+          toast.error('Your watchlist is empty. Please add symbols first.');
+          setIsGeneratingSQL(false);
+          return;
+        }
+        finalQuery = `IMPORTANT: The user wants to analyze their watchlist. You MUST use the {{WATCHLIST_SYMBOLS}} placeholder pattern in your SQL query. User query: ${aiQuery.trim()}`;
+        console.log(
+          '🌟 Watchlist mode: Requesting SQL with {{WATCHLIST_SYMBOLS}} placeholder',
+        );
+      } else {
+        console.log('🔍 Market mode: Generating general SQL query');
+      }
+
+      // Call screener agent
+      const agentResponse = await fetch('/api/screener', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: finalQuery,
+        }),
+      });
+
+      if (!agentResponse.ok) {
+        throw new Error('Failed to generate SQL from AI');
+      }
+
+      const agentResult = await agentResponse.json();
+
+      if (!agentResult.success || !agentResult.sql) {
+        toast.error(agentResult.error || 'Failed to generate SQL');
+        return;
+      }
+
+      // Handle placeholder replacement if needed
+      let finalSQL = agentResult.sql;
+      if (finalSQL.includes('{{WATCHLIST_SYMBOLS}}')) {
+        if (watchlistSymbols.length > 0) {
+          const symbolsString = watchlistSymbols
+            .map((s: string) => `('${s}')`)
+            .join(',\n        ');
+          finalSQL = finalSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString);
+          console.log(
+            `✅ Replaced placeholder with ${watchlistSymbols.length} symbols`,
+          );
+        } else {
+          toast.warning(
+            'SQL contains watchlist placeholder but your watchlist is empty',
+          );
+        }
+      }
+
+      setSql(finalSQL);
+      setSelectedTemplate('custom');
+
+      // Immediately execute the generated SQL
+      const queryResponse = await fetch('/api/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sql: finalSQL }),
+      });
+
+      if (!queryResponse.ok) {
+        throw new Error('Failed to execute generated SQL');
+      }
+
+      const queryResult: QueryResult = await queryResponse.json();
+      setResult(queryResult);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('watchlist_last_sql', finalSQL);
+        localStorage.setItem(
+          'watchlist_last_result',
+          JSON.stringify(queryResult),
+        );
+      }
+
+      toast.success(
+        `Analysis complete! Found ${queryResult.row_count} results.`,
+      );
+
+      // Store explanation for display
+      if (agentResult.explanation) {
+        setAiExplanation(agentResult.explanation);
+        console.log('💡 AI Explanation:', agentResult.explanation);
+      }
+    } catch (error) {
+      console.error('Failed to generate and run SQL:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to run analysis',
+      );
+      setResult({
+        success: false,
+        data: [],
+        columns: [],
+        row_count: 0,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsGeneratingSQL(false);
+      setIsLoading(false);
+    }
+  };
 
   // Refresh template with latest watchlist symbols
   const handleRefreshTemplate = async () => {
     try {
-      // Clear cache first to ensure fresh data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('watchlist_last_sql')
-        localStorage.removeItem('watchlist_last_result')
-      }
+      const response = await fetch('/api/watchlist');
+      const data = await response.json();
 
-      const response = await fetch('/api/watchlist')
-      const data = await response.json()
-
-      console.log('📥 Fetched watchlist data:', data)
+      console.log('📥 Fetched watchlist data:', data);
 
       if (data.watchlist && data.watchlist.length > 0) {
-        const symbols: string[] = data.watchlist.map((item: any) => item.symbol)
-        setWatchlistSymbols(symbols)
+        const symbols: string[] = data.watchlist.map(
+          (item: any) => item.symbol,
+        );
+        setWatchlistSymbols(symbols);
 
-        // Generate SQL with fresh symbols
-        const symbolsString = symbols.map((s: string) => `('${s}')`).join(',\n        ')
-        const populatedSQL = templateSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString)
-
-        console.log('🔄 Generated SQL with symbols:', symbols)
-        console.log('📝 SQL preview:', populatedSQL.substring(0, 200))
-
-        setSql(populatedSQL)
-
-        // Clear results to force re-execution
-        setResult(null)
-
-        toast.success(`Template updated with ${symbols.length} symbols`)
+        // Reload the currently selected template with new symbols
+        if (selectedTemplate) {
+          await loadTemplate(selectedTemplate);
+          toast.success(`Template refreshed with ${symbols.length} symbols`);
+        } else if (defaultTemplateId) {
+          // If no template selected, load default template
+          await loadTemplate(defaultTemplateId);
+          toast.success(`Default template loaded with ${symbols.length} symbols`);
+        } else {
+          toast.error('No template available to refresh');
+        }
       } else {
-        toast.error('No symbols in watchlist. Please add symbols first.')
+        toast.error('No symbols in watchlist. Please add symbols first.');
       }
     } catch (error) {
-      console.error('Failed to refresh watchlist:', error)
-      toast.error('Failed to refresh watchlist. Please try again.')
+      console.error('Failed to refresh watchlist:', error);
+      toast.error('Failed to refresh watchlist. Please try again.');
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -418,69 +513,208 @@ ORDER BY w.symbol;`
               {result.row_count} {result.row_count === 1 ? 'item' : 'items'}
             </span>
           )}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setSettingsOpen(true)}
-            className="ml-2 px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
             title="Manage watchlist symbols"
+            className="border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-primary"
           >
-            <Settings className="w-4 h-4" />
-            Manage
-          </button>
+            <Star className="w-4 h-4 mr-2 text-brand-primary" />
+            <span className="font-medium">Watchlist</span>
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          Query your watchlist with SQL
+          Analyze your watchlist with AI-powered insights
         </p>
       </div>
 
-      {/* SQL Input */}
+      {/* Query Controls */}
       <div className="p-4 border-b border-border">
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            SQL Query
-          </label>
-          <textarea
-            value={sql}
-            onChange={(e) => setSql(e.target.value)}
-            placeholder="SELECT * FROM watchlist WHERE ..."
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none"
-            rows={4}
-            disabled={isLoading}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleExecute}
-              disabled={isLoading || !sql.trim()}
-              className="px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        <div className="space-y-4">
+          {/* AI Query Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleGenerateAndRun();
+            }}
+            className="space-y-2"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  placeholder="Ask AI to analyze your watchlist... (e.g., 'Show ROCE and dividend yield')"
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-brand-primary/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  disabled={isGeneratingSQL || isLoading}
+                />
+                <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-primary" />
+              </div>
+              <button
+                type="submit"
+                disabled={isGeneratingSQL || isLoading || !aiQuery.trim()}
+                className="px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isGeneratingSQL ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Generate
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Analysis Mode Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Star className="w-3 h-3 mr-2" />
+                  {useWatchlistPlaceholder
+                    ? `Watchlist Mode (${watchlistSymbols.length} symbols)`
+                    : 'Market Screener Mode'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => setUseWatchlistPlaceholder(true)}
+                  className="cursor-pointer"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Watchlist Mode</span>
+                    <span className="text-xs text-muted-foreground">
+                      Analyze your {watchlistSymbols.length} watchlist stocks
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setUseWatchlistPlaceholder(false)}
+                  className="cursor-pointer"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Market Screener</span>
+                    <span className="text-xs text-muted-foreground">
+                      Scan the entire market for opportunities
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </form>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or use template
+              </span>
+            </div>
+          </div>
+
+          {/* Template Selector */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedTemplate}
+              onValueChange={(value) => loadTemplate(value)}
+              disabled={isLoading}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Executing...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Execute
-                </>
-              )}
-            </button>
-            <button
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Loading templates..." />
+              </SelectTrigger>
+              <SelectContent>
+                {savedTemplates.map((template) => (
+                  <SelectItem key={template.id} value={template.id || ''}>
+                    <div className="flex flex-col items-start gap-1 w-full">
+                      <span className="font-medium text-left">
+                        {template.name}
+                      </span>
+                      {template.description && (
+                        <span className="text-xs text-muted-foreground text-left line-clamp-2">
+                          {template.description}
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedTemplate && selectedTemplate !== defaultTemplateId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteTemplate(selectedTemplate)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                title="Delete this template"
+                disabled={isLoading}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Refresh button - Only shown when a template is selected */}
+          {selectedTemplate && (
+            <Button
+              variant="secondary"
               onClick={handleRefreshTemplate}
               disabled={isLoading}
-              className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              title="Refresh watchlist symbols and regenerate template SQL"
+              title="Refresh watchlist symbols and update analysis"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh Template
-            </button>
-          </div>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Analysis
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Results */}
       <div className="flex-1 overflow-hidden p-4 flex flex-col">
+        {/* Loading State */}
+        {isLoading && !result && (
+          <div className="flex-1 flex items-center justify-center">
+            <LoaderOne />
+          </div>
+        )}
+
+        {/* Results Display */}
         {result && (
           <div className="flex-1 flex flex-col min-h-0">
+            {/* AI Explanation Card - Only show for AI-generated queries */}
+            {selectedTemplate === 'custom' && aiExplanation && (
+              <div className="mb-4 p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-lg space-y-3">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-sm font-semibold text-foreground">
+                      AI Generated Analysis
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {aiExplanation}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setSaveDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save as Template
+                </Button>
+              </div>
+            )}
+
             {/* Error */}
             {result.error && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
@@ -636,10 +870,10 @@ ORDER BY w.symbol;`
           <div className="text-center py-12 text-muted-foreground">
             <Star className="w-16 h-16 mx-auto mb-4 opacity-30" />
             <p className="text-sm mb-2">
-              Execute a SQL query to view your watchlist
+              Select a template or ask AI to analyze your watchlist
             </p>
             <p className="text-xs">
-              Example: SELECT * FROM watchlist WHERE asset_type = 'stock'
+              Example: "Show me high-growth stocks with strong fundamentals"
             </p>
           </div>
         )}
@@ -651,6 +885,58 @@ ORDER BY w.symbol;`
         onOpenChange={setSettingsOpen}
         initialTab={settingsTab}
       />
+
+      {/* Save Template Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Save this AI-generated analysis as a reusable template. You can
+              load it later from the template selector.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                placeholder="e.g., High ROCE Stocks"
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    saveCurrentTemplate();
+                  }
+                }}
+              />
+            </div>
+            {aiExplanation && (
+              <div className="space-y-2">
+                <Label>Analysis Description</Label>
+                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                  {aiExplanation}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSaveDialogOpen(false);
+                setNewTemplateName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveCurrentTemplate} disabled={!newTemplateName.trim()}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

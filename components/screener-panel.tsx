@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Loader2, Table as TableIcon, Download } from 'lucide-react';
+import { Send, Loader2, Table as TableIcon, Download, Star, Globe } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
@@ -54,6 +54,26 @@ export function ScreenerPanel() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+  const [isWatchlistMode, setIsWatchlistMode] = useState(false);
+
+  // Fetch watchlist symbols on mount
+  useEffect(() => {
+    fetchWatchlistSymbols();
+  }, []);
+
+  const fetchWatchlistSymbols = async () => {
+    try {
+      const response = await fetch('/api/watchlist');
+      const data = await response.json();
+      if (data.watchlist) {
+        const symbols = data.watchlist.map((item: any) => item.symbol);
+        setWatchlistSymbols(symbols);
+      }
+    } catch (error) {
+      console.error('Failed to fetch watchlist:', error);
+    }
+  };
 
   // Load saved query and result from localStorage on mount
   useEffect(() => {
@@ -91,6 +111,13 @@ export function ScreenerPanel() {
         sessionState['available_metrics'] = availableMetrics;
       }
 
+      // Modify query if in watchlist mode
+      let finalQuery = query.trim();
+      if (isWatchlistMode) {
+        finalQuery = `IMPORTANT: The user wants to analyze their watchlist. You MUST use the {{WATCHLIST_SYMBOLS}} placeholder pattern in your SQL query. User query: ${query.trim()}`;
+        console.log('🌟 Watchlist mode enabled, modified query:', finalQuery);
+      }
+
       // Stage 1: Call screener agent to generate SQL
       const agentResponse = await fetch('/api/screener', {
         method: 'POST',
@@ -98,7 +125,7 @@ export function ScreenerPanel() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: query.trim(),
+          query: finalQuery,
           sessionState:
             Object.keys(sessionState).length > 0 ? sessionState : undefined,
         }),
@@ -121,13 +148,35 @@ export function ScreenerPanel() {
         return;
       }
 
+      // Check if SQL contains {{WATCHLIST_SYMBOLS}} placeholder
+      let finalSQL = agentResult.sql;
+      if (finalSQL.includes('{{WATCHLIST_SYMBOLS}}')) {
+        console.log('🔍 Detected {{WATCHLIST_SYMBOLS}} placeholder, replacing with actual symbols...');
+
+        if (watchlistSymbols.length === 0) {
+          setResult({
+            explanation: agentResult.explanation || '',
+            data: [],
+            columns: [],
+            row_count: 0,
+            error: 'Your watchlist is empty. Please add symbols to your watchlist first.',
+          });
+          return;
+        }
+
+        // Replace placeholder with actual symbols
+        const symbolsString = watchlistSymbols.map((s: string) => `('${s}')`).join(',\n        ');
+        finalSQL = finalSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString);
+        console.log(`✅ Replaced with ${watchlistSymbols.length} symbols:`, watchlistSymbols);
+      }
+
       // Stage 2: Execute SQL via Next.js API route (not directly to backend)
       const queryResponse = await fetch('/api/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sql: agentResult.sql }),
+        body: JSON.stringify({ sql: finalSQL }),
       });
 
       if (!queryResponse.ok) {
@@ -246,6 +295,35 @@ export function ScreenerPanel() {
 
       {/* Query Input */}
       <div className="p-4 border-b border-border">
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-medium text-muted-foreground">Mode:</span>
+          <button
+            type="button"
+            onClick={() => setIsWatchlistMode(false)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              !isWatchlistMode
+                ? 'bg-brand-primary text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            Market Screener
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsWatchlistMode(true)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              isWatchlistMode
+                ? 'bg-brand-primary text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" />
+            Watchlist Analysis {watchlistSymbols.length > 0 && `(${watchlistSymbols.length})`}
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="flex gap-2">
           <div className="flex-1 relative">
             <input
@@ -255,8 +333,9 @@ export function ScreenerPanel() {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder={
-                t('placeholder') ||
-                'e.g., Show top 10 profitable companies in 2024'
+                isWatchlistMode
+                  ? 'e.g., "Show ROCE and dividend yield" or "Calculate P/E ratios and options data"'
+                  : 'e.g., "Top 10 profitable companies" or "Tech stocks with revenue over $1B"'
               }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
               disabled={isLoading}
