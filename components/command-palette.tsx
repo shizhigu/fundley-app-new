@@ -34,28 +34,47 @@ export function CommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
-        if (!isOpen) {
-          // Reset to main view when opening
-          setView('main');
-          setSearch('');
-          setSelectedIndex(0);
-        }
+        setIsOpen(prev => {
+          if (!prev) {
+            // Opening - reset to main view
+            setView('main');
+            setSearch('');
+            setSelectedIndex(0);
+          }
+          return !prev;
+        });
       }
       // ESC to close or go back
       if (e.key === 'Escape') {
-        if (view === 'templates') {
-          setView('main');
-          setSelectedIndex(0);
-        } else {
-          setIsOpen(false);
-        }
+        setView(prevView => {
+          if (prevView === 'templates') {
+            setSelectedIndex(0);
+            return 'main';
+          } else {
+            setIsOpen(false);
+            return prevView;
+          }
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, view]);
+  }, []); // No dependencies - stable listener
+
+  // Separate effect for custom event listener
+  useEffect(() => {
+    const handleOpenCommandPalette = () => {
+      console.log('📢 Command palette open event received');
+      setIsOpen(true);
+      setView('main');
+      setSearch('');
+      setSelectedIndex(0);
+    };
+
+    window.addEventListener('open-command-palette', handleOpenCommandPalette);
+    return () => window.removeEventListener('open-command-palette', handleOpenCommandPalette);
+  }, []); // No dependencies - stable listener
 
   // Fetch templates when entering templates view
   useEffect(() => {

@@ -1,23 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm build:*)",
-      "Bash(pkill:*)",
-      "Bash(npx shadcn@latest add https://ui.aceternity.com/components/aurora-background)",
-      "Bash(npx shadcn@latest add:*)",
-      "Bash(npm install:*)",
-      "Bash(pnpm add:*)",
-      "Bash(git restore:*)",
-      "Bash(find:*)",
-      "Bash(python:*)",
-      "Bash(wait:*)",
-      "Bash(python3:*)",
-      "Bash(pnpm create:*)",
-      "Bash(tree:*)",
-      "Bash(psql:*)",
-      "Bash(conda run:*)",
-      "Bash(pnpm build:next:*)",
-      "Bash(node -e \"const d = ''2025-10-25 03:15:00''; const [date, time] = d.split('' ''); const etDate = new Date(date + ''T'' + time); const etStr = etDate.toLocaleString(''en-US'', { timeZone: ''America/New_York'' }); const utcStr = etDate.toLocaleString(''en-US'', { timeZone: ''UTC'' }); console.log(''ET:'', etStr); console.log(''UTC:'', utcStr); console.log(''Parsed as local:'', etDate.toISOString());\")"
+      "Bash(cat /Users/gushizhi/Projects/fundley-app/test.sql)",
+      "Read(//Users/gushizhi/Projects/**)",
+      "Bash(while read f)",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(wc -l \"$f\")",
+      "Bash(done)",
+      "Bash(for f in /Users/gushizhi/Projects/fundley-app/chatbot-service/tools/*.py)",
+      "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/agno/**)",
+      "Read(///**)"
     ],
     "deny": [],
     "ask": [],

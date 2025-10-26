@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist' | 'newsletter';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist';
 
 interface Tab {
   id: TabType;
@@ -44,10 +44,11 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
-    { id: 'newsletter', label: t('newsletter'), icon: Newspaper },
-    { id: 'screener', label: t('screener'), icon: Search, disabled: true },
+    { id: 'screener', label: t('screener'), icon: Search },
     // Chart tab hidden but kept in code
     // { id: 'chart', label: t('chart'), icon: TrendingUp },
+    // Newsletter tab hidden but kept in code
+    // { id: 'newsletter', label: t('newsletter'), icon: Newspaper },
   ];
 
   // Fundley 品牌只显示 Analysis Blocks（第二个tab）

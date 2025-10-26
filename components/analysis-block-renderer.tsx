@@ -24,6 +24,7 @@ import {
   Trash2,
   Pin,
   PinOff,
+  Copy,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useChatContext } from '@/lib/contexts/chat-context';
@@ -75,6 +76,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
+import { toast } from '@/components/toast';
 
 // Format filename for display: remove extension, replace separators, uppercase
 const formatFileName = (filename: string): string => {
@@ -249,7 +251,7 @@ export function AnalysisBlockRenderer({
       setDataLoading(true);
       try {
         const response = await fetch(
-          `/api/files/${filename}?block_id=${blockId}`,
+          `/api/files/${filename}?block_id=${blockId}&v=${blockVersion}`,
         );
 
         if (response.ok) {
@@ -284,7 +286,7 @@ export function AnalysisBlockRenderer({
         setDataLoading(false);
       }
     },
-    [blockId],
+    [blockId, blockVersion],
   );
 
   // Load data when block is expanded or selected data index changes
@@ -461,6 +463,33 @@ export function AnalysisBlockRenderer({
       link.click();
     },
     [blockId, title],
+  );
+
+  // Copy iframe embed code
+  const handleCopyIframeCode = useCallback(
+    (chartFile: string) => {
+      const baseUrl = window.location.origin;
+      const iframeSrc = `${baseUrl}/api/files/${chartFile}?block_id=${blockId}&v=${blockVersion}`;
+      const iframeCode = `<iframe src="${iframeSrc}" width="100%" height="600" frameborder="0" style="border: 0;" allowfullscreen></iframe>`;
+
+      navigator.clipboard.writeText(iframeCode).then(
+        () => {
+          toast({
+            type: 'success',
+            description: 'iframe code copied to clipboard!',
+          });
+          console.log('✅ iframe code copied to clipboard');
+        },
+        (err) => {
+          toast({
+            type: 'error',
+            description: 'Failed to copy iframe code',
+          });
+          console.error('❌ Failed to copy iframe code:', err);
+        }
+      );
+    },
+    [blockId, blockVersion],
   );
 
   // Save title
@@ -1038,6 +1067,18 @@ export function AnalysisBlockRenderer({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleCopyIframeCode(chartFile);
+                        }}
+                        className="h-8 w-8 p-0"
+                        title="Copy iframe code"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleExportHtml(chartFile);
                         }}
                         className="h-8 w-8 p-0"
@@ -1359,19 +1400,34 @@ export function AnalysisBlockRenderer({
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-4 flex flex-row items-center justify-between">
             <DialogTitle>Visualization - {title}</DialogTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (maximizedChart) {
-                  handleExportHtml(maximizedChart);
-                }
-              }}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download HTML
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (maximizedChart) {
+                    handleCopyIframeCode(maximizedChart);
+                  }
+                }}
+                className="gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy iframe
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (maximizedChart) {
+                    handleExportHtml(maximizedChart);
+                  }
+                }}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download HTML
+              </Button>
+            </div>
           </DialogHeader>
           <div className="w-full h-[calc(90vh-8rem)] bg-white">
             {maximizedChart && (

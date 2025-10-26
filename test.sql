@@ -3,7 +3,8 @@ WITH watchlist_symbols AS (
         {{WATCHLIST_SYMBOLS}}
     ) AS t(symbol)
 ),
-latest_dates AS (
+-- 获取每个股票在 eod_data 中的最新交易日
+latest_stock_dates AS (
     SELECT
         e.symbol,
         MAX(e.date) AS latest_date
@@ -11,23 +12,35 @@ latest_dates AS (
     JOIN watchlist_symbols w ON e.symbol = w.symbol
     GROUP BY e.symbol
 ),
+-- 获取最新交易日的股票价格数据
 latest_prices AS (
     SELECT
         e.symbol,
         e.close AS close_price,
         e.date AS price_date
     FROM eod_data e
-    JOIN latest_dates ld ON e.symbol = ld.symbol AND e.date = ld.latest_date
+    JOIN latest_stock_dates ld ON e.symbol = ld.symbol AND e.date = ld.latest_date
 ),
+-- 获取 26 周内最高价（基于最新交易日往前推）
 price_26w AS (
     SELECT
         e.symbol,
         MAX(e.high) AS high_26w
     FROM eod_data e
-    JOIN latest_dates ld ON e.symbol = ld.symbol
+    JOIN latest_stock_dates ld ON e.symbol = ld.symbol
     WHERE e.date >= ld.latest_date - INTERVAL '182 days'
     GROUP BY e.symbol
 ),
+-- 获取每个股票在 options_eod_data 中的最新 trade_date
+latest_options_dates AS (
+    SELECT
+        oe.underlying_symbol,
+        MAX(oe.trade_date) AS latest_trade_date
+    FROM options_eod_data oe
+    JOIN watchlist_symbols w ON oe.underlying_symbol = w.symbol
+    GROUP BY oe.underlying_symbol
+),
+-- 财务数据标准化
 normalized AS (
     SELECT
         TRIM(fs.symbol) AS symbol,
@@ -50,6 +63,7 @@ normalized AS (
       AND fs.totalassets IS NOT NULL
       AND fs.totalcurrentliabilities IS NOT NULL
 ),
+-- ROCE 计算
 fs_roce AS (
     SELECT
         symbol,
@@ -63,6 +77,7 @@ fs_roce AS (
     FROM normalized
     WHERE quarter_order IS NOT NULL
 ),
+-- 获取最近的季度数据
 recent AS (
     SELECT
         symbol,
@@ -73,6 +88,7 @@ recent AS (
         ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY fiscalyear DESC, quarter_order DESC) AS quarter_rank
     FROM fs_roce
 ),
+-- 最新季度 ROCE
 latest_roce AS (
     SELECT
         symbol,
@@ -81,6 +97,7 @@ latest_roce AS (
     FROM recent
     WHERE quarter_rank = 1
 ),
+-- TTM ROCE（最近 4 个季度）
 ttm_roce AS (
     SELECT
         symbol,
@@ -90,6 +107,7 @@ ttm_roce AS (
     WHERE quarter_rank <= 4
     GROUP BY symbol
 ),
+-- 公司基本信息
 company_data AS (
     SELECT
         TRIM(cp.symbol) AS symbol,
@@ -99,6 +117,7 @@ company_data AS (
     FROM company_profiles cp
     JOIN watchlist_symbols w ON TRIM(cp.symbol) = w.symbol
 ),
+-- ATM Put 期权筛选（只使用最新 trade_date 的数据）
 atm_put_options AS (
     SELECT
         oe.underlying_symbol AS symbol,
@@ -106,6 +125,7 @@ atm_put_options AS (
         oe.strike_price,
         oe.close AS option_premium,
         lp.close_price AS stock_price,
+        oe.trade_date,
         ABS(DATE_DIFF('day', CURRENT_DATE, CAST(oe.expiration_date AS DATE)) - 30) AS days_diff_from_30,
         ABS(oe.strike_price - lp.close_price) AS strike_diff,
         ROW_NUMBER() OVER (
@@ -115,12 +135,16 @@ atm_put_options AS (
                 ABS(oe.strike_price - lp.close_price)
         ) AS option_rank
     FROM options_eod_data oe
+    JOIN latest_options_dates lod
+        ON oe.underlying_symbol = lod.underlying_symbol
+        AND oe.trade_date = lod.latest_trade_date  -- ✅ 只获取最新 trade_date 的数据
     JOIN latest_prices lp ON oe.underlying_symbol = lp.symbol
     JOIN watchlist_symbols w ON oe.underlying_symbol = w.symbol
     WHERE oe.option_type = 'put'
       AND CAST(oe.expiration_date AS DATE) > CURRENT_DATE
       AND CAST(oe.expiration_date AS DATE) <= CURRENT_DATE + INTERVAL 60 DAY
 ),
+-- 选择最优 Put 期权（每个股票选 1 个）
 selected_options AS (
     SELECT
         symbol,
@@ -128,15 +152,16 @@ selected_options AS (
         strike_price,
         option_premium,
         stock_price,
+        trade_date,
         ROUND((option_premium / NULLIF(strike_price, 0)) * 100, 2) AS premium_pct
     FROM atm_put_options
     WHERE option_rank = 1
 )
+-- 最终结果汇总
 SELECT
     w.symbol AS "股票代码",
-    cd.companyname AS "公司名称",
-    ROUND(cd.marketcap, 2) AS "市值(美元)",
     ROUND(lp.close_price, 2) AS "前一日收盘价(美元)",
+    lp.price_date AS "股票数据日期",
     ROUND(p26.high_26w, 2) AS "26周内最高价(美元)",
     CASE
         WHEN p26.high_26w IS NULL OR p26.high_26w = 0 THEN NULL
@@ -144,6 +169,7 @@ SELECT
     END AS "收盘价/26周高点",
     ROUND(lr.roce_value, 1) AS "最新季度ROCE(%)",
     CASE WHEN tr.quarter_count = 4 THEN ROUND(tr.sum_roce, 1) ELSE NULL END AS "ROCE TTM(%)",
+    so.trade_date AS "期权数据日期",
     so.expiration_date AS "Put期权到期日",
     ROUND(so.strike_price, 2) AS "Put行权价(美元)",
     ROUND(so.option_premium, 2) AS "Put权利金(美元)",
@@ -155,4 +181,4 @@ LEFT JOIN price_26w p26 ON w.symbol = p26.symbol
 LEFT JOIN latest_roce lr ON w.symbol = lr.symbol
 LEFT JOIN ttm_roce tr ON w.symbol = tr.symbol
 LEFT JOIN selected_options so ON w.symbol = so.symbol
-ORDER BY w.symbol;  
+ORDER BY w.symbol;

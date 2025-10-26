@@ -25,7 +25,7 @@ import { VoiceRecorder } from './voice-recorder';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, Paperclip, Sparkles, Send } from 'lucide-react';
+import { ArrowDown, Paperclip, Sparkles, Send, Command } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { cn } from '@/lib/utils';
@@ -616,7 +616,7 @@ function PureMultimodalInput({
         <Textarea
           data-testid="multimodal-input"
           ref={textareaRef}
-          placeholder={`${t('placeholder')} (${isMac ? '⌘' : 'Ctrl'}+K for quick actions)`}
+          placeholder={t('placeholder')}
           value={input}
           onChange={handleInput}
           onPaste={handlePaste}
@@ -674,6 +674,7 @@ function PureMultimodalInput({
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
           <VoiceRecorder onTranscript={handleVoiceTranscript} />
+          <CommandPaletteButton />
           <SuggestionsButton messages={messages} />
         </div>
 
@@ -959,3 +960,55 @@ const SuggestionsButton = memo(PureSuggestionsButton, (prevProps, nextProps) => 
   if (prevLatest?.id !== nextLatest?.id) return false;
   return true;
 });
+
+// ============================================================================
+// Command Palette Button
+// ============================================================================
+function CommandPaletteButton() {
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+  }, []);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🔘 Command palette button clicked');
+    window.dispatchEvent(new Event('open-command-palette'));
+  };
+
+  return (
+    <div className="relative group">
+      <button
+        type="button"
+        onClick={handleClick}
+        className={cn(
+          // Clean button styling
+          'h-10 w-10 rounded-lg',
+          'bg-card border border-border',
+          'flex items-center justify-center',
+          // Hover effect
+          'hover:bg-muted transition-colors duration-200',
+          // Text styling
+          'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <Command className="w-4 h-4" />
+      </button>
+
+      {/* Premium Tooltip - appears on hover */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+        <div className="bg-gray-900 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+          <kbd className="px-2 py-1 bg-gray-800 rounded text-sm font-mono">
+            {isMac ? '⌘K' : 'Ctrl+K'}
+          </kbd>
+        </div>
+        {/* Arrow */}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-0.5">
+          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-gray-900"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
