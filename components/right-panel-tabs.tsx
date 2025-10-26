@@ -153,11 +153,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
           </div>
         )}
 
-        {activeTab === 'newsletter' && (
+        {/* Newsletter tab kept in code but hidden from UI */}
+        {/* {activeTab === 'newsletter' && (
           <div id="newsletter-panel" role="tabpanel" aria-labelledby="newsletter-tab" className="h-full">
             <NewsletterPanel />
           </div>
-        )}
+        )} */}
 
         {/* Chart tab kept in code but hidden from UI */}
         {activeTab === 'chart' && (
