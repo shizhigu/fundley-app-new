@@ -212,6 +212,36 @@ export function AnalysisBlockRenderer({
     return new Date(block.updated_at || block.created_at).getTime();
   }, [block.updated_at, block.created_at]);
 
+  // Auto-resize iframe to fit content height
+  const handleIframeLoad = useCallback((e: React.SyntheticEvent<HTMLIFrameElement>) => {
+    const iframe = e.currentTarget;
+    try {
+      // Try to access iframe content height
+      const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDocument) {
+        // Get the actual content height
+        const body = iframeDocument.body;
+        const html = iframeDocument.documentElement;
+        const contentHeight = Math.max(
+          body?.scrollHeight || 0,
+          body?.offsetHeight || 0,
+          html?.clientHeight || 0,
+          html?.scrollHeight || 0,
+          html?.offsetHeight || 0
+        );
+
+        // Set iframe height to content height with some padding
+        if (contentHeight > 0) {
+          iframe.style.height = `${contentHeight + 20}px`;
+          console.log(`📐 Iframe auto-resized to ${contentHeight}px`);
+        }
+      }
+    } catch (error) {
+      // If cross-origin, silently fail and keep default height
+      console.log('📐 Could not auto-resize iframe (cross-origin or error):', error);
+    }
+  }, []);
+
   const dataFiles = React.useMemo(() => {
     if (Array.isArray(content.files?.data)) return content.files.data; // Multiple files
     if (content.files?.data) return [content.files.data]; // Single file (backward compatible)
@@ -1021,96 +1051,95 @@ export function AnalysisBlockRenderer({
               {charts.map((chartFile: string, index: number) => (
                 <div
                   key={`${chartFile}-${index}`}
-                  className="border rounded-lg overflow-hidden w-full max-w-full"
+                  className="group relative w-full max-w-full border border-border/50 rounded-lg overflow-hidden hover:border-border transition-colors"
                 >
-                  <div className="p-3 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition-colors">
-                    <button
-                      onClick={() => {
-                        const newExpanded = new Set(expandedCharts);
-                        if (newExpanded.has(index)) {
-                          newExpanded.delete(index);
-                        } else {
-                          newExpanded.add(index);
-                        }
-                        setExpandedCharts(newExpanded);
-                      }}
-                      className="flex items-center gap-2 flex-1"
-                    >
-                      <BarChart className="h-4 w-4" />
-                      <span className="text-sm font-medium">
+                  {/* Minimal title bar - always visible but subtle */}
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const newExpanded = new Set(expandedCharts);
+                          if (newExpanded.has(index)) {
+                            newExpanded.delete(index);
+                          } else {
+                            newExpanded.add(index);
+                          }
+                          setExpandedCharts(newExpanded);
+                        }}
+                        className="h-5 w-5 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
+                        title={expandedCharts.has(index) ? "Collapse" : "Expand"}
+                      >
+                        {expandedCharts.has(index) ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </button>
+                      <span className="text-xs font-medium text-muted-foreground">
                         {formatFileName(chartFile)}
                       </span>
-                      {expandedCharts.has(index) ? (
-                        <ChevronUp className="h-4 w-4 ml-2" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 ml-2" />
-                      )}
-                    </button>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                    </div>
+
+                    {/* Action buttons - only show on hover */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRefreshChart(chartFile, index);
                         }}
                         disabled={refreshingChart === chartFile}
-                        className="h-8 w-8 p-0"
+                        className="h-6 w-6 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors disabled:opacity-50"
                         title="Refresh"
                       >
                         <RefreshCw
-                          className={`h-4 w-4 ${refreshingChart === chartFile ? 'animate-spin' : ''}`}
+                          className={`h-3 w-3 ${refreshingChart === chartFile ? 'animate-spin' : ''}`}
                         />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      </button>
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyIframeCode(chartFile);
                         }}
-                        className="h-8 w-8 p-0"
+                        className="h-6 w-6 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
                         title="Copy iframe code"
                       >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleExportHtml(chartFile);
                         }}
-                        className="h-8 w-8 p-0"
+                        className="h-6 w-6 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
                         title="Download HTML"
                       >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                        <Download className="h-3 w-3" />
+                      </button>
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setMaximizedChart(chartFile);
                         }}
-                        className="h-8 w-8 p-0"
+                        className="h-6 w-6 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
                         title="Fullscreen"
                       >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
+                        <Maximize2 className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
 
                   {/* Show iframe only when expanded */}
                   {expandedCharts.has(index) && (
-                    <div className="w-full h-[400px] bg-background overflow-auto">
+                    <div className="w-full bg-background">
                       <iframe
                         key={`chart-${block.id}-${index}-${blockVersion}`}
                         id={`chart-iframe-${block.id}-${index}`}
                         src={`/api/files/${chartFile}?block_id=${blockId}&v=${blockVersion}`}
-                        className="w-full h-full border-0 min-w-0"
+                        className="w-full border-0 min-w-0"
+                        style={{ height: '600px', minHeight: '400px' }}
                         title={`Visualization ${index + 1}`}
                         sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+                        onLoad={handleIframeLoad}
                       />
                     </div>
                   )}
@@ -1429,15 +1458,17 @@ export function AnalysisBlockRenderer({
               </Button>
             </div>
           </DialogHeader>
-          <div className="w-full h-[calc(90vh-8rem)] bg-white">
+          <div className="w-full h-[calc(90vh-8rem)] bg-white overflow-auto">
             {maximizedChart && (
               <iframe
                 key={`chart-maximized-${block.id}-${blockVersion}`}
                 id={`chart-iframe-${block.id}-maximized`}
                 src={`/api/files/${maximizedChart}?block_id=${blockId}&v=${blockVersion}`}
-                className="w-full h-full border-0"
+                className="w-full border-0"
+                style={{ minHeight: '100%' }}
                 title="Visualization (Maximized)"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+                onLoad={handleIframeLoad}
               />
             )}
           </div>

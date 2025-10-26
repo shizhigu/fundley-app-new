@@ -9,7 +9,15 @@
       "Bash(done)",
       "Bash(for f in /Users/gushizhi/Projects/fundley-app/chatbot-service/tools/*.py)",
       "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/agno/**)",
-      "Read(///**)"
+      "Read(///**)",
+      "Bash(git checkout -b development)",
+      "Bash(git push -u origin development)",
+      "Bash(git checkout sql-migration)",
+      "Bash(git add components/right-panel-tabs.tsx)",
+      "Bash(git commit -m \"Fix TypeScript error: comment out newsletter tab rendering code to match TabType definition\")",
+      "Bash(git push origin sql-migration)",
+      "Bash(git checkout development)",
+      "Bash(git push origin development)"
     ],
     "deny": [],
     "ask": [],
