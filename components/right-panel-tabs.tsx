@@ -38,10 +38,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
   const t = useTranslations('panels');
 
   const tabs: Tab[] = [
-    { id: 'data', label: t('financialData'), icon: BarChart3 },
+    // Financial Data tab hidden but kept in code
+    // { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
-    { id: 'screener', label: t('screener'), icon: Search },
+    // Screener tab hidden but kept in code
+    // { id: 'screener', label: t('screener'), icon: Search },
     // Chart tab hidden but kept in code
     // { id: 'chart', label: t('chart'), icon: TrendingUp },
     // Newsletter tab hidden but kept in code

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import {
   Star,
   Loader2,
-  Download,
   RefreshCw,
   Save,
   Trash2,
@@ -12,6 +11,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Settings,
 } from 'lucide-react';
 import { LoaderOne } from '@/components/ui/loader';
 import { useTranslations } from 'next-intl';
@@ -30,29 +30,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  getFilteredRowModel,
-  flexRender,
-  type ColumnDef,
-  type SortingState,
-  type ColumnFiltersState,
-} from '@tanstack/react-table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { EnhancedDataTable } from './enhanced-data-table';
 
 interface QueryResult {
   success: boolean;
@@ -67,9 +52,6 @@ export function WatchlistTablePanel() {
   const [sql, setSql] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState('');
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'watchlist'>('watchlist');
@@ -79,7 +61,7 @@ export function WatchlistTablePanel() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [aiQuery, setAiQuery] = useState('');
   const [isGeneratingSQL, setIsGeneratingSQL] = useState(false);
-  const [useWatchlistPlaceholder, setUseWatchlistPlaceholder] = useState(true);
+  const [useWatchlist, setUseWatchlist] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string>('');
   const [defaultTemplateId, setDefaultTemplateId] = useState<string>('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -318,56 +300,9 @@ export function WatchlistTablePanel() {
     }
   };
 
-  // Dynamic columns from result
-  const columns: ColumnDef<Record<string, any>>[] =
-    result?.columns?.map((col) => ({
-      accessorKey: col,
-      header: col.charAt(0).toUpperCase() + col.slice(1).replace(/_/g, ' '),
-      cell: ({ getValue }) => {
-        const value = getValue();
-        // Format numbers
-        if (typeof value === 'number') {
-          return value.toLocaleString();
-        }
-        // Format dates
-        if (
-          col.includes('_at') &&
-          value &&
-          (typeof value === 'string' || typeof value === 'number')
-        ) {
-          return new Date(value).toLocaleDateString();
-        }
-        return value ?? '-';
-      },
-    })) || [];
-
-  const table = useReactTable({
-    data: result?.data || [],
-    columns,
-    state: {
-      sorting,
-      columnFilters,
-      globalFilter,
-    },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 20,
-      },
-    },
-  });
-
-  // Export to Excel function
-  const handleExportExcel = () => {
-    if (!result?.data || result.data.length === 0) return;
-
-    const ws = XLSX.utils.json_to_sheet(result.data);
+  // Export to Excel function (used by EnhancedDataTable)
+  const handleExportExcel = (data: any[]) => {
+    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Watchlist');
 
@@ -375,6 +310,8 @@ export function WatchlistTablePanel() {
     const filename = `watchlist_${timestamp}.xlsx`;
 
     XLSX.writeFile(wb, filename);
+
+    toast.success(`Exported ${data.length} rows to ${filename}`);
   };
 
   // Generate SQL using AI and immediately run it
@@ -385,20 +322,22 @@ export function WatchlistTablePanel() {
     setIsLoading(true);
 
     try {
-      // Modify query based on toggle
       let finalQuery = aiQuery.trim();
-      if (useWatchlistPlaceholder) {
+
+      // If watchlist mode is enabled, enforce watchlist placeholder
+      if (useWatchlist) {
         if (watchlistSymbols.length === 0) {
           toast.error('Your watchlist is empty. Please add symbols first.');
           setIsGeneratingSQL(false);
+          setIsLoading(false);
           return;
         }
-        finalQuery = `IMPORTANT: The user wants to analyze their watchlist. You MUST use the {{WATCHLIST_SYMBOLS}} placeholder pattern in your SQL query. User query: ${aiQuery.trim()}`;
+        finalQuery = `IMPORTANT: The user wants to analyze their watchlist (${watchlistSymbols.length} stocks). You MUST use the {{WATCHLIST_SYMBOLS}} placeholder pattern in your SQL query. User query: ${aiQuery.trim()}`;
         console.log(
-          '🌟 Watchlist mode: Requesting SQL with {{WATCHLIST_SYMBOLS}} placeholder',
+          `🌟 Watchlist mode enabled: ${watchlistSymbols.length} symbols`,
         );
       } else {
-        console.log('🔍 Market mode: Generating general SQL query');
+        console.log('🔍 Flexible mode: AI will determine stock scope');
       }
 
       // Call screener agent with current SQL context
@@ -560,11 +499,10 @@ export function WatchlistTablePanel() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSettingsOpen(true)}
-                title="Manage watchlist symbols"
-                className="h-7 px-2"
+                className="h-7 px-2 gap-1"
               >
-                <Star className="w-3 h-3 mr-1 text-brand-primary" />
-                <span className="text-xs">Watchlist</span>
+                <Settings className="w-3 h-3" />
+                <span className="text-xs">Manage Watchlist</span>
               </Button>
               <Button
                 variant="ghost"
@@ -597,11 +535,10 @@ export function WatchlistTablePanel() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSettingsOpen(true)}
-                title="Manage watchlist symbols"
-                className="border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-primary"
+                className="border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-primary gap-2"
               >
-                <Star className="w-4 h-4 mr-2 text-brand-primary" />
-                <span className="font-medium">Watchlist</span>
+                <Settings className="w-4 h-4" />
+                <span className="font-medium">Manage Watchlist</span>
               </Button>
               <Button
                 variant="ghost"
@@ -635,7 +572,11 @@ export function WatchlistTablePanel() {
                   type="text"
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
-                  placeholder="Ask AI to analyze your watchlist... (e.g., 'Show ROCE and dividend yield')"
+                  placeholder={
+                    useWatchlist
+                      ? "e.g., 'P/E and dividend yield' or 'revenue growth and margins'"
+                      : "e.g., 'NVDA TSLA revenue growth' or 'tech stocks with ROCE > 20%'"
+                  }
                   className="w-full pl-10 pr-3 py-2 bg-background border border-brand-primary/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
                   disabled={isGeneratingSQL || isLoading}
                 />
@@ -660,43 +601,27 @@ export function WatchlistTablePanel() {
               </button>
             </div>
 
-            {/* Analysis Mode Selector */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Star className="w-3 h-3 mr-2" />
-                  {useWatchlistPlaceholder
-                    ? `Watchlist Mode (${watchlistSymbols.length} symbols)`
-                    : 'Market Screener Mode'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => setUseWatchlistPlaceholder(true)}
-                  className="cursor-pointer"
-                >
-                  <Star className="w-4 h-4 mr-2" />
-                  <div className="flex flex-col">
-                    <span className="font-medium">Watchlist Mode</span>
-                    <span className="text-xs text-muted-foreground">
-                      Analyze your {watchlistSymbols.length} watchlist stocks
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setUseWatchlistPlaceholder(false)}
-                  className="cursor-pointer"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  <div className="flex flex-col">
-                    <span className="font-medium">Market Screener</span>
-                    <span className="text-xs text-muted-foreground">
-                      Scan the entire market for opportunities
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Watchlist Toggle */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="use-watchlist"
+                checked={useWatchlist}
+                onCheckedChange={(checked) => setUseWatchlist(checked as boolean)}
+                disabled={isGeneratingSQL || isLoading}
+              />
+              <label
+                htmlFor="use-watchlist"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+              >
+                <Star className="w-4 h-4 text-brand-primary" />
+                Use my watchlist
+                {watchlistSymbols.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    ({watchlistSymbols.length} stocks)
+                  </span>
+                )}
+              </label>
+            </div>
           </form>
 
           {/* Divider */}
@@ -706,12 +631,12 @@ export function WatchlistTablePanel() {
             </div>
             <div className="relative flex justify-center text-xs">
               <span className="bg-background px-2 text-muted-foreground">
-                Or use template
+                Or use preset
               </span>
             </div>
           </div>
 
-          {/* Template Selector */}
+          {/* 分析方案选择器 */}
           <div className="flex items-center gap-2">
             <Select
               value={selectedTemplate}
@@ -719,7 +644,7 @@ export function WatchlistTablePanel() {
               disabled={isLoading}
             >
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Loading templates..." />
+                <SelectValue placeholder="Load preset..." />
               </SelectTrigger>
               <SelectContent>
                 {savedTemplates.map((template) => (
@@ -745,7 +670,7 @@ export function WatchlistTablePanel() {
                 size="icon"
                 onClick={() => deleteTemplate(selectedTemplate)}
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                title="Delete this template"
+                title="Delete this preset"
                 disabled={isLoading}
               >
                 <Trash2 className="w-4 h-4" />
@@ -753,16 +678,16 @@ export function WatchlistTablePanel() {
             )}
           </div>
 
-          {/* Refresh button - Only shown when a template is selected */}
+          {/* 刷新按钮 - 仅在选择方案时显示 */}
           {selectedTemplate && (
             <Button
               variant="secondary"
               onClick={handleRefreshTemplate}
               disabled={isLoading}
-              title="Refresh watchlist symbols and update analysis"
+              title="Refresh watchlist and update analysis"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Analysis
+              Refresh
             </Button>
           )}
         </div>
@@ -801,7 +726,7 @@ export function WatchlistTablePanel() {
                   className="flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  Save as Template
+                  Save as Preset
                 </Button>
               </div>
             )}
@@ -815,135 +740,11 @@ export function WatchlistTablePanel() {
 
             {/* Table */}
             {result.data.length > 0 && !result.error && (
-              <div className="flex-1 flex flex-col min-h-0 space-y-3">
-                {/* Table Controls */}
-                <div className="flex items-center justify-between gap-3 flex-shrink-0">
-                  {/* Search */}
-                  <input
-                    type="text"
-                    value={globalFilter ?? ''}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Search all columns..."
-                    className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                  />
-
-                  {/* Export Button */}
-                  <button
-                    onClick={handleExportExcel}
-                    className="px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export Excel
-                  </button>
-                </div>
-
-                {/* Table with auto height and scroll */}
-                <div className="flex-1 min-h-0 border border-border rounded-lg overflow-hidden">
-                  <div className="h-full overflow-x-auto overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted sticky top-0 z-10">
-                        {table.getHeaderGroups().map((headerGroup) => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <th
-                                key={header.id}
-                                className="px-4 py-3 text-left font-medium text-foreground cursor-pointer hover:bg-muted/80"
-                                onClick={header.column.getToggleSortingHandler()}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext(),
-                                  )}
-                                  {{
-                                    asc: ' 🔼',
-                                    desc: ' 🔽',
-                                  }[header.column.getIsSorted() as string] ??
-                                    null}
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                      <tbody>
-                        {table.getRowModel().rows.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-t border-border hover:bg-muted/50"
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <td
-                                key={cell.id}
-                                className="px-4 py-3 text-foreground"
-                              >
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext(),
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Pagination Controls */}
-                <div className="flex items-center justify-between px-2 flex-shrink-0">
-                  <div className="text-sm text-muted-foreground">
-                    Showing{' '}
-                    {table.getState().pagination.pageIndex *
-                      table.getState().pagination.pageSize +
-                      1}{' '}
-                    to{' '}
-                    {Math.min(
-                      (table.getState().pagination.pageIndex + 1) *
-                        table.getState().pagination.pageSize,
-                      table.getFilteredRowModel().rows.length,
-                    )}{' '}
-                    of {table.getFilteredRowModel().rows.length} results
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => table.setPageIndex(0)}
-                      disabled={!table.getCanPreviousPage()}
-                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {'<<'}
-                    </button>
-                    <button
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
-                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {'<'}
-                    </button>
-                    <span className="text-sm text-foreground">
-                      Page {table.getState().pagination.pageIndex + 1} of{' '}
-                      {table.getPageCount()}
-                    </span>
-                    <button
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
-                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {'>'}
-                    </button>
-                    <button
-                      onClick={() =>
-                        table.setPageIndex(table.getPageCount() - 1)
-                      }
-                      disabled={!table.getCanNextPage()}
-                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {'>>'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <EnhancedDataTable
+                data={result.data}
+                maxHeight="calc(100vh - 400px)"
+                onExport={handleExportExcel}
+              />
             )}
 
             {/* No results */}
@@ -960,12 +761,21 @@ export function WatchlistTablePanel() {
         {!result && !isLoading && (
           <div className="text-center py-12 text-muted-foreground">
             <Star className="w-16 h-16 mx-auto mb-4 opacity-30" />
-            <p className="text-sm mb-2">
-              Select a template or ask AI to analyze your watchlist
+            <p className="text-sm mb-3 font-medium">
+              Build any stock analysis table with AI
             </p>
-            <p className="text-xs">
-              Example: "Show me high-growth stocks with strong fundamentals"
-            </p>
+            <div className="text-xs space-y-2 max-w-md mx-auto">
+              <div>
+                <p className="text-muted-foreground/80 mb-1">With watchlist:</p>
+                <p>• "P/E and dividend yield"</p>
+                <p>• "revenue growth and margins"</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground/80 mb-1">Without watchlist:</p>
+                <p>• "NVDA TSLA AAPL revenue growth"</p>
+                <p>• "tech stocks with ROCE &gt; 20%"</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -977,19 +787,18 @@ export function WatchlistTablePanel() {
         initialTab={settingsTab}
       />
 
-      {/* Save Template Dialog */}
+      {/* Save Preset Dialog */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save as Template</DialogTitle>
+            <DialogTitle>Save as Preset</DialogTitle>
             <DialogDescription>
-              Save this AI-generated analysis as a reusable template. You can
-              load it later from the template selector.
+              Save this AI-generated analysis as a reusable preset. You can load it later from the preset selector.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="template-name">Template Name</Label>
+              <Label htmlFor="template-name">Preset Name</Label>
               <Input
                 id="template-name"
                 placeholder="e.g., High ROCE Stocks"
@@ -1023,7 +832,7 @@ export function WatchlistTablePanel() {
             </Button>
             <Button onClick={saveCurrentTemplate} disabled={!newTemplateName.trim()}>
               <Save className="w-4 h-4 mr-2" />
-              Save Template
+              Save Preset
             </Button>
           </DialogFooter>
         </DialogContent>

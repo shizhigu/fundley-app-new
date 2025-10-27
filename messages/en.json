@@ -67,7 +67,7 @@
   "panels": {
     "financialData": "Financial Data",
     "analysis": "Analysis",
-    "watchlist": "AI Table Analysis",
+    "watchlist": "Table Builder",
     "newsletter": "Newsletter",
     "screener": "Screener",
     "chart": "Chart"
@@ -281,7 +281,7 @@
     "clickToManage": "Click to manage subscription"
   },
   "watchlist": {
-    "title": "AI Table Analysis",
+    "title": "Table Builder",
     "addSymbols": "Add symbols",
     "symbolsPlaceholder": "Symbols (e.g., AAPL MSFT GOOGL or AAPL,MSFT,GOOGL)",
     "search": "Search symbols...",
