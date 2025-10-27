@@ -32,15 +32,12 @@ interface RightPanelTabsComponentProps {
 }
 
 function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = {}) {
-  // 检查品牌配置
-  const isFundley = process.env.NEXT_PUBLIC_BRAND === 'fundley';
-
   // 默认显示分析块
   const [activeTab, setActiveTab] = useState<TabType>('blocks');
   const { currentChatId } = useChatContext();
   const t = useTranslations('panels');
 
-  const allTabs: Tab[] = [
+  const tabs: Tab[] = [
     { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
@@ -51,11 +48,6 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     // { id: 'newsletter', label: t('newsletter'), icon: Newspaper },
   ];
 
-  // Fundley 品牌只显示 Analysis Blocks（第二个tab）
-  const tabs = isFundley
-    ? allTabs.filter(tab => tab.id === 'blocks')
-    : allTabs;
-
   // Handle tab change
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId);
@@ -63,7 +55,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
-      {/* Tab Navigation - fundley 品牌下只显示 Analysis Blocks 一个选项 */}
+      {/* Tab Navigation */}
       <nav className="flex items-center gap-1 p-2 border-b border-border bg-card" role="tablist">
         {/* Collapse button - Left side */}
         {onCollapse && (

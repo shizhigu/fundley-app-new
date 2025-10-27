@@ -17,7 +17,8 @@
       "Bash(git commit -m \"Fix TypeScript error: comment out newsletter tab rendering code to match TabType definition\")",
       "Bash(git push origin sql-migration)",
       "Bash(git checkout development)",
-      "Bash(git push origin development)"
+      "Bash(git push origin development)",
+      "Bash(pnpm lint)"
     ],
     "deny": [],
     "ask": [],
