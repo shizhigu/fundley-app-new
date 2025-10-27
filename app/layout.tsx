@@ -9,6 +9,7 @@ import { I18nProvider } from '@/lib/i18n-provider';
 import { UserSessionGuard } from '@/components/user-session-guard';
 import { DevModeShortcut } from '@/components/dev-mode-shortcut';
 import { DevModeIndicator } from '@/components/dev-mode-indicator';
+import { CEOFeedbackButton } from '@/components/ceo-feedback-button';
 
 import './globals.css';
 
@@ -119,6 +120,7 @@ export default async function RootLayout({
               <TooltipProvider>
                 <DevModeShortcut />
                 <DevModeIndicator />
+                <CEOFeedbackButton />
                 <div className="bg-background min-h-screen">
                   {children}
                 </div>
