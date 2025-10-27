@@ -15,13 +15,14 @@ export interface BrandingConfig {
 
 export const brandings: Record<string, BrandingConfig> = {
   fundley: {
-    name: 'Fundley',
+    name: 'ZenAsset',
     logo: '/logo.svg',
     primaryColor: '#FF6B1A', // Vibrant Orange (default Fundley brand)
     secondaryColor: '#F59E0B', // Amber
-    tagline: 'AI-Powered Financial Analysis',
+    tagline: 'AI agent for equity research',
     favicon: '/favicon.ico',
-    metaDescription: 'Professional AI-driven financial analysis and investment research platform',
+    metaDescription:
+      'Professional AI-driven financial analysis and investment research platform',
   },
 
   // Foga - Current client brand (your relative/friend)
@@ -32,7 +33,8 @@ export const brandings: Record<string, BrandingConfig> = {
     secondaryColor: '#E2F2C9', // Light Green (accent color)
     tagline: 'Private Equity AI Assistant',
     favicon: '/favicon.ico',
-    metaDescription: 'Professional AI-powered assistant for private equity, hedge funds, and family offices',
+    metaDescription:
+      'Professional AI-powered assistant for private equity, hedge funds, and family offices',
   },
 };
 
