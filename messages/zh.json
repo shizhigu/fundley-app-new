@@ -67,7 +67,7 @@
   "panels": {
     "financialData": "财务数据",
     "analysis": "分析块",
-    "watchlist": "AI 表格分析",
+    "watchlist": "自选股",
     "newsletter": "资讯",
     "screener": "筛选器",
     "chart": "图表"
@@ -282,7 +282,7 @@
     "clickToManage": "点击管理订阅"
   },
   "watchlist": {
-    "title": "AI 表格分析",
+    "title": "自选股",
     "addSymbols": "添加股票",
     "symbolsPlaceholder": "股票代码（例如：AAPL MSFT GOOGL 或 AAPL,MSFT,GOOGL）",
     "search": "搜索股票...",
