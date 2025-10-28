@@ -30,6 +30,7 @@ import {
   Columns3,
   CheckSquare,
   Square,
+  Presentation,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useChatContext } from '@/lib/contexts/chat-context';
@@ -269,14 +270,33 @@ export function AnalysisBlockRenderer({
   }, []);
 
   const dataFiles = React.useMemo(() => {
-    if (Array.isArray(content.files?.data)) return content.files.data; // Multiple files
+    if (Array.isArray(content.files?.data)) {
+      // Handle both new format (objects) and old format (strings)
+      return content.files.data.map((item: any) =>
+        typeof item === 'string' ? item : (item.filename || item)
+      );
+    }
     if (content.files?.data) return [content.files.data]; // Single file (backward compatible)
     return [];
   }, [content.files]);
 
   const reports = React.useMemo(() => {
-    if (content.files?.reports) return content.files.reports; // Multiple PDFs
+    if (content.files?.reports) {
+      return content.files.reports.map((item: any) =>
+        typeof item === 'string' ? item : (item.filename || item)
+      );
+    }
     if (content.files?.report) return [content.files.report]; // Single PDF
+    return [];
+  }, [content.files]);
+
+  const presentations = React.useMemo(() => {
+    if (content.files?.presentations) {
+      return content.files.presentations.map((item: any) =>
+        typeof item === 'string' ? item : (item.filename || item)
+      );
+    }
+    if (content.files?.presentation) return [content.files.presentation]; // Single PPTX
     return [];
   }, [content.files]);
 
@@ -284,14 +304,21 @@ export function AnalysisBlockRenderer({
   const artifacts = React.useMemo(() => {
     const filesList: string[] = [];
 
-    // Collect from artifacts array/single
+    // Collect from new unified artifacts array (objects with filename, type, extension)
     if (Array.isArray(content.files?.artifacts)) {
-      filesList.push(...content.files.artifacts);
+      const artifactFiles = content.files.artifacts.map((artifact: any) => {
+        // Handle new format (object) or old format (string)
+        if (typeof artifact === 'string') {
+          return artifact;
+        }
+        return artifact.filename || artifact;
+      });
+      filesList.push(...artifactFiles);
     } else if (content.files?.artifact) {
       filesList.push(content.files.artifact);
     }
 
-    // Collect Python scripts
+    // Collect Python scripts (backward compatibility)
     if (Array.isArray(content.files?.scripts)) {
       filesList.push(...content.files.scripts);
     } else if (content.files?.script) {
@@ -393,10 +420,12 @@ export function AnalysisBlockRenderer({
   // Generic file download handler
   const handleDownloadFile = useCallback(
     (filename: string) => {
-      const url = `/api/files/${filename}?block_id=${blockId}`;
+      // Extract base filename (remove subdirectory prefix like "reports/", "data/", "artifacts/")
+      const baseFilename = filename.includes('/') ? filename.split('/').pop()! : filename;
+      const url = `/api/files/${baseFilename}?block_id=${blockId}`;
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = baseFilename;
       link.click();
     },
     [blockId],
@@ -406,65 +435,40 @@ export function AnalysisBlockRenderer({
   const getFileInfo = useCallback((filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const fileTypes: Record<string, { label: string; color: string }> = {
-      pdf: {
-        label: 'PDF',
-        color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-      },
-      png: {
-        label: 'PNG',
-        color:
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      },
-      jpg: {
-        label: 'JPG',
-        color:
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      },
-      jpeg: {
-        label: 'JPG',
-        color:
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      },
-      svg: {
-        label: 'SVG',
-        color:
-          'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
-      },
-      gif: {
-        label: 'GIF',
-        color:
-          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
-      },
-      csv: {
-        label: 'CSV',
-        color:
-          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
-      },
-      xlsx: {
-        label: 'Excel',
-        color:
-          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
-      },
-      txt: {
-        label: 'TXT',
-        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
-      },
-      md: {
-        label: 'Markdown',
-        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
-      },
-      py: {
-        label: 'Python',
-        color:
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      },
+      // Reports
+      pdf: { label: 'PDF', color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
+      pptx: { label: 'PPTX', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' },
+      // Data
+      csv: { label: 'CSV', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
+      json: { label: 'JSON', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
+      xlsx: { label: 'Excel', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+      parquet: { label: 'Parquet', color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' },
+      feather: { label: 'Feather', color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' },
+      // Images
+      png: { label: 'PNG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      jpg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      jpeg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      svg: { label: 'SVG', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' },
+      gif: { label: 'GIF', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+      webp: { label: 'WebP', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      // Documents
+      txt: { label: 'TXT', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+      md: { label: 'Markdown', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+      docx: { label: 'Word', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      // Code
+      py: { label: 'Python', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      r: { label: 'R', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      sql: { label: 'SQL', color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' },
+      ipynb: { label: 'Notebook', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' },
+      // Archives
+      zip: { label: 'ZIP', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
+      tar: { label: 'TAR', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
+      gz: { label: 'GZ', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
+      // Media
+      mp4: { label: 'MP4', color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400' },
+      mp3: { label: 'MP3', color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400' },
     };
-    return (
-      fileTypes[ext] || {
-        label: ext.toUpperCase(),
-        color: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
-      }
-    );
+    return fileTypes[ext] || { label: ext.toUpperCase(), color: 'bg-gray-100 dark:bg-gray-800 text-gray-500' };
   }, []);
 
   // Excel export handler - supports exporting selected rows or all rows
@@ -693,7 +697,8 @@ export function AnalysisBlockRenderer({
   const hasChart = charts.length > 0;
   const hasData = dataFiles.length > 0;
   const hasReport = reports.length > 0;
-  const contentTypesCount = [hasText, hasChart, hasData, hasReport].filter(
+  const hasPresentation = presentations.length > 0;
+  const contentTypesCount = [hasText, hasChart, hasData, hasReport, hasPresentation].filter(
     Boolean,
   ).length;
 
@@ -1320,6 +1325,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {reports.map((reportFile: string, index: number) => {
                 const fileInfo = getFileInfo(reportFile);
+                const displayName = reportFile.includes('/') ? reportFile.split('/').pop()! : reportFile;
                 return (
                   <Button
                     key={`${reportFile}-${index}`}
@@ -1329,7 +1335,42 @@ export function AnalysisBlockRenderer({
                   >
                     <Download className="w-4 h-4" />
                     <span className="flex-1 text-left truncate">
-                      {reportFile}
+                      {displayName}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
+                    >
+                      {fileInfo.label}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* PowerPoint Presentations - Support multiple PPTXs */}
+        {presentations.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Presentation className="w-4 h-4" />
+              <span>Presentation{presentations.length > 1 ? 's' : ''}</span>
+            </div>
+
+            <div className="space-y-2">
+              {presentations.map((pptxFile: string, index: number) => {
+                const fileInfo = getFileInfo(pptxFile);
+                const displayName = pptxFile.includes('/') ? pptxFile.split('/').pop()! : pptxFile;
+                return (
+                  <Button
+                    key={`${pptxFile}-${index}`}
+                    onClick={() => handleDownloadFile(pptxFile)}
+                    variant="outline"
+                    className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="flex-1 text-left truncate">
+                      {displayName}
                     </span>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
@@ -1354,6 +1395,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {artifacts.map((artifactFile: string, index: number) => {
                 const fileInfo = getFileInfo(artifactFile);
+                const displayName = artifactFile.includes('/') ? artifactFile.split('/').pop()! : artifactFile;
                 return (
                   <Button
                     key={`${artifactFile}-${index}`}
@@ -1363,7 +1405,7 @@ export function AnalysisBlockRenderer({
                   >
                     <Download className="w-4 h-4" />
                     <span className="flex-1 text-left truncate">
-                      {artifactFile}
+                      {displayName}
                     </span>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
