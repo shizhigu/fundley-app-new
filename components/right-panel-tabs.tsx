@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
 import { AnalysisBlocksPanel } from './analysis-blocks-panel';
+import { CalendarBlocksPanel } from './calendar-blocks-panel';
 import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
@@ -18,7 +19,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist';
+type TabType = 'data' | 'blocks' | 'calendar' | 'chart' | 'screener' | 'watchlist';
 
 interface Tab {
   id: TabType;
@@ -34,6 +35,7 @@ interface RightPanelTabsComponentProps {
 function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = {}) {
   // 默认显示分析块
   const [activeTab, setActiveTab] = useState<TabType>('blocks');
+  const [showCalendarView, setShowCalendarView] = useState(false);
   const { currentChatId } = useChatContext();
   const t = useTranslations('panels');
 
@@ -53,6 +55,10 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
   // Handle tab change
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId);
+    // Reset calendar view when switching tabs
+    if (tabId !== 'blocks') {
+      setShowCalendarView(false);
+    }
   };
 
   return (
@@ -126,7 +132,17 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
         {activeTab === 'blocks' && (
           <div id="blocks-panel" role="tabpanel" aria-labelledby="blocks-tab" className="h-full">
             {currentChatId ? (
-              <AnalysisBlocksPanel chatId={currentChatId} />
+              showCalendarView ? (
+                <CalendarBlocksPanel
+                  chatId={currentChatId}
+                  onSwitchToList={() => setShowCalendarView(false)}
+                />
+              ) : (
+                <AnalysisBlocksPanel
+                  chatId={currentChatId}
+                  onSwitchToCalendar={() => setShowCalendarView(true)}
+                />
+              )
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                 Select a chat to view analysis blocks

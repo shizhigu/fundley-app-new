@@ -423,9 +423,12 @@ export function AnalysisBlockRenderer({
   // Generic file download handler
   const handleDownloadFile = useCallback(
     (filename: string) => {
-      // Extract base filename (remove subdirectory prefix like "reports/", "data/", "artifacts/")
+      // Use full relative path (new architecture supports subdirectories)
+      const url = `/api/files/${filename}?block_id=${blockId}`;
+
+      // Extract base filename for download attribute
       const baseFilename = filename.includes('/') ? filename.split('/').pop()! : filename;
-      const url = `/api/files/${baseFilename}?block_id=${blockId}`;
+
       const link = document.createElement('a');
       link.href = url;
       link.download = baseFilename;

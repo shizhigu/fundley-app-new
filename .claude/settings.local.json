@@ -1,29 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat /Users/gushizhi/Projects/fundley-app/test.sql)",
-      "Read(//Users/gushizhi/Projects/**)",
-      "Bash(while read f)",
-      "Bash(do echo \"=== $f ===\")",
-      "Bash(wc -l \"$f\")",
-      "Bash(done)",
-      "Bash(for f in /Users/gushizhi/Projects/fundley-app/chatbot-service/tools/*.py)",
-      "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/agno/**)",
-      "Read(///**)",
-      "Bash(git checkout -b development)",
-      "Bash(git push -u origin development)",
-      "Bash(git checkout sql-migration)",
-      "Bash(git add components/right-panel-tabs.tsx)",
-      "Bash(git commit -m \"Fix TypeScript error: comment out newsletter tab rendering code to match TabType definition\")",
-      "Bash(git push origin sql-migration)",
-      "Bash(git checkout development)",
-      "Bash(git push origin development)",
-      "Bash(pnpm lint)",
-      "Bash(python -c \"from tools.e2b import E2BTools; print(''✅ E2BTools imported successfully'')\")",
-      "Bash(psql $DATABASE_URL -f lib/db/migrations/0024_remove_block_fkey_from_task_runs.sql)",
-      "Bash(psql $DATABASE_URL -c \"SELECT conname, contype, confdeltype FROM pg_constraint WHERE conrelid = ''scheduled_task_runs''::regclass AND conname LIKE ''%created_block%'';\")",
-      "Bash(psql $DATABASE_URL -c \"\\d analysis_blocks\")",
-      "Bash(tree -L 4 /tmp/fundley/31ddad94-7501-455c-9353-aac6038002f0/tasks/)"
+      "Bash(find /Users/gushizhi/Projects/fundley-app/chatbot-service -name \"*.py\" -type f -exec grep -l \"api/v1/analysis/files\" {} ;)",
+      "Bash(curl -I \"http://localhost:8012/api/v1/analysis/files/31ddad94-7501-455c-9353-aac6038002f0/tasks/reporting_slides/deliverables/20251029/DCF_Summary_NVDA_TSLA_AAPL.pptx\")",
+      "Bash(unzip -l /private/tmp/fundley/31ddad94-7501-455c-9353-aac6038002f0/tasks/reporting_slides/deliverables/20251029/DCF_Summary_NVDA_TSLA_AAPL.pptx)"
     ],
     "deny": [],
     "ask": [],

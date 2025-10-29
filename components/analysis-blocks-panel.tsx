@@ -17,6 +17,7 @@ import {
   Plus,
   Pin,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MovingBorder } from '@/components/aceternity/moving-border';
@@ -30,11 +31,13 @@ import { useActiveBlock } from '@/lib/hooks/use-active-block';
 interface AnalysisBlocksPanelProps {
   chatId: string;
   className?: string;
+  onSwitchToCalendar?: () => void;
 }
 
 export function AnalysisBlocksPanel({
   chatId,
   className = '',
+  onSwitchToCalendar,
 }: AnalysisBlocksPanelProps) {
   const t = useTranslations('analysis');
   const {
@@ -50,9 +53,6 @@ export function AnalysisBlocksPanel({
     setActive: syncToRedis,
     clearActive: clearRedis,
   } = useActiveBlock();
-
-  // Quick filter for "This Chat" blocks
-  const [showCurrentChatOnly, setShowCurrentChatOnly] = useState(false);
 
   // Sort order - restore from localStorage (keep this for UI preference)
   type SortOrder = 'updated' | 'created';
@@ -98,17 +98,6 @@ export function AnalysisBlocksPanel({
   // 分离置顶和普通块
   const { pinnedBlocks, unpinnedBlocks } = useMemo(() => {
     let filtered = blocks;
-
-    // Filter by current chat if enabled
-    // Show blocks that were created OR modified in this chat
-    if (showCurrentChatOnly) {
-      filtered = filtered.filter(
-        (block) =>
-          block.sourceChatId === chatId ||
-          block.chat_id === chatId ||
-          block.modifiedInChats?.includes(chatId), // Check modification history
-      );
-    }
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -174,7 +163,7 @@ export function AnalysisBlocksPanel({
       pinnedBlocks: sortBlocks(pinned),
       unpinnedBlocks: sortBlocks(unpinned),
     };
-  }, [blocks, searchQuery, showCurrentChatOnly, chatId, sortOrder]);
+  }, [blocks, searchQuery, sortOrder]);
 
   // Combined for total count
   const filteredBlocks = useMemo(() => {
@@ -605,25 +594,16 @@ export function AnalysisBlocksPanel({
 
               {/* Quick Filter and Sort Controls */}
               <div className="flex items-center justify-between gap-4">
-                {/* Quick Filter: This Chat */}
-                <div className="flex items-center gap-2">
+                {/* Switch to Calendar View */}
+                {onSwitchToCalendar && (
                   <button
-                    onClick={() => setShowCurrentChatOnly(!showCurrentChatOnly)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border ${
-                      showCurrentChatOnly
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20'
-                    }`}
+                    onClick={onSwitchToCalendar}
+                    className="flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20 hover:bg-muted"
                   >
-                    <MessageSquare className="h-4 w-4" />
-                    {t('thisChat')}
+                    <Calendar className="h-4 w-4" />
+                    Calendar View
                   </button>
-                  {showCurrentChatOnly && (
-                    <span className="text-xs text-muted-foreground">
-                      {filteredBlocks.length} / {blocks.length} blocks
-                    </span>
-                  )}
-                </div>
+                )}
 
                 {/* Sort Order Tabs */}
                 <Tabs
