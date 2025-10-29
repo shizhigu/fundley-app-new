@@ -32,7 +32,8 @@
       "Bash(echo:*)",
       "Bash(source:*)",
       "Bash(node:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pnpm build)"
     ],
     "deny": [],
     "ask": [],

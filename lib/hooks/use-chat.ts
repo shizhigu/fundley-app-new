@@ -46,12 +46,12 @@ export function useChat(): ChatState & ChatActions {
     null,
   );
 
-  // 跟踪 block 工具调用，用于触发轮询
-  const [blockToolCalled, setBlockToolCalled] = useState<number>(0);
+  // 跟踪 deliverable 工具调用，用于触发轮询
+  const [deliverableToolCalled, setDeliverableToolCalled] = useState<number>(0);
 
   // 跟踪切换到的 deliverable ID（用于 switch_deliverable 工具）
   // 使用对象包含 timestamp 确保每次切换都能触发 useEffect
-  const [switchedBlockId, setSwitchedBlockId] = useState<{
+  const [switchedDeliverableId, setSwitchedDeliverableId] = useState<{
     id: string;
     timestamp: number;
   } | null>(null);
@@ -601,7 +601,7 @@ export function useChat(): ChatState & ChatActions {
               ) {
                 console.log(`🎯 ${toolName} detected, fetching from Redis`);
                 // 使用 timestamp 确保每次都触发（即使是同一个 deliverable）
-                setSwitchedBlockId({
+                setSwitchedDeliverableId({
                   id: 'fetch-from-redis',
                   timestamp: Date.now(),
                 });
@@ -610,7 +610,7 @@ export function useChat(): ChatState & ChatActions {
               // Update: 仅触发轮询更新（不切换 deliverable）
               if (toolName === 'update_deliverable') {
                 console.log(`🎯 Update detected, triggering polling`);
-                setBlockToolCalled((prev) => prev + 1);
+                setDeliverableToolCalled((prev) => prev + 1);
               }
 
               // Script execution: 触发轮询（文件可能已更新）
@@ -620,7 +620,7 @@ export function useChat(): ChatState & ChatActions {
                   `🎯 ${toolName} detected, will trigger polling after file download`,
                 );
                 setTimeout(() => {
-                  setBlockToolCalled((prev) => prev + 1);
+                  setDeliverableToolCalled((prev) => prev + 1);
                 }, 1500);
               }
             }
@@ -936,8 +936,8 @@ export function useChat(): ChatState & ChatActions {
     groupedMessages, // 新增分组消息
     isLoading,
     error,
-    blockToolCalled, // Deliverable 工具调用触发器
-    switchedBlockId, // 切换到的 deliverable ID（用于 switch_deliverable 工具）
+    deliverableToolCalled, // Deliverable 工具调用触发器
+    switchedDeliverableId, // 切换到的 deliverable ID（用于 switch_deliverable 工具）
     currentMetrics, // Token 使用和成本统计
     currentDisplayMessage, // 实时状态显示
 

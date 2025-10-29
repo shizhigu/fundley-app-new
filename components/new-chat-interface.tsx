@@ -149,7 +149,7 @@ export function NewChatInterface({
 }: NewChatInterfaceProps) {
   const t = useTranslations('common');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const { activeBlockId } = useDeliverableViewStore();
+  const { activeDeliverableId } = useDeliverableViewStore();
 
   // 滚动控制
   const { containerRef, endRef, isAtBottom, scrollToBottom } =
@@ -185,8 +185,8 @@ export function NewChatInterface({
         ?.map((attachment) => attachment.file)
         .filter(Boolean) as File[];
 
-      // 调用外部的发送消息函数，传递当前激活的 blockId
-      await onSendMessage(content, files, activeBlockId || undefined);
+      // 调用外部的发送消息函数，传递当前激活的 deliverableId
+      await onSendMessage(content, files, activeDeliverableId || undefined);
 
       // 发送后清空attachments
       setAttachments([]);

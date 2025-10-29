@@ -49,6 +49,7 @@ export function CalendarDeliverablesPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detailViewBlockId, setDetailViewBlockId] = useState<string | null>(null);
+  const [pendingOpenBlockId, setPendingOpenBlockId] = useState<string | null>(null); // 等待 blocks 更新后自动打开
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -62,9 +63,24 @@ export function CalendarDeliverablesPanel({
     loadBlocks();
   }, []);
 
+  // Handle pending block open after blocks state updates
+  useEffect(() => {
+    if (pendingOpenBlockId && blocks.length > 0) {
+      const targetBlock = blocks.find((b) => b.id === pendingOpenBlockId);
+      if (targetBlock) {
+        console.log('✅ [Calendar View] Opening pending deliverable:', pendingOpenBlockId);
+        setDetailViewBlockId(pendingOpenBlockId);
+        setActiveDeliverable(pendingOpenBlockId, targetBlock);
+        setPendingOpenBlockId(null);
+      }
+    }
+  }, [blocks, pendingOpenBlockId, setActiveDeliverable]);
+
   // Monitor switch_deliverable tool calls from Redis
   useEffect(() => {
     if (!switchedDeliverableId) return;
+
+    console.log('🎯 [Calendar View] Detected switch_deliverable tool call:', switchedDeliverableId);
 
     const handleSwitch = async () => {
       pendingSwitchRef.current = 'switching';
@@ -83,15 +99,24 @@ export function CalendarDeliverablesPanel({
         let targetBlock = blocks.find((b) => b.id === block_id);
 
         if (!targetBlock) {
+          // Block not in current state, fetch fresh data
           const blocksRes = await fetch('/api/blocks');
           if (blocksRes.ok) {
             const { blocks: allBlocks } = await blocksRes.json();
             targetBlock = allBlocks.find((b: any) => b.id === block_id);
             setBlocks(allBlocks);
-          }
-        }
 
-        if (targetBlock) {
+            if (targetBlock) {
+              // Set pending - will be opened when blocks state updates
+              console.log('⏳ [Calendar View] Setting pending open for:', block_id);
+              setPendingOpenBlockId(block_id);
+            } else {
+              console.warn('⚠️ [Calendar View] Target block not found after fetch:', block_id);
+            }
+          }
+        } else {
+          // Block already in state, open immediately
+          console.log('🔵 [Calendar View] Auto-opening deliverable (immediate):', block_id);
           setDetailViewBlockId(block_id);
           setActiveDeliverable(block_id, content || targetBlock);
         }
@@ -344,6 +369,27 @@ export function CalendarDeliverablesPanel({
       // Only sync if the IDs match (prevents race condition)
       if (detailBlock.id !== detailViewBlockId) {
         return;
+      }
+
+      // Mark as read if not already opened
+      if (!detailBlock.opened) {
+        fetch(`/api/blocks/${detailViewBlockId}/mark-read`, {
+          method: 'POST',
+        })
+          .then((res) => {
+            if (res.ok) {
+              console.log('✅ Marked deliverable as read:', detailViewBlockId);
+              // Update local state
+              setBlocks((prevBlocks) =>
+                prevBlocks.map((b) =>
+                  b.id === detailViewBlockId ? { ...b, opened: true } : b
+                )
+              );
+            }
+          })
+          .catch((err) => {
+            console.error('❌ Failed to mark as read:', err);
+          });
       }
 
       setActiveDeliverable(detailViewBlockId, detailBlock);

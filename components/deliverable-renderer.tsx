@@ -179,7 +179,7 @@ export function DeliverableRenderer({
 }: AnalysisBlockProps) {
   const { content } = block;
   const tAnalysis = useTranslations('analysis');
-  const { selectChat, blockToolCalled } = useChatContext();
+  const { selectChat, deliverableToolCalled } = useChatContext();
 
   // Block ID for file fetching
   const blockId = block.id;

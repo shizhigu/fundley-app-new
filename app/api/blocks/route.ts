@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
         isPinned: block.isPinned || false,
         pinnedAt: block.pinnedAt,
         primarySymbol: block.primarySymbol,
+        opened: block.opened || false, // 已读状态
         content: block.content,
         // Computed fields for UI
         title,

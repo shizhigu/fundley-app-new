@@ -66,8 +66,8 @@ export interface ChatState {
   groupedMessages: import('@/lib/types').MessageInvocation[]; // Add grouped messages
   isLoading: boolean;
   error: string | null;
-  blockToolCalled: number; // Deliverable 工具调用计数器，用于触发轮询
-  switchedBlockId: { id: string; timestamp: number } | null; // 切换到的 deliverable ID（用于 switch_deliverable 工具）
+  deliverableToolCalled: number; // Deliverable 工具调用计数器，用于触发轮询
+  switchedDeliverableId: { id: string; timestamp: number } | null; // 切换到的 deliverable ID（用于 switch_deliverable 工具）
   currentMetrics: {
     input_tokens: number;
     output_tokens: number;

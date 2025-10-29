@@ -75,6 +75,7 @@ export function DeliverablesPanel({
   const [detailViewBlockId, setDetailViewBlockId] = useState<string | null>(
     null,
   );
+  const [pendingOpenBlockId, setPendingOpenBlockId] = useState<string | null>(null); // 等待 blocks 更新后自动打开
   const [searchQuery, setSearchQuery] = useState('');
   const lastTimestampRef = useRef<string | null>(null);
   const hasRestoredRef = useRef(false);
@@ -97,6 +98,19 @@ export function DeliverablesPanel({
       }
     }
   }, [redisActiveDeliverable, blocks, setActiveDeliverable]);
+
+  // Handle pending block open after blocks state updates
+  useEffect(() => {
+    if (pendingOpenBlockId && blocks.length > 0) {
+      const targetBlock = blocks.find((b) => b.id === pendingOpenBlockId);
+      if (targetBlock) {
+        console.log('✅ [List View] Opening pending deliverable:', pendingOpenBlockId);
+        setDetailViewBlockId(pendingOpenBlockId);
+        setActiveDeliverable(pendingOpenBlockId, targetBlock);
+        setPendingOpenBlockId(null);
+      }
+    }
+  }, [blocks, pendingOpenBlockId, setActiveDeliverable]);
 
   // 过滤和排序blocks - 根据搜索关键词、未读过滤器和排序顺序
   // 分离置顶和普通块
@@ -219,6 +233,8 @@ export function DeliverablesPanel({
   useEffect(() => {
     if (!switchedDeliverableId) return;
 
+    console.log('🎯 [List View] Detected switch_deliverable tool call:', switchedDeliverableId);
+
     const handleSwitch = async () => {
       // Mark as pending switch (to prevent Redis overwrite)
       pendingSwitchRef.current = 'switching';
@@ -239,15 +255,24 @@ export function DeliverablesPanel({
         let targetBlock = blocks.find((b) => b.id === block_id);
 
         if (!targetBlock) {
+          // Block not in current state, fetch fresh data
           const blocksRes = await fetch('/api/blocks');
           if (blocksRes.ok) {
             const { blocks: allBlocks } = await blocksRes.json();
             targetBlock = allBlocks.find((b: any) => b.id === block_id);
             setBlocks(allBlocks);
-          }
-        }
 
-        if (targetBlock) {
+            if (targetBlock) {
+              // Set pending - will be opened when blocks state updates
+              console.log('⏳ [List View] Setting pending open for:', block_id);
+              setPendingOpenBlockId(block_id);
+            } else {
+              console.warn('⚠️ [List View] Target block not found after fetch:', block_id);
+            }
+          }
+        } else {
+          // Block already in state, open immediately
+          console.log('🔵 [List View] Auto-opening deliverable (immediate):', block_id);
           setDetailViewBlockId(block_id);
           setActiveDeliverable(block_id, content || targetBlock);
         }
@@ -450,6 +475,27 @@ export function DeliverablesPanel({
       // Only sync if the IDs match (prevents race condition where detailBlock lags behind detailViewBlockId)
       if (detailBlock.id !== detailViewBlockId) {
         return;
+      }
+
+      // Mark as read if not already opened
+      if (!detailBlock.opened) {
+        fetch(`/api/blocks/${detailViewBlockId}/mark-read`, {
+          method: 'POST',
+        })
+          .then((res) => {
+            if (res.ok) {
+              console.log('✅ Marked deliverable as read:', detailViewBlockId);
+              // Update local state
+              setBlocks((prevBlocks) =>
+                prevBlocks.map((b) =>
+                  b.id === detailViewBlockId ? { ...b, opened: true } : b
+                )
+              );
+            }
+          })
+          .catch((err) => {
+            console.error('❌ Failed to mark as read:', err);
+          });
       }
 
       // Update Zustand store for UI state
