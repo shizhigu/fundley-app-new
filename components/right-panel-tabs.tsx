@@ -5,8 +5,8 @@ import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, 
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
-import { AnalysisBlocksPanel } from './analysis-blocks-panel';
-import { CalendarBlocksPanel } from './calendar-blocks-panel';
+import { DeliverablesPanel } from './deliverables-panel';
+import { CalendarDeliverablesPanel } from './calendar-deliverables-panel';
 import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
@@ -133,19 +133,19 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
           <div id="blocks-panel" role="tabpanel" aria-labelledby="blocks-tab" className="h-full">
             {currentChatId ? (
               showCalendarView ? (
-                <CalendarBlocksPanel
+                <CalendarDeliverablesPanel
                   chatId={currentChatId}
                   onSwitchToList={() => setShowCalendarView(false)}
                 />
               ) : (
-                <AnalysisBlocksPanel
+                <DeliverablesPanel
                   chatId={currentChatId}
                   onSwitchToCalendar={() => setShowCalendarView(true)}
                 />
               )
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                Select a chat to view analysis blocks
+                Select a chat to view deliverables
               </div>
             )}
           </div>

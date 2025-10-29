@@ -38,7 +38,7 @@ export async function PATCH(
 
     // Verify ownership
     const existingBlock = await db`
-      SELECT user_id FROM analysis_blocks WHERE id = ${blockId}
+      SELECT user_id FROM deliverables WHERE id = ${blockId}
     `;
 
     if (existingBlock.length === 0) {
@@ -60,7 +60,7 @@ export async function PATCH(
 
     // Perform update
     const updated = await db`
-      UPDATE analysis_blocks
+      UPDATE deliverables
       SET content = ${JSON.stringify(updates.content)}
       WHERE id = ${blockId}
       RETURNING
@@ -101,7 +101,7 @@ export async function DELETE(
 
     // Verify ownership
     const existingBlock = await db`
-      SELECT user_id FROM analysis_blocks WHERE id = ${blockId}
+      SELECT user_id FROM deliverables WHERE id = ${blockId}
     `;
 
     if (existingBlock.length === 0) {
@@ -113,13 +113,13 @@ export async function DELETE(
     }
 
     // Delete block from database
-    await db`DELETE FROM analysis_blocks WHERE id = ${blockId}`;
+    await db`DELETE FROM deliverables WHERE id = ${blockId}`;
 
-    // Remove from Redis block history if present
+    // Remove from Redis deliverable history if present
     try {
       redis = await createRedisConnection();
 
-      const historyKey = `user:${userId}:block_history`;
+      const historyKey = `user:${userId}:deliverable_history`;
       const historyStr = await redis.get(historyKey);
 
       if (historyStr) {
@@ -127,7 +127,7 @@ export async function DELETE(
         try {
           history = JSON.parse(historyStr);
         } catch (e) {
-          console.error('Failed to parse block history:', e);
+          console.error('Failed to parse deliverable history:', e);
         }
 
         // Remove the deleted block from history
@@ -152,14 +152,14 @@ export async function DELETE(
         }
       }
 
-      // Also clear active block if it's the one being deleted
-      const activeBlockId = await redis.get(`user:${userId}:active_block_id`);
+      // Also clear active deliverable if it's the one being deleted
+      const activeBlockId = await redis.get(`user:${userId}:active_deliverable_id`);
       if (activeBlockId === blockId) {
         await redis.del([
-          `user:${userId}:active_block_id`,
-          `user:${userId}:active_block_content`
+          `user:${userId}:active_deliverable_id`,
+          `user:${userId}:active_deliverable_content`
         ]);
-        console.log(`✅ Cleared active block ${blockId.slice(0, 8)}...`);
+        console.log(`✅ Cleared active deliverable ${blockId.slice(0, 8)}...`);
       }
     } catch (redisError) {
       // Log but don't fail the delete operation if Redis cleanup fails

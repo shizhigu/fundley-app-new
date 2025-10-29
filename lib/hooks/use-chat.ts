@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
-import { useBlockViewStore } from '@/stores/block-view-store';
+import { useDeliverableViewStore } from '@/stores/deliverable-view-store';
 import type {
   Chat,
   ChatMessage,
@@ -49,7 +49,7 @@ export function useChat(): ChatState & ChatActions {
   // 跟踪 block 工具调用，用于触发轮询
   const [blockToolCalled, setBlockToolCalled] = useState<number>(0);
 
-  // 跟踪切换到的 block ID（用于 switch_analysis_block 工具）
+  // 跟踪切换到的 deliverable ID（用于 switch_deliverable 工具）
   // 使用对象包含 timestamp 确保每次切换都能触发 useEffect
   const [switchedBlockId, setSwitchedBlockId] = useState<{
     id: string;
@@ -596,19 +596,19 @@ export function useChat(): ChatState & ChatActions {
 
               // Create/Switch: 从 Redis 读取（后端已同步）
               if (
-                toolName === 'create_analysis_block' ||
-                toolName === 'switch_analysis_block'
+                toolName === 'create_deliverable' ||
+                toolName === 'switch_deliverable'
               ) {
                 console.log(`🎯 ${toolName} detected, fetching from Redis`);
-                // 使用 timestamp 确保每次都触发（即使是同一个 block）
+                // 使用 timestamp 确保每次都触发（即使是同一个 deliverable）
                 setSwitchedBlockId({
                   id: 'fetch-from-redis',
                   timestamp: Date.now(),
                 });
               }
 
-              // Update: 仅触发轮询更新（不切换 block）
-              if (toolName === 'update_analysis_block') {
+              // Update: 仅触发轮询更新（不切换 deliverable）
+              if (toolName === 'update_deliverable') {
                 console.log(`🎯 Update detected, triggering polling`);
                 setBlockToolCalled((prev) => prev + 1);
               }
@@ -936,8 +936,8 @@ export function useChat(): ChatState & ChatActions {
     groupedMessages, // 新增分组消息
     isLoading,
     error,
-    blockToolCalled, // Block 工具调用触发器
-    switchedBlockId, // 切换到的 block ID（用于 switch_analysis_block 工具）
+    blockToolCalled, // Deliverable 工具调用触发器
+    switchedBlockId, // 切换到的 deliverable ID（用于 switch_deliverable 工具）
     currentMetrics, // Token 使用和成本统计
     currentDisplayMessage, // 实时状态显示
 

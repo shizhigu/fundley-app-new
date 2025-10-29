@@ -27,7 +27,7 @@ export async function PATCH(
 
     // Verify ownership
     const existingBlock = await db`
-      SELECT user_id FROM analysis_blocks WHERE id = ${blockId}
+      SELECT user_id FROM deliverables WHERE id = ${blockId}
     `;
 
     if (existingBlock.length === 0) {
@@ -40,7 +40,7 @@ export async function PATCH(
 
     // Update pin status
     const updated = await db`
-      UPDATE analysis_blocks
+      UPDATE deliverables
       SET
         is_pinned = ${isPinned},
         pinned_at = ${isPinned ? 'NOW()' : null}

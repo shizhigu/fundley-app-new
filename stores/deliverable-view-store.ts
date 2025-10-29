@@ -2,46 +2,46 @@ import { create } from 'zustand';
 
 export type ViewMode = 'contextual' | 'library';
 
-export interface BlockFilter {
+export interface DeliverableFilter {
   search?: string;
   symbols?: string[];
   tags?: string[];
   isTemplate?: boolean;
 }
 
-interface BlockViewState {
+interface DeliverableViewState {
   // View mode
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
 
-  // Active block tracking
-  activeBlockId: string | null;
-  activeBlockContent: any | null; // Full block content for agent context
-  setActiveBlock: (id: string | null, content?: any | null) => void;
+  // Active deliverable tracking
+  activeDeliverableId: string | null;
+  activeDeliverableContent: any | null; // Full deliverable content for agent context
+  setActiveDeliverable: (id: string | null, content?: any | null) => void;
 
   // Backward compatibility
-  setActiveBlockId: (id: string | null) => void;
+  setActiveDeliverableId: (id: string | null) => void;
 
   // Filters and search (for library view)
-  filters: BlockFilter;
-  setFilters: (filters: BlockFilter) => void;
-  updateFilter: (key: keyof BlockFilter, value: any) => void;
+  filters: DeliverableFilter;
+  setFilters: (filters: DeliverableFilter) => void;
+  updateFilter: (key: keyof DeliverableFilter, value: any) => void;
   clearFilters: () => void;
 
   // Sort preferences
   sortBy: 'created_at' | 'updated_at' | 'last_accessed_at' | 'title';
   sortOrder: 'asc' | 'desc';
   setSorting: (
-    sortBy: BlockViewState['sortBy'],
-    sortOrder: BlockViewState['sortOrder'],
+    sortBy: DeliverableViewState['sortBy'],
+    sortOrder: DeliverableViewState['sortOrder'],
   ) => void;
 }
 
-export const useBlockViewStore = create<BlockViewState>((set) => ({
+export const useDeliverableViewStore = create<DeliverableViewState>((set) => ({
   // Initial state
   viewMode: 'contextual',
-  activeBlockId: null,
-  activeBlockContent: null,
+  activeDeliverableId: null,
+  activeDeliverableContent: null,
   filters: {},
   sortBy: 'updated_at',
   sortOrder: 'desc',
@@ -49,15 +49,15 @@ export const useBlockViewStore = create<BlockViewState>((set) => ({
   // Actions
   setViewMode: (mode) => set({ viewMode: mode }),
 
-  setActiveBlock: (id, content = null) => {
+  setActiveDeliverable: (id, content = null) => {
     set({
-      activeBlockId: id,
-      activeBlockContent: content,
+      activeDeliverableId: id,
+      activeDeliverableContent: content,
     });
   },
 
   // Backward compatibility
-  setActiveBlockId: (id) => set({ activeBlockId: id }),
+  setActiveDeliverableId: (id) => set({ activeDeliverableId: id }),
 
   setFilters: (filters) => set({ filters }),
 

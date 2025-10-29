@@ -42,7 +42,9 @@ const TOOL_CONFIG: Record<string, { label: string; icon: React.ElementType }> =
 
     // Analysis tools
     run_python_code: { label: 'Analysis completed', icon: PythonIcon },
-    create_analysis_block: { label: 'Analysis block created', icon: BarChart },
+    create_deliverable: { label: 'Deliverable created', icon: BarChart },
+    update_deliverable: { label: 'Deliverable updated', icon: BarChart },
+    switch_deliverable: { label: 'Deliverable switched', icon: BarChart },
     create_visualization: { label: 'Chart created', icon: TrendingUp },
 
     // SEC filing tools

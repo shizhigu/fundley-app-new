@@ -18,7 +18,7 @@ export async function POST(
 
     // Get original block
     const originalBlock = await db`
-      SELECT * FROM analysis_blocks WHERE id = ${blockId}
+      SELECT * FROM deliverables WHERE id = ${blockId}
     `;
 
     if (originalBlock.length === 0) {
@@ -29,7 +29,7 @@ export async function POST(
 
     // Create duplicate with new ID and updated title
     const duplicated = await db`
-      INSERT INTO analysis_blocks (
+      INSERT INTO deliverables (
         id,
         user_id,
         source_chat_id,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { AnalysisBlockRenderer } from './analysis-block-renderer';
+import { DeliverableRenderer } from './deliverable-renderer';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertCircle,
@@ -21,29 +21,29 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { useTranslations } from 'next-intl';
-import { useBlockViewStore } from '@/stores/block-view-store';
-import { useActiveBlock } from '@/lib/hooks/use-active-block';
+import { useDeliverableViewStore } from '@/stores/deliverable-view-store';
+import { useActiveDeliverable } from '@/lib/hooks/use-active-deliverable';
 
-interface CalendarBlocksPanelProps {
+interface CalendarDeliverablesPanelProps {
   chatId: string;
   className?: string;
   onSwitchToList?: () => void;
 }
 
-export function CalendarBlocksPanel({
+export function CalendarDeliverablesPanel({
   chatId,
   className = '',
   onSwitchToList,
-}: CalendarBlocksPanelProps) {
+}: CalendarDeliverablesPanelProps) {
   const t = useTranslations('analysis');
-  const { isLoading: isChatStreaming, blockToolCalled, switchedBlockId } = useChatContext();
-  const { activeBlockId, setActiveBlock } = useBlockViewStore();
+  const { isLoading: isChatStreaming, deliverableToolCalled, switchedDeliverableId } = useChatContext();
+  const { activeDeliverableId, setActiveDeliverable } = useDeliverableViewStore();
 
   const {
-    activeBlock: redisActiveBlock,
+    activeDeliverable: redisActiveDeliverable,
     setActive: syncToRedis,
     clearActive: clearRedis,
-  } = useActiveBlock();
+  } = useActiveDeliverable();
 
   const [blocks, setBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +62,9 @@ export function CalendarBlocksPanel({
     loadBlocks();
   }, []);
 
-  // Monitor switch_analysis_block tool calls from Redis
+  // Monitor switch_deliverable tool calls from Redis
   useEffect(() => {
-    if (!switchedBlockId) return;
+    if (!switchedDeliverableId) return;
 
     const handleSwitch = async () => {
       pendingSwitchRef.current = 'switching';
@@ -93,7 +93,7 @@ export function CalendarBlocksPanel({
 
         if (targetBlock) {
           setDetailViewBlockId(block_id);
-          setActiveBlock(block_id, content || targetBlock);
+          setActiveDeliverable(block_id, content || targetBlock);
         }
 
         setTimeout(() => {
@@ -106,11 +106,11 @@ export function CalendarBlocksPanel({
     };
 
     handleSwitch();
-  }, [switchedBlockId, blocks, setActiveBlock]);
+  }, [switchedDeliverableId, blocks, setActiveDeliverable]);
 
   // Poll for new blocks when tool is called and auto-open new blocks
   useEffect(() => {
-    if (blockToolCalled === 0) return;
+    if (deliverableToolCalled === 0) return;
 
     let pollCount = 0;
     const MAX_POLLS = 3;
@@ -133,7 +133,7 @@ export function CalendarBlocksPanel({
     };
 
     startPolling();
-  }, [blockToolCalled]);
+  }, [deliverableToolCalled]);
 
   const loadBlocks = async (): Promise<boolean> => {
     try {
@@ -169,7 +169,7 @@ export function CalendarBlocksPanel({
       let foundNewOrUpdated = false;
       let newBlockToOpen: any = null;
       let blockToUpdate: any = null;
-      const currentActiveBlockId = activeBlockId;
+      const currentActiveBlockId = activeDeliverableId;
 
       setBlocks((prevBlocks) => {
         const existingIds = new Set(prevBlocks.map((b) => b.id));
@@ -196,7 +196,12 @@ export function CalendarBlocksPanel({
                 blockToUpdate = newBlock;
               }
             }
-            return newBlock;
+            // Preserve local 'opened' state (user may have just marked it as read)
+            // Only update 'opened' if server has it as true (never downgrade true->false)
+            return {
+              ...newBlock,
+              opened: existing.opened || newBlock.opened,
+            };
           }
           return newBlock;
         });
@@ -208,11 +213,11 @@ export function CalendarBlocksPanel({
       if (newBlockToOpen) {
         setTimeout(() => {
           setDetailViewBlockId(newBlockToOpen.id);
-          setActiveBlock(newBlockToOpen.id, newBlockToOpen);
+          setActiveDeliverable(newBlockToOpen.id, newBlockToOpen);
         }, 0);
       } else if (blockToUpdate) {
         setTimeout(() => {
-          setActiveBlock(blockToUpdate.id, blockToUpdate);
+          setActiveDeliverable(blockToUpdate.id, blockToUpdate);
         }, 0);
       }
 
@@ -341,7 +346,7 @@ export function CalendarBlocksPanel({
         return;
       }
 
-      setActiveBlock(detailViewBlockId, detailBlock);
+      setActiveDeliverable(detailViewBlockId, detailBlock);
 
       const blockTitle =
         detailBlock.content?.title || detailBlock.title || 'Untitled Block';
@@ -390,7 +395,7 @@ export function CalendarBlocksPanel({
               type="button"
               onClick={() => {
                 setDetailViewBlockId(null);
-                setActiveBlock(null, null);
+                setActiveDeliverable(null, null);
                 clearRedis();
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
@@ -405,7 +410,7 @@ export function CalendarBlocksPanel({
           </div>
 
           <div className="flex-1 overflow-auto p-4">
-            <AnalysisBlockRenderer
+            <DeliverableRenderer
               block={detailBlock}
               isExpanded={true}
               isActive={false}
@@ -645,11 +650,11 @@ export function CalendarBlocksPanel({
                     </h4>
                     <div className="grid grid-cols-1 gap-4">
                       {selectedDateBlocks.map((block) => (
-                        <AnalysisBlockRenderer
+                        <DeliverableRenderer
                           key={block.id}
                           block={block}
                           isExpanded={false}
-                          isActive={activeBlockId === block.id}
+                          isActive={activeDeliverableId === block.id}
                           onToggle={() => setDetailViewBlockId(block.id)}
                           onSelect={() => {}}
                           onManualRefresh={loadBlocks}

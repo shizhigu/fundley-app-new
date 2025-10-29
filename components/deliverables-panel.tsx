@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { AnalysisBlockRenderer } from './analysis-block-renderer';
-import { getAnalysisBlocksSince } from '@/lib/actions/analysis-blocks';
+import { DeliverableRenderer } from './deliverable-renderer';
+import { getDeliverablesSince } from '@/lib/actions/deliverables';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertCircle,
@@ -24,35 +24,35 @@ import { MovingBorder } from '@/components/aceternity/moving-border';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
-import { useBlockViewStore } from '@/stores/block-view-store';
+import { useDeliverableViewStore } from '@/stores/deliverable-view-store';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useActiveBlock } from '@/lib/hooks/use-active-block';
+import { useActiveDeliverable } from '@/lib/hooks/use-active-deliverable';
 
-interface AnalysisBlocksPanelProps {
+interface DeliverablesPanelProps {
   chatId: string;
   className?: string;
   onSwitchToCalendar?: () => void;
 }
 
-export function AnalysisBlocksPanel({
+export function DeliverablesPanel({
   chatId,
   className = '',
   onSwitchToCalendar,
-}: AnalysisBlocksPanelProps) {
+}: DeliverablesPanelProps) {
   const t = useTranslations('analysis');
   const {
     isLoading: isChatStreaming,
-    blockToolCalled,
-    switchedBlockId,
+    deliverableToolCalled,
+    switchedDeliverableId,
   } = useChatContext();
-  const { activeBlockId, setActiveBlock } = useBlockViewStore();
+  const { activeDeliverableId, setActiveDeliverable } = useDeliverableViewStore();
 
-  // Redis sync for active block (auto-restore on mount, manual sync on open/close)
+  // Redis sync for active deliverable (auto-restore on mount, manual sync on open/close)
   const {
-    activeBlock: redisActiveBlock,
+    activeDeliverable: redisActiveDeliverable,
     setActive: syncToRedis,
     clearActive: clearRedis,
-  } = useActiveBlock();
+  } = useActiveDeliverable();
 
   // Sort order - restore from localStorage (keep this for UI preference)
   type SortOrder = 'updated' | 'created';
@@ -63,6 +63,10 @@ export function AnalysisBlocksPanel({
     }
     return 'updated';
   });
+
+  // Filter for unread blocks
+  type FilterMode = 'all' | 'unread';
+  const [filter, setFilter] = useState<FilterMode>('all');
 
   const [blocks, setBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,26 +82,31 @@ export function AnalysisBlocksPanel({
   // Restore active block from Redis once on mount (after page refresh)
   useEffect(() => {
     if (
-      redisActiveBlock?.block_id &&
+      redisActiveDeliverable?.block_id &&
       blocks.length > 0 &&
       !hasRestoredRef.current
     ) {
-      const block = blocks.find((b) => b.id === redisActiveBlock.block_id);
+      const block = blocks.find((b) => b.id === redisActiveDeliverable.block_id);
       if (block) {
-        setDetailViewBlockId(redisActiveBlock.block_id);
-        setActiveBlock(
-          redisActiveBlock.block_id,
-          redisActiveBlock.content || block,
+        setDetailViewBlockId(redisActiveDeliverable.block_id);
+        setActiveDeliverable(
+          redisActiveDeliverable.block_id,
+          redisActiveDeliverable.content || block,
         );
         hasRestoredRef.current = true;
       }
     }
-  }, [redisActiveBlock, blocks, setActiveBlock]);
+  }, [redisActiveDeliverable, blocks, setActiveDeliverable]);
 
-  // 过滤和排序blocks - 根据搜索关键词、"This Chat" 过滤器和排序顺序
+  // 过滤和排序blocks - 根据搜索关键词、未读过滤器和排序顺序
   // 分离置顶和普通块
   const { pinnedBlocks, unpinnedBlocks } = useMemo(() => {
     let filtered = blocks;
+
+    // Filter by unread status
+    if (filter === 'unread') {
+      filtered = filtered.filter((block) => !block.opened);
+    }
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -163,7 +172,7 @@ export function AnalysisBlocksPanel({
       pinnedBlocks: sortBlocks(pinned),
       unpinnedBlocks: sortBlocks(unpinned),
     };
-  }, [blocks, searchQuery, sortOrder]);
+  }, [blocks, searchQuery, sortOrder, filter]);
 
   // Combined for total count
   const filteredBlocks = useMemo(() => {
@@ -194,12 +203,21 @@ export function AnalysisBlocksPanel({
     loadInitialBlocks();
   }, []); // Empty deps - load once on mount
 
+  // Smart default filter: prioritize unread blocks if any exist
+  useEffect(() => {
+    const unopenedBlocks = blocks.filter((b) => !b.opened);
+    if (unopenedBlocks.length > 0 && filter === 'all') {
+      // Auto-switch to unread filter if there are unopened blocks
+      setFilter('unread');
+    }
+  }, [blocks]); // Only run when blocks change
+
   // Track if we have a pending switch request
   const pendingSwitchRef = useRef<string | null>(null);
 
-  // 监听 switch_analysis_block 工具调用，从 Redis 读取最新状态
+  // 监听 switch_deliverable 工具调用，从 Redis 读取最新状态
   useEffect(() => {
-    if (!switchedBlockId) return;
+    if (!switchedDeliverableId) return;
 
     const handleSwitch = async () => {
       // Mark as pending switch (to prevent Redis overwrite)
@@ -231,7 +249,7 @@ export function AnalysisBlocksPanel({
 
         if (targetBlock) {
           setDetailViewBlockId(block_id);
-          setActiveBlock(block_id, content || targetBlock);
+          setActiveDeliverable(block_id, content || targetBlock);
         }
 
         // Clear pending flag after a delay to ensure useEffect doesn't overwrite
@@ -245,11 +263,11 @@ export function AnalysisBlocksPanel({
     };
 
     handleSwitch();
-  }, [switchedBlockId, blocks, setActiveBlock]);
+  }, [switchedDeliverableId, blocks, setActiveDeliverable]);
 
   // 被动触发式轮询：只在 block 工具调用后轮询
   useEffect(() => {
-    if (blockToolCalled === 0) return; // 没有工具调用，不启动轮询
+    if (deliverableToolCalled === 0) return; // 没有工具调用，不启动轮询
 
     let pollCount = 0;
     const MAX_POLLS = 3;
@@ -275,7 +293,7 @@ export function AnalysisBlocksPanel({
     };
 
     startPolling();
-  }, [blockToolCalled]); // 监听 blockToolCalled 变化
+  }, [deliverableToolCalled]); // 监听 deliverableToolCalled 变化
 
   const loadInitialBlocks = async () => {
     try {
@@ -319,7 +337,8 @@ export function AnalysisBlocksPanel({
       const fetchedBlocks = data.blocks || [];
 
       let foundNewOrUpdated = false;
-      const currentActiveBlockId = activeBlockId;
+      let blockToUpdate: any = null;
+      const currentActiveBlockId = activeDeliverableId;
 
       setBlocks((prevBlocks) => {
         // Find new blocks (not in previous list)
@@ -345,18 +364,30 @@ export function AnalysisBlocksPanel({
             ) {
               foundNewOrUpdated = true;
 
-              // If this is the currently active block, update store (Redis sync happens in detailView useEffect)
+              // If this is the currently active block, store to update after render
               if (newBlock.id === currentActiveBlockId) {
-                setActiveBlock(newBlock.id, newBlock);
+                blockToUpdate = newBlock;
               }
             }
-            return newBlock; // Always use latest from server
+            // Preserve local 'opened' state (user may have just marked it as read)
+            // Only update 'opened' if server has it as true (never downgrade true->false)
+            return {
+              ...newBlock,
+              opened: existing.opened || newBlock.opened,
+            };
           }
           return newBlock;
         });
 
         return updatedList;
       });
+
+      // Update active block after state update completes
+      if (blockToUpdate) {
+        setTimeout(() => {
+          setActiveDeliverable(blockToUpdate.id, blockToUpdate);
+        }, 0);
+      }
 
       // Update timestamp
       if (fetchedBlocks.length > 0) {
@@ -370,6 +401,35 @@ export function AnalysisBlocksPanel({
     } catch (err) {
       console.error('Failed to poll for blocks:', err);
       return false;
+    }
+  };
+
+  // Mark block as read
+  const markBlockAsRead = async (blockId: string) => {
+    try {
+      const response = await fetch(`/api/blocks/${blockId}/mark-read`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        // Update local state
+        setBlocks((prev) =>
+          prev.map((b) => (b.id === blockId ? { ...b, opened: true } : b)),
+        );
+      }
+    } catch (err) {
+      console.error('Failed to mark block as read:', err);
+    }
+  };
+
+  // Handle block open (mark as read + open detail view)
+  const handleBlockOpen = async (block: any) => {
+    // Open detail view
+    setDetailViewBlockId(block.id);
+
+    // Mark as read if unopened
+    if (!block.opened) {
+      await markBlockAsRead(block.id);
     }
   };
 
@@ -393,7 +453,7 @@ export function AnalysisBlocksPanel({
       }
 
       // Update Zustand store for UI state
-      setActiveBlock(detailViewBlockId, detailBlock);
+      setActiveDeliverable(detailViewBlockId, detailBlock);
 
       // Sync minimal data to Redis for backend pre-hook (only id, title, content)
       const blockTitle =
@@ -429,7 +489,7 @@ export function AnalysisBlocksPanel({
             <button
               onClick={() => {
                 setDetailViewBlockId(null);
-                setActiveBlock(null, null);
+                setActiveDeliverable(null, null);
                 clearRedis(); // Clear from Redis when user explicitly closes
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
@@ -452,7 +512,7 @@ export function AnalysisBlocksPanel({
 
           {/* Detail view content - scrollable */}
           <div className="flex-1 overflow-auto p-4">
-            <AnalysisBlockRenderer
+            <DeliverableRenderer
               block={detailBlock}
               isExpanded={true}
               isActive={false} // No need to show active state in detail view
@@ -541,7 +601,7 @@ export function AnalysisBlocksPanel({
                         setDetailViewBlockId(block.id);
 
                         // Update Zustand store (Redis sync will happen in detailView useEffect)
-                        setActiveBlock(block.id, block);
+                        setActiveDeliverable(block.id, block);
                       } catch (error) {
                         console.error('Error creating block:', error);
                       }
@@ -594,16 +654,37 @@ export function AnalysisBlocksPanel({
 
               {/* Quick Filter and Sort Controls */}
               <div className="flex items-center justify-between gap-4">
-                {/* Switch to Calendar View */}
-                {onSwitchToCalendar && (
-                  <button
-                    onClick={onSwitchToCalendar}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20 hover:bg-muted"
+                <div className="flex items-center gap-3">
+                  {/* Switch to Calendar View */}
+                  {onSwitchToCalendar && (
+                    <button
+                      onClick={onSwitchToCalendar}
+                      className="flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all border bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20 hover:bg-muted"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Calendar View
+                    </button>
+                  )}
+
+                  {/* Filter Tabs (All / Unread) */}
+                  <Tabs
+                    value={filter}
+                    onValueChange={(value) => setFilter(value as FilterMode)}
+                    className="w-auto"
                   >
-                    <Calendar className="h-4 w-4" />
-                    Calendar View
-                  </button>
-                )}
+                    <TabsList className="h-9">
+                      <TabsTrigger value="all" className="text-xs">
+                        All ({blocks.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="unread" className="text-xs relative">
+                        Unread ({blocks.filter((b) => !b.opened).length})
+                        {blocks.filter((b) => !b.opened).length > 0 && (
+                          <span className="ml-1 h-1.5 w-1.5 rounded-full bg-red-500 absolute top-1.5 right-1.5" />
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
 
                 {/* Sort Order Tabs */}
                 <Tabs
@@ -734,11 +815,11 @@ export function AnalysisBlocksPanel({
                           {/* Subtle shimmer effect on hover */}
                           <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                          <AnalysisBlockRenderer
+                          <DeliverableRenderer
                             block={block}
                             isExpanded={false}
-                            isActive={activeBlockId === block.id}
-                            onToggle={() => setDetailViewBlockId(block.id)}
+                            isActive={activeDeliverableId === block.id}
+                            onToggle={() => handleBlockOpen(block)}
                             onSelect={() => {}}
                             onManualRefresh={checkForNewBlocks}
                             onUpdate={(updatedBlock) => {
@@ -784,11 +865,11 @@ export function AnalysisBlocksPanel({
                           {/* Subtle shimmer effect on hover */}
                           <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                          <AnalysisBlockRenderer
+                          <DeliverableRenderer
                             block={block}
                             isExpanded={false}
-                            isActive={activeBlockId === block.id}
-                            onToggle={() => setDetailViewBlockId(block.id)}
+                            isActive={activeDeliverableId === block.id}
+                            onToggle={() => handleBlockOpen(block)}
                             onSelect={() => {}}
                             onManualRefresh={checkForNewBlocks}
                             onUpdate={(updatedBlock) => {

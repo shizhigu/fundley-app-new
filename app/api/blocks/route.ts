@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/clerk';
 import { db } from '@/lib/db/config';
 
-// GET /api/blocks - List user's analysis blocks
+// GET /api/blocks - List user's deliverables
 // Supports:
-// - library: All user's blocks (default)
-// - contextual: Blocks from specific chat (optional filter via chatId param)
+// - library: All user's deliverables (default)
+// - contextual: Deliverables from specific chat (optional filter via chatId param)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -22,44 +22,45 @@ export async function GET(request: NextRequest) {
 
     console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId);
 
-    // Get all user blocks with modification history
+    // Get all user deliverables with modification history
     // Note: updated_at is auto-updated by trigger when block_modification_history is inserted
-    // Pinned blocks are sorted first, then by updated_at/created_at
+    // Pinned deliverables are sorted first, then by updated_at/created_at
     let blocks = await db`
       SELECT
-        ab.id,
-        ab.chat_id as "chatId",
-        ab.user_id as "userId",
-        ab.source_chat_id as "sourceChatId",
-        ab.created_at as "createdAt",
-        ab.updated_at as "updatedAt",
-        ab.is_pinned as "isPinned",
-        ab.pinned_at as "pinnedAt",
-        ab.primary_symbol as "primarySymbol",
-        ab.content,
+        d.id,
+        d.chat_id as "chatId",
+        d.user_id as "userId",
+        d.source_chat_id as "sourceChatId",
+        d.created_at as "createdAt",
+        d.updated_at as "updatedAt",
+        d.is_pinned as "isPinned",
+        d.pinned_at as "pinnedAt",
+        d.primary_symbol as "primarySymbol",
+        d.opened,
+        d.content,
         c.title as "sourceChatTitle",
-        -- Get list of chats that modified this block
+        -- Get list of chats that modified this deliverable
         COALESCE(
           (
             SELECT array_agg(DISTINCT bmh.chat_id)
             FROM block_modification_history bmh
-            WHERE bmh.block_id = ab.id
+            WHERE bmh.deliverable_id = d.id
           ),
           ARRAY[]::uuid[]
         ) as "modifiedInChats"
-      FROM analysis_blocks ab
-      LEFT JOIN chats c ON ab.source_chat_id = c.id
-      WHERE ab.user_id = ${userId}
+      FROM deliverables d
+      LEFT JOIN chats c ON d.source_chat_id = c.id
+      WHERE d.user_id = ${userId}
       ORDER BY
-        ab.is_pinned DESC,
-        ab.pinned_at DESC NULLS LAST,
-        ab.updated_at DESC NULLS LAST,
-        ab.created_at DESC
+        d.is_pinned DESC,
+        d.pinned_at DESC NULLS LAST,
+        d.updated_at DESC NULLS LAST,
+        d.created_at DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
 
-    console.log('📦 Found', blocks.length, 'blocks');
+    console.log('📦 Found', blocks.length, 'deliverables');
 
     // Transform to include computed fields
     const transformedBlocks = blocks.map((block: any) => {
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/blocks - Create new analysis block (usually done by Python tools)
+// POST /api/blocks - Create new deliverable (usually done by Python tools)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -124,9 +125,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new block
+    // Create new deliverable
     const newBlock = await db`
-      INSERT INTO analysis_blocks (
+      INSERT INTO deliverables (
         user_id,
         chat_id,
         source_chat_id,
@@ -151,9 +152,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ block: newBlock[0] });
   } catch (error) {
-    console.error('Error creating block:', error);
+    console.error('Error creating deliverable:', error);
     return NextResponse.json(
-      { error: 'Failed to create block' },
+      { error: 'Failed to create deliverable' },
       { status: 500 }
     );
   }

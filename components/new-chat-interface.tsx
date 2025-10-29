@@ -7,7 +7,7 @@ import { MultimodalInput } from '@/components/multimodal-input';
 import { PreviewMessage } from '@/components/message';
 import { InvocationGroup } from '@/components/invocation-group';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
-import { useBlockViewStore } from '@/stores/block-view-store';
+import { useDeliverableViewStore } from '@/stores/deliverable-view-store';
 import { TextAnimate } from '@/components/ui/text-animate';
 import { BorderBeam } from '@/components/ui/border-beam';
 import { LoadingDots } from '@/components/ui/loading-dots';
@@ -149,7 +149,7 @@ export function NewChatInterface({
 }: NewChatInterfaceProps) {
   const t = useTranslations('common');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const { activeBlockId } = useBlockViewStore();
+  const { activeBlockId } = useDeliverableViewStore();
 
   // 滚动控制
   const { containerRef, endRef, isAtBottom, scrollToBottom } =

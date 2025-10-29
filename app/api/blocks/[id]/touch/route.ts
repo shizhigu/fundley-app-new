@@ -20,7 +20,7 @@ export async function POST(
 
     // First verify the block exists and belongs to the user
     const block = await db`
-      SELECT chat_id FROM analysis_blocks
+      SELECT chat_id FROM deliverables
       WHERE id = ${blockId} AND user_id = ${userId}
     `;
 
@@ -31,8 +31,8 @@ export async function POST(
     const chatId = block[0].chat_id;
 
     // Insert a modification history record with type 'manual_refresh'
-    // This will trigger the database trigger that automatically updates analysis_blocks.updated_at
-    // Same mechanism as Agent's update_analysis_block tool
+    // This will trigger the database trigger that automatically updates deliverables.updated_at
+    // Same mechanism as Agent's update_deliverable tool
     await db`
       INSERT INTO block_modification_history (
         block_id,
@@ -50,7 +50,7 @@ export async function POST(
 
     // Fetch the updated block to get the new updated_at timestamp
     const updatedBlock = await db`
-      SELECT updated_at FROM analysis_blocks WHERE id = ${blockId}
+      SELECT updated_at FROM deliverables WHERE id = ${blockId}
     `;
 
     return NextResponse.json({

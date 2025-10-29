@@ -166,7 +166,7 @@ interface AnalysisBlockProps {
  * Default state: Collapsed (small card)
  * Click to expand: Full content
  */
-export function AnalysisBlockRenderer({
+export function DeliverableRenderer({
   block,
   isExpanded,
   isActive = false,

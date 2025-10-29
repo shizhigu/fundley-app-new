@@ -2,14 +2,14 @@
 
 import { neon } from '@neondatabase/serverless'
 
-export type AnalysisBlock = {
+export type Deliverable = {
   id: string
   chat_id?: string // Added for file access
   content: any // Completely flexible, agent-defined
   created_at: string
 }
 
-export async function getAnalysisBlocks(chatId: string): Promise<AnalysisBlock[]> {
+export async function getDeliverables(chatId: string): Promise<Deliverable[]> {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL not configured')
     return []
@@ -18,31 +18,31 @@ export async function getAnalysisBlocks(chatId: string): Promise<AnalysisBlock[]
   const db = neon(process.env.DATABASE_URL)
 
   try {
-    const blocks = await db`
+    const deliverables = await db`
       SELECT id, content, created_at
-      FROM analysis_blocks
+      FROM deliverables
       WHERE chat_id = ${chatId}::uuid
       ORDER BY created_at ASC
       LIMIT 50
     `
 
-    return blocks.map(block => ({
-      id: block.id,
+    return deliverables.map(deliverable => ({
+      id: deliverable.id,
       chat_id: chatId, // Pass through the chat_id
-      content: block.content,
-      created_at: block.created_at.toISOString()
+      content: deliverable.content,
+      created_at: deliverable.created_at.toISOString()
     }))
   } catch (error) {
-    console.error('Failed to fetch analysis blocks:', error)
+    console.error('Failed to fetch deliverables:', error)
     return []
   }
 }
 
 // 增量获取：只获取指定时间之后的新块
-export async function getAnalysisBlocksSince(
+export async function getDeliverablesSince(
   chatId: string,
   sinceTimestamp?: string
-): Promise<AnalysisBlock[]> {
+): Promise<Deliverable[]> {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL not configured')
     return []
@@ -56,7 +56,7 @@ export async function getAnalysisBlocksSince(
       // 只获取新增的块
       query = db`
         SELECT id, content, created_at
-        FROM analysis_blocks
+        FROM deliverables
         WHERE chat_id = ${chatId}::uuid
           AND created_at > ${sinceTimestamp}::timestamp
         ORDER BY created_at ASC
@@ -66,28 +66,28 @@ export async function getAnalysisBlocksSince(
       // 首次加载，获取所有
       query = db`
         SELECT id, content, created_at
-        FROM analysis_blocks
+        FROM deliverables
         WHERE chat_id = ${chatId}::uuid
         ORDER BY created_at ASC
         LIMIT 50
       `
     }
 
-    const blocks = await query
+    const deliverables = await query
 
-    return blocks.map(block => ({
-      id: block.id,
+    return deliverables.map(deliverable => ({
+      id: deliverable.id,
       chat_id: chatId, // Pass through the chat_id
-      content: block.content,
-      created_at: block.created_at.toISOString()
+      content: deliverable.content,
+      created_at: deliverable.created_at.toISOString()
     }))
   } catch (error) {
-    console.error('Failed to fetch analysis blocks:', error)
+    console.error('Failed to fetch deliverables:', error)
     return []
   }
 }
 
-export async function getAnalysisBlock(blockId: string): Promise<AnalysisBlock | null> {
+export async function getDeliverable(deliverableId: string): Promise<Deliverable | null> {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL not configured')
     return null
@@ -96,31 +96,31 @@ export async function getAnalysisBlock(blockId: string): Promise<AnalysisBlock |
   const db = neon(process.env.DATABASE_URL)
 
   try {
-    const blocks = await db`
+    const deliverables = await db`
       SELECT id, content, created_at
-      FROM analysis_blocks
-      WHERE id = ${blockId}::uuid
+      FROM deliverables
+      WHERE id = ${deliverableId}::uuid
       LIMIT 1
     `
 
-    if (blocks.length === 0) return null
+    if (deliverables.length === 0) return null
 
     return {
-      id: blocks[0].id,
-      content: blocks[0].content,
-      created_at: blocks[0].created_at.toISOString()
+      id: deliverables[0].id,
+      content: deliverables[0].content,
+      created_at: deliverables[0].created_at.toISOString()
     }
   } catch (error) {
-    console.error('Failed to fetch analysis block:', error)
+    console.error('Failed to fetch deliverable:', error)
     return null
   }
 }
 
-// Optional: Get blocks with specific content patterns
-export async function searchAnalysisBlocks(
+// Optional: Get deliverables with specific content patterns
+export async function searchDeliverables(
   chatId: string,
   searchPattern: Record<string, any>
-): Promise<AnalysisBlock[]> {
+): Promise<Deliverable[]> {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL not configured')
     return []
@@ -130,23 +130,23 @@ export async function searchAnalysisBlocks(
 
   try {
     // Use JSONB containment operator @>
-    const blocks = await db`
+    const deliverables = await db`
       SELECT id, content, created_at
-      FROM analysis_blocks
+      FROM deliverables
       WHERE chat_id = ${chatId}::uuid
         AND content @> ${JSON.stringify(searchPattern)}::jsonb
       ORDER BY created_at ASC
       LIMIT 50
     `
 
-    return blocks.map(block => ({
-      id: block.id,
+    return deliverables.map(deliverable => ({
+      id: deliverable.id,
       chat_id: chatId, // Pass through the chat_id
-      content: block.content,
-      created_at: block.created_at.toISOString()
+      content: deliverable.content,
+      created_at: deliverable.created_at.toISOString()
     }))
   } catch (error) {
-    console.error('Failed to search analysis blocks:', error)
+    console.error('Failed to search deliverables:', error)
     return []
   }
 }

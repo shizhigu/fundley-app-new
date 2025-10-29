@@ -19,7 +19,7 @@ export async function GET(
     // First verify user owns this block
     const block = await db`
       SELECT user_id
-      FROM analysis_blocks
+      FROM deliverables
       WHERE id = ${blockId}
     `;
 
@@ -49,9 +49,9 @@ export async function GET(
 
     return NextResponse.json({ history });
   } catch (error) {
-    console.error('Error fetching block history:', error);
+    console.error('Error fetching deliverable history:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch block history' },
+      { error: 'Failed to fetch deliverable history' },
       { status: 500 }
     );
   }

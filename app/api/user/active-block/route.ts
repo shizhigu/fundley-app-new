@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
     // Create one-time connection
     redis = await createRedisConnection();
 
-    // Get active block from Redis
-    const blockId = await redis.get(`user:${userId}:active_block_id`);
-    const contentStr = await redis.get(`user:${userId}:active_block_content`);
+    // Get active deliverable from Redis
+    const blockId = await redis.get(`user:${userId}:active_deliverable_id`);
+    const contentStr = await redis.get(`user:${userId}:active_deliverable_content`);
 
     let content = null;
     if (contentStr) {
@@ -121,26 +121,26 @@ export async function POST(request: NextRequest) {
     // Create one-time connection
     redis = await createRedisConnection();
 
-    // Set active block in Redis (7 day expiry)
+    // Set active deliverable in Redis (7 day expiry)
     const expirySeconds = 7 * 24 * 60 * 60; // 7 days
 
     await redis.setEx(
-      `user:${userId}:active_block_id`,
+      `user:${userId}:active_deliverable_id`,
       expirySeconds,
       block_id
     );
 
     if (content) {
       await redis.setEx(
-        `user:${userId}:active_block_content`,
+        `user:${userId}:active_deliverable_content`,
         expirySeconds,
         JSON.stringify(content)
       );
     }
 
-    // Add to block history if title is provided
+    // Add to deliverable history if title is provided
     if (title) {
-      const historyKey = `user:${userId}:block_history`;
+      const historyKey = `user:${userId}:deliverable_history`;
       const historyStr = await redis.get(historyKey);
 
       let history: Array<{ id: string; title: string }> = [];
@@ -212,11 +212,11 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from Redis
     await redis.del([
-      `user:${userId}:active_block_id`,
-      `user:${userId}:active_block_content`
+      `user:${userId}:active_deliverable_id`,
+      `user:${userId}:active_deliverable_content`
     ]);
 
-    console.log(`✅ Cleared active block for user ${userId.slice(0, 8)}...`);
+    console.log(`✅ Cleared active deliverable for user ${userId.slice(0, 8)}...`);
 
     return NextResponse.json({ success: true });
   } catch (error) {
