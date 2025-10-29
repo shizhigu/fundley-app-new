@@ -135,7 +135,7 @@ export function CalendarBlocksPanel({
     startPolling();
   }, [blockToolCalled]);
 
-  const loadBlocks = async () => {
+  const loadBlocks = async (): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
@@ -146,9 +146,11 @@ export function CalendarBlocksPanel({
       }
       const data = await response.json();
       setBlocks(data.blocks || []);
+      return true;
     } catch (err) {
       console.error('Failed to load blocks:', err);
       setError('Failed to load analysis blocks');
+      return false;
     } finally {
       setLoading(false);
     }

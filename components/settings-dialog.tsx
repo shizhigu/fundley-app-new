@@ -734,106 +734,110 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                   </p>
                 </div>
 
-                {/* Credit Balance Card */}
-                <div className="border border-border rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-background">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold mb-1">
-                        {tSubscription('credits')}
-                      </h3>
-                      {creditBalance?.is_internal && (
-                        <span className="inline-block px-2 py-1 text-xs bg-brand-primary/10 text-brand-primary rounded">
-                          {tSubscription('internal')}
-                        </span>
-                      )}
+                {/* Credit Balance and Subscription Management - Side by side layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 sm:mb-6">
+                  {/* Credit Balance Card */}
+                  <div className="border border-border rounded-lg p-4 bg-background">
+                    <div className="flex items-start justify-between mb-4 gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold mb-1">
+                          {tSubscription('credits')}
+                        </h3>
+                        {creditBalance?.is_internal && (
+                          <span className="inline-block px-2 py-1 text-xs bg-brand-primary/10 text-brand-primary rounded">
+                            {tSubscription('internal')}
+                          </span>
+                        )}
+                      </div>
+                      <CreditCard className="w-5 h-5 text-muted-foreground shrink-0" />
                     </div>
-                    <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+
+                    {creditBalance ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            {tSubscription('subscriptionCredits')}
+                          </p>
+                          <p className="text-lg font-bold">
+                            {formatCredits(creditBalance.subscription_credits)}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            {tSubscription('addonCredits')}
+                          </p>
+                          <p className="text-lg font-bold">
+                            {formatCredits(creditBalance.addon_credits)}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            {tSubscription('totalCredits')}
+                          </p>
+                          <p className="text-lg font-bold text-brand-primary">
+                            {formatCredits(creditBalance.total_credits)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
 
-                  {creditBalance ? (
-                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">
-                          {tSubscription('subscriptionCredits')}
+                  {/* Subscription Management */}
+                  <div className="border border-border rounded-lg p-4 bg-background">
+                    <h3 className="text-sm font-semibold mb-3">
+                      {tSubscription('yourPlan')}
+                    </h3>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Manage your subscription in Stripe Customer Portal
                         </p>
-                        <p className="text-lg sm:text-xl font-bold">
-                          {formatCredits(creditBalance.subscription_credits)}
-                        </p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          <li>• Update payment method</li>
+                          <li>• Change plan</li>
+                          <li>• Cancel subscription</li>
+                          <li>• View invoices</li>
+                        </ul>
                       </div>
 
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">
-                          {tSubscription('addonCredits')}
-                        </p>
-                        <p className="text-lg sm:text-xl font-bold">
-                          {formatCredits(creditBalance.addon_credits)}
-                        </p>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">
-                          {tSubscription('totalCredits')}
-                        </p>
-                        <p className="text-lg sm:text-xl font-bold text-brand-primary">
-                          {formatCredits(creditBalance.total_credits)}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Subscription Management */}
-                <div className="border border-border rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-background">
-                  <h3 className="text-base sm:text-lg font-semibold mb-4">
-                    {tSubscription('yourPlan')}
-                  </h3>
-
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Manage your subscription in Stripe Customer Portal
-                      </p>
-                      <ul className="text-xs text-muted-foreground space-y-1">
-                        <li>• Update payment method</li>
-                        <li>• Change plan</li>
-                        <li>• Cancel subscription</li>
-                        <li>• View invoices</li>
-                      </ul>
-                    </div>
-
-                    <Button
-                      onClick={handleManageSubscription}
-                      disabled={portalLoading}
-                      className="shrink-0 w-full sm:w-auto"
-                    >
-                      {portalLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                      )}
-                      {tSubscription('manageSubscription')}
-                    </Button>
-                  </div>
-
-                  {!creditBalance && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Don't have a subscription yet?
-                      </p>
                       <Button
-                        variant="outline"
-                        onClick={() => setActiveTab('pricing')}
+                        onClick={handleManageSubscription}
+                        disabled={portalLoading}
+                        className="w-full"
                         size="sm"
-                        className="w-full sm:w-auto"
                       >
-                        View Plans
+                        {portalLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                        )}
+                        {tSubscription('manageSubscription')}
                       </Button>
+
+                      {!creditBalance && (
+                        <div className="pt-3 border-t">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Don't have a subscription yet?
+                          </p>
+                          <Button
+                            variant="outline"
+                            onClick={() => setActiveTab('pricing')}
+                            size="sm"
+                            className="w-full"
+                          >
+                            View Plans
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Usage History */}
@@ -858,8 +862,8 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                     </p>
                   ) : (
                     <>
-                      {/* Scrollable table */}
-                      <div className="overflow-x-auto">
+                      {/* Scrollable table with fixed height */}
+                      <div className="overflow-x-auto overflow-y-auto max-h-[240px]">
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 bg-background z-10">
                             <tr className="border-b border-border">
