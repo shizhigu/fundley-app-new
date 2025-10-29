@@ -3,16 +3,18 @@ import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db/config'
 
 /**
- * API endpoint to serve files from analysis blocks
+ * API endpoint to serve files from user workspace (supports relative paths)
  *
- * GET /api/files/[filename]?block_id={blockId}
+ * GET /api/files/[...path]
  *
- * Files are stored on Python server at: /tmp/fundley/{user_id}/blocks/{block_id}/{filename}
- * This endpoint acts as a proxy to the Python file service
+ * 新架构：
+ * - Agent自由组织workspace: /tmp/fundley/{user_id}/
+ * - 支持相对路径: nvda_analysis/report.html, projects/2024/chart.html
+ * - 此端点代理到Python file service
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ filename: string }> }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
   try {
     // 1. Get authenticated user (Clerk userId)
@@ -21,23 +23,27 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Get block_id and download flag from query params
+    // 2. Get file path from params
+    const { path } = await params
+    if (!path || path.length === 0) {
+      return NextResponse.json({ error: 'Missing file path' }, { status: 400 })
+    }
+
+    // Join path segments (支持多级目录)
+    const filePath = path.join('/')
+
+    // 3. Validate file path (security check - prevent directory traversal)
+    if (filePath.includes('..')) {
+      return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
+    }
+
+    // 4. Get download flag from query params
     const searchParams = request.nextUrl.searchParams
-    const blockId = searchParams.get('block_id')
     const download = searchParams.get('download') === 'true'
     const blockTitle = searchParams.get('title') || 'analysis'
+    const blockId = searchParams.get('block_id') // For cache busting via v param
 
-    if (!blockId) {
-      return NextResponse.json({ error: 'Missing block_id' }, { status: 400 })
-    }
-
-    // 3. Validate filename (security check)
-    const { filename } = await params
-    if (filename.includes('..') || filename.includes('/')) {
-      return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
-    }
-
-    // 4. Get database user_id from clerk_user_id
+    // 5. Get database user_id from clerk_user_id
     const userResult = await db`
       SELECT id FROM users WHERE clerk_user_id = ${clerkUserId}
     `
@@ -48,11 +54,11 @@ export async function GET(
 
     const dbUserId = userResult[0].id
 
-    // 5. Forward request to Python file service
+    // 6. Forward request to Python file service (new path structure)
     const pythonServiceUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8012'
-    const pythonFileUrl = `${pythonServiceUrl}/api/v1/analysis/files/${dbUserId}/blocks/${blockId}/${filename}`
+    const pythonFileUrl = `${pythonServiceUrl}/api/v1/analysis/files/${dbUserId}/${filePath}`
 
-    console.log(`📁 [File Proxy] Fetching: ${filename} for user ${dbUserId}, block ${blockId}`)
+    console.log(`📁 [File Proxy] Fetching: ${filePath} for user ${dbUserId}`)
 
     const response = await fetch(pythonFileUrl)
 
@@ -66,7 +72,7 @@ export async function GET(
       )
     }
 
-    // 6. Stream the file back to client
+    // 7. Stream the file back to client
     const fileBlob = await response.blob()
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
 
@@ -81,7 +87,8 @@ export async function GET(
       const timestamp = Date.now()
       // Keep Chinese characters, letters, numbers; replace special chars with underscore
       const baseFilename = blockTitle.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
-      const extension = filename.split('.').pop() || 'html'
+      // Extract original file extension from path
+      const extension = filePath.split('.').pop() || 'html'
       // Use UTF-8 encoding for Chinese filenames (RFC 6266)
       const encodedFilename = encodeURIComponent(`${baseFilename}_${timestamp}.${extension}`)
       headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodedFilename}`

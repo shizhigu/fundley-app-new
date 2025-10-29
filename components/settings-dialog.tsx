@@ -69,7 +69,7 @@ interface TokenUsage {
   reasoning_tokens: number;
 }
 
-type SettingsTab = 'profile' | 'templates' | 'pricing' | 'subscription' | 'watchlist';
+type SettingsTab = 'profile' | 'pricing' | 'subscription' | 'watchlist';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -77,23 +77,15 @@ interface SettingsDialogProps {
   initialTab?: SettingsTab;
 }
 
-const TEMPLATES_CACHE_KEY = 'analysis_templates_cache';
-const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-
 export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialogProps) {
   const t = useTranslations('settings');
   const tPricing = useTranslations('pricing');
   const tSubscription = useTranslations('subscription');
 
-  // Set default tab based on brand or initialTab prop
   const isFundley = process.env.NEXT_PUBLIC_BRAND === 'fundley';
-  const defaultTab = initialTab || (isFundley ? 'templates' : 'profile');
+  const defaultTab = initialTab || 'profile';
   const [activeTab, setActiveTab] = useState<SettingsTab>(defaultTab);
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [loadingTokens, setLoadingTokens] = useState(false);
 
@@ -123,9 +115,6 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
   }, [initialTab, open]);
 
   useEffect(() => {
-    if (open && activeTab === 'templates') {
-      fetchTemplates();
-    }
     if (open && activeTab === 'profile' && !isFundley) {
       fetchTokenUsage();
     }
@@ -184,46 +173,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
     }
   };
 
-  const fetchTemplates = async () => {
-    // Try to load from cache first
-    const cached = localStorage.getItem(TEMPLATES_CACHE_KEY);
-    if (cached) {
-      try {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_EXPIRY_MS) {
-          setTemplates(data);
-          return; // Use cached data
-        }
-      } catch (e) {
-        // Invalid cache, fetch fresh
-      }
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/templates');
-      const data = await response.json();
-
-      if (data.success) {
-        setTemplates(data.templates);
-        // Cache the result
-        localStorage.setItem(
-          TEMPLATES_CACHE_KEY,
-          JSON.stringify({
-            data: data.templates,
-            timestamp: Date.now(),
-          })
-        );
-      } else {
-        toast.error('Failed to load templates');
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-      toast.error('Failed to load templates');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Template feature removed - Agent manages code organization freely
 
   const fetchCreditData = async (page = 1) => {
     try {
@@ -319,107 +269,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
     }
   };
 
-  const toggleVisibility = async (templateId: string, currentPublic: boolean) => {
-    setUpdatingId(templateId);
-
-    try {
-      const response = await fetch(`/api/templates/${templateId}/visibility`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_public: !currentPublic }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const updatedTemplates = templates.map((t) =>
-          t.id === templateId ? { ...t, is_public: !currentPublic } : t
-        );
-        setTemplates(updatedTemplates);
-        // Update cache
-        localStorage.setItem(
-          TEMPLATES_CACHE_KEY,
-          JSON.stringify({
-            data: updatedTemplates,
-            timestamp: Date.now(),
-          })
-        );
-        toast.success(data.message);
-      } else {
-        toast.error(data.error || 'Failed to update visibility');
-      }
-    } catch (error) {
-      console.error('Error updating visibility:', error);
-      toast.error('Failed to update visibility');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const startEdit = (template: Template) => {
-    setEditingId(template.id);
-    setEditTitle(template.title);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditTitle('');
-  };
-
-  const saveEdit = async (templateId: string) => {
-    if (!editTitle.trim()) {
-      toast.error('Title cannot be empty');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/templates/${templateId}/title`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: editTitle.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const updatedTemplates = templates.map((t) =>
-          t.id === templateId ? { ...t, title: editTitle.trim() } : t
-        );
-        setTemplates(updatedTemplates);
-        // Update cache
-        localStorage.setItem(
-          TEMPLATES_CACHE_KEY,
-          JSON.stringify({
-            data: updatedTemplates,
-            timestamp: Date.now(),
-          })
-        );
-        setEditingId(null);
-        setEditTitle('');
-        toast.success('Title updated successfully');
-      } else {
-        toast.error(data.error || 'Failed to update title');
-      }
-    } catch (error) {
-      console.error('Error updating title:', error);
-      toast.error('Failed to update title');
-    }
-  };
-
-  const useTemplate = (template: Template) => {
-    // Create prefill prompt
-    const prompt = t('templatePrompt', { title: template.title, category: template.category });
-
-    // Dispatch custom event with the prompt text BEFORE closing dialog
-    window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
-
-    // Close dialog after event is dispatched
-    setTimeout(() => {
-      onOpenChange(false);
-    }, 50);
-
-    toast.success(`Template "${template.title}" ready to use`);
-  };
+  // Template functions removed - Agent manages code organization freely
 
   // Watchlist functions
   const fetchWatchlist = async () => {
@@ -513,7 +363,6 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
   // Determine which tabs to show based on brand (using isFundley from component state)
   const allTabs = [
     { id: 'profile' as const, label: t('tokenUsage'), icon: User, showFor: ['foga'] },
-    { id: 'templates' as const, label: t('templates'), icon: FileText, showFor: ['fundley', 'foga'] },
     { id: 'watchlist' as const, label: 'Watchlist', icon: Star, showFor: ['fundley', 'foga'] },
     { id: 'pricing' as const, label: tPricing('title'), icon: Sparkles, showFor: ['fundley'] },
     { id: 'subscription' as const, label: tSubscription('title'), icon: CreditCard, showFor: ['fundley'] },
@@ -754,204 +603,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
               </div>
             )}
 
-            {activeTab === 'templates' && (
-              <div className="p-8">
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-foreground">{t('analysisTemplates')}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('manageWorkflows')}
-                  </p>
-                </div>
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">
-                    No templates yet. Save an analysis in chat to create one.
-                  </div>
-                ) : (
-                  <TooltipProvider>
-                    <div className="border border-border rounded-lg overflow-hidden bg-background">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-border hover:bg-transparent">
-                              <TableHead className="min-w-[200px] text-muted-foreground font-medium">
-                                {t('title_column')}
-                              </TableHead>
-                              <TableHead className="min-w-[250px] text-muted-foreground font-medium">
-                                {t('description_column')}
-                              </TableHead>
-                              <TableHead className="text-muted-foreground font-medium">
-                                {t('category_column')}
-                              </TableHead>
-                              <TableHead className="text-muted-foreground font-medium">
-                                {t('source_column')}
-                              </TableHead>
-                              <TableHead className="text-muted-foreground font-medium">
-                                {t('visibility_column')}
-                              </TableHead>
-                              <TableHead className="text-muted-foreground font-medium">
-                                {t('created_column')}
-                              </TableHead>
-                              <TableHead className="min-w-[120px] text-muted-foreground font-medium">
-                                {t('action_column')}
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {templates.map((template) => (
-                              <TableRow
-                                key={template.id}
-                                className="border-border hover:bg-muted/50 transition-colors duration-200"
-                              >
-                                <TableCell className="font-medium text-foreground">
-                                  {editingId === template.id ? (
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="text"
-                                        value={editTitle}
-                                        onChange={(e) => setEditTitle(e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') saveEdit(template.id);
-                                          if (e.key === 'Escape') cancelEdit();
-                                        }}
-                                        className="flex-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-brand-primary/50 transition-all duration-200"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 hover:bg-muted"
-                                        onClick={() => saveEdit(template.id)}
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 hover:bg-muted"
-                                        onClick={cancelEdit}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-2 group">
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="line-clamp-2 cursor-help flex-1">
-                                            {template.title}
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-md">
-                                          <p>{template.title}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      {template.is_mine && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-muted"
-                                          onClick={() => startEdit(template)}
-                                        >
-                                          <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="line-clamp-2 text-sm text-muted-foreground cursor-help">
-                                        {template.description || '-'}
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-md">
-                                      <p>{template.description || 'No description'}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant="outline"
-                                    className="whitespace-nowrap border-border text-muted-foreground"
-                                  >
-                                    {template.category}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={template.is_mine ? 'default' : 'secondary'}
-                                    className={`
-                                      whitespace-nowrap transition-all duration-200
-                                      ${
-                                        template.is_mine
-                                          ? 'bg-brand-primary text-white'
-                                          : 'bg-muted text-muted-foreground'
-                                      }
-                                    `}
-                                  >
-                                    {template.is_mine ? 'Mine' : 'Team'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="min-w-[120px]">
-                                  {template.is_mine ? (
-                                    <div className="flex items-center gap-3">
-                                      {template.is_public ? (
-                                        <Users className="h-4 w-4 text-brand-primary shrink-0" />
-                                      ) : (
-                                        <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      )}
-                                      <Switch
-                                        checked={template.is_public}
-                                        onCheckedChange={() =>
-                                          toggleVisibility(template.id, template.is_public)
-                                        }
-                                        disabled={updatingId === template.id}
-                                        className="data-[state=checked]:bg-brand-primary"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span className="text-sm text-muted-foreground flex items-center gap-2">
-                                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                      Shared
-                                    </span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                                  {new Date(template.created_at).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 hover:bg-brand-primary/10 hover:text-brand-primary transition-all duration-200"
-                                        onClick={() => useTemplate(template)}
-                                      >
-                                        <Play className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Use this template</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  </TooltipProvider>
-                )}
-              </div>
-            )}
+            {/* Templates tab removed - Agent manages code organization freely */}
 
             {activeTab === 'pricing' && isFundley && (
               <div className="p-8 lg:p-12 bg-[#0A0F1C] min-h-full flex flex-col items-center justify-center">

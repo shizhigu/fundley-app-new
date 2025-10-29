@@ -18,7 +18,12 @@
       "Bash(git push origin sql-migration)",
       "Bash(git checkout development)",
       "Bash(git push origin development)",
-      "Bash(pnpm lint)"
+      "Bash(pnpm lint)",
+      "Bash(python -c \"from tools.e2b import E2BTools; print(''✅ E2BTools imported successfully'')\")",
+      "Bash(psql $DATABASE_URL -f lib/db/migrations/0024_remove_block_fkey_from_task_runs.sql)",
+      "Bash(psql $DATABASE_URL -c \"SELECT conname, contype, confdeltype FROM pg_constraint WHERE conrelid = ''scheduled_task_runs''::regclass AND conname LIKE ''%created_block%'';\")",
+      "Bash(psql $DATABASE_URL -c \"\\d analysis_blocks\")",
+      "Bash(tree -L 4 /tmp/fundley/31ddad94-7501-455c-9353-aac6038002f0/tasks/)"
     ],
     "deny": [],
     "ask": [],

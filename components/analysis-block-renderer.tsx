@@ -101,10 +101,13 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { toast } from '@/components/toast';
 
-// Format filename for display: remove extension, replace separators, uppercase
-const formatFileName = (filename: string): string => {
+// Format filename for display: extract basename, remove extension, replace separators, uppercase
+const formatFileName = (filepath: string): string => {
+  // Extract just the filename from path (e.g., "tasks/.../nvda_revenue_data.csv" → "nvda_revenue_data.csv")
+  const filename = filepath.includes('/') ? filepath.split('/').pop()! : filepath;
+
   return filename
-    .replace(/\.(html|json|csv|png|jpg|jpeg|pdf)$/i, '') // Remove extension
+    .replace(/\.(html|json|csv|png|jpg|jpeg|pdf|pptx|xlsx)$/i, '') // Remove extension
     .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
     .toUpperCase(); // All uppercase for financial dashboard style
 };
@@ -1325,7 +1328,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {reports.map((reportFile: string, index: number) => {
                 const fileInfo = getFileInfo(reportFile);
-                const displayName = reportFile.includes('/') ? reportFile.split('/').pop()! : reportFile;
+                const displayName = formatFileName(reportFile);
                 return (
                   <Button
                     key={`${reportFile}-${index}`}
@@ -1360,7 +1363,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {presentations.map((pptxFile: string, index: number) => {
                 const fileInfo = getFileInfo(pptxFile);
-                const displayName = pptxFile.includes('/') ? pptxFile.split('/').pop()! : pptxFile;
+                const displayName = formatFileName(pptxFile);
                 return (
                   <Button
                     key={`${pptxFile}-${index}`}
@@ -1395,7 +1398,7 @@ export function AnalysisBlockRenderer({
             <div className="space-y-2">
               {artifacts.map((artifactFile: string, index: number) => {
                 const fileInfo = getFileInfo(artifactFile);
-                const displayName = artifactFile.includes('/') ? artifactFile.split('/').pop()! : artifactFile;
+                const displayName = formatFileName(artifactFile);
                 return (
                   <Button
                     key={`${artifactFile}-${index}`}
@@ -1491,8 +1494,7 @@ export function AnalysisBlockRenderer({
                   </SelectTrigger>
                   <SelectContent>
                     {dataFiles.map((file: string, index: number) => {
-                      // Remove .json extension for display
-                      const displayName = file.replace('.json', '');
+                      const displayName = formatFileName(file);
                       return (
                         <SelectItem
                           key={`${file}-${index}`}
