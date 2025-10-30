@@ -5,13 +5,15 @@ const sql = neon(process.env.DATABASE_URL!);
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
 
   if (!userId) {
     return new Response('Unauthorized', { status: 401 });
   }
+
+  const params = await props.params;
 
   try {
     const userResult = await sql`
