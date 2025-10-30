@@ -37,6 +37,7 @@ export interface FinancialDataPoint {
   fiscalYear: number;
   period: Period | string;
   date: string | null;
+  filingdate?: string | null;  // Filing date from financial statements
   metrics: Record<string, MetricValue>;
 }
 
@@ -53,6 +54,7 @@ export interface FinancialAnalysisResponse {
   fiscalYear: number;
   period: string;
   date: string | null;
+  filingdate?: string | null;  // Filing date from financial statements
   metrics: Record<string, MetricValue>;
 }
 

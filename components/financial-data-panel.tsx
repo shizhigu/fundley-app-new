@@ -19,7 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from './toast';
 import type {
@@ -40,7 +40,9 @@ function FinancialDataPanelComponent() {
   const tFinancial = useTranslations('financialData');
   // Local state
   const [tableData, setTableData] = useState<FinancialDataPoint[]>([]);
-  const [tableAlignMode, setTableAlignMode] = useState<'original' | 'relative'>('relative');
+  const [tableAlignMode, setTableAlignMode] = useState<'original' | 'relative'>(
+    'relative',
+  );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [orderedMetrics, setOrderedMetrics] = useState<any[]>([]);
@@ -98,8 +100,8 @@ function FinancialDataPanelComponent() {
   // Migrate selectedMetrics if IDs are invalid (due to metric ID changes)
   useEffect(() => {
     if (availableMetrics.length > 0 && selectedMetrics.length > 0) {
-      const currentIds = new Set(availableMetrics.map(m => m._id));
-      const hasInvalidIds = selectedMetrics.some(id => !currentIds.has(id));
+      const currentIds = new Set(availableMetrics.map((m) => m._id));
+      const hasInvalidIds = selectedMetrics.some((id) => !currentIds.has(id));
 
       if (hasInvalidIds) {
         console.log('⚠️ Found invalid metric IDs, clearing selection');
@@ -184,7 +186,10 @@ function FinancialDataPanelComponent() {
 
       setOrderedMetrics(newOrder);
       const orderNames = newOrder.map((m) => m.name);
-      localStorage.setItem('metric-selection-order', JSON.stringify(orderNames));
+      localStorage.setItem(
+        'metric-selection-order',
+        JSON.stringify(orderNames),
+      );
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
@@ -274,7 +279,7 @@ function FinancialDataPanelComponent() {
       const excelRow: ExcelDataRow = {
         股票代码: row.symbol,
         季度: `${row.period} ${row.fiscalYear}`,
-        日期: row.date || '',
+        日期: formatDate((row as any).filingdate) || '',
       };
 
       selectedMetrics.forEach((metricId) => {
@@ -309,11 +314,7 @@ function FinancialDataPanelComponent() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(excelData);
 
-    const colWidths = [
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 12 },
-    ];
+    const colWidths = [{ wch: 12 }, { wch: 15 }, { wch: 12 }];
 
     selectedMetrics.forEach(() => {
       colWidths.push({ wch: 18 });
@@ -334,6 +335,12 @@ function FinancialDataPanelComponent() {
       type: 'success',
       description: `Excel文件已成功导出: ${fileName}`,
     });
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '';
+    // Convert "2025-06-30T00:00:00" to "2025-06-30"
+    return dateString.split('T')[0];
   };
 
   const formatValue = (value: number | null, metricId: string) => {
@@ -379,11 +386,12 @@ function FinancialDataPanelComponent() {
     if (!trend || trend.value === null)
       return <span className="text-xs text-muted-foreground">-</span>;
 
-    const Icon = trend.direction === 'up'
-      ? TrendingUp
-      : trend.direction === 'down'
-      ? TrendingDown
-      : Minus;
+    const Icon =
+      trend.direction === 'up'
+        ? TrendingUp
+        : trend.direction === 'down'
+          ? TrendingDown
+          : Minus;
 
     return (
       <span
@@ -449,9 +457,16 @@ function FinancialDataPanelComponent() {
                     key={index}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border/50 rounded-lg hover:bg-gray-100 dark:hover:bg-muted transition-colors duration-200"
                   >
-                    <span className="text-xs text-muted-foreground">
-                      {row.period} {row.fiscalYear}
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {row.period} {row.fiscalYear}
+                      </span>
+                      {(row as any).filingdate && (
+                        <span className="text-xs text-muted-foreground opacity-60">
+                          {formatDate((row as any).filingdate)}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-right">
                       <div className="font-medium text-sm text-foreground">
                         {formatValue(metricData?.value, metricId)}
@@ -487,21 +502,24 @@ function FinancialDataPanelComponent() {
     const metricToFieldMapping = getMetricToFieldMapping();
 
     const symbols = useMemo(() => {
-      return Array.from(new Set(tableData.map(row => row.symbol)));
+      return Array.from(new Set(tableData.map((row) => row.symbol)));
     }, []);
 
     const relativeView = useMemo(() => {
-      const symbolData: Record<string, Array<{period: string, data: FinancialDataPoint}>> = {};
+      const symbolData: Record<
+        string,
+        Array<{ period: string; data: FinancialDataPoint }>
+      > = {};
 
-      tableData.forEach(row => {
+      tableData.forEach((row) => {
         if (!symbolData[row.symbol]) symbolData[row.symbol] = [];
         symbolData[row.symbol].push({
           period: `${row.period} ${row.fiscalYear}`,
-          data: row
+          data: row,
         });
       });
 
-      Object.keys(symbolData).forEach(symbol => {
+      Object.keys(symbolData).forEach((symbol) => {
         symbolData[symbol].sort((a, b) => {
           const [periodA, yearA] = a.period.split(' ');
           const [periodB, yearB] = b.period.split(' ');
@@ -520,23 +538,33 @@ function FinancialDataPanelComponent() {
         });
       });
 
-      const maxQuarters = Math.max(...Object.values(symbolData).map(arr => arr.length));
+      const maxQuarters = Math.max(
+        ...Object.values(symbolData).map((arr) => arr.length),
+      );
 
       const dataMap: Record<string, Record<string, Record<number, any>>> = {};
+      // Extract quarter dates by taking the date from the first symbol's data
+      const quarterDates: Array<string | null> = [];
 
       Object.entries(symbolData).forEach(([symbol, periods]) => {
         if (!dataMap[symbol]) dataMap[symbol] = {};
 
         periods.forEach((periodData, index) => {
-          selectedMetrics.forEach(metricId => {
+          // Store date for this quarter index (use first symbol's dates)
+          if (quarterDates.length === index) {
+            quarterDates.push(formatDate((periodData.data as any).filingdate));
+          }
+
+          selectedMetrics.forEach((metricId) => {
             const fieldName = metricToFieldMapping[metricId];
             if (!dataMap[symbol][metricId]) dataMap[symbol][metricId] = {};
-            dataMap[symbol][metricId][index] = periodData.data.metrics[fieldName];
+            dataMap[symbol][metricId][index] =
+              periodData.data.metrics[fieldName];
           });
         });
       });
 
-      return { maxQuarters, dataMap, symbolData };
+      return { maxQuarters, dataMap, symbolData, quarterDates };
     }, [tableData, selectedMetrics, metricToFieldMapping]);
 
     if (tableAlignMode === 'original') {
@@ -579,7 +607,16 @@ function FinancialDataPanelComponent() {
                       {row.symbol}
                     </td>
                     <td className="sticky left-[100px] bg-card text-muted-foreground border-r border-border p-3">
-                      {row.period} {row.fiscalYear}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium">
+                          {row.period} {row.fiscalYear}
+                        </span>
+                        {(row as any).filingdate && (
+                          <span className="text-xs opacity-75">
+                            {formatDate((row as any).filingdate)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     {selectedMetrics.map((metricId) => {
                       const fieldName = metricToFieldMapping[metricId];
@@ -612,7 +649,7 @@ function FinancialDataPanelComponent() {
         </div>
       );
     } else {
-      const { maxQuarters, dataMap } = relativeView;
+      const { maxQuarters, dataMap, quarterDates } = relativeView;
 
       return (
         <div className="rounded-lg border border-border h-full overflow-auto bg-card shadow-sm">
@@ -625,14 +662,24 @@ function FinancialDataPanelComponent() {
                 <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[180px] z-20 border-r border-border p-3 text-left">
                   {tFinancial('metric')}
                 </th>
-                {Array.from({ length: maxQuarters }, (_, i) => (
-                  <th
-                    key={i}
-                    className="text-foreground font-medium min-w-[200px] bg-muted p-3 text-center border-r border-border"
-                  >
-                    Q-{i}
-                  </th>
-                ))}
+                {Array.from({ length: maxQuarters }, (_, i) => {
+                  const date = quarterDates[i];
+                  return (
+                    <th
+                      key={i}
+                      className="text-foreground font-medium min-w-[200px] bg-muted p-3 text-center border-r border-border"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold">Q-{i}</span>
+                        {date && (
+                          <span className="text-xs text-muted-foreground font-normal">
+                            {date}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -643,7 +690,9 @@ function FinancialDataPanelComponent() {
                     <tr
                       key={`${symbol}-${metricId}`}
                       className={`border-b border-border hover:bg-muted/50 transition-colors duration-200 ${
-                        isFirstMetric ? 'border-t-2 border-t-brand-primary/20' : ''
+                        isFirstMetric
+                          ? 'border-t-2 border-t-brand-primary/20'
+                          : ''
                       }`}
                     >
                       <td className="sticky left-0 bg-card font-medium text-foreground border-r border-border p-3">
@@ -655,7 +704,10 @@ function FinancialDataPanelComponent() {
                       {Array.from({ length: maxQuarters }, (_, i) => {
                         const metricData = dataMap[symbol]?.[metricId]?.[i];
                         return (
-                          <td key={i} className="p-3 text-center border-r border-border">
+                          <td
+                            key={i}
+                            className="p-3 text-center border-r border-border"
+                          >
                             <div className="space-y-1">
                               <div className="font-medium text-foreground">
                                 {formatValue(metricData?.value, metricId)}
@@ -691,7 +743,9 @@ function FinancialDataPanelComponent() {
       <div className="border-b border-border">
         {/* Header - Always Visible */}
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-semibold text-foreground">{tFinancial('title')}</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            {tFinancial('title')}
+          </h2>
           <div className="flex items-center gap-2">
             {/* View Toggle - Only show when data exists */}
             {tableData.length > 0 && (
@@ -860,8 +914,12 @@ function FinancialDataPanelComponent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="5">{tFinancial('quarters_5')}</SelectItem>
-                  <SelectItem value="10">{tFinancial('quarters_10')}</SelectItem>
-                  <SelectItem value="20">{tFinancial('quarters_20')}</SelectItem>
+                  <SelectItem value="10">
+                    {tFinancial('quarters_10')}
+                  </SelectItem>
+                  <SelectItem value="20">
+                    {tFinancial('quarters_20')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -894,8 +952,12 @@ function FinancialDataPanelComponent() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md bg-card border border-border rounded-lg p-6">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="font-medium mb-2 text-foreground">{tFinancial('errorFetchingData')}</p>
-              <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
+              <p className="font-medium mb-2 text-foreground">
+                {tFinancial('errorFetchingData')}
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {error.message}
+              </p>
               <Button
                 onClick={() => setError(null)}
                 variant="outline"
