@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar, Clock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
@@ -10,6 +10,7 @@ import { CalendarDeliverablesPanel } from './calendar-deliverables-panel';
 import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
+import { SchedulePanelEnhanced } from './schedule-panel-enhanced';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -19,7 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'calendar' | 'chart' | 'screener' | 'watchlist';
+type TabType = 'data' | 'blocks' | 'calendar' | 'chart' | 'screener' | 'watchlist' | 'schedule';
 
 interface Tab {
   id: TabType;
@@ -43,6 +44,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     // Financial Data tab hidden but kept in code
     // { id: 'data', label: t('financialData'), icon: BarChart3 },
     { id: 'blocks', label: t('analysis'), icon: Layers },
+    { id: 'schedule', label: 'Schedule', icon: Clock },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     // Screener tab hidden but kept in code
     // { id: 'screener', label: t('screener'), icon: Search },
@@ -148,6 +150,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
                 Select a chat to view deliverables
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'schedule' && (
+          <div id="schedule-panel" role="tabpanel" aria-labelledby="schedule-tab" className="h-full">
+            <SchedulePanelEnhanced />
           </div>
         )}
 

@@ -149,6 +149,9 @@ importers:
       codemirror:
         specifier: ^6.0.1
         version: 6.0.2
+      cronstrue:
+        specifier: ^3.9.0
+        version: 3.9.0
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2556,6 +2559,10 @@ packages:
 
   crelt@1.0.6:
     resolution: {integrity: sha512-VQ2MBenTq1fWZUH9DJNGti7kKv6EeAuYr3cLwxUWhIu1baTaXh4Ib5W2CqHVqib4/MqbYGJqiL3Zb8GJZr3l4g==}
+
+  cronstrue@3.9.0:
+    resolution: {integrity: sha512-T3S35zmD0Ai2B4ko6+mEM+k9C6tipe2nB9RLiGT6QL2Wn0Vsn2cCZAC8Oeuf4CaE00GZWVdpYitbpWCNlIWqdA==}
+    hasBin: true
 
   cross-fetch@3.2.0:
     resolution: {integrity: sha512-Q+xVJLoGOeIMXZmbUK4HYk+69cQH6LudR0Vu/pRm2YlU/hDV9CiS0gKUMaWY5f2NeUH9C1nV3bsTlCo0FsTV1Q==}
@@ -7646,6 +7653,8 @@ snapshots:
   crc-32@1.2.2: {}
 
   crelt@1.0.6: {}
+
+  cronstrue@3.9.0: {}
 
   cross-fetch@3.2.0(encoding@0.1.13):
     dependencies:
