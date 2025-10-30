@@ -960,7 +960,7 @@ export function AnalysisBlockRenderer({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 w-full max-w-full overflow-hidden">
-        {/* Markdown Content - Sections (Notion-style editing) */}
+        {/* Markdown Content - Sections (Read-only mode - editing disabled) */}
         {hasSections ? (
           <div className="space-y-6">
             {content.sections
@@ -968,7 +968,8 @@ export function AnalysisBlockRenderer({
               .map((section: any) => {
                 return (
                   <div key={section.id} className="group relative">
-                    {editingSectionId === section.id ? (
+                    {/* EDITING DISABLED - Uncomment below to re-enable editing */}
+                    {/* {editingSectionId === section.id ? (
                       <MarkdownSectionEditor
                         content={section.content || ''}
                         onSave={(markdown) =>
@@ -976,13 +977,16 @@ export function AnalysisBlockRenderer({
                         }
                         onCancel={() => setEditingSectionId(null)}
                       />
-                    ) : (
+                    ) : ( */}
                       <div
-                        onClick={() => {
-                          console.log('✏️ Click to edit section:', section.id);
-                          setEditingSectionId(section.id);
-                        }}
-                        className="cursor-text rounded-lg hover:bg-muted/30 transition-colors p-3"
+                        // EDITING DISABLED - Remove comments to re-enable click-to-edit
+                        // onClick={() => {
+                        //   console.log('✏️ Click to edit section:', section.id);
+                        //   setEditingSectionId(section.id);
+                        // }}
+                        className="rounded-lg p-3"
+                        // EDITING DISABLED - Original className with editing features:
+                        // className="cursor-text rounded-lg hover:bg-muted/30 transition-colors p-3"
                       >
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -993,7 +997,7 @@ export function AnalysisBlockRenderer({
                           </ReactMarkdown>
                         </div>
                       </div>
-                    )}
+                    {/* )} */}
                   </div>
                 );
               })}
