@@ -50,6 +50,7 @@ export function ScreenerPanel() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<ScreenerResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSql, setCurrentSql] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -74,11 +75,12 @@ export function ScreenerPanel() {
     }
   };
 
-  // Load saved query and result from localStorage on mount
+  // Load saved query, result, and SQL from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedQuery = localStorage.getItem('screener_last_query');
       const savedResult = localStorage.getItem('screener_last_result');
+      const savedSql = localStorage.getItem('screener_current_sql');
 
       if (savedQuery) {
         setQuery(savedQuery);
@@ -91,6 +93,10 @@ export function ScreenerPanel() {
         } catch (e) {
           console.warn('Failed to parse saved screener result:', e);
         }
+      }
+
+      if (savedSql) {
+        setCurrentSql(savedSql);
       }
     }
   }, []);
@@ -108,6 +114,11 @@ export function ScreenerPanel() {
 
       if (availableMetrics && availableMetrics.length > 0) {
         sessionState['available_metrics'] = availableMetrics;
+      }
+
+      // Include current SQL for iterative modifications
+      if (currentSql) {
+        sessionState['current_sql'] = currentSql;
       }
 
       // Stage 1: Call screener agent to generate SQL
@@ -140,6 +151,9 @@ export function ScreenerPanel() {
         });
         return;
       }
+
+      // Save SQL for iterative modifications
+      setCurrentSql(agentResult.sql);
 
       // Check if SQL contains {{WATCHLIST_SYMBOLS}} placeholder
       let finalSQL = agentResult.sql;
@@ -199,6 +213,7 @@ export function ScreenerPanel() {
           'screener_last_result',
           JSON.stringify(finalResult),
         );
+        localStorage.setItem('screener_current_sql', agentResult.sql);
       }
     } catch (error) {
       console.error('Screener error:', error);
