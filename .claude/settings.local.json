@@ -34,7 +34,8 @@
       "Bash(node:*)",
       "Bash(find:*)",
       "Bash(pnpm build)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(python fetch_index_constituents.py:*)"
     ],
     "deny": [],
     "ask": [],
