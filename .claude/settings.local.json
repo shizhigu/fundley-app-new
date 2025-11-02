@@ -9,7 +9,9 @@
       "Bash(done)",
       "Bash(for f in /Users/gushizhi/Projects/fundley-app/chatbot-service/tools/*.py)",
       "Read(//Users/gushizhi/anaconda3/lib/python3.12/site-packages/agno/**)",
-      "Read(///**)"
+      "Read(///**)",
+      "Bash(export PGPASSWORD='npg_BbVO3inf2xKM')",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": [],
