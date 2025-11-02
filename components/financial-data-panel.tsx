@@ -471,7 +471,7 @@ function FinancialDataPanelComponent() {
                       <div className="font-medium text-sm text-foreground">
                         {formatValue(metricData?.value, metricId)}
                       </div>
-                      <div className="flex gap-1 text-xs mt-1">
+                      <div className="flex flex-col items-end gap-1 text-xs mt-1">
                         <TrendIndicator trend={metricData?.qoq} label="QoQ" />
                         <TrendIndicator trend={metricData?.yoy} label="YoY" />
                       </div>
@@ -627,7 +627,7 @@ function FinancialDataPanelComponent() {
                             <div className="font-medium text-foreground">
                               {formatValue(metricData?.value, metricId)}
                             </div>
-                            <div className="flex justify-end gap-1">
+                            <div className="flex flex-col items-end gap-1">
                               <TrendIndicator
                                 trend={metricData?.qoq}
                                 label="QoQ"
@@ -712,7 +712,7 @@ function FinancialDataPanelComponent() {
                               <div className="font-medium text-foreground">
                                 {formatValue(metricData?.value, metricId)}
                               </div>
-                              <div className="flex justify-center gap-1">
+                              <div className="flex flex-col items-center gap-1">
                                 <TrendIndicator
                                   trend={metricData?.qoq}
                                   label="QoQ"
