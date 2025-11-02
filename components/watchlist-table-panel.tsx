@@ -86,6 +86,29 @@ export function WatchlistTablePanel() {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
+  // Restore from localStorage on mount (run first, before any async data)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cachedResult = localStorage.getItem('watchlist_cached_result');
+      const cachedSQL = localStorage.getItem('watchlist_cached_sql');
+      const cachedQuery = localStorage.getItem('watchlist_cached_query');
+      const cachedUseWatchlist = localStorage.getItem('watchlist_cached_use_watchlist');
+      const cachedTemplate = localStorage.getItem('watchlist_selected_template');
+
+      if (cachedResult && cachedSQL) {
+        try {
+          setSql(cachedSQL);
+          setResult(JSON.parse(cachedResult));
+          if (cachedQuery) setAiQuery(cachedQuery);
+          if (cachedUseWatchlist) setUseWatchlistPlaceholder(cachedUseWatchlist === 'true');
+          if (cachedTemplate) setSelectedTemplate(cachedTemplate);
+        } catch (error) {
+          console.warn('Failed to restore from cache');
+        }
+      }
+    }
+  }, []);
+
   // Fetch watchlist symbols on mount and load saved templates
   useEffect(() => {
     fetchWatchlistSymbols();
@@ -179,7 +202,8 @@ export function WatchlistTablePanel() {
         const symbolsString = watchlistSymbols
           .map((s: string) => `('${s}')`)
           .join(',\n        ');
-        finalSQL = template.sql.replace(
+        // Use replaceAll for multiple occurrences
+        finalSQL = template.sql.replaceAll(
           '{{WATCHLIST_SYMBOLS}}',
           symbolsString,
         );
@@ -223,16 +247,33 @@ export function WatchlistTablePanel() {
     }
   };
 
-  const fetchWatchlistSymbols = async () => {
+  const fetchWatchlistSymbols = async (): Promise<string[]> => {
     try {
       const response = await fetch('/api/watchlist');
+
+      // Check if response is OK
+      if (!response.ok) {
+        console.warn(`Watchlist API returned ${response.status}, using cached symbols`);
+        return watchlistSymbols;
+      }
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Watchlist API returned non-JSON, using cached symbols');
+        return watchlistSymbols;
+      }
+
       const data = await response.json();
       if (data.watchlist) {
         const symbols = data.watchlist.map((item: any) => item.symbol);
         setWatchlistSymbols(symbols);
+        return symbols;
       }
+      return watchlistSymbols;
     } catch (error) {
-      console.error('Failed to fetch watchlist:', error);
+      console.warn('Failed to fetch watchlist, using cached symbols:', error);
+      return watchlistSymbols;
     }
   };
 
@@ -298,11 +339,10 @@ export function WatchlistTablePanel() {
       // Save to localStorage (for cache restoration)
       if (typeof window !== 'undefined') {
         localStorage.setItem('watchlist_cached_sql', sqlQuery.trim());
-        localStorage.setItem(
-          'watchlist_cached_result',
-          JSON.stringify(queryResult),
-        );
+        localStorage.setItem('watchlist_cached_result', JSON.stringify(queryResult));
         localStorage.setItem('watchlist_selected_template', selectedTemplate);
+        localStorage.setItem('watchlist_cached_query', aiQuery);
+        localStorage.setItem('watchlist_cached_use_watchlist', String(useWatchlistPlaceholder));
       }
     } catch (error) {
       console.error('Watchlist query error:', error);
@@ -385,12 +425,16 @@ export function WatchlistTablePanel() {
     setIsLoading(true);
 
     try {
+      // Always fetch latest watchlist first to ensure we have current data
+      const latestSymbols = await fetchWatchlistSymbols();
+
       // Modify query based on toggle
       let finalQuery = aiQuery.trim();
       if (useWatchlistPlaceholder) {
-        if (watchlistSymbols.length === 0) {
+        if (latestSymbols.length === 0) {
           toast.error('Your watchlist is empty. Please add symbols first.');
           setIsGeneratingSQL(false);
+          setIsLoading(false);
           return;
         }
         finalQuery = `IMPORTANT: The user wants to analyze their watchlist. You MUST use the {{WATCHLIST_SYMBOLS}} placeholder pattern in your SQL query. User query: ${aiQuery.trim()}`;
@@ -426,16 +470,18 @@ export function WatchlistTablePanel() {
         return;
       }
 
-      // Handle placeholder replacement if needed
+      // Handle placeholder replacement if needed (use latestSymbols, not state!)
       let finalSQL = agentResult.sql;
       if (finalSQL.includes('{{WATCHLIST_SYMBOLS}}')) {
-        if (watchlistSymbols.length > 0) {
-          const symbolsString = watchlistSymbols
+        if (latestSymbols.length > 0) {
+          const symbolsString = latestSymbols
             .map((s: string) => `('${s}')`)
             .join(',\n        ');
-          finalSQL = finalSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString);
+          // Use replaceAll to replace ALL occurrences (SQL may have multiple placeholders)
+          finalSQL = finalSQL.replaceAll('{{WATCHLIST_SYMBOLS}}', symbolsString);
           console.log(
-            `✅ Replaced placeholder with ${watchlistSymbols.length} symbols`,
+            `✅ Replaced ALL placeholders with ${latestSymbols.length} symbols:`,
+            latestSymbols
           );
         } else {
           toast.warning(
@@ -463,12 +509,13 @@ export function WatchlistTablePanel() {
       const queryResult: QueryResult = await queryResponse.json();
       setResult(queryResult);
 
+      // Save to localStorage (same keys as executeSQL)
       if (typeof window !== 'undefined') {
-        localStorage.setItem('watchlist_last_sql', finalSQL);
-        localStorage.setItem(
-          'watchlist_last_result',
-          JSON.stringify(queryResult),
-        );
+        localStorage.setItem('watchlist_cached_sql', finalSQL);
+        localStorage.setItem('watchlist_cached_result', JSON.stringify(queryResult));
+        localStorage.setItem('watchlist_selected_template', selectedTemplate);
+        localStorage.setItem('watchlist_cached_query', aiQuery);
+        localStorage.setItem('watchlist_cached_use_watchlist', String(useWatchlistPlaceholder));
       }
 
       toast.success(
