@@ -194,10 +194,10 @@ export function ScreenerPanel() {
           return;
         }
 
-        // Replace placeholder with actual symbols
+        // Replace placeholder with actual symbols (use replaceAll for multiple occurrences)
         const symbolsString = watchlistSymbols.map((s: string) => `('${s}')`).join(',\n        ');
-        finalSQL = finalSQL.replace('{{WATCHLIST_SYMBOLS}}', symbolsString);
-        console.log(`✅ Replaced with ${watchlistSymbols.length} symbols:`, watchlistSymbols);
+        finalSQL = finalSQL.replaceAll('{{WATCHLIST_SYMBOLS}}', symbolsString);
+        console.log(`✅ Replaced ALL placeholders with ${watchlistSymbols.length} symbols:`, watchlistSymbols);
       }
 
       // Stage 2: Execute SQL via Next.js API route (not directly to backend)
