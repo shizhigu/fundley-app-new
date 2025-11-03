@@ -113,19 +113,18 @@ export async function DELETE(
     const internalUserId = userResult[0].id;
     const taskId = params.id;
 
-    // Soft delete by setting is_active = false
+    // Hard delete - permanently remove the task
     const result = await sql`
-      UPDATE scheduled_tasks
-      SET is_active = false
+      DELETE FROM scheduled_tasks
       WHERE id = ${taskId} AND user_id = ${internalUserId}
-      RETURNING *
+      RETURNING id
     `;
 
     if (result.length === 0) {
       return new Response('Task not found', { status: 404 });
     }
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, deleted_id: result[0].id });
   } catch (error) {
     console.error('Failed to delete task:', error);
     return new Response('Internal Server Error', { status: 500 });
