@@ -406,14 +406,23 @@ export async function POST(
             return;
           }
 
-          // 根据订阅状态和 credit balance 选择 agent tier
+          // 根据用户类型和 credit balance 选择 agent tier
           const minRequired = 0.01;
           let agentTier: 'premium' | 'budget';
           let agentEndpoint: string;
           let isFreeUsage = false;
 
-          // 付费订阅用户：有钱用快的，没钱免费用慢的
-          if (creditBalance.has_active_subscription) {
+          // 1. INTERNAL USER - 最高优先级，永远用最好的模型且免费
+          if (creditBalance.is_internal) {
+            agentTier = 'premium';
+            agentEndpoint = 'financial-analyst';
+            isFreeUsage = true;  // Internal user 不扣费
+            console.log(
+              `💳 [Internal User] Unlimited access - PREMIUM tier (FREE)`,
+            );
+          }
+          // 2. 付费订阅用户：有钱用快的，没钱免费用慢的
+          else if (creditBalance.has_active_subscription) {
             if (hasSufficientCredits(creditBalance, minRequired)) {
               agentTier = 'premium';
               agentEndpoint = 'financial-analyst';
@@ -430,7 +439,7 @@ export async function POST(
               );
             }
           }
-          // 免费用户：只能用 budget，addon credits 用完就停
+          // 3. 免费用户：只能用 budget，addon credits 用完就停
           else {
             if (creditBalance.addon_credits <= 0) {
               safeEnqueue(

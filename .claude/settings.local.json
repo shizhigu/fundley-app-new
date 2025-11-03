@@ -37,7 +37,8 @@
       "Bash(pnpm add:*)",
       "Bash(python fetch_index_constituents.py:*)",
       "Bash(git checkout:*)",
-      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-blue-pine-af2zp5vc-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" psql:*)"
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-blue-pine-af2zp5vc-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" psql:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": [],
