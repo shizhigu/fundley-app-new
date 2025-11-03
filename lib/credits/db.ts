@@ -50,12 +50,14 @@ export async function getUserCreditBalance(userId: string): Promise<CreditBalanc
  * @param userId User ID
  * @param chatId Chat ID (for audit)
  * @param metrics Token metrics
+ * @param agentTier Agent tier used (premium or budget)
  * @returns Deduction result
  */
 export async function deductUserCredits(
   userId: string,
   chatId: string,
-  metrics: TokenMetrics
+  metrics: TokenMetrics,
+  agentTier: 'premium' | 'budget' = 'premium'
 ): Promise<CreditDeduction | null> {
   try {
     // Step 1: Get current balance
@@ -64,27 +66,50 @@ export async function deductUserCredits(
       throw new Error('User not found');
     }
 
-    // Step 2: Calculate credit cost
-    const creditCost = calculateCreditCost(metrics);
+    // Step 2: Calculate credit cost (with tier-specific pricing)
+    const creditCost = calculateCreditCost(metrics, agentTier);
 
-    // Step 3: Calculate deduction
-    const deduction = deductCredits(balance, creditCost);
+    let deduction: CreditDeduction;
+    let balanceAfter: number;
 
-    // Step 4: Update user's credits in database (skip if internal)
-    if (!balance.is_internal) {
-      await sql`
-        UPDATE users
-        SET
-          subscription_credits = ${deduction.remaining_subscription_credits},
-          addon_credits = ${deduction.remaining_addon_credits}
-        WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId}
-      `;
+    // Step 3: Budget tier is FREE - don't deduct credits
+    if (agentTier === 'budget') {
+      // Budget tier: Record usage but don't charge
+      deduction = {
+        credits_used: 0,  // FREE!
+        subscription_credits_deducted: 0,
+        addon_credits_deducted: 0,
+        remaining_subscription_credits: balance.subscription_credits,
+        remaining_addon_credits: balance.addon_credits,
+        source_type: 'subscription',
+      };
+      balanceAfter = balance.subscription_credits + balance.addon_credits;
+
+      console.log(
+        `[Credits] Budget tier - FREE usage for user ${userId} (would have cost ${creditCost.toFixed(4)} credits)`
+      );
+    } else {
+      // Premium tier: Deduct credits as normal
+      deduction = deductCredits(balance, creditCost);
+      balanceAfter = deduction.remaining_subscription_credits + deduction.remaining_addon_credits;
+
+      // Step 4: Update user's credits in database (skip if internal or budget)
+      if (!balance.is_internal) {
+        await sql`
+          UPDATE users
+          SET
+            subscription_credits = ${deduction.remaining_subscription_credits},
+            addon_credits = ${deduction.remaining_addon_credits}
+          WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId}
+        `;
+      }
+
+      console.log(
+        `[Credits] Deducted ${creditCost.toFixed(4)} credits from user ${userId} (${deduction.source_type})`
+      );
     }
 
-    // Step 5: Calculate balance after transaction
-    const balanceAfter = deduction.remaining_subscription_credits + deduction.remaining_addon_credits;
-
-    // Step 6: Record transaction for audit
+    // Step 5: Record transaction for audit (ALWAYS record, even for budget tier)
     await sql`
       INSERT INTO credit_transactions (
         user_id,
@@ -97,26 +122,27 @@ export async function deductUserCredits(
         reasoning_tokens,
         total_tokens,
         description,
-        balance_after
+        balance_after,
+        agent_tier
       )
       VALUES (
         (SELECT id FROM users WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId} LIMIT 1),
         ${chatId},
-        ${-creditCost}, -- Negative for usage
+        ${agentTier === 'budget' ? 0 : -creditCost}, -- 0 for budget (free), negative for premium
         'usage',
         ${deduction.source_type},
         ${metrics.input_tokens},
         ${metrics.output_tokens},
         ${metrics.reasoning_tokens},
         ${metrics.total_tokens},
-        ${`Deducted ${creditCost.toFixed(4)} credits (${deduction.source_type})`},
-        ${balanceAfter}
+        ${agentTier === 'budget'
+          ? `Budget tier usage - FREE (would cost ${creditCost.toFixed(4)} credits)`
+          : `Deducted ${creditCost.toFixed(4)} credits (${deduction.source_type}, ${agentTier} tier)`
+        },
+        ${balanceAfter},
+        ${agentTier}
       )
     `;
-
-    console.log(
-      `[Credits] Deducted ${creditCost.toFixed(4)} credits from user ${userId} (${deduction.source_type})`
-    );
 
     return deduction;
   } catch (error) {
@@ -272,6 +298,7 @@ export async function getCreditTransactionHistory(
         total_tokens,
         description,
         balance_after,
+        agent_tier,
         created_at
       FROM credit_transactions
       WHERE user_id = (SELECT id FROM users WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId} LIMIT 1)
@@ -291,6 +318,7 @@ export async function getCreditTransactionHistory(
       total_tokens: row.total_tokens,
       description: row.description,
       balance_after: row.balance_after ? parseFloat(row.balance_after) : null,
+      agent_tier: row.agent_tier,
       created_at: row.created_at,
     }));
 

@@ -406,28 +406,26 @@ export async function POST(
             return;
           }
 
-          // 检查是否有足够的 credits（预估最低 0.01 credit）
-          // 内部用户或有充足余额的用户可以继续
+          // 根据 credit balance 选择 agent tier
           const minRequired = 0.01;
-          if (!hasSufficientCredits(creditBalance, minRequired)) {
-            safeEnqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'error',
-                  error:
-                    'Insufficient credits. Please upgrade your plan or purchase addon credits.',
-                  insufficient_credits: true,
-                })}\n\n`,
-              ),
-            );
-            controller.close();
-            clearInterval(heartbeatInterval);
-            return;
-          }
+          let agentTier: 'premium' | 'budget';
+          let agentEndpoint: string;
 
-          console.log(
-            `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits (subscription: ${creditBalance.subscription_credits.toFixed(2)}, addon: ${creditBalance.addon_credits.toFixed(2)}, internal: ${creditBalance.is_internal})`,
-          );
+          if (hasSufficientCredits(creditBalance, minRequired)) {
+            // 有足够 credits，使用 premium analyst
+            agentTier = 'premium';
+            agentEndpoint = 'financial-analyst';
+            console.log(
+              `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits - Using PREMIUM tier`,
+            );
+          } else {
+            // Credits 不足，使用 budget analyst
+            agentTier = 'budget';
+            agentEndpoint = 'budget-financial-analyst';
+            console.log(
+              `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits - Using BUDGET tier (grok-4-fast)`,
+            );
+          }
 
           // 1. 检查是否是第一条消息（用于自动命名）
           const existingMessages = await db`
@@ -518,7 +516,7 @@ export async function POST(
             );
 
             agentResponse = await fetch(
-              `${agentosUrl}/agents/financial-analyst/runs`,
+              `${agentosUrl}/agents/${agentEndpoint}/runs`,
               {
                 ...fetchOptions,
                 body: formData,
@@ -543,7 +541,7 @@ export async function POST(
             }
 
             agentResponse = await fetch(
-              `${agentosUrl}/agents/financial-analyst/runs`,
+              `${agentosUrl}/agents/${agentEndpoint}/runs`,
               {
                 ...fetchOptions,
                 headers: {
@@ -778,6 +776,7 @@ export async function POST(
                             reasoning_tokens: metrics.reasoning_tokens || 0,
                             total_tokens: metrics.total_tokens || 0,
                           },
+                          agentTier,  // Pass agent tier for pricing differentiation
                         );
 
                         if (deduction) {

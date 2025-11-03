@@ -37,25 +37,40 @@ export interface CreditDeduction {
 /**
  * Calculate credit cost from token usage
  *
- * Formula:
- * credit_cost = (input * 1.25 + (output + reasoning) * 10) / 1_000_000 / 0.2
- *             = (input * 1.25 + (output + reasoning) * 10) / 200_000
+ * Pricing (1 credit = $0.2):
+ * - Premium (Claude Sonnet 4.5): $3/M input, $15/M output
+ * - Budget (grok-4-fast): $0.2/M input, $1/M output (15x cheaper)
  *
  * @param metrics Token usage metrics
+ * @param agentTier Agent tier used ('premium' or 'budget')
  * @returns Credit cost (can be fractional)
  */
-export function calculateCreditCost(metrics: TokenMetrics): number {
+export function calculateCreditCost(
+  metrics: TokenMetrics,
+  agentTier: 'premium' | 'budget' = 'premium'
+): number {
   const { input_tokens, output_tokens, reasoning_tokens } = metrics;
 
-  // GPT-5 pricing
-  const inputCost = input_tokens * 1.25; // $1.25 per 1M input tokens
-  const outputCost = (output_tokens + reasoning_tokens) * 10; // $10 per 1M output/reasoning tokens
+  let inputCostPerM: number;
+  let outputCostPerM: number;
 
-  // Total cost in dollars per million tokens
-  const totalCostPerMillion = inputCost + outputCost;
+  if (agentTier === 'budget') {
+    // grok-4-fast pricing
+    inputCostPerM = 0.2;  // $0.2 per 1M input tokens
+    outputCostPerM = 1;   // $1 per 1M output/reasoning tokens
+  } else {
+    // Claude Sonnet 4.5 pricing (premium)
+    inputCostPerM = 3;    // $3 per 1M input tokens
+    outputCostPerM = 15;  // $15 per 1M output/reasoning tokens
+  }
+
+  // Calculate cost in dollars
+  const inputCost = (input_tokens / 1_000_000) * inputCostPerM;
+  const outputCost = ((output_tokens + reasoning_tokens) / 1_000_000) * outputCostPerM;
+  const totalCost = inputCost + outputCost;
 
   // Convert to credits (1 credit = $0.2)
-  const creditCost = totalCostPerMillion / 200_000;
+  const creditCost = totalCost / 0.2;
 
   // Round to 4 decimal places for precision
   return Math.round(creditCost * 10000) / 10000;
