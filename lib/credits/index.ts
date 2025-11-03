@@ -23,6 +23,7 @@ export interface CreditBalance {
   addon_credits: number;
   total_credits: number;
   is_internal: boolean;
+  has_active_subscription: boolean;
 }
 
 export interface CreditDeduction {

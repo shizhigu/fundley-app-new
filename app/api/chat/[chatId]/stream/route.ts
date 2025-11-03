@@ -406,24 +406,53 @@ export async function POST(
             return;
           }
 
-          // 根据 credit balance 选择 agent tier
+          // 根据订阅状态和 credit balance 选择 agent tier
           const minRequired = 0.01;
           let agentTier: 'premium' | 'budget';
           let agentEndpoint: string;
+          let isFreeUsage = false;
 
-          if (hasSufficientCredits(creditBalance, minRequired)) {
-            // 有足够 credits，使用 premium analyst
-            agentTier = 'premium';
-            agentEndpoint = 'financial-analyst';
-            console.log(
-              `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits - Using PREMIUM tier`,
-            );
-          } else {
-            // Credits 不足，使用 budget analyst
+          // 付费订阅用户：有钱用快的，没钱免费用慢的
+          if (creditBalance.has_active_subscription) {
+            if (hasSufficientCredits(creditBalance, minRequired)) {
+              agentTier = 'premium';
+              agentEndpoint = 'financial-analyst';
+              isFreeUsage = false;
+              console.log(
+                `💳 [Subscriber] Balance: ${creditBalance.total_credits.toFixed(2)} credits - PREMIUM tier (paid)`,
+              );
+            } else {
+              agentTier = 'budget';
+              agentEndpoint = 'budget-financial-analyst';
+              isFreeUsage = true;  // 订阅用户的免费兜底福利
+              console.log(
+                `💳 [Subscriber] Balance: ${creditBalance.total_credits.toFixed(2)} credits - BUDGET tier (FREE fallback)`,
+              );
+            }
+          }
+          // 免费用户：只能用 budget，addon credits 用完就停
+          else {
+            if (creditBalance.addon_credits <= 0) {
+              safeEnqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: 'error',
+                    error:
+                      'Insufficient credits. Please upgrade to a paid plan or purchase addon credits.',
+                    insufficient_credits: true,
+                  })}\n\n`,
+                ),
+              );
+              controller.close();
+              clearInterval(heartbeatInterval);
+              return;
+            }
+
             agentTier = 'budget';
             agentEndpoint = 'budget-financial-analyst';
+            isFreeUsage = false;  // 免费用户使用 budget 仍然扣费
             console.log(
-              `💳 User credit balance: ${creditBalance.total_credits.toFixed(2)} credits - Using BUDGET tier (grok-4-fast)`,
+              `💳 [Free User] Addon credits: ${creditBalance.addon_credits.toFixed(2)} - BUDGET tier (paid, 15x cheaper)`,
             );
           }
 
@@ -776,7 +805,8 @@ export async function POST(
                             reasoning_tokens: metrics.reasoning_tokens || 0,
                             total_tokens: metrics.total_tokens || 0,
                           },
-                          agentTier,  // Pass agent tier for pricing differentiation
+                          agentTier,    // Pass agent tier for pricing differentiation
+                          isFreeUsage,  // Pass free usage flag (subscriber fallback benefit)
                         );
 
                         if (deduction) {

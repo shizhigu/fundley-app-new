@@ -9,21 +9,26 @@ import { calculateCreditCost, deductCredits } from './index';
 const sql = neon(process.env.DATABASE_URL!);
 
 /**
- * Get user's current credit balance
+ * Get user's current credit balance with subscription status
  *
  * @param userId User ID (UUID or clerk_user_id)
- * @returns Credit balance
+ * @returns Credit balance with subscription status
  */
 export async function getUserCreditBalance(userId: string): Promise<CreditBalance | null> {
   try {
     const result = await sql`
       SELECT
-        subscription_credits,
-        addon_credits,
-        is_internal,
-        (COALESCE(subscription_credits, 0) + COALESCE(addon_credits, 0)) as total_credits
-      FROM users
-      WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId}
+        u.subscription_credits,
+        u.addon_credits,
+        u.is_internal,
+        (COALESCE(u.subscription_credits, 0) + COALESCE(u.addon_credits, 0)) as total_credits,
+        CASE
+          WHEN s.status = 'active' AND s.monthly_credits > 0 THEN true
+          ELSE false
+        END as has_active_subscription
+      FROM users u
+      LEFT JOIN subscriptions s ON u.id = s.user_id
+      WHERE u.id::TEXT = ${userId} OR u.clerk_user_id = ${userId}
       LIMIT 1
     `;
 
@@ -37,6 +42,7 @@ export async function getUserCreditBalance(userId: string): Promise<CreditBalanc
       addon_credits: parseFloat(row.addon_credits) || 0,
       total_credits: parseFloat(row.total_credits) || 0,
       is_internal: row.is_internal || false,
+      has_active_subscription: row.has_active_subscription || false,
     };
   } catch (error) {
     console.error('[Credits] Failed to get user credit balance:', error);
@@ -51,13 +57,15 @@ export async function getUserCreditBalance(userId: string): Promise<CreditBalanc
  * @param chatId Chat ID (for audit)
  * @param metrics Token metrics
  * @param agentTier Agent tier used (premium or budget)
+ * @param isFreeUsage Whether this is free usage (subscriber fallback benefit)
  * @returns Deduction result
  */
 export async function deductUserCredits(
   userId: string,
   chatId: string,
   metrics: TokenMetrics,
-  agentTier: 'premium' | 'budget' = 'premium'
+  agentTier: 'premium' | 'budget' = 'premium',
+  isFreeUsage: boolean = false
 ): Promise<CreditDeduction | null> {
   try {
     // Step 1: Get current balance
@@ -72,9 +80,9 @@ export async function deductUserCredits(
     let deduction: CreditDeduction;
     let balanceAfter: number;
 
-    // Step 3: Budget tier is FREE - don't deduct credits
-    if (agentTier === 'budget') {
-      // Budget tier: Record usage but don't charge
+    // Step 3: Check if this is free usage (subscriber fallback benefit)
+    if (isFreeUsage) {
+      // Free usage: Record usage but don't charge (subscriber benefit)
       deduction = {
         credits_used: 0,  // FREE!
         subscription_credits_deducted: 0,
@@ -86,14 +94,14 @@ export async function deductUserCredits(
       balanceAfter = balance.subscription_credits + balance.addon_credits;
 
       console.log(
-        `[Credits] Budget tier - FREE usage for user ${userId} (would have cost ${creditCost.toFixed(4)} credits)`
+        `[Credits] FREE usage for subscriber ${userId} (${agentTier} tier, would have cost ${creditCost.toFixed(4)} credits)`
       );
     } else {
-      // Premium tier: Deduct credits as normal
+      // Paid usage: Deduct credits as normal
       deduction = deductCredits(balance, creditCost);
       balanceAfter = deduction.remaining_subscription_credits + deduction.remaining_addon_credits;
 
-      // Step 4: Update user's credits in database (skip if internal or budget)
+      // Step 4: Update user's credits in database (skip if internal)
       if (!balance.is_internal) {
         await sql`
           UPDATE users
@@ -105,11 +113,11 @@ export async function deductUserCredits(
       }
 
       console.log(
-        `[Credits] Deducted ${creditCost.toFixed(4)} credits from user ${userId} (${deduction.source_type})`
+        `[Credits] Deducted ${creditCost.toFixed(4)} credits from user ${userId} (${agentTier} tier, ${deduction.source_type})`
       );
     }
 
-    // Step 5: Record transaction for audit (ALWAYS record, even for budget tier)
+    // Step 5: Record transaction for audit (ALWAYS record, even for free usage)
     await sql`
       INSERT INTO credit_transactions (
         user_id,
@@ -128,16 +136,16 @@ export async function deductUserCredits(
       VALUES (
         (SELECT id FROM users WHERE id::TEXT = ${userId} OR clerk_user_id = ${userId} LIMIT 1),
         ${chatId},
-        ${agentTier === 'budget' ? 0 : -creditCost}, -- 0 for budget (free), negative for premium
+        ${isFreeUsage ? 0 : -creditCost}, -- 0 for free usage, negative for paid
         'usage',
         ${deduction.source_type},
         ${metrics.input_tokens},
         ${metrics.output_tokens},
         ${metrics.reasoning_tokens},
         ${metrics.total_tokens},
-        ${agentTier === 'budget'
-          ? `Budget tier usage - FREE (would cost ${creditCost.toFixed(4)} credits)`
-          : `Deducted ${creditCost.toFixed(4)} credits (${deduction.source_type}, ${agentTier} tier)`
+        ${isFreeUsage
+          ? `FREE subscriber fallback (${agentTier} tier, would cost ${creditCost.toFixed(4)} credits)`
+          : `Deducted ${creditCost.toFixed(4)} credits (${agentTier} tier, ${deduction.source_type})`
         },
         ${balanceAfter},
         ${agentTier}
