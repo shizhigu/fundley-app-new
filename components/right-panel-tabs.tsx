@@ -10,7 +10,7 @@ import { CalendarDeliverablesPanel } from './calendar-deliverables-panel';
 import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
-import { SchedulePanelEnhanced } from './schedule-panel-enhanced';
+import { AIWorkforcePanel } from './ai-workforce-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -155,7 +155,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
 
         {activeTab === 'schedule' && (
           <div id="schedule-panel" role="tabpanel" aria-labelledby="schedule-tab" className="h-full">
-            <SchedulePanelEnhanced />
+            <AIWorkforcePanel />
           </div>
         )}
 
