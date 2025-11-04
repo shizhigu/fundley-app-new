@@ -92,6 +92,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
@@ -419,6 +420,43 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
     }, 50);
 
     toast.success(`Template "${template.title}" ready to use`);
+  };
+
+  const handleDeleteTemplate = async (templateId: string, templateTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${templateTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(templateId);
+
+    try {
+      const response = await fetch(`/api/templates/${templateId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const updatedTemplates = templates.filter((t) => t.id !== templateId);
+        setTemplates(updatedTemplates);
+        // Update cache
+        localStorage.setItem(
+          TEMPLATES_CACHE_KEY,
+          JSON.stringify({
+            data: updatedTemplates,
+            timestamp: Date.now(),
+          })
+        );
+        toast.success(data.message || 'Template deleted successfully');
+      } else {
+        toast.error(data.error || 'Failed to delete template');
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Failed to delete template');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Watchlist functions
@@ -926,21 +964,45 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                                   {new Date(template.created_at).toLocaleDateString()}
                                 </TableCell>
                                 <TableCell>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 hover:bg-brand-primary/10 hover:text-brand-primary transition-all duration-200"
-                                        onClick={() => useTemplate(template)}
-                                      >
-                                        <Play className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Use this template</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <div className="flex items-center gap-2">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 hover:bg-brand-primary/10 hover:text-brand-primary transition-all duration-200"
+                                          onClick={() => useTemplate(template)}
+                                        >
+                                          <Play className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Use this template</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    {template.is_mine && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
+                                            onClick={() => handleDeleteTemplate(template.id, template.title)}
+                                            disabled={deletingId === template.id}
+                                          >
+                                            {deletingId === template.id ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Delete template</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
