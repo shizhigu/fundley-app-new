@@ -104,7 +104,9 @@ import { toast } from '@/components/toast';
 // Format filename for display: extract basename, remove extension, replace separators, uppercase
 const formatFileName = (filepath: string): string => {
   // Extract just the filename from path (e.g., "tasks/.../nvda_revenue_data.csv" → "nvda_revenue_data.csv")
-  const filename = filepath.includes('/') ? filepath.split('/').pop()! : filepath;
+  const filename = filepath.includes('/')
+    ? filepath.split('/').pop()!
+    : filepath;
 
   return filename
     .replace(/\.(html|json|csv|png|jpg|jpeg|pdf|pptx|xlsx)$/i, '') // Remove extension
@@ -243,40 +245,47 @@ export function DeliverableRenderer({
   }, [block.updated_at, block.created_at]);
 
   // Auto-resize iframe to fit content height
-  const handleIframeLoad = useCallback((e: React.SyntheticEvent<HTMLIFrameElement>) => {
-    const iframe = e.currentTarget;
-    try {
-      // Try to access iframe content height
-      const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
-      if (iframeDocument) {
-        // Get the actual content height
-        const body = iframeDocument.body;
-        const html = iframeDocument.documentElement;
-        const contentHeight = Math.max(
-          body?.scrollHeight || 0,
-          body?.offsetHeight || 0,
-          html?.clientHeight || 0,
-          html?.scrollHeight || 0,
-          html?.offsetHeight || 0
-        );
+  const handleIframeLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLIFrameElement>) => {
+      const iframe = e.currentTarget;
+      try {
+        // Try to access iframe content height
+        const iframeDocument =
+          iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDocument) {
+          // Get the actual content height
+          const body = iframeDocument.body;
+          const html = iframeDocument.documentElement;
+          const contentHeight = Math.max(
+            body?.scrollHeight || 0,
+            body?.offsetHeight || 0,
+            html?.clientHeight || 0,
+            html?.scrollHeight || 0,
+            html?.offsetHeight || 0,
+          );
 
-        // Set iframe height to content height with some padding
-        if (contentHeight > 0) {
-          iframe.style.height = `${contentHeight + 20}px`;
-          console.log(`📐 Iframe auto-resized to ${contentHeight}px`);
+          // Set iframe height to content height with some padding
+          if (contentHeight > 0) {
+            iframe.style.height = `${contentHeight + 20}px`;
+            console.log(`📐 Iframe auto-resized to ${contentHeight}px`);
+          }
         }
+      } catch (error) {
+        // If cross-origin, silently fail and keep default height
+        console.log(
+          '📐 Could not auto-resize iframe (cross-origin or error):',
+          error,
+        );
       }
-    } catch (error) {
-      // If cross-origin, silently fail and keep default height
-      console.log('📐 Could not auto-resize iframe (cross-origin or error):', error);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const dataFiles = React.useMemo(() => {
     if (Array.isArray(content.files?.data)) {
       // Handle both new format (objects) and old format (strings)
       return content.files.data.map((item: any) =>
-        typeof item === 'string' ? item : (item.filename || item)
+        typeof item === 'string' ? item : item.filename || item,
       );
     }
     if (content.files?.data) return [content.files.data]; // Single file (backward compatible)
@@ -286,7 +295,7 @@ export function DeliverableRenderer({
   const reports = React.useMemo(() => {
     if (content.files?.reports) {
       return content.files.reports.map((item: any) =>
-        typeof item === 'string' ? item : (item.filename || item)
+        typeof item === 'string' ? item : item.filename || item,
       );
     }
     if (content.files?.report) return [content.files.report]; // Single PDF
@@ -296,7 +305,7 @@ export function DeliverableRenderer({
   const presentations = React.useMemo(() => {
     if (content.files?.presentations) {
       return content.files.presentations.map((item: any) =>
-        typeof item === 'string' ? item : (item.filename || item)
+        typeof item === 'string' ? item : item.filename || item,
       );
     }
     if (content.files?.presentation) return [content.files.presentation]; // Single PPTX
@@ -354,7 +363,22 @@ export function DeliverableRenderer({
               console.error('CSV parsing errors:', parsed.errors);
             }
 
-            setTableData(parsed.data || []);
+            // Fix empty column names by renaming them
+            const data = parsed.data || [];
+            if (data.length > 0) {
+              const fixedData = data.map((row: any) => {
+                const newRow: any = {};
+                Object.keys(row).forEach((key) => {
+                  // If key is empty or just whitespace, rename it
+                  const fixedKey = key.trim() === '' ? '__metric__' : key;
+                  newRow[fixedKey] = row[key];
+                });
+                return newRow;
+              });
+              setTableData(fixedData);
+            } else {
+              setTableData(data);
+            }
           } else if (filename.endsWith('.json')) {
             // JSON files (legacy support)
             const data = await response.json();
@@ -427,7 +451,9 @@ export function DeliverableRenderer({
       const url = `/api/files/${filename}?block_id=${blockId}`;
 
       // Extract base filename for download attribute
-      const baseFilename = filename.includes('/') ? filename.split('/').pop()! : filename;
+      const baseFilename = filename.includes('/')
+        ? filename.split('/').pop()!
+        : filename;
 
       const link = document.createElement('a');
       link.href = url;
@@ -442,73 +468,180 @@ export function DeliverableRenderer({
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const fileTypes: Record<string, { label: string; color: string }> = {
       // Reports
-      pdf: { label: 'PDF', color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
-      pptx: { label: 'PPTX', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' },
+      pdf: {
+        label: 'PDF',
+        color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+      },
+      pptx: {
+        label: 'PPTX',
+        color:
+          'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+      },
       // Data
-      csv: { label: 'CSV', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
-      json: { label: 'JSON', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
-      xlsx: { label: 'Excel', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
-      parquet: { label: 'Parquet', color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' },
-      feather: { label: 'Feather', color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' },
+      csv: {
+        label: 'CSV',
+        color:
+          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+      },
+      json: {
+        label: 'JSON',
+        color:
+          'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
+      },
+      xlsx: {
+        label: 'Excel',
+        color:
+          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+      },
+      parquet: {
+        label: 'Parquet',
+        color:
+          'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+      },
+      feather: {
+        label: 'Feather',
+        color:
+          'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+      },
       // Images
-      png: { label: 'PNG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      jpg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      jpeg: { label: 'JPG', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      svg: { label: 'SVG', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' },
-      gif: { label: 'GIF', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
-      webp: { label: 'WebP', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      png: {
+        label: 'PNG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      jpg: {
+        label: 'JPG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      jpeg: {
+        label: 'JPG',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      svg: {
+        label: 'SVG',
+        color:
+          'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+      },
+      gif: {
+        label: 'GIF',
+        color:
+          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+      },
+      webp: {
+        label: 'WebP',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
       // Documents
-      txt: { label: 'TXT', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
-      md: { label: 'Markdown', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
-      docx: { label: 'Word', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+      txt: {
+        label: 'TXT',
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+      },
+      md: {
+        label: 'Markdown',
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+      },
+      docx: {
+        label: 'Word',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
       // Code
-      py: { label: 'Python', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      r: { label: 'R', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-      sql: { label: 'SQL', color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' },
-      ipynb: { label: 'Notebook', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' },
+      py: {
+        label: 'Python',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      r: {
+        label: 'R',
+        color:
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      },
+      sql: {
+        label: 'SQL',
+        color:
+          'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+      },
+      ipynb: {
+        label: 'Notebook',
+        color:
+          'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+      },
       // Archives
-      zip: { label: 'ZIP', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
-      tar: { label: 'TAR', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
-      gz: { label: 'GZ', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' },
+      zip: {
+        label: 'ZIP',
+        color:
+          'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
+      },
+      tar: {
+        label: 'TAR',
+        color:
+          'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
+      },
+      gz: {
+        label: 'GZ',
+        color:
+          'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
+      },
       // Media
-      mp4: { label: 'MP4', color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400' },
-      mp3: { label: 'MP3', color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400' },
+      mp4: {
+        label: 'MP4',
+        color:
+          'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
+      },
+      mp3: {
+        label: 'MP3',
+        color:
+          'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
+      },
     };
-    return fileTypes[ext] || { label: ext.toUpperCase(), color: 'bg-gray-100 dark:bg-gray-800 text-gray-500' };
+    return (
+      fileTypes[ext] || {
+        label: ext.toUpperCase(),
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
+      }
+    );
   }, []);
 
   // Excel export handler - supports exporting selected rows or all rows
-  const handleExportExcel = useCallback((selectedOnly = false, selectedRowsData: any[] = []) => {
-    if (tableData.length === 0) return;
+  const handleExportExcel = useCallback(
+    (selectedOnly = false, selectedRowsData: any[] = []) => {
+      if (tableData.length === 0) return;
 
-    let dataToExport = tableData;
+      let dataToExport = tableData;
 
-    if (selectedOnly) {
-      if (selectedRowsData.length === 0) {
-        toast({
-          type: 'error',
-          description: 'No rows selected. Please select rows to export.',
-        });
-        return;
+      if (selectedOnly) {
+        if (selectedRowsData.length === 0) {
+          toast({
+            type: 'error',
+            description: 'No rows selected. Please select rows to export.',
+          });
+          return;
+        }
+        dataToExport = selectedRowsData;
       }
-      dataToExport = selectedRowsData;
-    }
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
 
-    const fileName = selectedOnly
-      ? dataFiles[selectedDataIndex]?.replace('.json', '_selected.xlsx') || 'selected_rows.xlsx'
-      : dataFiles[selectedDataIndex]?.replace('.json', '.xlsx') || 'table_export.xlsx';
+      const fileName = selectedOnly
+        ? dataFiles[selectedDataIndex]?.replace('.json', '_selected.xlsx') ||
+          'selected_rows.xlsx'
+        : dataFiles[selectedDataIndex]?.replace('.json', '.xlsx') ||
+          'table_export.xlsx';
 
-    XLSX.writeFile(workbook, fileName);
+      XLSX.writeFile(workbook, fileName);
 
-    toast({
-      type: 'success',
-      description: `Exported ${dataToExport.length} row${dataToExport.length > 1 ? 's' : ''} to ${fileName}`,
-    });
-  }, [tableData, dataFiles, selectedDataIndex]);
+      toast({
+        type: 'success',
+        description: `Exported ${dataToExport.length} row${dataToExport.length > 1 ? 's' : ''} to ${fileName}`,
+      });
+    },
+    [tableData, dataFiles, selectedDataIndex],
+  );
 
   const [refreshingChart, setRefreshingChart] = useState<string | null>(null);
 
@@ -571,7 +704,7 @@ export function DeliverableRenderer({
             description: 'Failed to copy iframe code',
           });
           console.error('❌ Failed to copy iframe code:', err);
-        }
+        },
       );
     },
     [blockId, blockVersion],
@@ -704,9 +837,13 @@ export function DeliverableRenderer({
   const hasData = dataFiles.length > 0;
   const hasReport = reports.length > 0;
   const hasPresentation = presentations.length > 0;
-  const contentTypesCount = [hasText, hasChart, hasData, hasReport, hasPresentation].filter(
-    Boolean,
-  ).length;
+  const contentTypesCount = [
+    hasText,
+    hasChart,
+    hasData,
+    hasReport,
+    hasPresentation,
+  ].filter(Boolean).length;
 
   // Helper: Get color based on numeric value (for conditional formatting)
   const getNumericColor = (value: number, min: number, max: number) => {
@@ -720,11 +857,13 @@ export function DeliverableRenderer({
   // Helper: Detect if column contains change/percentage values
   const isChangeColumn = (key: string) => {
     const lowerKey = key.toLowerCase();
-    return lowerKey.includes('change') ||
-           lowerKey.includes('pct') ||
-           lowerKey.includes('percent') ||
-           lowerKey.includes('growth') ||
-           lowerKey.includes('return');
+    return (
+      lowerKey.includes('change') ||
+      lowerKey.includes('pct') ||
+      lowerKey.includes('percent') ||
+      lowerKey.includes('growth') ||
+      lowerKey.includes('return')
+    );
   };
 
   // Dynamic table columns with conditional formatting
@@ -734,10 +873,17 @@ export function DeliverableRenderer({
     const firstRow = tableData[0];
     const columnHelper = createColumnHelper<any>();
 
+    // Get all keys and handle empty column names
+    const allKeys = Object.keys(firstRow);
+
+    if (allKeys.length === 0) return [];
+
     // Calculate min/max for numeric columns (for heatmap)
     const numericRanges: Record<string, { min: number; max: number }> = {};
-    Object.keys(firstRow).forEach((key) => {
-      const values = tableData.map(row => row[key]).filter(v => typeof v === 'number');
+    allKeys.forEach((key) => {
+      const values = tableData
+        .map((row) => row[key])
+        .filter((v) => typeof v === 'number');
       if (values.length > 0) {
         numericRanges[key] = {
           min: Math.min(...values),
@@ -747,9 +893,9 @@ export function DeliverableRenderer({
     });
 
     // Add selection column with shadcn Checkbox
-    const selectionColumn = columnHelper.display({
+    const selectionColumn = {
       id: 'select',
-      header: ({ table }) => {
+      header: ({ table }: any) => {
         return (
           <Checkbox
             checked={
@@ -761,7 +907,7 @@ export function DeliverableRenderer({
           />
         );
       },
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -770,51 +916,60 @@ export function DeliverableRenderer({
       ),
       size: 40,
       enablePinning: true,
-    });
+    };
 
     // Data columns with conditional formatting
-    const dataColumns = Object.keys(firstRow).map((key) =>
-      columnHelper.accessor(
-        (row) => row[key],
-        {
-          id: key,
-          header: key,
-          cell: (info) => {
-            const value = info.getValue();
+    const dataColumns = allKeys.map((key) => {
+      // Handle renamed empty column
+      const displayName = key === '__metric__' ? 'Metrics' : String(key);
 
-            if (typeof value === 'number') {
-              const isChange = isChangeColumn(key);
-              const range = numericRanges[key];
+      return {
+        id: String(key),
+        accessorKey: key,
+        header: displayName,
+        cell: (info: any) => {
+          const value = info.getValue();
 
-              // Conditional formatting
-              let textColor = 'text-foreground';
-              let bgColor = 'transparent';
+          if (typeof value === 'number') {
+            const isChange = isChangeColumn(key);
+            const range = numericRanges[key];
 
-              if (isChange) {
-                // Change columns: green/red for positive/negative
-                textColor = value > 0 ? 'text-green-600 dark:text-green-400' :
-                           value < 0 ? 'text-red-600 dark:text-red-400' :
-                           'text-muted-foreground';
-              } else if (range) {
-                // Other numeric columns: heatmap background
-                bgColor = getNumericColor(value, range.min, range.max);
-              }
+            // Conditional formatting
+            let textColor = 'text-foreground';
+            let bgColor = 'transparent';
 
-              return (
-                <span
-                  className={`font-mono text-xs ${textColor}`}
-                  style={{ backgroundColor: bgColor, padding: '2px 4px', borderRadius: '2px' }}
-                >
-                  {isChange && value > 0 ? '+' : ''}{value.toLocaleString()}
-                  {isChange && !String(value).includes('%') ? '%' : ''}
-                </span>
-              );
+            if (isChange) {
+              // Change columns: green/red for positive/negative
+              textColor =
+                value > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : value < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-muted-foreground';
+            } else if (range) {
+              // Other numeric columns: heatmap background
+              bgColor = getNumericColor(value, range.min, range.max);
             }
-            return <span className="text-xs">{String(value)}</span>;
-          },
+
+            return (
+              <span
+                className={`font-mono text-xs ${textColor}`}
+                style={{
+                  backgroundColor: bgColor,
+                  padding: '2px 4px',
+                  borderRadius: '2px',
+                }}
+              >
+                {isChange && value > 0 ? '+' : ''}
+                {value.toLocaleString()}
+                {isChange && !String(value).includes('%') ? '%' : ''}
+              </span>
+            );
+          }
+          return <span className="text-xs">{String(value)}</span>;
         },
-      ),
-    );
+      };
+    });
 
     // Return columns with or without selection column based on selectionMode
     return selectionMode ? [selectionColumn, ...dataColumns] : dataColumns;
@@ -1238,7 +1393,9 @@ export function DeliverableRenderer({
                           setExpandedCharts(newExpanded);
                         }}
                         className="h-5 w-5 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
-                        title={expandedCharts.has(index) ? "Collapse" : "Expand"}
+                        title={
+                          expandedCharts.has(index) ? 'Collapse' : 'Expand'
+                        }
                       >
                         {expandedCharts.has(index) ? (
                           <ChevronUp className="h-3 w-3" />
@@ -1536,11 +1693,15 @@ export function DeliverableRenderer({
 
                         {/* Selection mode toggle */}
                         <Button
-                          variant={selectionMode ? "default" : "outline"}
+                          variant={selectionMode ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setSelectionMode(!selectionMode)}
                           className="h-8 gap-1 text-xs"
-                          title={selectionMode ? "Exit selection mode" : "Enter selection mode"}
+                          title={
+                            selectionMode
+                              ? 'Exit selection mode'
+                              : 'Enter selection mode'
+                          }
                         >
                           {selectionMode ? (
                             <CheckSquare className="h-3 w-3" />
@@ -1553,23 +1714,32 @@ export function DeliverableRenderer({
                         {/* Column visibility toggle */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1 text-xs"
+                            >
                               <Columns3 className="h-3 w-3" />
                               Columns
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-xs">
+                              Toggle columns
+                            </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <div className="max-h-64 overflow-auto">
-                              {table.getAllLeafColumns()
-                                .filter(column => column.id !== 'select')
-                                .map(column => (
+                              {table
+                                .getAllLeafColumns()
+                                .filter((column) => column.id !== 'select')
+                                .map((column) => (
                                   <DropdownMenuCheckboxItem
                                     key={column.id}
                                     className="text-xs capitalize"
                                     checked={column.getIsVisible()}
-                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                    onCheckedChange={(value) =>
+                                      column.toggleVisibility(!!value)
+                                    }
                                   >
                                     {column.id.replace(/_/g, ' ')}
                                   </DropdownMenuCheckboxItem>
@@ -1584,7 +1754,9 @@ export function DeliverableRenderer({
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const selectedRows = table.getSelectedRowModel().rows.map(row => row.original);
+                              const selectedRows = table
+                                .getSelectedRowModel()
+                                .rows.map((row) => row.original);
                               handleExportExcel(true, selectedRows);
                             }}
                             className="h-8 gap-1 text-xs"
@@ -1609,7 +1781,9 @@ export function DeliverableRenderer({
                       {/* Selection info */}
                       {Object.keys(rowSelection).length > 0 && (
                         <div className="mt-2 text-xs text-muted-foreground">
-                          {Object.keys(rowSelection).length} of {table.getFilteredRowModel().rows.length} row(s) selected
+                          {Object.keys(rowSelection).length} of{' '}
+                          {table.getFilteredRowModel().rows.length} row(s)
+                          selected
                         </div>
                       )}
                     </div>
@@ -1632,12 +1806,18 @@ export function DeliverableRenderer({
                                   <th
                                     key={header.id}
                                     className={cn(
-                                      "px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap",
-                                      isPinned && "sticky bg-muted z-20"
+                                      'px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap',
+                                      isPinned && 'sticky bg-muted z-20',
                                     )}
                                     style={{
-                                      left: isPinned === 'left' ? `${header.column.getStart('left')}px` : undefined,
-                                      right: isPinned === 'right' ? `${header.column.getAfter('right')}px` : undefined,
+                                      left:
+                                        isPinned === 'left'
+                                          ? `${header.column.getStart('left')}px`
+                                          : undefined,
+                                      right:
+                                        isPinned === 'right'
+                                          ? `${header.column.getAfter('right')}px`
+                                          : undefined,
                                     }}
                                     onClick={header.column.getToggleSortingHandler()}
                                   >
@@ -1664,12 +1844,18 @@ export function DeliverableRenderer({
                                   <td
                                     key={cell.id}
                                     className={cn(
-                                      "px-3 py-2 whitespace-nowrap text-sm text-foreground",
-                                      isPinned && "sticky bg-background z-10"
+                                      'px-3 py-2 whitespace-nowrap text-sm text-foreground',
+                                      isPinned && 'sticky bg-background z-10',
                                     )}
                                     style={{
-                                      left: isPinned === 'left' ? `${cell.column.getStart('left')}px` : undefined,
-                                      right: isPinned === 'right' ? `${cell.column.getAfter('right')}px` : undefined,
+                                      left:
+                                        isPinned === 'left'
+                                          ? `${cell.column.getStart('left')}px`
+                                          : undefined,
+                                      right:
+                                        isPinned === 'right'
+                                          ? `${cell.column.getAfter('right')}px`
+                                          : undefined,
                                     }}
                                   >
                                     {flexRender(
@@ -1827,11 +2013,15 @@ export function DeliverableRenderer({
                     <div className="flex items-center gap-2">
                       {/* Selection mode toggle */}
                       <Button
-                        variant={selectionMode ? "default" : "outline"}
+                        variant={selectionMode ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setSelectionMode(!selectionMode)}
                         className="gap-1"
-                        title={selectionMode ? "Exit selection mode" : "Enter selection mode"}
+                        title={
+                          selectionMode
+                            ? 'Exit selection mode'
+                            : 'Enter selection mode'
+                        }
                       >
                         {selectionMode ? (
                           <CheckSquare className="h-4 w-4" />
@@ -1850,17 +2040,22 @@ export function DeliverableRenderer({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+                          <DropdownMenuLabel className="text-xs">
+                            Toggle columns
+                          </DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <div className="max-h-64 overflow-auto">
-                            {table.getAllLeafColumns()
-                              .filter(column => column.id !== 'select')
-                              .map(column => (
+                            {table
+                              .getAllLeafColumns()
+                              .filter((column) => column.id !== 'select')
+                              .map((column) => (
                                 <DropdownMenuCheckboxItem
                                   key={column.id}
                                   className="text-xs capitalize"
                                   checked={column.getIsVisible()}
-                                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                  onCheckedChange={(value) =>
+                                    column.toggleVisibility(!!value)
+                                  }
                                 >
                                   {column.id.replace(/_/g, ' ')}
                                 </DropdownMenuCheckboxItem>
@@ -1875,7 +2070,9 @@ export function DeliverableRenderer({
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const selectedRows = table.getSelectedRowModel().rows.map(row => row.original);
+                            const selectedRows = table
+                              .getSelectedRowModel()
+                              .rows.map((row) => row.original);
                             handleExportExcel(true, selectedRows);
                           }}
                           className="gap-1"
@@ -1899,7 +2096,8 @@ export function DeliverableRenderer({
                   </div>
 
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Showing {table.getFilteredRowModel().rows.length} of {tableData.length} rows
+                    Showing {table.getFilteredRowModel().rows.length} of{' '}
+                    {tableData.length} rows
                     {Object.keys(rowSelection).length > 0 && (
                       <span className="ml-2">
                         • {Object.keys(rowSelection).length} row(s) selected
@@ -1926,12 +2124,18 @@ export function DeliverableRenderer({
                               <th
                                 key={header.id}
                                 className={cn(
-                                  "px-4 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap",
-                                  isPinned && "sticky bg-muted z-20"
+                                  'px-4 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 whitespace-nowrap',
+                                  isPinned && 'sticky bg-muted z-20',
                                 )}
                                 style={{
-                                  left: isPinned === 'left' ? `${header.column.getStart('left')}px` : undefined,
-                                  right: isPinned === 'right' ? `${header.column.getAfter('right')}px` : undefined,
+                                  left:
+                                    isPinned === 'left'
+                                      ? `${header.column.getStart('left')}px`
+                                      : undefined,
+                                  right:
+                                    isPinned === 'right'
+                                      ? `${header.column.getAfter('right')}px`
+                                      : undefined,
                                 }}
                                 onClick={header.column.getToggleSortingHandler()}
                               >
@@ -1956,12 +2160,18 @@ export function DeliverableRenderer({
                               <td
                                 key={cell.id}
                                 className={cn(
-                                  "px-4 py-3 whitespace-nowrap text-sm text-foreground",
-                                  isPinned && "sticky bg-background z-10"
+                                  'px-4 py-3 whitespace-nowrap text-sm text-foreground',
+                                  isPinned && 'sticky bg-background z-10',
                                 )}
                                 style={{
-                                  left: isPinned === 'left' ? `${cell.column.getStart('left')}px` : undefined,
-                                  right: isPinned === 'right' ? `${cell.column.getAfter('right')}px` : undefined,
+                                  left:
+                                    isPinned === 'left'
+                                      ? `${cell.column.getStart('left')}px`
+                                      : undefined,
+                                  right:
+                                    isPinned === 'right'
+                                      ? `${cell.column.getAfter('right')}px`
+                                      : undefined,
                                 }}
                               >
                                 {flexRender(
