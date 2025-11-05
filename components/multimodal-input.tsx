@@ -25,7 +25,14 @@ import { VoiceRecorder } from './voice-recorder';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, Paperclip, Sparkles, Send, Command, Loader2 } from 'lucide-react';
+import {
+  ArrowDown,
+  Paperclip,
+  Sparkles,
+  Send,
+  Command,
+  Loader2,
+} from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { cn } from '@/lib/utils';
@@ -131,7 +138,10 @@ function PureMultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { width } = useWindowSize();
 
-  const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '');
+  const [localStorageInput, setLocalStorageInput] = useLocalStorage(
+    'input',
+    '',
+  );
 
   // ========================================================================
   // Detect OS for keyboard shortcut hint
@@ -153,82 +163,91 @@ function PureMultimodalInput({
   // ========================================================================
   // AI Autocomplete - Fetch Recommendations
   // ========================================================================
-  const fetchRecommendations = useCallback(async (text: string) => {
-    // Only fetch for inputs between 2-100 characters
-    if (text.length < 2 || text.length > 100) {
-      setShowAiSuggestions(false);
-      return;
-    }
-
-    console.log('🔍 Fetching recommendations for:', text);
-    setIsLoadingSuggestions(true);
-    setAiSuggestions([]); // Clear old suggestions when starting new fetch
-    try {
-      // Call our Next.js API route (which will call AgentOS with session_state)
-      const response = await fetch('/api/recommendation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: text,
-          chatId: chatId,
-          // TODO: Add sessionState from useChat hook
-          sessionState: {},
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to fetch recommendations:', response.status);
+  const fetchRecommendations = useCallback(
+    async (text: string) => {
+      // Only fetch for inputs between 2-100 characters
+      if (text.length < 2 || text.length > 100) {
         setShowAiSuggestions(false);
         return;
       }
 
-      const data = await response.json();
-      console.log('🤖 Autocomplete response:', data);
-
-      // Agent returns JSON object: { recommendations: ["prompt1", "prompt2", ...] }
-      let suggestions: string[] = [];
-
-      if (typeof data.content === 'string') {
-        try {
-          const parsed = JSON.parse(data.content);
-          suggestions = parsed.recommendations || [];
-        } catch (e) {
-          console.error('Failed to parse content as JSON:', e);
-        }
-      } else if (data.content?.recommendations && Array.isArray(data.content.recommendations)) {
-        suggestions = data.content.recommendations;
-      }
-
-      console.log('📋 Parsed suggestions:', suggestions);
-
-      if (suggestions.length > 0) {
-        setAiSuggestions(suggestions);
-        // Auto-focus textarea and show suggestions
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.focus();
-          }
-          setShowAiSuggestions(true);
+      console.log('🔍 Fetching recommendations for:', text);
+      setIsLoadingSuggestions(true);
+      setAiSuggestions([]); // Clear old suggestions when starting new fetch
+      try {
+        // Call our Next.js API route (which will call AgentOS with session_state)
+        const response = await fetch('/api/recommendation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: text,
+            chatId: chatId,
+            // TODO: Add sessionState from useChat hook
+            sessionState: {},
+          }),
         });
-      } else {
-        toast.error('No suggestions available');
+
+        if (!response.ok) {
+          console.error('Failed to fetch recommendations:', response.status);
+          setShowAiSuggestions(false);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('🤖 Autocomplete response:', data);
+
+        // Agent returns JSON object: { recommendations: ["prompt1", "prompt2", ...] }
+        let suggestions: string[] = [];
+
+        if (typeof data.content === 'string') {
+          try {
+            const parsed = JSON.parse(data.content);
+            suggestions = parsed.recommendations || [];
+          } catch (e) {
+            console.error('Failed to parse content as JSON:', e);
+          }
+        } else if (
+          data.content?.recommendations &&
+          Array.isArray(data.content.recommendations)
+        ) {
+          suggestions = data.content.recommendations;
+        }
+
+        console.log('📋 Parsed suggestions:', suggestions);
+
+        if (suggestions.length > 0) {
+          setAiSuggestions(suggestions);
+          // Auto-focus textarea and show suggestions
+          requestAnimationFrame(() => {
+            if (textareaRef.current) {
+              textareaRef.current.focus();
+            }
+            setShowAiSuggestions(true);
+          });
+        } else {
+          toast.error('No suggestions available');
+        }
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+        toast.error('Failed to get suggestions');
+      } finally {
+        setIsLoadingSuggestions(false);
       }
-    } catch (error) {
-      console.error('Error fetching recommendations:', error);
-      toast.error('Failed to get suggestions');
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [chatId]);
+    },
+    [chatId],
+  );
 
   // ========================================================================
   // AI Autocomplete - Manual Trigger
   // ========================================================================
   const handleManualSuggestions = useCallback(() => {
     const text = input.trim();
-    console.log('✨ Manual AI suggestions triggered:', { text, length: text.length });
+    console.log('✨ Manual AI suggestions triggered:', {
+      text,
+      length: text.length,
+    });
 
     // Validate input length
     if (text.length === 0) {
@@ -243,19 +262,21 @@ function PureMultimodalInput({
     fetchRecommendations(text);
   }, [input, fetchRecommendations]);
 
-
   // ========================================================================
   // Voice & Template Handling
   // ========================================================================
-  const handleVoiceTranscript = useCallback((transcript: string, metadata?: any) => {
-    setInput(transcript);
-    requestAnimationFrame(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        adjustTextareaHeight(textareaRef.current);
-      }
-    });
-  }, []);
+  const handleVoiceTranscript = useCallback(
+    (transcript: string, metadata?: any) => {
+      setInput(transcript);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          adjustTextareaHeight(textareaRef.current);
+        }
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     const handleTemplatePrefill = (e: Event) => {
@@ -271,7 +292,8 @@ function PureMultimodalInput({
     };
 
     window.addEventListener('template-prefill', handleTemplatePrefill);
-    return () => window.removeEventListener('template-prefill', handleTemplatePrefill);
+    return () =>
+      window.removeEventListener('template-prefill', handleTemplatePrefill);
   }, []);
 
   // ========================================================================
@@ -355,7 +377,10 @@ function PureMultimodalInput({
       const files = Array.from(event.target.files || []);
       const newAttachments = files.map(addFileToAttachments);
 
-      setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...newAttachments,
+      ]);
       toast.success(`Added ${files.length} file(s)`);
     },
     [setAttachments],
@@ -391,27 +416,35 @@ function PureMultimodalInput({
 
       const files = Array.from(e.dataTransfer.files);
 
-      const supportedFiles = files.filter(file => {
+      const supportedFiles = files.filter((file) => {
         const isImage = file.type.startsWith('image/');
         const isPDF = file.type === 'application/pdf';
         const isText = file.type === 'text/plain';
-        const isDoc = file.type.includes('document') || file.type.includes('word');
+        const isDoc =
+          file.type.includes('document') || file.type.includes('word');
         const isCSV = file.type === 'text/csv';
         const isJSON = file.type === 'application/json';
         return isImage || isPDF || isText || isDoc || isCSV || isJSON;
       });
 
       if (supportedFiles.length === 0) {
-        toast.error('No supported files found. Please upload images, PDFs, text, or documents.');
+        toast.error(
+          'No supported files found. Please upload images, PDFs, text, or documents.',
+        );
         return;
       }
 
       if (supportedFiles.length < files.length) {
-        toast.error(`${files.length - supportedFiles.length} unsupported file(s) skipped`);
+        toast.error(
+          `${files.length - supportedFiles.length} unsupported file(s) skipped`,
+        );
       }
 
       const newAttachments = supportedFiles.map(addFileToAttachments);
-      setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...newAttachments,
+      ]);
 
       toast.success(`Added ${supportedFiles.length} file(s)`);
     },
@@ -439,7 +472,10 @@ function PureMultimodalInput({
       if (imageFiles.length > 0) {
         e.preventDefault();
         const newAttachments = imageFiles.map(addFileToAttachments);
-        setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
+        setAttachments((currentAttachments) => [
+          ...currentAttachments,
+          ...newAttachments,
+        ]);
         toast.success(`Pasted ${imageFiles.length} image(s)`);
       }
     },
@@ -533,7 +569,9 @@ function PureMultimodalInput({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-brand-primary" />
                 <span className="text-xs font-medium text-muted-foreground">
-                  {isLoadingSuggestions ? 'Loading suggestions...' : 'AI Suggestions'}
+                  {isLoadingSuggestions
+                    ? 'Loading suggestions...'
+                    : 'AI Suggestions'}
                 </span>
               </div>
             </div>
@@ -571,9 +609,7 @@ function PureMultimodalInput({
                   >
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 flex-shrink-0 text-brand-primary" />
-                      <span className="text-sm text-foreground">
-                        {prompt}
-                      </span>
+                      <span className="text-sm text-foreground">{prompt}</span>
                     </div>
                   </button>
                 ))
@@ -664,7 +700,9 @@ function PureMultimodalInput({
               event.preventDefault();
 
               if (status !== 'ready') {
-                toast.error('Please wait for the model to finish its response!');
+                toast.error(
+                  'Please wait for the model to finish its response!',
+                );
               } else {
                 submitForm();
               }
@@ -694,7 +732,6 @@ function PureMultimodalInput({
           )}
         </div>
       </div>
-
     </div>
   );
 }
@@ -748,7 +785,7 @@ function PureAttachmentsButton({
       disabled={status !== 'ready'}
     >
       <Paperclip className="w-4 h-4" />
-      <span className="hidden sm:inline">{t('attachFile')}</span>
+      {/* <span className="hidden sm:inline">{t('attachFile')}</span> */}
     </button>
   );
 }
@@ -887,23 +924,26 @@ function PureSuggestionsButton({
   messages: Array<UIMessage>;
 }) {
   const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<Array<{ label: string; prompt: string }>>([]);
+  const [suggestions, setSuggestions] = useState<
+    Array<{ label: string; prompt: string }>
+  >([]);
 
   // Extract suggestions from the latest assistant message
   useEffect(() => {
     const latestAssistantMessage = [...messages]
       .reverse()
-      .find(m => m.role === 'assistant');
+      .find((m) => m.role === 'assistant');
 
     if (!latestAssistantMessage?.parts) {
       setSuggestions([]);
       return;
     }
 
-    const allText = latestAssistantMessage.parts
-      ?.filter((part: any) => part.type === 'text')
-      ?.map((part: any) => part.text)
-      ?.join('') || '';
+    const allText =
+      latestAssistantMessage.parts
+        ?.filter((part: any) => part.type === 'text')
+        ?.map((part: any) => part.text)
+        ?.join('') || '';
 
     if (!allText.trim() || !allText.includes('</suggestions>')) {
       setSuggestions([]);
@@ -924,7 +964,7 @@ function PureSuggestionsButton({
 
       if (Array.isArray(parsedSuggestions)) {
         const validSuggestions = parsedSuggestions.filter(
-          s => s && typeof s === 'object' && s.label && s.prompt
+          (s) => s && typeof s === 'object' && s.label && s.prompt,
         );
         setSuggestions(validSuggestions);
       } else {
@@ -937,7 +977,9 @@ function PureSuggestionsButton({
 
   const handleSuggestionClick = (prompt: string) => {
     setOpen(false);
-    window.dispatchEvent(new CustomEvent('template-prefill', { detail: prompt }));
+    window.dispatchEvent(
+      new CustomEvent('template-prefill', { detail: prompt }),
+    );
   };
 
   if (suggestions.length === 0) {
@@ -996,7 +1038,9 @@ function PureSuggestionsButton({
             >
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0 text-brand-primary" />
-                <span className="font-medium text-foreground">{suggestion.label}</span>
+                <span className="font-medium text-foreground">
+                  {suggestion.label}
+                </span>
               </div>
             </button>
           ))}
@@ -1006,13 +1050,16 @@ function PureSuggestionsButton({
   );
 }
 
-const SuggestionsButton = memo(PureSuggestionsButton, (prevProps, nextProps) => {
-  if (prevProps.messages.length !== nextProps.messages.length) return false;
-  const prevLatest = prevProps.messages[prevProps.messages.length - 1];
-  const nextLatest = nextProps.messages[nextProps.messages.length - 1];
-  if (prevLatest?.id !== nextLatest?.id) return false;
-  return true;
-});
+const SuggestionsButton = memo(
+  PureSuggestionsButton,
+  (prevProps, nextProps) => {
+    if (prevProps.messages.length !== nextProps.messages.length) return false;
+    const prevLatest = prevProps.messages[prevProps.messages.length - 1];
+    const nextLatest = nextProps.messages[nextProps.messages.length - 1];
+    if (prevLatest?.id !== nextLatest?.id) return false;
+    return true;
+  },
+);
 
 // ============================================================================
 // Command Palette Button
