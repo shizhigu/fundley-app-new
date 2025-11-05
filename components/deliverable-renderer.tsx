@@ -37,6 +37,7 @@ import { useChatContext } from '@/lib/contexts/chat-context';
 import { MarkdownSectionEditor } from '@/components/markdown-section-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { PlotlyChart } from '@/components/plotly-chart';
 import {
   useReactTable,
   getCoreRowModel,
@@ -281,15 +282,26 @@ export function DeliverableRenderer({
     [],
   );
 
-  const dataFiles = React.useMemo(() => {
+  // Separate JSON files (Plotly charts) from CSV files (data tables)
+  const { dataFiles, chartJsonFiles } = React.useMemo(() => {
+    const allDataFiles = [];
+
     if (Array.isArray(content.files?.data)) {
-      // Handle both new format (objects) and old format (strings)
-      return content.files.data.map((item: any) =>
+      allDataFiles.push(...content.files.data.map((item: any) =>
         typeof item === 'string' ? item : item.filename || item,
-      );
+      ));
+    } else if (content.files?.data) {
+      allDataFiles.push(content.files.data);
     }
-    if (content.files?.data) return [content.files.data]; // Single file (backward compatible)
-    return [];
+
+    // Split by file extension: .json → Plotly charts, .csv → data tables
+    const jsonFiles = allDataFiles.filter((f: string) => f.endsWith('.json'));
+    const csvFiles = allDataFiles.filter((f: string) => f.endsWith('.csv'));
+
+    return {
+      dataFiles: csvFiles,
+      chartJsonFiles: jsonFiles,
+    };
   }, [content.files]);
 
   const reports = React.useMemo(() => {
@@ -379,12 +391,8 @@ export function DeliverableRenderer({
             } else {
               setTableData(data);
             }
-          } else if (filename.endsWith('.json')) {
-            // JSON files (legacy support)
-            const data = await response.json();
-            // Data should be in format: [{col1: val1, col2: val2}, ...]
-            setTableData(Array.isArray(data) ? data : []);
           } else {
+            // Only CSV supported for data tables now (JSON → Plotly charts)
             console.log('Unsupported file format:', filename);
             setTableData([]);
           }
@@ -834,12 +842,14 @@ export function DeliverableRenderer({
   // Count available content types
   const hasText = hasSections || !!content.text;
   const hasChart = charts.length > 0;
+  const hasPlotlyChart = chartJsonFiles.length > 0;
   const hasData = dataFiles.length > 0;
   const hasReport = reports.length > 0;
   const hasPresentation = presentations.length > 0;
   const contentTypesCount = [
     hasText,
     hasChart,
+    hasPlotlyChart,
     hasData,
     hasReport,
     hasPresentation,
@@ -1119,6 +1129,12 @@ export function DeliverableRenderer({
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
                           <BarChart className="h-3 w-3" />
                           Chart
+                        </span>
+                      )}
+                      {hasPlotlyChart && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                          <BarChart className="h-3 w-3" />
+                          Interactive
                         </span>
                       )}
                       {hasData && (
@@ -1471,6 +1487,58 @@ export function DeliverableRenderer({
                       />
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Plotly Charts (JSON) - Interactive visualizations */}
+        {chartJsonFiles.length > 0 && (
+          <div className="space-y-4">
+            {chartJsonFiles.length > 1 && (
+              <div className="flex items-center gap-2">
+                <BarChart className="h-4 w-4" />
+                <span className="text-sm font-semibold">
+                  Interactive Charts ({chartJsonFiles.length})
+                </span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {chartJsonFiles.map((jsonFile: string, index: number) => (
+                <div
+                  key={`${jsonFile}-${index}`}
+                  className="group relative w-full max-w-full border border-border/50 rounded-lg overflow-hidden hover:border-border transition-colors"
+                >
+                  {/* Title bar */}
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <BarChart className="h-3 w-3 text-brand-primary" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {formatFileName(jsonFile)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(jsonFile);
+                        }}
+                        className="h-6 w-6 rounded border border-border/50 bg-background hover:bg-muted flex items-center justify-center transition-colors"
+                        title="Download JSON"
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Plotly Chart */}
+                  <div className="w-full bg-background p-4" style={{ height: '600px' }}>
+                    <PlotlyChart
+                      chartUrl={`/api/files/${jsonFile}?block_id=${blockId}&v=${blockVersion}`}
+                      className="w-full h-full"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
