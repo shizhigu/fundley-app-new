@@ -25,7 +25,7 @@ import { VoiceRecorder } from './voice-recorder';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@/lib/ai-sdk-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, Paperclip, Sparkles, Send, Command } from 'lucide-react';
+import { ArrowDown, Paperclip, Sparkles, Send, Command, Loader2 } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
 import { cn } from '@/lib/utils';
@@ -205,43 +205,44 @@ function PureMultimodalInput({
 
       if (suggestions.length > 0) {
         setAiSuggestions(suggestions);
-        // Only show suggestions if textarea is currently focused
-        // Check the actual DOM focus state instead of relying on state
-        if (textareaRef.current === document.activeElement) {
+        // Auto-focus textarea and show suggestions
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
           setShowAiSuggestions(true);
-        }
+        });
       } else {
-        setShowAiSuggestions(false);
+        toast.error('No suggestions available');
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
-      setShowAiSuggestions(false);
+      toast.error('Failed to get suggestions');
     } finally {
       setIsLoadingSuggestions(false);
     }
   }, [chatId]);
 
   // ========================================================================
-  // AI Autocomplete - Monitor Input with Debouncing
+  // AI Autocomplete - Manual Trigger
   // ========================================================================
-  useEffect(() => {
+  const handleManualSuggestions = useCallback(() => {
     const text = input.trim();
-    console.log('📝 Input changed:', { text, length: text.length });
+    console.log('✨ Manual AI suggestions triggered:', { text, length: text.length });
 
-    // Clear suggestions if input is empty or too long (max 100 chars)
-    if (text.length === 0 || text.length > 100) {
-      setShowAiSuggestions(false);
+    // Validate input length
+    if (text.length === 0) {
+      toast.error('Please enter some text first');
+      return;
+    }
+    if (text.length > 100) {
+      toast.error('Please enter less than 100 characters');
       return;
     }
 
-    // Debounce: wait 2.5 seconds after user stops typing
-    const timer = setTimeout(() => {
-      console.log('⏰ Debounce timer fired (2.5s), calling fetchRecommendations');
-      fetchRecommendations(text);
-    }, 2500);
-
-    return () => clearTimeout(timer);
+    fetchRecommendations(text);
   }, [input, fetchRecommendations]);
+
 
   // ========================================================================
   // Voice & Template Handling
@@ -676,6 +677,11 @@ function PureMultimodalInput({
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
           <VoiceRecorder onTranscript={handleVoiceTranscript} />
           <CommandPaletteButton />
+          <AISuggestionsButton
+            onTrigger={handleManualSuggestions}
+            isLoading={isLoadingSuggestions}
+            status={status}
+          />
           <SuggestionsButton messages={messages} />
         </div>
 
@@ -688,6 +694,7 @@ function PureMultimodalInput({
           )}
         </div>
       </div>
+
     </div>
   );
 }
@@ -747,6 +754,51 @@ function PureAttachmentsButton({
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
+
+// ==================== AI Suggestions Button ====================
+function PureAISuggestionsButton({
+  onTrigger,
+  isLoading,
+  status,
+}: {
+  onTrigger: () => void;
+  isLoading: boolean;
+  status: UseChatHelpers<ChatMessage>['status'];
+}) {
+  return (
+    <button
+      data-testid="ai-suggestions-button"
+      className={cn(
+        // Brand color styling - lighter than Send button
+        'h-10 px-3 rounded-lg',
+        'bg-brand-primary/10 border border-brand-primary/30',
+        'flex items-center justify-center gap-2',
+        // Brand color hover effect
+        'hover:bg-brand-primary/15 transition-colors duration-200',
+        // Text styling - brand color
+        'text-sm text-brand-primary font-medium',
+        // Disabled state
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+      )}
+      onClick={(event) => {
+        event.preventDefault();
+        onTrigger();
+      }}
+      type="button"
+      disabled={status !== 'ready' || isLoading}
+      title="Get AI suggestions for your query"
+    >
+      {isLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Sparkles className="w-4 h-4" />
+      )}
+      <span className="hidden sm:inline">Ask Better</span>
+    </button>
+  );
+}
+
+const AISuggestionsButton = memo(PureAISuggestionsButton);
 
 // ==================== Stop Button ====================
 function PureStopButton({
