@@ -238,3 +238,99 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* ============================================
+   DRIVER.JS CUSTOM THEME (Onboarding Tour)
+   ============================================ */
+
+.driver-popover {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 1rem !important;
+  padding: 24px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .driver-popover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.driver-popover-title {
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  color: hsl(var(--foreground)) !important;
+  margin-bottom: 12px !important;
+}
+
+.driver-popover-description {
+  color: hsl(var(--muted-foreground)) !important;
+  line-height: 1.6 !important;
+  font-size: 16px !important;
+}
+
+.driver-popover-description p {
+  margin-bottom: 0 !important;
+}
+
+.driver-popover-description ul {
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.driver-popover-description li {
+  font-size: 15px !important;
+  margin-bottom: 4px !important;
+}
+
+.driver-popover-next-btn {
+  background: hsl(var(--brand-primary)) !important;
+  color: white !important;
+  border-radius: 0.5rem !important;
+  padding: 10px 20px !important;
+  font-weight: 500 !important;
+  border: none !important;
+  transition: opacity 0.2s !important;
+}
+
+.driver-popover-next-btn:hover {
+  opacity: 0.9 !important;
+}
+
+.driver-popover-prev-btn,
+.driver-popover-close-btn {
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 0.5rem !important;
+  padding: 10px 20px !important;
+  font-weight: 500 !important;
+  border: 1px solid hsl(var(--border)) !important;
+  background: transparent !important;
+  transition: background-color 0.2s !important;
+}
+
+.driver-popover-prev-btn:hover,
+.driver-popover-close-btn:hover {
+  background: hsl(var(--muted)) !important;
+}
+
+.driver-popover-footer {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 20px !important;
+}
+
+.driver-popover-progress-text {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 14px !important;
+}
+
+.driver-popover-arrow {
+  border-color: hsl(var(--card)) !important;
+}
+
+.driver-overlay {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .driver-overlay {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}

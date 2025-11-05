@@ -105,6 +105,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`${tab.id}-panel`}
+                data-tour={tab.id === 'schedule' ? 'schedule-tab' : undefined}
                 onClick={() => !isDisabled && handleTabChange(tab.id)}
                 disabled={isDisabled}
                 className={cn(
@@ -132,7 +133,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
         )}
 
         {activeTab === 'blocks' && (
-          <div id="blocks-panel" role="tabpanel" aria-labelledby="blocks-tab" className="h-full">
+          <div id="blocks-panel" role="tabpanel" aria-labelledby="blocks-tab" data-tour="deliverables-panel" className="h-full">
             {currentChatId ? (
               showCalendarView ? (
                 <CalendarDeliverablesPanel

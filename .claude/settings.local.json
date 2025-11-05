@@ -40,7 +40,9 @@
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_BbVO3inf2xKM@ep-blue-pine-af2zp5vc-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" psql:*)",
       "WebSearch",
       "Bash(python3:*)",
-      "Read(//Users/gushizhi/**)"
+      "Read(//Users/gushizhi/**)",
+      "Bash(pnpm remove:*)",
+      "Bash(npx puppeteer:*)"
     ],
     "deny": [],
     "ask": [],

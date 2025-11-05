@@ -7,6 +7,7 @@ import { EnhancedResizablePanel } from '@/components/enhanced-resizable-panel';
 import { ChatProvider } from '@/lib/contexts/chat-context';
 import type { ChatLayoutProps } from '@/lib/types/chat';
 import { AuroraBackground } from '@/components/ui/aurora-background';
+import { OnboardingTour } from '@/components/onboarding-tour';
 
 /**
  * Ultra-Clean 2025 Chat Layout
@@ -32,6 +33,11 @@ export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
         {/* Mobile Layout: Tabbed Interface */}
         <div className="lg:hidden h-screen w-full overflow-hidden">
           <MobileTabs user={user} />
+        </div>
+
+        {/* Onboarding Tour (desktop only) */}
+        <div className="hidden lg:block">
+          <OnboardingTour />
         </div>
       </AuroraBackground>
     </ChatProvider>

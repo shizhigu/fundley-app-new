@@ -615,6 +615,7 @@ function PureMultimodalInput({
         {/* Ultra-Premium Textarea - Stripe/Linear Style */}
         <Textarea
           data-testid="multimodal-input"
+          data-tour="chat-input"
           ref={textareaRef}
           placeholder={t('placeholder')}
           value={input}
