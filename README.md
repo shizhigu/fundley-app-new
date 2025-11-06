@@ -1,62 +1,168 @@
-<a href="https://chat.vercel.ai/">
-  <img alt="Next.js 14 and App Router-ready AI chatbot." src="app/(chat)/opengraph-image.png">
-  <h1 align="center">Chat SDK</h1>
-</a>
+# Fundley - AI Financial Analyst with Live Dashboards
 
-<p align="center">
-    Chat SDK is a free, open-source template built with Next.js and the AI SDK that helps you quickly build powerful chatbot applications. 
-</p>
+> The first AI financial analyst that creates **interactive, persistent dashboards** - not just static charts.
 
-<p align="center">
-  <a href="https://chat-sdk.dev"><strong>Read Docs</strong></a> ·
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#model-providers"><strong>Model Providers</strong></a> ·
-  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
-  <a href="#running-locally"><strong>Running locally</strong></a>
-</p>
-<br/>
+## 🎯 What Makes Fundley Different?
 
-## Features
-
-- [Next.js](https://nextjs.org) App Router
-  - Advanced routing for seamless navigation and performance
-  - React Server Components (RSCs) and Server Actions for server-side rendering and increased performance
-- [AI SDK](https://sdk.vercel.ai/docs)
-  - Unified API for generating text, structured objects, and tool calls with LLMs
-  - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
-- [shadcn/ui](https://ui.shadcn.com)
-  - Styling with [Tailwind CSS](https://tailwindcss.com)
-  - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
-- Data Persistence
-  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
-  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
-- [Auth.js](https://authjs.dev)
-  - Simple and secure authentication
-
-## Model Providers
-
-This template ships with [xAI](https://x.ai) `grok-2-1212` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
-
-## Deploy Your Own
-
-You can deploy your own version of the Next.js AI Chatbot to Vercel with one click:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-chatbot&env=AUTH_SECRET&envDescription=Learn+more+about+how+to+get+the+API+Keys+for+the+application&envLink=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-chatbot%2Fblob%2Fmain%2F.env.example&demo-title=AI+Chatbot&demo-description=An+Open-Source+AI+Chatbot+Template+Built+With+Next.js+and+the+AI+SDK+by+Vercel.&demo-url=https%3A%2F%2Fchat.vercel.ai&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22ai%22%2C%22productSlug%22%3A%22grok%22%2C%22integrationSlug%22%3A%22xai%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22integrationSlug%22%3A%22upstash%22%7D%2C%7B%22type%22%3A%22blob%22%7D%5D)
-
-## Running locally
-
-You will need to use the environment variables [defined in `.env.example`](.env.example) to run Next.js AI Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
-
-> Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
-
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
-3. Download your environment variables: `vercel env pull`
-
-```bash
-pnpm install
-pnpm dev
+### ChatGPT/Claude: Static Analysis
+```
+You: "Analyze TSLA stock"
+AI: [Generates static chart]
+You: "Can I change the date range?"
+AI: [Generates new static chart]
 ```
 
-Your app template should now be running on [localhost:3000](http://localhost:3000).
+### Fundley: Live Interactive Dashboards
+```
+You: "Create a TSLA monitoring dashboard"
+AI: [Creates interactive Streamlit app]
+     ✅ Adjust date ranges with sliders
+     ✅ Switch between stocks with dropdowns
+     ✅ Download data as CSV
+     ✅ Auto-refresh with latest data
+     ✅ Persistent URL - access anytime
+```
+
+## ✨ Key Features
+
+### 1. **My Dashboards** - The Game Changer
+- 📊 **Interactive Controls**: Filter, sort, customize - all in the browser
+- 🔄 **Real-Time Updates**: Dashboards pull latest market data automatically
+- 🔗 **Shareable URLs**: Each dashboard gets its own URL
+- 💾 **Persistent**: Come back weeks later, still works
+- 🎨 **Fully Customizable**: Ask AI to add charts, tables, or metrics
+
+### 2. **Deep Financial Analysis**
+- 📈 Stock fundamentals (P/E, EPS, revenue growth)
+- 📊 Options analysis (IV, Greeks, unusual activity)
+- 📰 News sentiment & event timelines
+- 📅 Earnings calendar tracking
+- 💰 DCF valuation models
+
+### 3. **Intelligent Data Access**
+- **MotherDuck Integration**: Query 10+ years of financial data via SQL
+- **Multi-Source APIs**: FMP, Polygon, SEC Edgar, EODHD
+- **Smart Caching**: Fast responses, low API costs
+
+### 4. **Professional Deliverables**
+- 📄 Interactive HTML reports
+- 📊 Excel spreadsheets with formulas
+- 🖼️ High-res charts (PNG, SVG)
+- 📑 PDF presentations
+
+## 🚀 Quick Start
+
+### Example Queries
+
+**Create a Live Dashboard:**
+```
+"Create a real-time NVDA monitoring dashboard with:
+- Current price and day change
+- P/E ratio and market cap
+- 90-day price chart
+- Recent news headlines"
+```
+
+→ AI creates an interactive Streamlit app
+→ Opens in your browser with live data
+→ Bookmark the URL, check anytime
+
+**Run Analysis:**
+```
+"Compare TSLA, NVDA, and AAPL's revenue growth over 3 years"
+```
+
+→ AI fetches data, runs analysis
+→ Generates interactive charts
+→ Exports to Excel with formulas
+
+**Track Events:**
+```
+"What major events affected TSLA stock in the last 30 days?"
+```
+
+→ AI searches news archives
+→ Builds timeline with price correlation
+→ Highlights significant moves
+
+## 🎨 Use Cases
+
+### For Traders
+- **Real-time monitors** for watchlist stocks
+- **Options screeners** with live Greeks
+- **Earnings trackers** with surprise analysis
+
+### For Investors
+- **Valuation dashboards** (DCF, comps)
+- **Portfolio analytics** (diversification, risk)
+- **Sector comparisons** with benchmarks
+
+### For Analysts
+- **Peer analysis** with custom metrics
+- **Trend reports** with historical data
+- **Event studies** (M&A, earnings, etc.)
+
+## 💎 Technology
+
+### Frontend
+- **Next.js 15** with App Router
+- **Tailwind CSS** + shadcn/ui
+- **Real-time streaming** with AI SDK
+
+### AI Agent (Python)
+- **Agno Framework** - Multi-agent orchestration
+- **Fly.io Machines** - Isolated Python execution
+- **E2B Sandboxes** - Secure code running
+
+### Data Infrastructure
+- **MotherDuck** - Cloud DuckDB (10+ years financial data)
+- **Neon Postgres** - User data & chat history
+- **Qdrant** - Vector search for news & events
+
+### Live Dashboards
+- **Streamlit** - Interactive Python apps
+- **Fly.io Auto-scale** - Deploy in 30 seconds
+- **Aggressive Auto-stop** - Cost optimization (10min idle → stop)
+
+## 📊 Cost Optimization
+
+Fundley uses smart auto-scaling to keep costs low:
+
+- **Streamlit apps**: Stop after 10 min idle → Auto-start on visit
+- **Dev machines**: Stop after 15 min idle → Auto-start on use
+- **Result**: ~78% cost savings vs always-on infrastructure
+
+## 🔐 Security
+
+- **Clerk Auth** - Enterprise-grade authentication
+- **Isolated Sandboxes** - Each user gets isolated execution environment
+- **API Key Management** - Secrets never exposed to client
+- **Rate Limiting** - Protect against abuse
+
+## 🛣️ Roadmap
+
+- [ ] **Portfolio Tracking** - Import holdings, track performance
+- [ ] **Alerts** - Email/SMS when stocks hit price targets
+- [ ] **Collaboration** - Share dashboards with teams
+- [ ] **API Access** - Programmatic access to analysis
+- [ ] **Mobile App** - Native iOS/Android apps
+
+## 📖 Documentation
+
+- [Quick Start Guide](docs/QUICK_START.md)
+- [Feature List](docs/FEATURES.md)
+- [API Reference](chatbot-service/README.md)
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) for details.
+
+---
+
+**Built with ❤️ by the Fundley team**
+
+[Website](https://fundley.ai) · [Discord](https://discord.gg/fundley) · [Twitter](https://twitter.com/fundley_ai)

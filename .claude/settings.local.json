@@ -79,7 +79,8 @@
       "Bash(fly secrets list:*)",
       "Bash(fly secrets set:*)",
       "Bash(python -c:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": [],

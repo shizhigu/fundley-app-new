@@ -49,40 +49,54 @@ This is a Next.js 15 AI financial analysis platform with a hybrid architecture c
 
 **Python Agent Service (chatbot-service/)**
 - AI agent runtime (Agno framework)
-- Code execution in E2B sandboxes
+- Code execution in Fly.io machines (NOT E2B sandboxes)
 - Financial data processing
 - Tool execution and orchestration
 
 **Communication Pattern**:
 ```
-User → Next.js API Route → Python Agent Service → E2B Sandbox
+User → Next.js API Route → Python Agent Service → Fly.io Machine
                                 ↓
                          Analysis Results
                                 ↓
-                    /tmp/fundley/{user_id}/blocks/{block_id}/
+                    /tmp/fundley/{user_id}/tasks/{task_name}/
 ```
 
-### Analysis Block Architecture (Notebook-Based)
+### Deliverables Architecture
 
-**Core Concept**: 1 Analysis Block = 1 Jupyter Notebook + Generated Artifacts
+**Core Concept**: Each analysis produces deliverables (reports, charts, data files) stored in task-specific directories.
 
 **File Structure**:
 ```
-/tmp/fundley/{user_id}/blocks/{block_id}/
-├── analysis.ipynb       # Jupyter notebook (managed by Agent via nbformat)
-├── report.html          # Generated report
-├── data.json            # Data tables
-└── chart.png            # Visualizations
+/tmp/fundley/{user_id}/tasks/{task_name}/
+├── src/
+│   ├── model.py          # Core analysis logic
+│   ├── config.yaml       # Configuration parameters
+│   └── utils.py          # Helper functions
+├── deliverables/{YYYYMMDD}/
+│   ├── report.html       # Generated reports
+│   ├── data.csv          # Data exports
+│   └── chart.png         # Visualizations
+└── data_cache/           # Cached data
 ```
 
-**Workflow**:
-1. Agent creates/loads `analysis.ipynb` using nbformat library
-2. Adds cells incrementally (parameters → data fetching → analysis → visualization)
-3. Executes cells in E2B sandbox (variables persist across cells)
-4. Generated artifacts auto-download to local block directory
-5. Frontend displays HTML reports and JSON data tables
+### Interactive Dashboards (My Dashboards)
 
-**Key Design Decision**: Blocks are **independent of chats**. Each block has a unique `block_id` and persists across sessions. The notebook file serves as both code and state storage.
+**Streamlit App Workflow**:
+1. User requests a dashboard in chat
+2. Agent writes Streamlit app code to `/workspace/data_apps/{slug}/` on Fly.io dev machine
+3. Agent calls `deploy_streamlit_app(slug, title)` - tool handles:
+   - Database registration (if first deploy)
+   - Fly.io app creation/update
+   - Environment variable configuration (FMP_API_KEY, POLYGON_API_KEY, MOTHERDUCK_TOKEN, SEC_API_KEY, OPENROUTER_API_KEY)
+   - Auto-stop configuration (10min idle → stop, auto-start on visit)
+4. User accesses dashboard via unique URL (e.g., https://nvda-monitor-a1b2c3d4.fly.dev)
+
+**Key Design Decisions**:
+- One tool workflow: `write_script()` → `deploy_streamlit_app()` (no separate create step)
+- Subsequent deploys to same slug **overwrite** existing app (URL remains constant)
+- Dashboards persist independently of chat sessions
+- Smart polling: UI only auto-refreshes when apps are in 'deploying'/'pending' state
 
 ### Project Structure
 
@@ -92,14 +106,16 @@ User → Next.js API Route → Python Agent Service → E2B Sandbox
   - `/api/chat` - Chat streaming endpoint
   - `/api/files/[filename]` - File serving for analysis artifacts
 - `(settings)` - User settings and preferences
+- `/api/data-apps` - Streamlit dashboard management API
 
 #### `/components` - React Components
 - Built with shadcn/ui (Radix primitives + Tailwind)
 - Key components:
   - `chat.tsx` - Main chat interface
   - `multimodal-input.tsx` - User input with file upload
-  - `analysis-block-renderer.tsx` - Renders analysis results (HTML/JSON)
-  - `right-panel-tabs.tsx` - Analysis blocks, financial data panels
+  - `deliverable-renderer.tsx` - Renders analysis results (HTML/JSON)
+  - `data-apps-panel.tsx` - My Dashboards panel with iframe rendering
+  - `right-panel-tabs.tsx` - Deliverables, dashboards, schedule, watchlist panels
 
 #### `/lib` - Core Libraries
 - `/db` - Database schema and migrations (Neon PostgreSQL)
@@ -110,9 +126,10 @@ User → Next.js API Route → Python Agent Service → E2B Sandbox
 
 #### `/chatbot-service` - Python Agent Runtime
 - `/agents` - AI agent implementations
-  - `analyst/` - Financial analyst agent with E2B code execution
+  - `analyst/` - Financial analyst agent with Fly.io code execution
 - `/tools` - Agent tools
-  - `e2b.py` - **Core tool**: Jupyter notebook execution in E2B sandbox
+  - `flyio_machine.py` - **Primary runtime**: Manages Fly.io machines for code execution
+  - `streamlit_app_tools.py` - Streamlit dashboard deployment
   - `fmp_api_discovery_tools.py` - Financial Modeling Prep API access
   - `temporal_rag.py` - Time-aware financial narrative analysis
 - `/shared` - Shared utilities
@@ -121,42 +138,31 @@ User → Next.js API Route → Python Agent Service → E2B Sandbox
 
 ### Key Patterns
 
-#### 1. Notebook-Based Code Execution (E2B)
+#### 1. Fly.io Machine Pool Pattern
 
-**Tool**: `chatbot-service/tools/e2b.py`
+**Tool**: `chatbot-service/tools/flyio_machine.py`
 
-The Agent operates on Jupyter notebooks using nbformat:
+The system uses persistent Fly.io machines (not E2B sandboxes) for Python code execution:
 
 ```python
-# Agent's typical workflow
-import nbformat
-from nbformat.v4 import new_notebook, new_code_cell
+# Agent workflow
+from tools.flyio_machine import FlyMachinePool
 
-# Load or create notebook
-try:
-    with open('analysis.ipynb', 'r') as f:
-        nb = nbformat.read(f, as_version=4)
-except FileNotFoundError:
-    nb = new_notebook()
+machine_pool = FlyMachinePool(redis_client, FLY_API_TOKEN)
+machine = machine_pool.get_or_create_machine(user_id)
 
-# Add cell with parameters
-nb.cells.append(new_code_cell('''
-# === PARAMETERS ===
-SYMBOL = 'NVDA'
-'''))
+# Execute code in user's dedicated machine
+result = machine.exec(python_code)
 
-# Save notebook
-with open('analysis.ipynb', 'w') as f:
-    nbformat.write(nb, f)
-
-# Execute cell
-exec(nb.cells[-1].source)
+# Write files to persistent volume
+machine.write_file('/workspace/tasks/dcf_valuation/src/model.py', code)
 ```
 
 **Critical**:
-- E2BTools syncs notebook between local (`/tmp/fundley/...`) and sandbox (`/home/user/analysis.ipynb`)
-- Variables persist across cells within same execution
-- `session_state` must contain `current_block_id` to identify target block
+- Each user gets a dedicated Fly.io machine (persistent across sessions)
+- Files stored in `/workspace/` volume (10GB persistent storage)
+- Machines auto-stop after 15 min idle (cost optimization)
+- Environment variables automatically propagated: FMP_API_KEY, POLYGON_API_KEY, MOTHERDUCK_TOKEN, OPENROUTER_API_KEY, SEC_API_KEY
 
 #### 2. Streaming Architecture
 
@@ -164,7 +170,7 @@ exec(nb.cells[-1].source)
 
 **Tool Results**: Streamed back via `createDataStreamResponse` with structured annotations
 
-**Analysis Blocks**: Created via `createAnalysisBlock` tool, tracked in database, files auto-downloaded
+**Deliverables**: Created via tools, tracked in database, files downloaded from machines
 
 #### 3. Authentication Flow
 
@@ -179,6 +185,7 @@ exec(nb.cells[-1].source)
 - Financial Modeling Prep (FMP) - Company fundamentals, financial statements
 - Polygon.io - Options data
 - MotherDuck/DuckDB - Cached financial data
+- SEC Edgar - SEC filings (via SEC_API_KEY)
 - EODHD - News and events
 
 **Vector Search**: Qdrant stores:
@@ -208,15 +215,29 @@ chats: { id: UUID, user_id, title, visibility, created_at }
 -- Messages (chat messages)
 messages: { id: UUID, chat_id, role, parts, attachments, created_at }
 
--- Analysis Blocks (independent of chats)
-analysis_blocks: {
+-- Deliverables (analysis outputs, independent of chats)
+deliverables: {
   id: UUID,
   user_id,
   title,
-  notebook_path,  -- /tmp/fundley/{user_id}/blocks/{block_id}/analysis.ipynb
+  file_path,    -- Path to artifact file
+  file_type,    -- html, json, csv, xlsx, png, etc.
   symbols: TEXT[],
   tags: TEXT[],
   created_at
+}
+
+-- Data Apps (Streamlit dashboards)
+data_apps: {
+  id: UUID,
+  user_id,
+  title,
+  slug,         -- URL-safe identifier (e.g., "nvda-monitor")
+  description,
+  url,          -- Full Fly.io URL
+  deployment_status,  -- 'pending', 'deploying', 'deployed', 'failed'
+  created_at,
+  updated_at
 }
 
 -- Watchlist (user's tracked symbols)
@@ -233,7 +254,7 @@ watchlist: {
 
 **Key Indexes**:
 - `users.clerk_user_id` - Fast Clerk → DB user lookup
-- `analysis_blocks.symbols` (GIN) - Multi-symbol queries
+- `deliverables.symbols` (GIN) - Multi-symbol queries
 - `watchlist.tags` (GIN) - JSONB tag searches
 
 ### Environment Variables
@@ -241,16 +262,19 @@ watchlist: {
 **Required**:
 - `DATABASE_URL` - Neon PostgreSQL connection string
 - `CLERK_SECRET_KEY` - Clerk authentication
-- `E2B_API_KEY` - E2B sandbox execution
+- `FLY_API_TOKEN` - Fly.io machine management
 - `FMP_API_KEY` - Financial Modeling Prep API
 - `POLYGON_API_KEY` - Polygon.io API
-- `REDIS_URL` - Redis for E2B sandbox pool management
+- `REDIS_URL` - Redis for Fly.io machine pool management
 
 **Optional**:
 - `MOTHERDUCK_TOKEN` - DuckDB cloud storage
+- `MOTHERDUCK_DATABASE` - Database name (default: 'financial_db')
 - `QDRANT_URL`, `QDRANT_API_KEY` - Vector database
 - `VOYAGE_API_KEY` - Financial embeddings
 - `EODHD_API_TOKEN` - News data
+- `SEC_API_KEY` - SEC filings API
+- `OPENROUTER_API_KEY` - LLM routing
 
 ### AI Agent Configuration
 
@@ -261,11 +285,10 @@ watchlist: {
 
 **Configuration**: `lib/ai/providers.ts`
 
-**Critical Tool**: `run_python_code` in `chatbot-service/tools/e2b.py`
-- All Python code execution goes through this tool
-- Manages notebook lifecycle
-- Auto-downloads generated artifacts
-- See tool docstring for complete usage examples
+**Critical Tool**: `run_python_code` in `chatbot-service/tools/flyio_machine.py`
+- All Python code execution goes through Fly.io machines
+- Manages persistent volumes and file system
+- Auto-propagates environment variables
 
 ### Code Style
 
@@ -280,7 +303,7 @@ watchlist: {
 **E2E Tests** (Playwright):
 - Location: `/tests`
 - Run: `pnpm test` (automatically sets `PLAYWRIGHT=True`)
-- Focus: Critical flows (auth, chat execution, analysis blocks)
+- Focus: Critical flows (auth, chat execution, deliverables)
 
 **Python Tests**:
 ```bash
@@ -290,90 +313,98 @@ pytest tests/
 
 ### File Upload and Storage
 
-**Local Storage**: `/tmp/fundley/{user_id}/blocks/{block_id}/`
-- Analysis notebooks (`.ipynb`)
+**Local Storage**: `/tmp/fundley/{user_id}/tasks/{task_name}/`
+- Task-specific directories (persistent structure)
 - Generated reports (`.html`)
-- Data files (`.json`, `.csv`, `.parquet`)
+- Data files (`.json`, `.csv`, `.parquet`, `.xlsx`)
 - Charts (`.png`, `.jpg`)
 
-**Auto-Download**: E2BTools automatically downloads artifacts from sandbox after code execution (see `_auto_download_artifacts`)
+**Auto-Download**: Tools automatically download artifacts from Fly.io machines after code execution
 
 ### Important Conventions
 
-#### Analysis Block Workflow
+#### Streamlit Dashboard Workflow
 
-1. **Create Block**: User initiates analysis in chat
-2. **Set Context**: `session_state['current_block_id']` identifies target block
-3. **Agent Execution**: Agent calls `run_python_code` with notebook operations
-4. **Artifact Generation**: Agent writes files (report.html, data.json) in sandbox
-5. **Auto-Download**: Files sync to local block directory
-6. **Frontend Display**: UI renders HTML/JSON from local files
+1. **Write Code**: User requests dashboard in chat
+2. **Agent Development**: Agent writes `app.py` to `/workspace/data_apps/{slug}/` on Fly.io machine using `write_script()`
+3. **Deploy**: Agent calls `deploy_streamlit_app(slug, title, description)` which:
+   - Creates/updates database record
+   - Downloads code from dev machine to Render
+   - Creates/updates Fly.io app
+   - Sets environment secrets
+   - Deploys with auto-stop configuration
+4. **User Access**: Dashboard accessible via URL, renders in iframe in "My Dashboards" tab
 
-#### Notebook Cell Structure
+#### Task-Based Code Structure
 
-Standard pattern for analysis notebooks:
+Standard pattern for analysis tasks:
 
 ```python
-# Cell 1: Parameters
-SYMBOL = 'NVDA'
-PERIOD = 'Q4'
-
-# Cell 2: Data Fetching
+# /workspace/tasks/dcf_valuation/src/model.py
+import duckdb
 import pandas as pd
-df = fetch_financial_data(SYMBOL)
 
-# Cell 3: Analysis
-df['growth'] = df['revenue'].pct_change()
+def run_dcf_analysis(symbol, config):
+    # Load configuration
+    discount_rate = config['discount_rate']
 
-# Cell 4: Visualization
-import plotly.express as px
-fig = px.line(df, x='date', y='revenue')
-fig.write_html('report.html')
+    # Fetch data from MotherDuck
+    conn = duckdb.connect('md:financial_db')
+    df = conn.sql(f"SELECT * FROM fundamentals WHERE symbol='{symbol}'").df()
+
+    # Run analysis
+    dcf_value = calculate_dcf(df, discount_rate)
+
+    # Save outputs
+    results = {
+        'symbol': symbol,
+        'fair_value': dcf_value,
+        'upside': (dcf_value / df['price'].iloc[-1] - 1) * 100
+    }
+
+    return results
 ```
-
-Variables persist across cells within same execution.
 
 ### Migration Notes
 
 **Recent Changes**:
-- **Switched from single scripts to Jupyter notebooks** (October 2025)
-  - Enables incremental development
-  - Better debugging (variables persist)
-  - Template reuse (copy notebook, change parameters)
-- **Removed Convex** - Migrated to PostgreSQL for better flexibility
-- **Blocks decoupled from Chats** - Independent storage for better reusability
+- **Migrated from E2B to Fly.io** (October 2024)
+  - More cost-effective
+  - Persistent volumes
+  - Better control over execution environment
+- **Renamed analysis_blocks to deliverables** (November 2024)
+  - More accurate terminology
+  - Supports various output types
+- **Simplified Streamlit deployment** (November 2024)
+  - Single tool workflow (no separate create step)
+  - Automatic database registration
+  - Smart polling (only when deploying)
 
 ### Troubleshooting
 
-**E2B Sandbox Issues**:
-- Check Redis connection (sandbox pool management)
-- Verify E2B_API_KEY is set
-- Sandbox timeout: 20 minutes (configurable in E2BTools)
+**Fly.io Machine Issues**:
+- Check Redis connection (machine pool management)
+- Verify FLY_API_TOKEN is set
+- Machine auto-stops after 15 min idle (normal behavior)
 
 **Database Connection**:
-- Use correct DATABASE_URL (not system default)
+- Use correct DATABASE_URL (Neon connection string)
 - For migrations: `psql $DATABASE_URL -f lib/db/migrations/xxx.sql`
 
 **File Not Found**:
-- Check block_id is set in session_state
-- Verify files exist in `/tmp/fundley/{user_id}/blocks/{block_id}/`
-- E2B auto-download may have failed (check logs)
+- Check task directory exists in `/workspace/tasks/{task_name}/`
+- Verify files were created by agent execution
+- Check Fly.io machine logs for errors
+
+**Streamlit Deployment Issues**:
+- Verify all required environment variables are set (FMP_API_KEY, POLYGON_API_KEY, MOTHERDUCK_TOKEN, MOTHERDUCK_DATABASE)
+- Check `deployment_status` in data_apps table
+- Review Fly.io app logs: `fly logs -a {app-name}`
+- DNS propagation can take 1-2 minutes after deployment
 
 ### Key Documentation
 
-- **Agent Architecture**: `/chatbot-service/README.md`
-- **Temporal RAG**: `/chatbot-service/docs/TEMPORAL_RAG_README.md`
-- **Block Architecture**: `/docs/block-architecture-comparison.md`
-- **Commit Guidelines**: `/AGENTS.md`
-
-### Security
-
-**Sensitive Data**:
-- Never commit `.env` files
-- API keys sanitized in E2B outputs (see `_sanitize_output`)
-- User files isolated by `user_id` in local storage
-
-**Sandbox Isolation**:
-- E2B provides isolated Python runtime
-- Each user gets dedicated sandbox pool
-- 50MB file size limit for auto-download
+- **Main README**: Product overview and differentiators
+- **Agent Architecture**: `chatbot-service/README.md`
+- **Fly.io Migration**: `chatbot-service/docs/FLYIO_MIGRATION_GUIDE.md`
+- **Background Tasks**: `chatbot-service/README_BACKGROUND_TASKS.md` (auto-stop idle machines)
