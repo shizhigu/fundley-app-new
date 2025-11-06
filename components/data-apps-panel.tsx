@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, Clock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, ExternalLinkIcon } from 'lucide-react';
+import { ExternalLink, Clock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, ExternalLinkIcon, RefreshCw } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -21,37 +21,59 @@ export function DataAppsPanel() {
   const { user } = useUser();
   const [apps, setApps] = useState<DataApp[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<DataApp | null>(null);
 
-  useEffect(() => {
+  const fetchApps = async (isRefresh = false) => {
     if (!user?.id) return;
 
-    const fetchApps = async () => {
-      try {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        const response = await fetch('/api/data-apps');
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch data apps');
-        }
-
-        const data = await response.json();
-        setApps(data.apps || []);
-      } catch (err) {
-        console.error('Error fetching data apps:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load dashboards');
-      } finally {
-        setLoading(false);
       }
-    };
 
+      const response = await fetch('/api/data-apps');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch data apps');
+      }
+
+      const data = await response.json();
+      setApps(data.apps || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data apps:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboards');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchApps(true);
+  };
+
+  // Initial load
+  useEffect(() => {
     fetchApps();
-
-    // Refresh every 10 seconds to check deployment status
-    const interval = setInterval(fetchApps, 10000);
-    return () => clearInterval(interval);
   }, [user?.id]);
+
+  // Smart polling: only poll if there are apps in deploying/pending state
+  useEffect(() => {
+    const hasDeployingApps = apps.some(
+      (app) => app.deployment_status === 'deploying' || app.deployment_status === 'pending'
+    );
+
+    if (!hasDeployingApps) return;
+
+    // Poll every 5 seconds only when there are deploying apps
+    const interval = setInterval(fetchApps, 5000);
+    return () => clearInterval(interval);
+  }, [apps]);
 
   const getStatusIcon = (status: DataApp['deployment_status']) => {
     switch (status) {
@@ -174,9 +196,23 @@ export function DataAppsPanel() {
       <div className="px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">My Dashboards</h2>
-          <span className="text-xs text-muted-foreground">
-            {apps.length} {apps.length === 1 ? 'dashboard' : 'dashboards'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {apps.length} {apps.length === 1 ? 'dashboard' : 'dashboards'}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="h-7 w-7 p-0"
+            >
+              <RefreshCw className={cn(
+                "w-3.5 h-3.5",
+                refreshing && "animate-spin"
+              )} />
+            </Button>
+          </div>
         </div>
       </div>
 
