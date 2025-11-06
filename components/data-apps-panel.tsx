@@ -1,0 +1,243 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { ExternalLink, Clock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, ExternalLinkIcon } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
+import { cn } from '@/lib/utils';
+import { Button } from './ui/button';
+
+interface DataApp {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  url: string;
+  deployment_status: 'pending' | 'deploying' | 'ready' | 'deployed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+export function DataAppsPanel() {
+  const { user } = useUser();
+  const [apps, setApps] = useState<DataApp[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedApp, setSelectedApp] = useState<DataApp | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchApps = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/data-apps');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch data apps');
+        }
+
+        const data = await response.json();
+        setApps(data.apps || []);
+      } catch (err) {
+        console.error('Error fetching data apps:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboards');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApps();
+
+    // Refresh every 10 seconds to check deployment status
+    const interval = setInterval(fetchApps, 10000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  const getStatusIcon = (status: DataApp['deployment_status']) => {
+    switch (status) {
+      case 'ready':
+      case 'deployed':
+        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'deploying':
+      case 'pending':
+        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
+      case 'failed':
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusText = (status: DataApp['deployment_status']) => {
+    switch (status) {
+      case 'ready':
+      case 'deployed':
+        return 'Live';
+      case 'deploying':
+        return 'Deploying...';
+      case 'pending':
+        return 'Pending';
+      case 'failed':
+        return 'Failed';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const isAppReady = (status: DataApp['deployment_status']) => {
+    return status === 'ready' || status === 'deployed';
+  };
+
+  // If an app is selected, show iframe view
+  if (selectedApp) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden bg-background">
+        {/* Header with back button */}
+        <div className="px-4 py-3 border-b border-border bg-card flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedApp(null)}
+              className="h-8 px-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
+            <div className="border-l border-border h-6" />
+            <h2 className="text-sm font-semibold text-foreground truncate max-w-[200px]">
+              {selectedApp.title}
+            </h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(selectedApp.url, '_blank', 'noopener,noreferrer')}
+            className="h-8 px-2"
+          >
+            <ExternalLinkIcon className="w-4 h-4 mr-1" />
+            Open in new tab
+          </Button>
+        </div>
+
+        {/* Iframe container */}
+        <div className="flex-1 relative bg-white">
+          <iframe
+            src={selectedApp.url}
+            className="absolute inset-0 w-full h-full border-0"
+            title={selectedApp.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
+        <AlertCircle className="w-8 h-8" />
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (apps.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <ExternalLink className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium text-foreground">No dashboards yet</p>
+          <p className="text-sm max-w-sm">
+            Ask me to create a live dashboard for tracking stocks, analyzing data, or monitoring markets in real-time.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">My Dashboards</h2>
+          <span className="text-xs text-muted-foreground">
+            {apps.length} {apps.length === 1 ? 'dashboard' : 'dashboards'}
+          </span>
+        </div>
+      </div>
+
+      {/* Apps List */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-3">
+          {apps.map((app) => (
+            <div
+              key={app.id}
+              className={cn(
+                'group relative rounded-lg border-2 p-5',
+                'transition-all duration-200',
+                isAppReady(app.deployment_status)
+                  ? 'border-border bg-card hover:border-brand-primary hover:bg-brand-primary/5 cursor-pointer hover:shadow-lg hover:scale-[1.02]'
+                  : 'border-border/50 bg-card/50 cursor-not-allowed opacity-60'
+              )}
+              onClick={() => {
+                if (isAppReady(app.deployment_status)) {
+                  setSelectedApp(app);
+                }
+              }}
+            >
+              {/* Status Badge - Top Right */}
+              <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background/80 backdrop-blur-sm">
+                {getStatusIcon(app.deployment_status)}
+                <span className="text-xs font-medium">
+                  {getStatusText(app.deployment_status)}
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="pr-24">
+                <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-brand-primary transition-colors flex items-center gap-2">
+                  {app.title}
+                  {isAppReady(app.deployment_status) && (
+                    <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </h3>
+                {app.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                    {app.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  Updated {new Date(app.updated_at).toLocaleDateString()}
+                </span>
+                {isAppReady(app.deployment_status) && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-brand-primary/10 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="font-medium">Click to view</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
