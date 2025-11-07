@@ -86,7 +86,8 @@
       "Bash(fly machine --help:*)",
       "Bash(fly sftp:*)",
       "Bash(xargs:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(python background_tasks/auto_archive_apps.py:*)"
     ],
     "deny": [],
     "ask": [],
