@@ -80,7 +80,11 @@
       "Bash(fly secrets set:*)",
       "Bash(python -c:*)",
       "Bash(python -m py_compile:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(pip install:*)",
+      "Bash(fly machine --help:*)",
+      "Bash(fly sftp:*)"
     ],
     "deny": [],
     "ask": [],

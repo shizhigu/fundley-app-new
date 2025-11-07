@@ -23,9 +23,9 @@ export function ChatLayout({ user }: { user: ChatLayoutProps['user'] }) {
           <EnhancedResizablePanel
             leftPanel={<ChatManager user={user} />}
             rightPanel={(onCollapse) => <RightPanelTabs onCollapse={onCollapse} />}
-            defaultLeftSize={40}
-            minLeftSize={25}
-            minRightSize={30}
+            defaultLeftSize={55}
+            minLeftSize={30}
+            minRightSize={25}
             className="w-full h-full"
           />
         </div>

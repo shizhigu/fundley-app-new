@@ -335,7 +335,8 @@ export function DeliverableRenderer({
         if (typeof artifact === 'string') {
           return artifact;
         }
-        return artifact.filename || artifact;
+        // Use path (relative path) instead of filename (basename only)
+        return artifact.path || artifact.filename || artifact;
       });
       filesList.push(...artifactFiles);
     } else if (content.files?.artifact) {
