@@ -84,7 +84,9 @@
       "Bash(git check-ignore:*)",
       "Bash(pip install:*)",
       "Bash(fly machine --help:*)",
-      "Bash(fly sftp:*)"
+      "Bash(fly sftp:*)",
+      "Bash(xargs:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": [],

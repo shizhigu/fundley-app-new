@@ -1,10 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, Clock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, ExternalLinkIcon, RefreshCw } from 'lucide-react';
+import { ExternalLink, Clock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, ExternalLinkIcon, RefreshCw, Trash2, Archive, RotateCcw } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 interface DataApp {
   id: string;
@@ -12,9 +22,11 @@ interface DataApp {
   slug: string;
   description: string | null;
   url: string;
-  deployment_status: 'pending' | 'deploying' | 'ready' | 'deployed' | 'failed';
+  deployment_status: 'pending' | 'deploying' | 'ready' | 'deployed' | 'failed' | 'archived';
   created_at: string;
   updated_at: string;
+  archived_at?: string | null;
+  fly_app_deleted?: boolean;
 }
 
 export function DataAppsPanel() {
@@ -22,8 +34,12 @@ export function DataAppsPanel() {
   const [apps, setApps] = useState<DataApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const [redeployingSlug, setRedeployingSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<DataApp | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [appToDelete, setAppToDelete] = useState<{ slug: string; title: string } | null>(null);
 
   const fetchApps = async (isRefresh = false) => {
     if (!user?.id) return;
@@ -57,6 +73,71 @@ export function DataAppsPanel() {
     fetchApps(true);
   };
 
+  const handleDeleteClick = (slug: string, title: string) => {
+    setAppToDelete({ slug, title });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!appToDelete) return;
+
+    setDeletingSlug(appToDelete.slug);
+    setDeleteDialogOpen(false);
+
+    try {
+      const response = await fetch('/api/data-apps/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slug: appToDelete.slug }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete dashboard');
+      }
+
+      // Refresh apps list
+      await fetchApps();
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting dashboard:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete dashboard');
+    } finally {
+      setDeletingSlug(null);
+      setAppToDelete(null);
+    }
+  };
+
+  const handleRedeploy = async (slug: string, title: string) => {
+    setRedeployingSlug(slug);
+
+    try {
+      const response = await fetch('/api/data-apps/redeploy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slug: slug }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to redeploy dashboard');
+      }
+
+      // Refresh apps list to show deploying status
+      await fetchApps();
+      setError(null);
+    } catch (err) {
+      console.error('Error redeploying dashboard:', err);
+      setError(err instanceof Error ? err.message : 'Failed to redeploy dashboard');
+    } finally {
+      setRedeployingSlug(null);
+    }
+  };
+
   // Initial load
   useEffect(() => {
     fetchApps();
@@ -85,6 +166,8 @@ export function DataAppsPanel() {
         return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       case 'failed':
         return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'archived':
+        return <Archive className="w-4 h-4 text-orange-500" />;
       default:
         return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
@@ -101,6 +184,8 @@ export function DataAppsPanel() {
         return 'Pending';
       case 'failed':
         return 'Failed';
+      case 'archived':
+        return 'Archived';
       default:
         return 'Unknown';
     }
@@ -227,6 +312,8 @@ export function DataAppsPanel() {
                 'transition-all duration-200',
                 isAppReady(app.deployment_status)
                   ? 'border-border bg-card hover:border-brand-primary hover:bg-brand-primary/5 cursor-pointer hover:shadow-lg hover:scale-[1.02]'
+                  : app.deployment_status === 'archived'
+                  ? 'border-border bg-card opacity-80'
                   : 'border-border/50 bg-card/50 cursor-not-allowed opacity-60'
               )}
               onClick={() => {
@@ -261,19 +348,94 @@ export function DataAppsPanel() {
               {/* Footer */}
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  Updated {new Date(app.updated_at).toLocaleDateString()}
+                  {app.deployment_status === 'archived' && app.archived_at
+                    ? `Archived ${new Date(app.archived_at).toLocaleDateString()}`
+                    : `Updated ${new Date(app.updated_at).toLocaleDateString()}`}
                 </span>
-                {isAppReady(app.deployment_status) && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-brand-primary/10 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="font-medium">Click to view</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {isAppReady(app.deployment_status) && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-brand-primary/10 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="font-medium">Click to view</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </div>
+                  )}
+                  {app.deployment_status === 'archived' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRedeploy(app.slug, app.title);
+                      }}
+                      disabled={redeployingSlug === app.slug}
+                      className="h-7 px-2 hover:bg-brand-primary/10 hover:text-brand-primary text-muted-foreground"
+                      title="Redeploy dashboard"
+                    >
+                      {redeployingSlug === app.slug ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      <span className="text-xs font-medium">Redeploy</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(app.slug, app.title);
+                      }}
+                      disabled={deletingSlug === app.slug}
+                      className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
+                      title="Delete dashboard"
+                    >
+                      {deletingSlug === app.slug ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Dashboard</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-foreground">
+                  {appToDelete?.title}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This will permanently remove the app from Fly.io and cannot be undone.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                The source code will be preserved on the dev machine for future redeployment.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

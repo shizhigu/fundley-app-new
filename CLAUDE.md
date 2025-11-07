@@ -408,3 +408,4 @@ def run_dcf_analysis(symbol, config):
 - **Agent Architecture**: `chatbot-service/README.md`
 - **Fly.io Migration**: `chatbot-service/docs/FLYIO_MIGRATION_GUIDE.md`
 - **Background Tasks**: `chatbot-service/README_BACKGROUND_TASKS.md` (auto-stop idle machines)
+- 通常两个都是写代码实现,一个在tasks目录,一个在data app目录的streamlit项目,两个要搞清楚,可以吗?
