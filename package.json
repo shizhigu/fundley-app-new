@@ -87,6 +87,7 @@
     "next": "15.3.0-canary.31",
     "next-intl": "^4.3.12",
     "next-themes": "^0.3.0",
+    "openai": "^6.8.1",
     "papaparse": "^5.5.2",
     "parquet-wasm": "^0.7.0",
     "pg": "^8.16.3",

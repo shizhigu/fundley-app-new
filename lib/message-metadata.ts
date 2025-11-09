@@ -14,6 +14,7 @@ export interface AlertConfig {
 export interface MessageMetadata {
   tickers?: string[];
   suggestions?: string[];
+  voiceSummary?: string;
   charts?: ChartConfig[];
   alerts?: AlertConfig[];
 }

@@ -21,6 +21,7 @@ import { ToolStatus } from './tool-status';
 import { hasMetadata, MessageMetadata } from '@/lib/message-metadata';
 import { TickerButtonGroup } from './ticker-button';
 import { SuggestionButtonGroup } from './suggestion-button';
+import { VoiceSummaryButton } from './voice-summary-button';
 import { StockLoader } from './stock-loader';
 import { CollapsibleUserMessage } from './collapsible-user-message';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -408,11 +409,39 @@ const PurePreviewMessage = ({
       }
     };
 
-    const extractedSuggestions = extractSuggestions(allText);
+    const extractVoiceSummary = (content: string) => {
+      if (!content.includes('</voice_summary>')) {
+        return null;
+      }
 
-    if (extractedSuggestions) {
+      try {
+        const regex = /<voice_summary>([\s\S]*?)<\/voice_summary>/;
+        const match = content.match(regex);
+
+        if (!match || !match[1]) {
+          return null;
+        }
+
+        const jsonStr = match[1].trim();
+        const voiceSummary = JSON.parse(jsonStr);
+
+        if (!voiceSummary.direct_answer || typeof voiceSummary.direct_answer !== 'string') {
+          return null;
+        }
+
+        return voiceSummary.direct_answer;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const extractedSuggestions = extractSuggestions(allText);
+    const extractedVoiceSummary = extractVoiceSummary(allText);
+
+    if (extractedSuggestions || extractedVoiceSummary) {
       setExtractedMetadata({
-        suggestions: extractedSuggestions,
+        suggestions: extractedSuggestions || extractedMetadata?.suggestions,
+        voiceSummary: extractedVoiceSummary || extractedMetadata?.voiceSummary,
         tickers: extractedMetadata?.tickers,
         containsRealData: extractedMetadata?.containsRealData,
         verificationMessage: extractedMetadata?.verificationMessage
@@ -496,7 +525,8 @@ const PurePreviewMessage = ({
               if (type === 'text') {
                 let cleanedText = part.text;
                 const suggestionsTagRegex = /<suggestions>[\s\S]*?<\/suggestions>/g;
-                cleanedText = cleanedText.replace(suggestionsTagRegex, '').trim();
+                const voiceSummaryTagRegex = /<voice_summary>[\s\S]*?<\/voice_summary>/g;
+                cleanedText = cleanedText.replace(suggestionsTagRegex, '').replace(voiceSummaryTagRegex, '').trim();
 
                 const parsedMessage = { content: sanitizeText(cleanedText), metadata: {} as MessageMetadata };
 
@@ -561,6 +591,12 @@ const PurePreviewMessage = ({
                               }}
                               className="not-prose"
                             />
+                          )}
+
+                          {parsedMessage.metadata.voiceSummary && (
+                            <div className="not-prose mt-3">
+                              <VoiceSummaryButton directAnswer={parsedMessage.metadata.voiceSummary} />
+                            </div>
                           )}
 
                           {message.role === 'assistant' && extractedMetadata?.containsRealData && extractedMetadata?.verificationMessage && (
@@ -1043,6 +1079,12 @@ const PurePreviewMessage = ({
                     }}
                     className="not-prose"
                   />
+                )}
+
+                {(extractedMetadata as any).voiceSummary && (
+                  <div className="not-prose mt-3">
+                    <VoiceSummaryButton directAnswer={(extractedMetadata as any).voiceSummary} />
+                  </div>
                 )}
               </div>
             )}
