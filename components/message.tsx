@@ -329,6 +329,7 @@ const PurePreviewMessage = ({
   const [extractedMetadata, setExtractedMetadata] = useState<{
     tickers?: string[],
     suggestions?: { text: string, containsRealData: boolean, verificationMessage?: string }[],
+    voiceSummary?: string,
     containsRealData?: boolean,
     verificationMessage?: string
   } | null>(null);
