@@ -92,7 +92,9 @@
       "Bash(fly machine destroy:*)",
       "Bash(fly volumes delete:*)",
       "Bash(redis-cli:*)",
-      "WebFetch(domain:developers.deepgram.com)"
+      "WebFetch(domain:developers.deepgram.com)",
+      "Bash(fly volumes create:*)",
+      "Bash(TOKEN=\"$FLY_API_TOKEN\")"
     ],
     "deny": [],
     "ask": [],
