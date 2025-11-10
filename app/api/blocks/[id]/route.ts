@@ -21,6 +21,74 @@ async function createRedisConnection() {
   return client;
 }
 
+// GET /api/blocks/[id] - Get single deliverable with full content (on-demand loading)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const { id: blockId } = await params;
+
+    console.log(`📦 GET /api/blocks/${blockId} - Fetching full content on-demand`);
+
+    // Fetch full deliverable with content
+    const blocks = await db`
+      SELECT
+        d.id,
+        d.user_id as "userId",
+        d.chat_id as "chatId",
+        d.source_chat_id as "sourceChatId",
+        d.created_at as "createdAt",
+        d.updated_at as "updatedAt",
+        d.is_pinned as "isPinned",
+        d.pinned_at as "pinnedAt",
+        d.primary_symbol as "primarySymbol",
+        d.opened,
+        d.content,
+        c.title as "sourceChatTitle"
+      FROM deliverables d
+      LEFT JOIN chats c ON d.source_chat_id = c.id
+      WHERE d.id = ${blockId} AND d.user_id = ${userId}
+    `;
+
+    if (blocks.length === 0) {
+      return NextResponse.json({ error: 'Deliverable not found' }, { status: 404 });
+    }
+
+    const block = blocks[0];
+
+    // Transform to match frontend expectations
+    const transformedBlock = {
+      id: block.id,
+      userId: block.userId,
+      sourceChatId: block.sourceChatId || block.chatId,
+      createdAt: block.createdAt,
+      updatedAt: block.updatedAt,
+      isPinned: block.isPinned || false,
+      pinnedAt: block.pinnedAt,
+      primarySymbol: block.primarySymbol,
+      opened: block.opened || false,
+      content: block.content,
+      title: block.content?.title || 'Untitled Analysis',
+      sourceChatTitle: block.sourceChatTitle,
+    };
+
+    return NextResponse.json({ block: transformedBlock });
+  } catch (error) {
+    console.error('Error fetching deliverable:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch deliverable' },
+      { status: 500 }
+    );
+  }
+}
+
 // PATCH /api/blocks/[id] - Update block
 export async function PATCH(
   request: NextRequest,

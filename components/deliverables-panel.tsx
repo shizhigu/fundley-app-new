@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { DeliverableRenderer } from './deliverable-renderer';
 import { getDeliverablesSince } from '@/lib/actions/deliverables';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -294,30 +294,36 @@ export function DeliverablesPanel({
   useEffect(() => {
     if (deliverableToolCalled === 0) return; // 没有工具调用，不启动轮询
 
-    let pollCount = 0;
+    let isCancelled = false; // Abort flag for cleanup
     const MAX_POLLS = 3;
     const POLL_INTERVAL = 5000;
 
     const startPolling = async () => {
       for (let i = 0; i < MAX_POLLS; i++) {
-        pollCount++;
+        if (isCancelled) break; // Exit if component unmounted
 
         // 执行轮询
         const foundNew = await checkForNewBlocks();
 
         // 如果找到新数据，立即停止
-        if (foundNew) {
+        if (foundNew || isCancelled) {
           break;
         }
 
         // 如果不是最后一次，等待5秒
         if (i < MAX_POLLS - 1) {
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+          if (isCancelled) break; // Check again after setTimeout
         }
       }
     };
 
     startPolling();
+
+    // CRITICAL: Cleanup - cancel polling when component unmounts
+    return () => {
+      isCancelled = true;
+    };
   }, [deliverableToolCalled]); // 监听 deliverableToolCalled 变化
 
   const loadInitialBlocks = async () => {
@@ -447,9 +453,40 @@ export function DeliverablesPanel({
     }
   };
 
+  // On-demand loading: fetch full content when detail view is opened
+  useEffect(() => {
+    if (!detailViewBlockId) return;
+
+    const block = blocks.find((b) => b.id === detailViewBlockId);
+    if (!block) return;
+
+    // Check if we need to load full content (list view only has metadata)
+    if (!block.content?.sections) {
+      console.log(`📦 Loading full content on-demand for: ${detailViewBlockId}`);
+
+      const loadFullContent = async () => {
+        try {
+          const response = await fetch(`/api/blocks/${detailViewBlockId}`);
+          if (response.ok) {
+            const { block: fullBlock } = await response.json();
+            // Update blocks array with full content
+            setBlocks((prev) =>
+              prev.map((b) => (b.id === detailViewBlockId ? { ...b, content: fullBlock.content } : b))
+            );
+            console.log(`✅ Loaded full content for: ${detailViewBlockId}`);
+          }
+        } catch (error) {
+          console.error('Error loading full deliverable content:', error);
+        }
+      };
+
+      loadFullContent();
+    }
+  }, [detailViewBlockId, blocks]);
+
   // Handle block open (mark as read + open detail view)
   const handleBlockOpen = async (block: any) => {
-    // Open detail view
+    // Open detail view (content will be loaded by useEffect above)
     setDetailViewBlockId(block.id);
 
     // Mark as read if unopened

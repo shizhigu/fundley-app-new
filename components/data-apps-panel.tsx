@@ -149,12 +149,19 @@ export function DataAppsPanel() {
       (app) => app.deployment_status === 'deploying' || app.deployment_status === 'pending'
     );
 
-    if (!hasDeployingApps) return;
+    if (!hasDeployingApps) {
+      // No deploying apps, don't poll
+      return;
+    }
 
     // Poll every 5 seconds only when there are deploying apps
     const interval = setInterval(fetchApps, 5000);
-    return () => clearInterval(interval);
-  }, [apps]);
+
+    // CRITICAL: Always return cleanup function (even if interval wasn't created)
+    return () => {
+      clearInterval(interval);
+    };
+  }, [apps.map(a => a.deployment_status).join(',')])  // ⚠️ Only depend on deployment status, not entire apps array
 
   const getStatusIcon = (status: DataApp['deployment_status']) => {
     switch (status) {

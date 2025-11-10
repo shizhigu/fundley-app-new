@@ -1,7 +1,7 @@
 'use client';
 
 import { Volume2, Pause, Loader2 } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface VoiceSummaryButtonProps {
@@ -12,6 +12,7 @@ export function VoiceSummaryButton({ directAnswer }: VoiceSummaryButtonProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null); // Track audio URL for cleanup
 
   const handlePlay = async () => {
     if (isPlaying && audioRef.current) {
@@ -41,6 +42,7 @@ export function VoiceSummaryButton({ directAnswer }: VoiceSummaryButtonProps) {
       // Create audio from response
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl; // Store URL for cleanup
 
       // Create and play audio
       const audio = new Audio(audioUrl);
@@ -53,13 +55,19 @@ export function VoiceSummaryButton({ directAnswer }: VoiceSummaryButtonProps) {
 
       audio.onended = () => {
         setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current);
+          audioUrlRef.current = null;
+        }
       };
 
       audio.onerror = () => {
         setIsPlaying(false);
         setIsLoading(false);
-        URL.revokeObjectURL(audioUrl);
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current);
+          audioUrlRef.current = null;
+        }
       };
 
       await audio.play();
@@ -69,6 +77,21 @@ export function VoiceSummaryButton({ directAnswer }: VoiceSummaryButtonProps) {
       setIsPlaying(false);
     }
   };
+
+  // Cleanup: stop audio and revoke URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = ''; // Clear src to release memory
+        audioRef.current = null;
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <button

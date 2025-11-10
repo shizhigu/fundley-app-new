@@ -24,6 +24,7 @@ export function MarkdownSectionEditor({ content, onSave, onCancel }: MarkdownSec
   const lastSavedValue = useRef(content)
   const saveTimeoutRef = useRef<number>()
   const isSavingRef = useRef(false)
+  const retryTimeoutRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 静默保存函数（无 UI 反馈）
@@ -43,10 +44,15 @@ export function MarkdownSectionEditor({ content, onSave, onCancel }: MarkdownSec
     } catch (error) {
       console.error('Save failed, retrying...', error)
       // 静默重试一次（3秒后）
-      setTimeout(() => {
+      // Clear existing retry timeout if any
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+      retryTimeoutRef.current = window.setTimeout(() => {
         isSavingRef.current = false
         performSave(valueToSave)
-      }, 3000)
+        retryTimeoutRef.current = null
+      }, 3000) as unknown as number
       return // 不设置 isSavingRef = false，等重试
     } finally {
       isSavingRef.current = false
@@ -92,6 +98,15 @@ export function MarkdownSectionEditor({ content, onSave, onCancel }: MarkdownSec
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [value, performSave, onCancel])
+
+  // Cleanup retry timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div ref={containerRef}>

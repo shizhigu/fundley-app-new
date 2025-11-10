@@ -19,12 +19,18 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const includeContent = searchParams.get('includeContent') === 'true'; // Memory optimization
 
-    console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId);
+    console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId, 'includeContent:', includeContent);
 
     // Get all user deliverables with modification history
     // Note: updated_at is auto-updated by trigger when block_modification_history is inserted
     // Pinned deliverables are sorted first, then by updated_at/created_at
+    // Memory optimization: only fetch full content when requested
+    const contentField = includeContent
+      ? db`d.content`
+      : db`jsonb_build_object('title', d.content->'title', 'text', LEFT(COALESCE(d.content->>'text', ''), 200))`;
+
     let blocks = await db`
       SELECT
         d.id,
@@ -37,7 +43,7 @@ export async function GET(request: NextRequest) {
         d.pinned_at as "pinnedAt",
         d.primary_symbol as "primarySymbol",
         d.opened,
-        d.content,
+        ${contentField} as content,
         c.title as "sourceChatTitle",
         -- Get list of chats that modified this deliverable
         COALESCE(

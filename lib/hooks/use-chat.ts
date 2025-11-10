@@ -32,6 +32,18 @@ export function useChat(): ChatState & ChatActions {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Memory optimization: limit messages to prevent unbounded growth
+  const MAX_MESSAGES_IN_MEMORY = 100;
+
+  // Helper function to trim messages array to prevent memory leak
+  const trimMessages = useCallback((messages: ChatMessage[]) => {
+    if (messages.length <= MAX_MESSAGES_IN_MEMORY) {
+      return messages;
+    }
+    // Keep the most recent MAX_MESSAGES_IN_MEMORY messages
+    return messages.slice(-MAX_MESSAGES_IN_MEMORY);
+  }, [MAX_MESSAGES_IN_MEMORY]);
+
   // Metrics 状态 - 存储当前对话的 token 使用情况
   const [currentMetrics, setCurrentMetrics] = useState<{
     input_tokens: number;
@@ -371,7 +383,8 @@ export function useChat(): ChatState & ChatActions {
 
       const data = await response.json();
       const convertedMessages = data.messages.map(convertMessageInternal);
-      setMessages(convertedMessages);
+      // Trim messages to prevent memory leak when loading chat history
+      setMessages(trimMessages(convertedMessages));
       setError(null); // 清除之前的错误
       setIsLoading(false); // 成功后清除loading
     } catch (err) {
@@ -577,13 +590,16 @@ export function useChat(): ChatState & ChatActions {
               const existing = prev.find(
                 (msg) => msg.id === convertedMessage.id,
               );
+              let updated: ChatMessage[];
               if (existing) {
-                return prev.map((msg) =>
+                updated = prev.map((msg) =>
                   msg.id === convertedMessage.id ? convertedMessage : msg,
                 );
               } else {
-                return [...prev, convertedMessage];
+                updated = [...prev, convertedMessage];
               }
+              // Trim messages to prevent memory leak
+              return trimMessages(updated);
             });
 
             // 检测 block 工具调用
@@ -637,7 +653,7 @@ export function useChat(): ChatState & ChatActions {
               );
               if (!existing) {
                 // 创建空消息占位符，内容为空字符串
-                return [
+                const updated = [
                   ...prev,
                   {
                     ...convertedMessage,
@@ -645,6 +661,8 @@ export function useChat(): ChatState & ChatActions {
                     parts: [{ type: 'text', text: '' }],
                   },
                 ];
+                // Trim messages to prevent memory leak
+                return trimMessages(updated);
               }
               return prev;
             });
@@ -654,8 +672,8 @@ export function useChat(): ChatState & ChatActions {
         case 'assistant_content':
           // assistant_content：增量追加内容
           if (event.messageId && event.content) {
-            setMessages((prev) =>
-              prev.map((msg) =>
+            setMessages((prev) => {
+              const updated = prev.map((msg) =>
                 msg.id === event.messageId
                   ? {
                       ...msg,
@@ -668,8 +686,10 @@ export function useChat(): ChatState & ChatActions {
                       ],
                     }
                   : msg,
-              ),
-            );
+              );
+              // Trim messages to prevent memory leak (but less aggressive during streaming)
+              return trimMessages(updated);
+            });
           }
           break;
 
