@@ -6,6 +6,7 @@ import type { Watchlist, WatchlistInsert } from '@/lib/db/schema/watchlist'
 /**
  * GET /api/watchlist
  * Get user's watchlist
+ * Optional query param: groupId - filter by specific group
  */
 export async function GET(request: NextRequest) {
   try {
@@ -23,12 +24,28 @@ export async function GET(request: NextRequest) {
     }
     const userId = userResult[0].id
 
-    // Get watchlist items
-    const watchlist = await db`
-      SELECT * FROM watchlist
-      WHERE user_id = ${userId}
-      ORDER BY added_at DESC
-    `
+    // Get optional groupId filter
+    const groupId = request.nextUrl.searchParams.get('groupId')
+
+    // Get watchlist items with optional group filter
+    let watchlist
+    if (groupId) {
+      watchlist = await db`
+        SELECT w.*, wg.name as group_name
+        FROM watchlist w
+        LEFT JOIN watchlist_groups wg ON w.group_id = wg.id
+        WHERE w.user_id = ${userId} AND w.group_id = ${groupId}
+        ORDER BY w.added_at DESC
+      `
+    } else {
+      watchlist = await db`
+        SELECT w.*, wg.name as group_name
+        FROM watchlist w
+        LEFT JOIN watchlist_groups wg ON w.group_id = wg.id
+        WHERE w.user_id = ${userId}
+        ORDER BY w.added_at DESC
+      `
+    }
 
     return NextResponse.json({ watchlist })
   } catch (error) {
@@ -62,10 +79,23 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json()
-    const { symbols, asset_type = 'stock' } = body
+    const { symbols, asset_type = 'stock', group_id } = body
 
     if (!symbols || symbols.length === 0) {
       return NextResponse.json({ error: 'Symbols are required' }, { status: 400 })
+    }
+
+    // If group_id not provided, get user's default group
+    let targetGroupId = group_id
+    if (!targetGroupId) {
+      const defaultGroup = await db`
+        SELECT id FROM watchlist_groups
+        WHERE user_id = ${userId} AND is_default = true
+        LIMIT 1
+      `
+      if (defaultGroup.length > 0) {
+        targetGroupId = defaultGroup[0].id
+      }
     }
 
     // Batch insert watchlist items (ON CONFLICT DO NOTHING to prevent duplicates)
@@ -77,9 +107,9 @@ export async function POST(request: NextRequest) {
       if (!symbolUpper) continue
 
       const result = await db`
-        INSERT INTO watchlist (user_id, symbol, asset_type)
-        VALUES (${userId}, ${symbolUpper}, ${asset_type})
-        ON CONFLICT (user_id, symbol) DO NOTHING
+        INSERT INTO watchlist (user_id, group_id, symbol, asset_type)
+        VALUES (${userId}, ${targetGroupId || null}, ${symbolUpper}, ${asset_type})
+        ON CONFLICT (user_id, group_id, symbol) DO NOTHING
         RETURNING *
       `
 
@@ -107,8 +137,9 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * DELETE /api/watchlist?symbol=AAPL
+ * DELETE /api/watchlist?symbol=AAPL&groupId=xxx
  * Remove item from watchlist
+ * Optional query param: groupId - only delete from specific group
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -118,6 +149,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const symbol = request.nextUrl.searchParams.get('symbol')
+    const groupId = request.nextUrl.searchParams.get('groupId')
+
     if (!symbol) {
       return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
     }
@@ -131,11 +164,19 @@ export async function DELETE(request: NextRequest) {
     }
     const userId = userResult[0].id
 
-    // Delete item
-    await db`
-      DELETE FROM watchlist
-      WHERE user_id = ${userId} AND symbol = ${symbol.toUpperCase()}
-    `
+    // Delete item (with optional group filter)
+    if (groupId) {
+      await db`
+        DELETE FROM watchlist
+        WHERE user_id = ${userId} AND symbol = ${symbol.toUpperCase()} AND group_id = ${groupId}
+      `
+    } else {
+      // If no groupId specified, delete from all groups
+      await db`
+        DELETE FROM watchlist
+        WHERE user_id = ${userId} AND symbol = ${symbol.toUpperCase()}
+      `
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

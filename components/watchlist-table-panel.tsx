@@ -71,6 +71,8 @@ export function WatchlistTablePanel() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+  const [watchlistGroups, setWatchlistGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'watchlist'>('watchlist');
   const [savedTemplates, setSavedTemplates] = useState<
@@ -247,9 +249,34 @@ export function WatchlistTablePanel() {
     }
   };
 
-  const fetchWatchlistSymbols = async (): Promise<string[]> => {
+  const fetchWatchlistSymbols = async (groupId?: string | null): Promise<string[]> => {
     try {
-      const response = await fetch('/api/watchlist');
+      // First fetch groups if not loaded
+      if (watchlistGroups.length === 0) {
+        const groupsResponse = await fetch('/api/watchlist-groups');
+        if (groupsResponse.ok) {
+          const groupsData = await groupsResponse.json();
+          if (groupsData.groups && groupsData.groups.length > 0) {
+            setWatchlistGroups(groupsData.groups);
+
+            // Auto-select default group if no group selected
+            if (!selectedGroupId) {
+              const defaultGroup = groupsData.groups.find((g: any) => g.is_default);
+              const targetGroupId = defaultGroup?.id || groupsData.groups[0].id;
+              setSelectedGroupId(targetGroupId);
+              groupId = targetGroupId; // Use this for current fetch
+            }
+          }
+        }
+      }
+
+      // Use provided groupId or current selectedGroupId
+      const targetGroupId = groupId !== undefined ? groupId : selectedGroupId;
+      const url = targetGroupId
+        ? `/api/watchlist?groupId=${targetGroupId}`
+        : '/api/watchlist';
+
+      const response = await fetch(url);
 
       // Check if response is OK
       if (!response.ok) {
@@ -744,6 +771,32 @@ export function WatchlistTablePanel() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Watchlist Group Selector */}
+            {useWatchlistPlaceholder && watchlistGroups.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Group:</span>
+                <Select
+                  value={selectedGroupId || ''}
+                  onValueChange={async (groupId) => {
+                    setSelectedGroupId(groupId);
+                    // Fetch watchlist for selected group
+                    await fetchWatchlistSymbols(groupId);
+                  }}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-sm">
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {watchlistGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name} ({group.item_count})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </form>
 
           {/* Divider */}

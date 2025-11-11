@@ -18,6 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -111,6 +118,8 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
 
   // Watchlist states
   const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [watchlistGroups, setWatchlistGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [loadingWatchlist, setLoadingWatchlist] = useState(false);
   const [addSymbols, setAddSymbols] = useState('');
   const [addingSymbols, setAddingSymbols] = useState(false);
@@ -463,12 +472,28 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
   const fetchWatchlist = async () => {
     setLoadingWatchlist(true);
     try {
-      const response = await fetch('/api/watchlist');
-      const data = await response.json();
-      if (response.ok) {
-        setWatchlist(data.watchlist || []);
+      // Fetch groups
+      const groupsResponse = await fetch('/api/watchlist-groups');
+      const groupsData = await groupsResponse.json();
+
+      if (groupsResponse.ok && groupsData.groups) {
+        setWatchlistGroups(groupsData.groups);
+
+        // Auto-select default group or first group
+        if (groupsData.groups.length > 0 && !selectedGroupId) {
+          const defaultGroup = groupsData.groups.find((g: any) => g.is_default);
+          const groupToSelect = defaultGroup?.id || groupsData.groups[0].id;
+          setSelectedGroupId(groupToSelect);
+
+          // Fetch watchlist for selected group
+          const watchlistResponse = await fetch(`/api/watchlist?groupId=${groupToSelect}`);
+          const watchlistData = await watchlistResponse.json();
+          if (watchlistResponse.ok) {
+            setWatchlist(watchlistData.watchlist || []);
+          }
+        }
       } else {
-        toast.error('Failed to load watchlist');
+        toast.error('Failed to load watchlist groups');
       }
     } catch (error) {
       console.error('Error fetching watchlist:', error);
@@ -500,23 +525,33 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
         body: JSON.stringify({
           symbols: symbolsArray,
           asset_type: 'stock',
+          group_id: selectedGroupId,
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
         setAddSymbols('');
-        await fetchWatchlist();
+
+        // Refresh watchlist for the current group
+        if (selectedGroupId) {
+          const watchlistResponse = await fetch(`/api/watchlist?groupId=${selectedGroupId}`);
+          const watchlistData = await watchlistResponse.json();
+          if (watchlistResponse.ok) {
+            setWatchlist(watchlistData.watchlist || []);
+          }
+        }
 
         // Show feedback
+        const groupName = watchlistGroups.find(g => g.id === selectedGroupId)?.name || 'watchlist';
         if (result.inserted > 0 && result.skipped > 0) {
           toast.success(
-            `Added ${result.inserted} symbol(s). ${result.skipped} already in watchlist.`
+            `Added ${result.inserted} symbol(s) to ${groupName}. ${result.skipped} already in this group.`
           );
         } else if (result.skipped > 0) {
-          toast.info(`All symbols already in watchlist.`);
+          toast.info(`All symbols already in ${groupName}.`);
         } else {
-          toast.success(`Added ${result.inserted} symbol(s) to watchlist.`);
+          toast.success(`Added ${result.inserted} symbol(s) to ${groupName}.`);
         }
       } else {
         const error = await response.json();
@@ -1362,6 +1397,46 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                     Add and remove symbols from your watchlist
                   </p>
                 </div>
+
+                {/* Group Selector */}
+                {watchlistGroups.length > 0 && (
+                  <div className="mb-6">
+                    <label className="text-sm font-medium text-foreground mb-2 block">Select Group</label>
+                    <Select
+                      value={selectedGroupId || ''}
+                      onValueChange={async (groupId) => {
+                        setSelectedGroupId(groupId);
+
+                        // Fetch watchlist for selected group
+                        if (groupId) {
+                          setLoadingWatchlist(true);
+                          try {
+                            const response = await fetch(`/api/watchlist?groupId=${groupId}`);
+                            const data = await response.json();
+                            if (response.ok) {
+                              setWatchlist(data.watchlist || []);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching watchlist:', error);
+                          } finally {
+                            setLoadingWatchlist(false);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {watchlistGroups.map((group) => (
+                          <SelectItem key={group.id} value={group.id}>
+                            {group.name} ({group.item_count} {group.item_count === 1 ? 'symbol' : 'symbols'})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Add Symbols Section */}
                 <div className="border border-border rounded-lg p-6 mb-6 bg-background">
