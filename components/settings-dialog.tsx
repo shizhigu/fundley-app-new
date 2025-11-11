@@ -124,6 +124,10 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
   const [addSymbols, setAddSymbols] = useState('');
   const [addingSymbols, setAddingSymbols] = useState(false);
   const [watchlistSearch, setWatchlistSearch] = useState('');
+  const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Update active tab when initialTab changes (e.g., from Manage button)
   useEffect(() => {
@@ -542,6 +546,13 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
           }
         }
 
+        // Refresh groups to update counts
+        const groupsResponse = await fetch('/api/watchlist-groups');
+        const groupsData = await groupsResponse.json();
+        if (groupsResponse.ok) {
+          setWatchlistGroups(groupsData.groups || []);
+        }
+
         // Show feedback
         const groupName = watchlistGroups.find(g => g.id === selectedGroupId)?.name || 'watchlist';
         if (result.inserted > 0 && result.skipped > 0) {
@@ -567,12 +578,27 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
 
   const handleRemoveSymbol = async (symbol: string) => {
     try {
-      const response = await fetch(`/api/watchlist?symbol=${symbol}`, {
+      const response = await fetch(`/api/watchlist?symbol=${symbol}&groupId=${selectedGroupId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        await fetchWatchlist();
+        // Refresh watchlist for current group
+        if (selectedGroupId) {
+          const watchlistResponse = await fetch(`/api/watchlist?groupId=${selectedGroupId}`);
+          const watchlistData = await watchlistResponse.json();
+          if (watchlistResponse.ok) {
+            setWatchlist(watchlistData.watchlist || []);
+          }
+        }
+
+        // Refresh groups to update counts
+        const groupsResponse = await fetch('/api/watchlist-groups');
+        const groupsData = await groupsResponse.json();
+        if (groupsResponse.ok) {
+          setWatchlistGroups(groupsData.groups || []);
+        }
+
         toast.success(`Removed ${symbol} from watchlist`);
       } else {
         toast.error('Failed to remove symbol');
@@ -580,6 +606,57 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
     } catch (error) {
       console.error('Failed to remove symbol:', error);
       toast.error('Failed to remove symbol');
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) {
+      toast.error('Group name is required');
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+
+      const response = await fetch('/api/watchlist-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newGroupName.trim(),
+          description: newGroupDescription.trim() || null,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // Refresh groups
+        const groupsResponse = await fetch('/api/watchlist-groups');
+        const groupsData = await groupsResponse.json();
+        if (groupsResponse.ok) {
+          setWatchlistGroups(groupsData.groups || []);
+          // Auto-select the newly created group
+          setSelectedGroupId(result.group.id);
+
+          // Fetch watchlist for new group (will be empty)
+          setWatchlist([]);
+        }
+
+        // Close dialog and reset form
+        setShowCreateGroupDialog(false);
+        setNewGroupName('');
+        setNewGroupDescription('');
+
+        toast.success(`Created group "${result.group.name}"`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to create group');
+      }
+    } catch (error) {
+      console.error('Failed to create group:', error);
+      toast.error('Failed to create group');
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -1402,39 +1479,49 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                 {watchlistGroups.length > 0 && (
                   <div className="mb-6">
                     <label className="text-sm font-medium text-foreground mb-2 block">Select Group</label>
-                    <Select
-                      value={selectedGroupId || ''}
-                      onValueChange={async (groupId) => {
-                        setSelectedGroupId(groupId);
+                    <div className="flex gap-2">
+                      <Select
+                        value={selectedGroupId || ''}
+                        onValueChange={async (groupId) => {
+                          setSelectedGroupId(groupId);
 
-                        // Fetch watchlist for selected group
-                        if (groupId) {
-                          setLoadingWatchlist(true);
-                          try {
-                            const response = await fetch(`/api/watchlist?groupId=${groupId}`);
-                            const data = await response.json();
-                            if (response.ok) {
-                              setWatchlist(data.watchlist || []);
+                          // Fetch watchlist for selected group
+                          if (groupId) {
+                            setLoadingWatchlist(true);
+                            try {
+                              const response = await fetch(`/api/watchlist?groupId=${groupId}`);
+                              const data = await response.json();
+                              if (response.ok) {
+                                setWatchlist(data.watchlist || []);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching watchlist:', error);
+                            } finally {
+                              setLoadingWatchlist(false);
                             }
-                          } catch (error) {
-                            console.error('Error fetching watchlist:', error);
-                          } finally {
-                            setLoadingWatchlist(false);
                           }
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {watchlistGroups.map((group) => (
-                          <SelectItem key={group.id} value={group.id}>
-                            {group.name} ({group.item_count} {group.item_count === 1 ? 'symbol' : 'symbols'})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select a group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {watchlistGroups.map((group) => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name} ({group.item_count} {group.item_count === 1 ? 'symbol' : 'symbols'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        onClick={() => setShowCreateGroupDialog(true)}
+                        className="bg-brand-primary text-white hover:bg-brand-primary/90"
+                        size="default"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Group
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -1520,7 +1607,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
                   ) : (
                     <>
                       {/* Scrollable table container with max height */}
-                      <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+                      <div className="overflow-x-auto overflow-y-auto max-h-[300px]">
                         <table className="w-full text-sm">
                           <thead className="bg-muted sticky top-0 z-10">
                             <tr className="border-b border-border">
@@ -1589,6 +1676,73 @@ export function SettingsDialog({ open, onOpenChange, initialTab }: SettingsDialo
           </div>
         </div>
       </DialogContent>
+
+      {/* Create Group Dialog */}
+      <Dialog open={showCreateGroupDialog} onOpenChange={setShowCreateGroupDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Watchlist Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Group Name <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="e.g., Tech Stocks, Watchlist 2024"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newGroupName.trim()) {
+                    handleCreateGroup();
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Description (Optional)
+              </label>
+              <textarea
+                value={newGroupDescription}
+                onChange={(e) => setNewGroupDescription(e.target.value)}
+                placeholder="Brief description of this watchlist group"
+                rows={3}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateGroupDialog(false);
+                setNewGroupName('');
+                setNewGroupDescription('');
+              }}
+              disabled={creatingGroup}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateGroup}
+              disabled={creatingGroup || !newGroupName.trim()}
+              className="bg-brand-primary text-white hover:bg-brand-primary/90"
+            >
+              {creatingGroup ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Group'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
