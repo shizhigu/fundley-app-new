@@ -287,14 +287,18 @@ export function DeliverablesPanel({
     loadInitialBlocks();
   }, [loadInitialBlocks]); // Load once on mount
 
-  // Smart default filter: prioritize unread blocks if any exist
+  // Smart default filter: prioritize unread blocks ONLY on initial load
+  const hasSetInitialFilterRef = useRef(false);
   useEffect(() => {
-    const unopenedBlocks = blocks.filter((b) => !b.opened);
-    if (unopenedBlocks.length > 0 && filter === 'all') {
-      // Auto-switch to unread filter if there are unopened blocks
-      setFilter('unread');
+    // Only run once on initial load, not on every blocks change
+    if (blocks.length > 0 && !hasSetInitialFilterRef.current) {
+      const unopenedBlocks = blocks.filter((b) => !b.opened);
+      if (unopenedBlocks.length > 0) {
+        setFilter('unread');
+      }
+      hasSetInitialFilterRef.current = true;
     }
-  }, [blocks]); // Only run when blocks change
+  }, [blocks.length > 0]); // Only trigger when we first get blocks
 
   // Track if we have a pending switch request
   const pendingSwitchRef = useRef<string | null>(null);
@@ -535,6 +539,8 @@ export function DeliverablesPanel({
                 setDetailViewBlockId(null);
                 setActiveDeliverable(null, null);
                 clearRedis(); // Clear from Redis when user explicitly closes
+                setPendingOpenBlockId(null); // Clear any pending open requests
+                hasRestoredRef.current = false; // Reset so user can reopen later if needed
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
             >
