@@ -16,36 +16,51 @@ import type { MessageInvocation } from '@/lib/types';
 import type {
   FinancialDataPoint,
   AvailableMetric,
+  MetricValue,
+  TrendData,
 } from '@/lib/types/financial-data';
 
 const MAX_FINANCIAL_DATA_POINTS = 200;
 
-const compressFinancialData = (data: FinancialDataPoint[] = []) =>
-  data
-    .slice(-MAX_FINANCIAL_DATA_POINTS)
-    .map((dataPoint) => {
-      const compressedMetrics: Record<string, { value: number | null | string }> = {};
+const roundMetricNumber = (value: number | null | undefined): number | null => {
+  if (typeof value === 'number') {
+    return Number(value.toFixed(3));
+  }
+  return value ?? null;
+};
 
-      Object.keys(dataPoint.metrics).forEach((metricKey) => {
-        const metricData = dataPoint.metrics[metricKey];
-        if (!metricData) return;
+const sanitizeTrendData = (trend?: TrendData | null): TrendData => ({
+  value: roundMetricNumber(trend?.value ?? null),
+  direction: trend?.direction ?? 'neutral',
+});
 
-        compressedMetrics[metricKey] = {
-          value:
-            typeof metricData.value === 'number'
-              ? Number(metricData.value.toFixed(3))
-              : metricData.value,
-        };
-      });
+const sanitizeMetricValue = (metricData?: MetricValue | null): MetricValue | null => {
+  if (!metricData) return null;
 
-      return {
-        symbol: dataPoint.symbol,
-        fiscalYear: dataPoint.fiscalYear,
-        period: dataPoint.period,
-        date: dataPoint.date,
-        metrics: compressedMetrics,
-      };
+  return {
+    value: roundMetricNumber(metricData.value),
+    qoq: sanitizeTrendData(metricData.qoq),
+    yoy: sanitizeTrendData(metricData.yoy),
+  };
+};
+
+const compressFinancialData = (
+  data: FinancialDataPoint[] = [],
+): FinancialDataPoint[] =>
+  data.slice(-MAX_FINANCIAL_DATA_POINTS).map((dataPoint) => {
+    const compressedMetrics: Record<string, MetricValue> = {};
+
+    Object.entries(dataPoint.metrics).forEach(([metricKey, metricData]) => {
+      const sanitizedMetric = sanitizeMetricValue(metricData);
+      if (!sanitizedMetric) return;
+      compressedMetrics[metricKey] = sanitizedMetric;
     });
+
+    return {
+      ...dataPoint,
+      metrics: compressedMetrics,
+    };
+  });
 
 const sanitizeAvailableMetrics = (metrics: AvailableMetric[] = []) =>
   metrics.map((metric) => ({ ...metric }));
