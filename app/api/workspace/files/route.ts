@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - 上传文件
+// POST - 上传文件 (proxy to Python API which writes to Machine Volume)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = session.user.id; // 数据库 UUID
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -52,18 +52,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // 读取文件内容
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     // 构建完整路径
     const fullPath = targetPath === '/'
       ? file.name
       : `${targetPath.replace(/^\//, '')}/${file.name}`;
 
-    // 上传到 Tigris
-    const tigris = new TigrisClient();
-    await tigris.uploadFile(userId, fullPath, buffer, file.type);
+    // Forward to Python API to write to Machine Volume
+    const pythonApiUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
+
+    // Create new FormData for Python API
+    const pythonFormData = new FormData();
+    pythonFormData.append('file', file);
+    pythonFormData.append('path', fullPath);
+
+    const response = await fetch(`${pythonApiUrl}/api/v1/analysis/files/${userId}/upload`, {
+      method: 'POST',
+      body: pythonFormData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Python API returned ${response.status}`);
+    }
+
+    const data = await response.json();
 
     return NextResponse.json({
       success: true,
@@ -80,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - 删除文件/文件夹
+// DELETE - 删除文件/文件夹 (proxy to Python API which deletes from Machine Volume)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
@@ -89,7 +100,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = session.user.id; // 数据库 UUID
 
     const searchParams = request.nextUrl.searchParams;
     const targetPath = searchParams.get('path');
@@ -98,8 +109,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Cannot delete root' }, { status: 400 });
     }
 
-    const tigris = new TigrisClient();
-    await tigris.deleteFile(userId, targetPath);
+    // Forward to Python API to delete from Machine Volume
+    const pythonApiUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
+    const response = await fetch(
+      `${pythonApiUrl}/api/v1/analysis/files/${userId}/delete?path=${encodeURIComponent(targetPath)}`,
+      { method: 'DELETE' }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Python API returned ${response.status}`);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
