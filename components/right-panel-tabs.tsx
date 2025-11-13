@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar, Clock, LayoutDashboard, FolderOpen } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar, Clock, LayoutDashboard, FolderOpen, HardDrive } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
@@ -13,6 +13,7 @@ import { NewsletterPanel } from './newsletter-panel';
 import { AIWorkforcePanel } from './ai-workforce-panel';
 import { DataAppsPanel } from './data-apps-panel';
 import { MyDataPanel } from './my-data-panel';
+import { WorkspaceFilesPanel } from './workspace-files-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -22,7 +23,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'calendar' | 'chart' | 'screener' | 'watchlist' | 'schedule' | 'dashboards' | 'mydata';
+type TabType = 'data' | 'blocks' | 'calendar' | 'chart' | 'screener' | 'watchlist' | 'schedule' | 'dashboards' | 'mydata' | 'files';
 
 interface Tab {
   id: TabType;
@@ -48,6 +49,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'dashboards', label: 'My Dashboards', icon: LayoutDashboard },
     { id: 'mydata', label: 'My Data', icon: FolderOpen },
+    { id: 'files', label: 'My Files', icon: HardDrive },
     { id: 'schedule', label: 'Schedule', icon: Clock },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     // Screener tab hidden but kept in code
@@ -173,6 +175,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
         {activeTab === 'mydata' && (
           <div id="mydata-panel" role="tabpanel" aria-labelledby="mydata-tab" className="h-full">
             <MyDataPanel />
+          </div>
+        )}
+
+        {activeTab === 'files' && (
+          <div id="files-panel" role="tabpanel" aria-labelledby="files-tab" className="h-full">
+            <WorkspaceFilesPanel />
           </div>
         )}
 
