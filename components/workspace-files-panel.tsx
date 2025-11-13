@@ -607,6 +607,8 @@ function FilePreviewDialog({
 
   const [textContent, setTextContent] = React.useState<string>('');
   const [loadingText, setLoadingText] = React.useState(false);
+  const [loadingImage, setLoadingImage] = React.useState(false);
+  const [loadingIframe, setLoadingIframe] = React.useState(false);
 
   // Load text content for text files
   React.useEffect(() => {
@@ -624,6 +626,20 @@ function FilePreviewDialog({
         });
     }
   }, [isText, file, previewUrl]);
+
+  // Set loading state for images
+  React.useEffect(() => {
+    if (isImage && file) {
+      setLoadingImage(true);
+    }
+  }, [isImage, file]);
+
+  // Set loading state for iframes (HTML/PDF)
+  React.useEffect(() => {
+    if ((isHtml || isPdf) && file) {
+      setLoadingIframe(true);
+    }
+  }, [isHtml, isPdf, file]);
 
   return (
     <Dialog open={!!file} onOpenChange={onClose}>
@@ -644,24 +660,49 @@ function FilePreviewDialog({
         </DialogHeader>
         <div className="mt-4">
           {isImage ? (
-            <img
-              src={previewUrl}
-              alt={file.name}
-              className="max-w-full rounded-lg"
-            />
+            <div className="relative">
+              {loadingImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <img
+                src={previewUrl}
+                alt={file.name}
+                className="max-w-full rounded-lg"
+                onLoad={() => setLoadingImage(false)}
+                onError={() => setLoadingImage(false)}
+              />
+            </div>
           ) : isHtml ? (
-            <iframe
-              src={previewUrl}
-              className="h-[600px] w-full rounded-lg border"
-              title={file.name}
-              sandbox="allow-scripts allow-same-origin"
-            />
+            <div className="relative">
+              {loadingIframe && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg z-10">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <iframe
+                src={previewUrl}
+                className="h-[600px] w-full rounded-lg border"
+                title={file.name}
+                sandbox="allow-scripts allow-same-origin"
+                onLoad={() => setLoadingIframe(false)}
+              />
+            </div>
           ) : isPdf ? (
-            <iframe
-              src={previewUrl}
-              className="h-[600px] w-full rounded-lg border"
-              title={file.name}
-            />
+            <div className="relative">
+              {loadingIframe && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg z-10">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <iframe
+                src={previewUrl}
+                className="h-[600px] w-full rounded-lg border"
+                title={file.name}
+                onLoad={() => setLoadingIframe(false)}
+              />
+            </div>
           ) : isText ? (
             <div className="rounded-lg border bg-muted/50">
               {loadingText ? (
