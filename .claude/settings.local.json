@@ -94,7 +94,12 @@
       "Bash(redis-cli:*)",
       "WebFetch(domain:developers.deepgram.com)",
       "Bash(fly volumes create:*)",
-      "Bash(TOKEN=\"$FLY_API_TOKEN\")"
+      "Bash(TOKEN=\"$FLY_API_TOKEN\")",
+      "Bash(./cleanup_old_machines.sh:*)",
+      "Bash(for app in fundley-dev-169f5a6158814ea9 fundley-dev-31ddad947501455c fundley-dev-4bb7c139239647e7)",
+      "Bash(do echo \"删除 $app...\" fly apps destroy \"$app\" --yes)",
+      "Bash(env)",
+      "Bash(pip show:*)"
     ],
     "deny": [],
     "ask": [],

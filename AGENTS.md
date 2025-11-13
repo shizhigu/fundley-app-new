@@ -1,39 +1,35 @@
 # Repository Guidelines
 
-Quick reference for contributing to Fundley's agent stack.
+Synchronize UI, Convex, and agent updates across this Next.js + Python stack.
 
 ## Project Structure & Module Organization
-- `app/` hosts Next.js App Router features (chat, editor, auth) and the root layout; keep per-route UI colocated.
-- Shared building blocks stay in `components/`, `hooks/`, `lib/`, and `stores/`; split into feature folders when logic grows.
-- Convex functions and schema sit in `convex/`; update client callers and backend types together.
-- Python agents live in `chatbot-service/agents/`; mirror responses with handlers under `app/api`.
-- Static assets live in `public/`; Tailwind tokens and CSS utilities are in `styles/` and `tailwind.config.ts`.
-- Reference docs sit in `docs/`; setup helpers such as `scripts/init-qdrant` support local tooling.
+- `app/` contains App Router features (chat, editor, auth) plus the root layout; colocate UI, loaders, and route-specific stores inside each route folder.
+- Core building blocks live in `components/`, `hooks/`, `lib/`, and `stores/`; promote complex helpers into feature subfolders as they evolve.
+- Convex functions and schema live in `convex/`; refresh client calls and generated types before shipping.
+- Python agents live under `chatbot-service/agents/`, with mirrored handlers in `app/api`; keep prompt updates and HTTP contracts aligned.
+- Static assets sit in `public/`, styling tokens in `styles/` + `tailwind.config.ts`, docs in `docs/`, and local tooling (e.g., `scripts/init-qdrant`) in `scripts/`.
 
 ## Build, Test, and Development Commands
-- `pnpm dev` starts the Next.js dev server with hot reload.
-- `pnpm dev:turbo` runs `next dev --turbo` for faster refreshes.
+- `pnpm dev` starts the standard Next.js dev server; `pnpm dev:turbo` runs `next dev --turbo` when you need quicker refreshes.
 - `pnpm build && pnpm start` produces and serves the production bundle.
-- `pnpm lint` / `pnpm lint:fix` run Next lint and Biome; `pnpm format` runs Biome alone.
-- `pnpm test` triggers Playwright suites—close other servers on the same port first.
+- `pnpm lint` (or `pnpm lint:fix`) runs Next lint plus Biome autofixes; `pnpm format` runs Biome alone.
+- `pnpm test` executes the Playwright suites—stop other local servers on the same port before running.
 
 ## Coding Style & Naming Conventions
-- Follow the TypeScript defaults in `biome.jsonc`: 2-space indentation, single quotes, trailing commas.
-- Components use PascalCase (`ChatPanel`), hooks use `useCamelCase`, utilities stay lowercase-kebab (`date-utils.ts`).
-- Favor functional React components with Tailwind classes defined in `styles/` and `tailwind.config.ts`.
-- Collocate Zod schemas with their consumers, especially around Convex actions and API routes.
+- Biome settings (`biome.jsonc`) enforce 2-space indentation, single quotes, and trailing commas; do not override locally.
+- Components use PascalCase (`ChatPanel`), hooks are prefixed `use`, utility files stay lowercase-kebab (`date-utils.ts`).
+- Favor functional React components with shared Tailwind tokens, and keep Zod schemas beside the Convex actions or API routes they guard.
 
 ## Testing Guidelines
-- Playwright specs reside in `tests/e2e` and `tests/routes`, named `*.test.ts`.
-- Share selectors through page objects to avoid brittle locators.
-- Run suites with `pnpm test`; the script sets `PLAYWRIGHT=True` automatically.
-- Stub third-party services through Convex doubles when validating research tools.
+- Playwright specs live in `tests/e2e` and `tests/routes` and follow the `*.test.ts` suffix.
+- Share selectors through page objects to avoid brittle locators, and stub third-party services via Convex doubles for deterministic runs.
+- `pnpm test` already sets `PLAYWRIGHT=True`; attach HTML reports when debugging regressions.
 
 ## Commit & Pull Request Guidelines
-- Keep commit subjects concise and action-oriented (~60 chars), e.g., `优化聊天布局拆分面板` or `Add adaptive tooltip states`.
-- In PRs, summarize the what/why, link tickets, and attach screenshots or GIFs for UI-impacting changes.
-- Provide test evidence (Playwright HTML report or manual checklist) and point reviewers to relevant updates in `docs/` or `chatbot-service/MODEL_CONFIGURATION.md`.
+- Keep commit subjects short (~60 chars) and action-oriented (e.g., `Add adaptive tooltip states`).
+- PRs should explain the what/why, link tickets, and include screenshots or GIFs for UI changes plus Playwright evidence or a manual checklist.
+- Call out updates to `docs/` or `chatbot-service/MODEL_CONFIGURATION.md` so reviewers can verify agent behavior.
 
 ## Security & Configuration Tips
-- Never commit secrets; load them through `.env.local` and document required keys in `docs/`.
-- Revalidate Convex and agent permissions with targeted Playwright smoke tests before merging.
+- Never commit secrets; load them through `.env.local` and document required keys inside `docs/`.
+- Revalidate Convex role checks and agent permissions with targeted Playwright smoke tests before merge, and rerun `scripts/init-qdrant` whenever vector contracts change.

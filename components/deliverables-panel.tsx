@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { DeliverableRenderer } from './deliverable-renderer';
-import { getDeliverablesSince } from '@/lib/actions/deliverables';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertCircle,
@@ -122,39 +121,24 @@ export function DeliverablesPanel({
       filtered = filtered.filter((block) => !block.opened);
     }
 
-    // Filter by search query
+    // Filter by search query (limit to primary searchable fields to avoid deep recursion costs)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((block) => {
-        // 搜索content JSONB中的所有字段
+      const matchesQuery = (block: any) => {
         const content = block.content || block;
+        const searchableFields = [
+          block.title,
+          content?.title,
+          content?.description,
+          content?.text,
+          block.primarySymbol,
+        ].filter(Boolean) as string[];
+        return searchableFields.some((field) =>
+          field.toLowerCase().includes(query),
+        );
+      };
 
-        // 搜索标题
-        if (content.title?.toLowerCase().includes(query)) return true;
-
-        // 搜索描述
-        if (content.description?.toLowerCase().includes(query)) return true;
-
-        // 搜索text内容
-        if (content.text?.toLowerCase().includes(query)) return true;
-
-        // 递归搜索JSONB中的所有字符串值
-        const searchInObject = (obj: any): boolean => {
-          if (typeof obj === 'string') {
-            return obj.toLowerCase().includes(query);
-          }
-          if (Array.isArray(obj)) {
-            return obj.some((item) => searchInObject(item));
-          }
-          if (obj && typeof obj === 'object') {
-            return Object.values(obj).some((value) => searchInObject(value));
-          }
-          return false;
-        };
-
-        // 深度搜索整个content对象
-        return searchInObject(content);
-      });
+      filtered = filtered.filter((block) => matchesQuery(block));
     }
 
     // Separate pinned and unpinned blocks
@@ -193,6 +177,92 @@ export function DeliverablesPanel({
     return [...pinnedBlocks, ...unpinnedBlocks];
   }, [pinnedBlocks, unpinnedBlocks]);
 
+  const updateLastTimestamp = useCallback((list: any[]) => {
+    if (!list.length) return;
+    const latest = list.reduce((max: any, block: any) => {
+      const blockTime = new Date(block.updatedAt || block.updated_at).getTime();
+      const maxTime = new Date(max.updatedAt || max.updated_at).getTime();
+      return blockTime > maxTime ? block : max;
+    });
+    lastTimestampRef.current = latest.updatedAt || latest.updated_at;
+  }, []);
+
+  const fetchBlocks = useCallback(async (query = '') => {
+    const response = await fetch(`/api/blocks${query}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('❌ API error:', response.status, errorText);
+      throw new Error('Failed to fetch blocks');
+    }
+    const data = await response.json();
+    return data.blocks || [];
+  }, []);
+
+  const loadInitialBlocks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedBlocks = await fetchBlocks();
+      setBlocks(fetchedBlocks);
+      updateLastTimestamp(fetchedBlocks);
+    } catch (err) {
+      console.error('❌ Failed to load analysis blocks:', err);
+      setError('Failed to load analysis blocks');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBlocks, updateLastTimestamp]);
+
+  const checkForNewBlocks = useCallback(async (): Promise<boolean> => {
+    try {
+      const updatedAfter = lastTimestampRef.current;
+      const query = updatedAfter
+        ? `?updatedAfter=${encodeURIComponent(updatedAfter)}`
+        : '';
+      const fetchedBlocks = await fetchBlocks(query);
+      if (fetchedBlocks.length === 0) {
+        return false;
+      }
+
+      let updatedActiveBlock: any = null;
+      let hasChanges = false;
+
+      setBlocks((prevBlocks) => {
+        const blockMap = new Map(prevBlocks.map((block) => [block.id, block]));
+
+        fetchedBlocks.forEach((block: any) => {
+          const existing = blockMap.get(block.id);
+          if (!existing) {
+            hasChanges = true;
+            blockMap.set(block.id, block);
+          } else if (existing.updatedAt !== block.updatedAt) {
+            hasChanges = true;
+            blockMap.set(block.id, { ...existing, ...block });
+          }
+
+          if (block.id === activeDeliverableId) {
+            updatedActiveBlock = blockMap.get(block.id);
+          }
+        });
+
+        return Array.from(blockMap.values());
+      });
+
+      updateLastTimestamp(fetchedBlocks);
+
+      if (updatedActiveBlock) {
+        setTimeout(() => {
+          setActiveDeliverable(updatedActiveBlock.id, updatedActiveBlock);
+        }, 0);
+      }
+
+      return hasChanges;
+    } catch (err) {
+      console.error('Failed to poll for blocks:', err);
+      return false;
+    }
+  }, [activeDeliverableId, fetchBlocks, setActiveDeliverable, updateLastTimestamp]);
+
   // Handle pin toggle
   const handlePin = async (blockId: string, isPinned: boolean) => {
     // Optimistically update UI
@@ -215,7 +285,7 @@ export function DeliverablesPanel({
   // 初始加载 - 只在组件挂载时加载一次(Library view)
   useEffect(() => {
     loadInitialBlocks();
-  }, []); // Empty deps - load once on mount
+  }, [loadInitialBlocks]); // Load once on mount
 
   // Smart default filter: prioritize unread blocks if any exist
   useEffect(() => {
@@ -324,116 +394,7 @@ export function DeliverablesPanel({
     return () => {
       isCancelled = true;
     };
-  }, [deliverableToolCalled]); // 监听 deliverableToolCalled 变化
-
-  const loadInitialBlocks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Load all user's blocks from API
-      const response = await fetch(`/api/blocks`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API error:', response.status, errorText);
-        throw new Error('Failed to fetch blocks');
-      }
-      const data = await response.json();
-      const fetchedBlocks = data.blocks || [];
-
-      setBlocks(fetchedBlocks);
-
-      // Record latest timestamp for polling
-      if (fetchedBlocks.length > 0) {
-        const latestBlock = fetchedBlocks[fetchedBlocks.length - 1];
-        lastTimestampRef.current = latestBlock.created_at;
-      }
-    } catch (err) {
-      console.error('❌ Failed to load analysis blocks:', err);
-      setError('Failed to load analysis blocks');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkForNewBlocks = async (): Promise<boolean> => {
-    try {
-      // Fetch all user blocks (Library view) - same as loadInitialBlocks
-      const response = await fetch(`/api/blocks`);
-      if (!response.ok) {
-        console.error('❌ Polling API error:', response.status);
-        return false;
-      }
-      const data = await response.json();
-      const fetchedBlocks = data.blocks || [];
-
-      let foundNewOrUpdated = false;
-      let blockToUpdate: any = null;
-      const currentActiveBlockId = activeDeliverableId;
-
-      setBlocks((prevBlocks) => {
-        // Find new blocks (not in previous list)
-        const existingIds = new Set(prevBlocks.map((b) => b.id));
-        const uniqueNewBlocks = fetchedBlocks.filter(
-          (b: any) => !existingIds.has(b.id),
-        );
-
-        if (uniqueNewBlocks.length > 0) {
-          foundNewOrUpdated = true;
-          // Note: Auto-open is now handled by Redis-based switch detection
-          // Polling only updates the blocks list for display
-        }
-
-        // Check for updated blocks (content/title changed)
-        const updatedList = fetchedBlocks.map((newBlock: any) => {
-          const existing = prevBlocks.find((b) => b.id === newBlock.id);
-          if (existing) {
-            // If content changed, use new version
-            if (
-              JSON.stringify(existing.content) !==
-              JSON.stringify(newBlock.content)
-            ) {
-              foundNewOrUpdated = true;
-
-              // If this is the currently active block, store to update after render
-              if (newBlock.id === currentActiveBlockId) {
-                blockToUpdate = newBlock;
-              }
-            }
-            // Preserve local 'opened' state (user may have just marked it as read)
-            // Only update 'opened' if server has it as true (never downgrade true->false)
-            return {
-              ...newBlock,
-              opened: existing.opened || newBlock.opened,
-            };
-          }
-          return newBlock;
-        });
-
-        return updatedList;
-      });
-
-      // Update active block after state update completes
-      if (blockToUpdate) {
-        setTimeout(() => {
-          setActiveDeliverable(blockToUpdate.id, blockToUpdate);
-        }, 0);
-      }
-
-      // Update timestamp
-      if (fetchedBlocks.length > 0) {
-        const latest = fetchedBlocks.reduce((max: any, b: any) =>
-          new Date(b.createdAt) > new Date(max.createdAt) ? b : max,
-        );
-        lastTimestampRef.current = latest.createdAt;
-      }
-
-      return foundNewOrUpdated;
-    } catch (err) {
-      console.error('Failed to poll for blocks:', err);
-      return false;
-    }
-  };
+  }, [checkForNewBlocks, deliverableToolCalled]); // 监听 deliverableToolCalled 变化
 
   // Mark block as read
   const markBlockAsRead = async (blockId: string) => {

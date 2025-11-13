@@ -150,15 +150,21 @@ export const useFinancialDataStore = create<FinancialDataStore>()(
     }),
     {
       name: 'financial-data-storage', // localStorage key
-      // 持久化表单、UI状态和财务数据（不持久化加载状态和错误）
+      version: 2,
+      migrate: (persistedState: any, version) => {
+        if (version < 2) {
+          // Drop heavy persisted datasets from older versions
+          const { data, availableMetrics, lastUpdated, isActive, ...rest } =
+            persistedState || {};
+          return rest;
+        }
+        return persistedState;
+      },
+      // Only persist lightweight UI preferences
       partialize: (state) => ({
         analysisForm: state.analysisForm,
         viewMode: state.viewMode,
         isPanelCollapsed: state.isPanelCollapsed,
-        data: state.data, // 持久化财务数据
-        availableMetrics: state.availableMetrics,
-        lastUpdated: state.lastUpdated,
-        isActive: state.isActive,
       }),
     },
   ),

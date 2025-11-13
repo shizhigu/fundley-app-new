@@ -16,7 +16,6 @@ interface DeliverableViewState {
 
   // Active deliverable tracking
   activeDeliverableId: string | null;
-  activeDeliverableContent: any | null; // Full deliverable content for agent context
   setActiveDeliverable: (id: string | null, content?: any | null) => void;
 
   // Backward compatibility
@@ -41,7 +40,6 @@ export const useDeliverableViewStore = create<DeliverableViewState>((set) => ({
   // Initial state
   viewMode: 'contextual',
   activeDeliverableId: null,
-  activeDeliverableContent: null,
   filters: {},
   sortBy: 'updated_at',
   sortOrder: 'desc',
@@ -49,10 +47,9 @@ export const useDeliverableViewStore = create<DeliverableViewState>((set) => ({
   // Actions
   setViewMode: (mode) => set({ viewMode: mode }),
 
-  setActiveDeliverable: (id, content = null) => {
+  setActiveDeliverable: (id) => {
     set({
       activeDeliverableId: id,
-      activeDeliverableContent: content,
     });
   },
 

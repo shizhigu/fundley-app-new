@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useFinancialDataStore } from '@/lib/stores/financial-data-store';
 import { useDeliverableViewStore } from '@/stores/deliverable-view-store';
@@ -13,6 +13,42 @@ import type {
   StreamEvent,
 } from '@/lib/types/chat';
 import type { MessageInvocation } from '@/lib/types';
+import type {
+  FinancialDataPoint,
+  AvailableMetric,
+} from '@/lib/types/financial-data';
+
+const MAX_FINANCIAL_DATA_POINTS = 200;
+
+const compressFinancialData = (data: FinancialDataPoint[] = []) =>
+  data
+    .slice(-MAX_FINANCIAL_DATA_POINTS)
+    .map((dataPoint) => {
+      const compressedMetrics: Record<string, { value: number | null | string }> = {};
+
+      Object.keys(dataPoint.metrics).forEach((metricKey) => {
+        const metricData = dataPoint.metrics[metricKey];
+        if (!metricData) return;
+
+        compressedMetrics[metricKey] = {
+          value:
+            typeof metricData.value === 'number'
+              ? Number(metricData.value.toFixed(3))
+              : metricData.value,
+        };
+      });
+
+      return {
+        symbol: dataPoint.symbol,
+        fiscalYear: dataPoint.fiscalYear,
+        period: dataPoint.period,
+        date: dataPoint.date,
+        metrics: compressedMetrics,
+      };
+    });
+
+const sanitizeAvailableMetrics = (metrics: AvailableMetric[] = []) =>
+  metrics.map((metric) => ({ ...metric }));
 
 /**
  * 统一的聊天状态管理Hook
@@ -79,66 +115,37 @@ export function useChat(): ChatState & ChatActions {
     (state) => state.availableMetrics,
   );
 
+  const compressedFinancialData = useMemo(
+    () => compressFinancialData(financialData),
+    [financialData],
+  );
+
+  const sessionAvailableMetrics = useMemo(
+    () => sanitizeAvailableMetrics(availableMetrics),
+    [availableMetrics],
+  );
+
   // ============ Block 数据集成 ============
   // Note: Block state is now managed by Redis and loaded by backend pre-hook
   // No need to read from frontend store anymore
 
   // 构建财务数据会话状态 - 不使用useCallback，确保每次都获取最新数据
-  const buildSessionState = (): FinancialSessionState => {
-    // 每次调用时重新获取最新的财务数据
-    const currentFinancialData = useFinancialDataStore.getState().data;
-    const currentAvailableMetrics =
-      useFinancialDataStore.getState().availableMetrics;
+  const buildSessionState = useCallback((): FinancialSessionState => {
+    const sessionState: FinancialSessionState = {
+      user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      user_current_time: new Date().toISOString(),
+    };
 
-    console.log('🔄 buildSessionState: Getting fresh data', {
-      financialDataLength: currentFinancialData?.length || 0,
-      availableMetricsLength: currentAvailableMetrics?.length || 0,
-      timestamp: new Date().toISOString(),
-    });
-
-    const sessionState: FinancialSessionState = {};
-
-    // Add user's current timezone and timestamp (auto-detected from browser)
-    sessionState['user_timezone'] =
-      Intl.DateTimeFormat().resolvedOptions().timeZone;
-    sessionState['user_current_time'] = new Date().toISOString();
-
-    // 压缩财务数据：删除YoY/QoQ，限制数字精度为3位小数
-    if (currentFinancialData && currentFinancialData.length > 0) {
-      sessionState['financial_metrics_data'] = currentFinancialData.map(
-        (dataPoint) => {
-          const compressedMetrics: any = {};
-
-          // 遍历每个指标
-          Object.keys(dataPoint.metrics).forEach((metricKey) => {
-            const metricData = dataPoint.metrics[metricKey];
-
-            // 只保留value，删除qoq和yoy
-            compressedMetrics[metricKey] = {
-              value:
-                typeof metricData.value === 'number'
-                  ? parseFloat(metricData.value.toFixed(3)) // 保留3位小数
-                  : metricData.value,
-            };
-          });
-
-          return {
-            symbol: dataPoint.symbol,
-            fiscalYear: dataPoint.fiscalYear,
-            period: dataPoint.period,
-            date: dataPoint.date,
-            metrics: compressedMetrics,
-          };
-        },
-      );
+    if (compressedFinancialData.length > 0) {
+      sessionState['financial_metrics_data'] = compressedFinancialData;
     }
 
-    if (currentAvailableMetrics && currentAvailableMetrics.length > 0) {
-      sessionState['available_metrics'] = currentAvailableMetrics;
+    if (sessionAvailableMetrics.length > 0) {
+      sessionState['available_metrics'] = sessionAvailableMetrics;
     }
 
     return sessionState;
-  };
+  }, [compressedFinancialData, sessionAvailableMetrics]);
 
   // ============ 聊天管理操作 ============
 

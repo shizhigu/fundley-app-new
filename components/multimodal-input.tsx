@@ -142,6 +142,22 @@ function PureMultimodalInput({
     'input',
     '',
   );
+  const latestInputRef = useRef('');
+  const draftPersistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const DRAFT_PERSIST_DELAY = 400;
+
+  const scheduleDraftPersist = useCallback(
+    (value: string) => {
+      if (draftPersistTimeout.current) {
+        clearTimeout(draftPersistTimeout.current);
+      }
+      draftPersistTimeout.current = setTimeout(() => {
+        setLocalStorageInput(value);
+        draftPersistTimeout.current = null;
+      }, DRAFT_PERSIST_DELAY);
+    },
+    [setLocalStorageInput],
+  );
 
   // ========================================================================
   // Detect OS for keyboard shortcut hint
@@ -324,8 +340,18 @@ function PureMultimodalInput({
   }, []);
 
   useEffect(() => {
-    setLocalStorageInput(input);
-  }, [input, setLocalStorageInput]);
+    latestInputRef.current = input;
+    scheduleDraftPersist(input);
+  }, [input, scheduleDraftPersist]);
+
+  useEffect(() => {
+    return () => {
+      if (draftPersistTimeout.current) {
+        clearTimeout(draftPersistTimeout.current);
+      }
+      setLocalStorageInput(latestInputRef.current);
+    };
+  }, [setLocalStorageInput]);
 
   const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);

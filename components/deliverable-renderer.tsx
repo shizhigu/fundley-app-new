@@ -1628,23 +1628,43 @@ export function DeliverableRenderer({
               {artifacts.map((artifactFile: string, index: number) => {
                 const fileInfo = getFileInfo(artifactFile);
                 const displayName = formatFileName(artifactFile);
+                const ext = artifactFile.split('.').pop()?.toLowerCase() || '';
+                const isImage = ['png', 'jpg', 'jpeg', 'svg'].includes(ext);
+
                 return (
-                  <Button
-                    key={`${artifactFile}-${index}`}
-                    onClick={() => handleDownloadFile(artifactFile)}
-                    variant="outline"
-                    className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="flex-1 text-left truncate">
-                      {displayName}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
+                  <div key={`${artifactFile}-${index}`} className="space-y-2">
+                    <Button
+                      onClick={() => handleDownloadFile(artifactFile)}
+                      variant="outline"
+                      className="w-full justify-start gap-2 neuro-inset hover:neuro-raised transition-all"
                     >
-                      {fileInfo.label}
-                    </span>
-                  </Button>
+                      <Download className="w-4 h-4" />
+                      <span className="flex-1 text-left truncate">
+                        {displayName}
+                      </span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.color}`}
+                      >
+                        {fileInfo.label}
+                      </span>
+                    </Button>
+
+                    {/* Render image inline if it's an image file */}
+                    {isImage && (
+                      <div className="rounded-lg border border-border overflow-hidden bg-muted/30">
+                        <img
+                          src={`/api/files/${artifactFile}?block_id=${blockId}`}
+                          alt={displayName}
+                          className="w-full h-auto max-h-[500px] object-contain"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Hide image if failed to load
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

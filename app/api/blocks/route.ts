@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const includeContent = searchParams.get('includeContent') === 'true'; // Memory optimization
+    const updatedAfter = searchParams.get('updatedAfter');
 
-    console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId, 'includeContent:', includeContent);
+    console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId, 'includeContent:', includeContent, 'updatedAfter:', updatedAfter);
 
     // Get all user deliverables with modification history
     // Note: updated_at is auto-updated by trigger when block_modification_history is inserted
@@ -30,6 +31,17 @@ export async function GET(request: NextRequest) {
     const contentField = includeContent
       ? db`d.content`
       : db`jsonb_build_object('title', d.content->'title', 'text', LEFT(COALESCE(d.content->>'text', ''), 200))`;
+
+    const chatFilter = chatId ? db`AND d.source_chat_id = ${chatId}` : db``;
+    const updatedAfterFilter = updatedAfter
+      ? db`AND d.updated_at > ${updatedAfter}`
+      : db``;
+    const searchFilter = search
+      ? db`AND (
+          d.content->>'title' ILIKE ${`%${search}%`} OR
+          d.content->>'text' ILIKE ${`%${search}%`}
+        )`
+      : db``;
 
     let blocks = await db`
       SELECT
@@ -57,6 +69,9 @@ export async function GET(request: NextRequest) {
       FROM deliverables d
       LEFT JOIN chats c ON d.source_chat_id = c.id
       WHERE d.user_id = ${userId}
+        ${chatFilter}
+        ${updatedAfterFilter}
+        ${searchFilter}
       ORDER BY
         d.is_pinned DESC,
         d.pinned_at DESC NULLS LAST,

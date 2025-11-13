@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, FileText, File, Image as ImageIcon, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Attachment } from '@/lib/types';
@@ -72,6 +72,32 @@ export function EnhancedAttachmentPreview({
 }: EnhancedAttachmentPreviewProps) {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
+  const previewSources = useMemo(
+    () =>
+      attachments.map((attachment, index) => {
+        if (attachment.file) {
+          const url = URL.createObjectURL(attachment.file);
+          return { url, shouldRevoke: true, key: attachment.id ?? `${attachment.name}-${index}` };
+        }
+        return {
+          url: attachment.url,
+          shouldRevoke: false,
+          key: attachment.id ?? `${attachment.name}-${index}`,
+        };
+      }),
+    [attachments],
+  );
+
+  useEffect(() => {
+    return () => {
+      previewSources.forEach((source) => {
+        if (source.shouldRevoke && source.url) {
+          URL.revokeObjectURL(source.url);
+        }
+      });
+    };
+  }, [previewSources]);
+
   if (attachments.length === 0) return null;
 
   return (
@@ -80,7 +106,8 @@ export function EnhancedAttachmentPreview({
       <div className="flex gap-2 overflow-x-auto pb-2">
         {attachments.map((attachment, index) => {
           const { name, contentType, file, size } = attachment;
-          const url = file ? URL.createObjectURL(file) : attachment.url;
+          const preview = previewSources[index];
+          const url = preview?.url;
           const isImage = contentType.startsWith('image/');
 
           return (
