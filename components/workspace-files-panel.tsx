@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Folder,
   FileText,
@@ -57,28 +57,33 @@ function getFileIcon(item: FileItem, size: 'sm' | 'lg' = 'lg') {
 
   const ext = item.extension?.toLowerCase();
   switch (ext) {
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'gif':
-    case 'svg':
-    case 'webp':
+    case '.png':
+    case '.jpg':
+    case '.jpeg':
+    case '.gif':
+    case '.svg':
+    case '.webp':
       return <FileImage className={cn(className, 'text-purple-500')} />;
-    case 'csv':
-    case 'xlsx':
-    case 'xls':
+    case '.csv':
+    case '.xlsx':
+    case '.xls':
+    case '.parquet':
       return <FileSpreadsheet className={cn(className, 'text-green-500')} />;
-    case 'py':
-    case 'js':
-    case 'ts':
-    case 'tsx':
-    case 'jsx':
-    case 'json':
+    case '.py':
+    case '.js':
+    case '.ts':
+    case '.tsx':
+    case '.jsx':
+    case '.json':
+    case '.ipynb':
       return <FileCode className={cn(className, 'text-yellow-500')} />;
-    case 'md':
-    case 'txt':
-    case 'html':
+    case '.md':
+    case '.txt':
+    case '.html':
+    case '.xml':
       return <FileText className={cn(className, 'text-gray-500')} />;
+    case '.pdf':
+      return <FileText className={cn(className, 'text-red-500')} />;
     default:
       return <FileIcon className={cn(className, 'text-gray-400')} />;
   }
@@ -127,9 +132,36 @@ function flattenFiles(items: FileItem[], currentPath: string): FileItem[] {
 type ViewMode = 'grid' | 'list';
 
 export function WorkspaceFilesPanel() {
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentPath, setCurrentPath] = useState('/');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  // Load initial state from localStorage
+  const [files, setFiles] = useState<FileItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('workspace-files');
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {
+          console.error('Failed to parse cached files:', e);
+        }
+      }
+    }
+    return [];
+  });
+
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('workspace-current-path') || '/';
+    }
+    return '/';
+  });
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('workspace-view-mode');
+      return (cached as ViewMode) || 'grid';
+    }
+    return 'grid';
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -137,14 +169,37 @@ export function WorkspaceFilesPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
+  // Persist files to localStorage when they change
+  useEffect(() => {
+    if (files.length > 0) {
+      localStorage.setItem('workspace-files', JSON.stringify(files));
+    }
+  }, [files]);
+
+  // Persist current path to localStorage
+  useEffect(() => {
+    localStorage.setItem('workspace-current-path', currentPath);
+  }, [currentPath]);
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('workspace-view-mode', viewMode);
+  }, [viewMode]);
+
   // 加载文件列表
-  const loadFiles = useCallback(async () => {
+  const loadFiles = useCallback(async (force = false) => {
+    // If not forcing refresh and we have cached data, skip loading
+    if (!force && files.length > 0) {
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`/api/workspace/files?path=${encodeURIComponent(currentPath)}`);
       if (response.ok) {
         const data = await response.json();
         setFiles(data.items || []);
+        toast.success('Files refreshed');
       } else {
         toast.error('Failed to load files');
       }
@@ -154,11 +209,14 @@ export function WorkspaceFilesPanel() {
     } finally {
       setLoading(false);
     }
-  }, [currentPath]);
+  }, [currentPath, files.length]);
 
+  // Only load on mount if no cached data
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    if (files.length === 0) {
+      loadFiles(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 获取当前目录的文件
   const currentFiles = flattenFiles(files, currentPath);
@@ -217,7 +275,7 @@ export function WorkspaceFilesPanel() {
 
       if (response.ok) {
         toast.success(`Deleted ${item.name}`);
-        loadFiles();
+        loadFiles(true); // Force refresh after delete
       } else {
         toast.error('Failed to delete');
       }
@@ -253,7 +311,7 @@ export function WorkspaceFilesPanel() {
       }
     }
 
-    loadFiles();
+    loadFiles(true); // Force refresh after upload
   };
 
   // 拖拽上传处理
@@ -338,8 +396,9 @@ export function WorkspaceFilesPanel() {
         <Button
           variant="outline"
           size="sm"
-          onClick={loadFiles}
+          onClick={() => loadFiles(true)}
           disabled={loading}
+          title="Refresh from server"
         >
           <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
         </Button>
@@ -538,11 +597,33 @@ function FilePreviewDialog({
   if (!file) return null;
 
   const ext = file.extension?.toLowerCase();
-  const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext || '');
-  const isHtml = ext === 'html';
+  const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(ext || '');
+  const isHtml = ext === '.html';
+  const isText = ['.txt', '.md', '.json', '.py', '.js', '.ts', '.tsx', '.jsx', '.css', '.csv'].includes(ext || '');
+  const isPdf = ext === '.pdf';
 
   // 使用 preview API（inline）而不是 download API（attachment）
   const previewUrl = `/api/workspace/preview?path=${encodeURIComponent(file.path)}`;
+
+  const [textContent, setTextContent] = React.useState<string>('');
+  const [loadingText, setLoadingText] = React.useState(false);
+
+  // Load text content for text files
+  React.useEffect(() => {
+    if (isText && file) {
+      setLoadingText(true);
+      fetch(previewUrl)
+        .then(res => res.text())
+        .then(text => {
+          setTextContent(text);
+          setLoadingText(false);
+        })
+        .catch(err => {
+          console.error('Failed to load text:', err);
+          setLoadingText(false);
+        });
+    }
+  }, [isText, file, previewUrl]);
 
   return (
     <Dialog open={!!file} onOpenChange={onClose}>
@@ -575,6 +656,24 @@ function FilePreviewDialog({
               title={file.name}
               sandbox="allow-scripts allow-same-origin"
             />
+          ) : isPdf ? (
+            <iframe
+              src={previewUrl}
+              className="h-[600px] w-full rounded-lg border"
+              title={file.name}
+            />
+          ) : isText ? (
+            <div className="rounded-lg border bg-muted/50">
+              {loadingText ? (
+                <div className="flex items-center justify-center p-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <pre className="overflow-auto p-4 text-sm">
+                  <code>{textContent}</code>
+                </pre>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center gap-4 p-12">
               {getFileIcon(file)}

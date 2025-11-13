@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth/clerk';
 import { NextRequest, NextResponse } from 'next/server';
-import { TigrisClient } from '@/lib/tigris-client';
 
-// GET - 列出文件
+// GET - 列出文件 (proxy to Python API which uses Machine Volume)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -13,10 +12,18 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id; // 已经是数据库 UUID
 
-    const tigris = new TigrisClient();
-    const items = await tigris.listFiles(userId);
+    // Call Python API endpoint which reads from Machine Volume
+    const pythonApiUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${pythonApiUrl}/api/v1/analysis/files/${userId}/list`);
 
-    return NextResponse.json({ items });
+    if (!response.ok) {
+      throw new Error(`Python API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Python API now returns tree structure with items
+    return NextResponse.json({ items: data.items || [] });
   } catch (error) {
     console.error('Error listing files:', error);
     return NextResponse.json(

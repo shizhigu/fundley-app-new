@@ -102,7 +102,11 @@
       "Bash(pip show:*)",
       "Bash(mkdir:*)",
       "Bash(python scripts/benchmarks/download_financial_retrieval.py:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(fly machine stop:*)",
+      "Bash(fly machine start:*)",
+      "Bash(tools/flyio_machine.py.tmp)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

@@ -1,9 +1,8 @@
 import { auth } from '@/lib/auth/clerk';
 import { NextRequest, NextResponse } from 'next/server';
-import { TigrisClient } from '@/lib/tigris-client';
 import path from 'path';
 
-// GET - 预览文件（不强制下载）
+// GET - 预览文件（不强制下载） - proxy to Python API which reads from Machine Volume
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -21,10 +20,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Path required' }, { status: 400 });
     }
 
-    const tigris = new TigrisClient();
-    const fileBuffer = await tigris.downloadFile(userId, filePath);
+    // Remove leading slash if present
+    const normalizedPath = filePath.replace(/^\//, '');
     const fileName = path.basename(filePath);
     const ext = path.extname(fileName).toLowerCase();
+
+    // Call Python API endpoint which reads from Machine Volume
+    const pythonApiUrl = process.env.AGENTSOS_API_URL || 'http://localhost:8000';
+    const pythonResponse = await fetch(`${pythonApiUrl}/api/v1/analysis/files/${userId}/${normalizedPath}`);
+
+    if (!pythonResponse.ok) {
+      return NextResponse.json(
+        { error: 'File not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get file buffer from Python API
+    const fileBuffer = await pythonResponse.arrayBuffer();
 
     // 根据文件类型设置 Content-Type
     let contentType = 'application/octet-stream';

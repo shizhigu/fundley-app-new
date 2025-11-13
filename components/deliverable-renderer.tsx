@@ -457,7 +457,9 @@ export function DeliverableRenderer({
   const handleDownloadFile = useCallback(
     (filename: string) => {
       // Use full relative path (new architecture supports subdirectories)
-      const url = `/api/files/${filename}?block_id=${blockId}`;
+      // Encode each path segment to handle spaces and special characters
+      const encodedPath = filename.split('/').map(encodeURIComponent).join('/');
+      const url = `/api/files/${encodedPath}?block_id=${blockId}`;
 
       // Extract base filename for download attribute
       const baseFilename = filename.includes('/')
@@ -684,7 +686,9 @@ export function DeliverableRenderer({
   // Export HTML file directly
   const handleExportHtml = useCallback(
     (chartFile: string) => {
-      const url = `/api/files/${chartFile}?block_id=${blockId}&download=true&title=${encodeURIComponent(title)}`;
+      // Encode path segments to handle spaces and special characters
+      const encodedPath = chartFile.split('/').map(encodeURIComponent).join('/');
+      const url = `/api/files/${encodedPath}?block_id=${blockId}&download=true&title=${encodeURIComponent(title)}`;
       const link = document.createElement('a');
       link.href = url;
       link.click();
