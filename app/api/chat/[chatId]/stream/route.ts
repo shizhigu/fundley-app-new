@@ -439,9 +439,9 @@ export async function POST(
               );
             }
           }
-          // 3. 免费用户：只能用 budget，addon credits 用完就停
+          // 3. 免费用户：试用 premium，addon credits 用完就停（不降级）
           else {
-            if (creditBalance.addon_credits <= 0) {
+            if (!hasSufficientCredits(creditBalance, minRequired)) {
               safeEnqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({
@@ -457,11 +457,11 @@ export async function POST(
               return;
             }
 
-            agentTier = 'budget';
-            agentEndpoint = 'budget-financial-analyst';
-            isFreeUsage = false;  // 免费用户使用 budget 仍然扣费
+            agentTier = 'premium';
+            agentEndpoint = 'financial-analyst';
+            isFreeUsage = false;  // 免费用户试用 premium 需要扣费
             console.log(
-              `💳 [Free User] Addon credits: ${creditBalance.addon_credits.toFixed(2)} - BUDGET tier (paid, 15x cheaper)`,
+              `💳 [Free User] Addon credits: ${creditBalance.addon_credits.toFixed(2)} - PREMIUM tier trial (paid, no fallback)`,
             );
           }
 

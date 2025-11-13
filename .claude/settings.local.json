@@ -99,7 +99,9 @@
       "Bash(for app in fundley-dev-169f5a6158814ea9 fundley-dev-31ddad947501455c fundley-dev-4bb7c139239647e7)",
       "Bash(do echo \"删除 $app...\" fly apps destroy \"$app\" --yes)",
       "Bash(env)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(mkdir:*)",
+      "Bash(python scripts/benchmarks/download_financial_retrieval.py:*)"
     ],
     "deny": [],
     "ask": [],
