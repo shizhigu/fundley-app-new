@@ -728,6 +728,7 @@ function FilePreviewDialog({
   const [loadingCsv, setLoadingCsv] = React.useState(false);
   const [loadingImage, setLoadingImage] = React.useState(false);
   const [loadingIframe, setLoadingIframe] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
 
   // Load CSV content and parse
   React.useEffect(() => {
@@ -792,9 +793,27 @@ function FilePreviewDialog({
           <DialogTitle className="flex items-center justify-between">
             <span>{file.name}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={onDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setIsDownloading(true);
+                  await onDownload();
+                  setIsDownloading(false);
+                }}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </>
+                )}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="h-4 w-4" />
@@ -852,9 +871,26 @@ function FilePreviewDialog({
               {getFileIcon(file)}
               <p className="text-lg font-medium">{file.name}</p>
               <p className="text-sm text-muted-foreground">Preview not available</p>
-              <Button onClick={onDownload} size="lg">
-                <Download className="mr-2 h-5 w-5" />
-                Download
+              <Button
+                onClick={async () => {
+                  setIsDownloading(true);
+                  await onDownload();
+                  setIsDownloading(false);
+                }}
+                size="lg"
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-5 w-5" />
+                    Download
+                  </>
+                )}
               </Button>
             </div>
           ) : isCsv ? (
@@ -913,9 +949,25 @@ function FilePreviewDialog({
               <p className="text-sm text-muted-foreground">
                 Preview not available for this file type
               </p>
-              <Button onClick={onDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Download to view
+              <Button
+                onClick={async () => {
+                  setIsDownloading(true);
+                  await onDownload();
+                  setIsDownloading(false);
+                }}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download to view
+                  </>
+                )}
               </Button>
             </div>
           )}
