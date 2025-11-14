@@ -32,6 +32,8 @@ import {
   Send,
   Command,
   Loader2,
+  Link2,
+  X,
 } from 'lucide-react';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import type { AuthSession } from '@/lib/auth/clerk';
@@ -132,6 +134,12 @@ function PureMultimodalInput({
   const t = useTranslations('chat');
   const [input, setInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [referencedFile, setReferencedFile] = useState<{
+    name: string;
+    path: string;
+    size: number;
+    extension: string;
+  } | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -158,6 +166,23 @@ function PureMultimodalInput({
     },
     [setLocalStorageInput],
   );
+
+  // ========================================================================
+  // Listen for file reference events from workspace
+  // ========================================================================
+  useEffect(() => {
+    const handleFileReferenced = (event: CustomEvent) => {
+      setReferencedFile(event.detail);
+      // Clear localStorage after reading
+      localStorage.removeItem('chat-referenced-file');
+    };
+
+    window.addEventListener('file-referenced', handleFileReferenced as EventListener);
+
+    return () => {
+      window.removeEventListener('file-referenced', handleFileReferenced as EventListener);
+    };
+  }, []);
 
   // ========================================================================
   // Detect OS for keyboard shortcut hint
@@ -366,10 +391,18 @@ function PureMultimodalInput({
       return;
     }
 
-    sendMessage(input, attachments.length > 0 ? attachments : undefined);
+    // 如果有引用文件,在message前面添加文件路径信息
+    let messageToSend = input;
+    if (referencedFile) {
+      const filePrefix = `[Referenced File: ${referencedFile.path}]\n\n`;
+      messageToSend = filePrefix + input;
+    }
+
+    sendMessage(messageToSend, attachments.length > 0 ? attachments : undefined);
 
     setAttachments([]);
     setLocalStorageInput('');
+    setReferencedFile(null); // Clear referenced file after sending
     resetTextareaHeight();
     setInput('');
 
@@ -384,6 +417,7 @@ function PureMultimodalInput({
     setAttachments,
     setLocalStorageInput,
     width,
+    referencedFile,
   ]);
 
   // ========================================================================
@@ -564,6 +598,30 @@ function PureMultimodalInput({
         onChange={handleFileChange}
         tabIndex={-1}
       />
+
+      {/* ==================== Referenced File Preview ==================== */}
+      {referencedFile && (
+        <div className="mx-3 mb-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">
+                {referencedFile.name}
+              </div>
+              <div className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                {referencedFile.path}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReferencedFile(null)}
+              className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
+            >
+              <X className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ==================== Attachment Preview ==================== */}
       {attachments.length > 0 && (

@@ -19,6 +19,7 @@ import {
   X,
   RefreshCw,
   Eye,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -495,6 +496,24 @@ export function WorkspaceFilesPanel() {
                     </ContextMenuItem>
                   )}
                   {item.type === 'file' && (
+                    <ContextMenuItem onClick={() => {
+                      // 将文件信息添加到localStorage,供chat使用
+                      const referencedFile = {
+                        name: item.name,
+                        path: item.path,
+                        size: item.size,
+                        extension: item.extension,
+                      };
+                      localStorage.setItem('chat-referenced-file', JSON.stringify(referencedFile));
+                      // 触发自定义事件通知chat组件
+                      window.dispatchEvent(new CustomEvent('file-referenced', { detail: referencedFile }));
+                      toast.success(`Referenced ${item.name}`);
+                    }}>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Reference in Chat
+                    </ContextMenuItem>
+                  )}
+                  {item.type === 'file' && (
                     <ContextMenuItem onClick={() => handleDownload(item)}>
                       <Download className="mr-2 h-4 w-4" />
                       Download
@@ -544,6 +563,24 @@ export function WorkspaceFilesPanel() {
                     <ContextMenuItem onClick={() => setPreviewFile(item)}>
                       <Eye className="mr-2 h-4 w-4" />
                       Preview
+                    </ContextMenuItem>
+                  )}
+                  {item.type === 'file' && (
+                    <ContextMenuItem onClick={() => {
+                      // 将文件信息添加到localStorage,供chat使用
+                      const referencedFile = {
+                        name: item.name,
+                        path: item.path,
+                        size: item.size,
+                        extension: item.extension,
+                      };
+                      localStorage.setItem('chat-referenced-file', JSON.stringify(referencedFile));
+                      // 触发自定义事件通知chat组件
+                      window.dispatchEvent(new CustomEvent('file-referenced', { detail: referencedFile }));
+                      toast.success(`Referenced ${item.name}`);
+                    }}>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Reference in Chat
                     </ContextMenuItem>
                   )}
                   {item.type === 'file' && (
@@ -697,7 +734,7 @@ function FilePreviewDialog({
                 </div>
               )}
               <iframe
-                src={previewUrl}
+                src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=1`}
                 className="h-[600px] w-full rounded-lg border"
                 title={file.name}
                 onLoad={() => setLoadingIframe(false)}
