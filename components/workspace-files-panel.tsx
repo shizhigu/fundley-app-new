@@ -717,6 +717,7 @@ function FilePreviewDialog({
   const isCsv = ext === '.csv';
   const isText = ['.txt', '.md', '.json', '.py', '.js', '.ts', '.tsx', '.jsx', '.css'].includes(ext || '');
   const isPdf = ext === '.pdf';
+  const isPptx = ['.pptx', '.ppt'].includes(ext || '');
 
   // 使用 preview API（inline）而不是 download API（attachment）
   const previewUrl = `/api/workspace/preview?path=${encodeURIComponent(file.path)}`;
@@ -777,12 +778,12 @@ function FilePreviewDialog({
     }
   }, [isImage, file]);
 
-  // Set loading state for iframes (HTML/PDF)
+  // Set loading state for iframes (HTML/PDF/PPTX)
   React.useEffect(() => {
-    if ((isHtml || isPdf) && file) {
+    if ((isHtml || isPdf || isPptx) && file) {
       setLoadingIframe(true);
     }
-  }, [isHtml, isPdf, file]);
+  }, [isHtml, isPdf, isPptx, file]);
 
   return (
     <Dialog open={!!file} onOpenChange={onClose}>
@@ -845,6 +846,16 @@ function FilePreviewDialog({
                 title={file.name}
                 onLoad={() => setLoadingIframe(false)}
               />
+            </div>
+          ) : isPptx ? (
+            <div className="flex flex-col items-center justify-center gap-4 p-12">
+              {getFileIcon(file)}
+              <p className="text-lg font-medium">{file.name}</p>
+              <p className="text-sm text-muted-foreground">Preview not available</p>
+              <Button onClick={onDownload} size="lg">
+                <Download className="mr-2 h-5 w-5" />
+                Download
+              </Button>
             </div>
           ) : isCsv ? (
             <div className="rounded-lg border bg-card">

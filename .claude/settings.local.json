@@ -106,7 +106,9 @@
       "Bash(fly machine stop:*)",
       "Bash(fly machine start:*)",
       "Bash(tools/flyio_machine.py.tmp)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:gitbrent.github.io)"
     ],
     "deny": [],
     "ask": [],

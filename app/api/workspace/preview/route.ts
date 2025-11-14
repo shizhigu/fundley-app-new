@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
       contentType = 'image/webp';
     } else if (ext === '.pdf') {
       contentType = 'application/pdf';
+    } else if (ext === '.pptx') {
+      contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    } else if (ext === '.ppt') {
+      contentType = 'application/vnd.ms-powerpoint';
     } else if (ext === '.txt') {
       contentType = 'text/plain';
     } else if (ext === '.json') {
