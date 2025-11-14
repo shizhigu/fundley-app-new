@@ -394,7 +394,11 @@ function PureMultimodalInput({
     // 如果有引用文件,在message前面添加文件路径信息
     let messageToSend = input;
     if (referencedFile) {
-      const filePrefix = `[Referenced File: ${referencedFile.path}]\n\n`;
+      // Add /data/workspace prefix if path doesn't start with it
+      const fullPath = referencedFile.path.startsWith('/data/workspace')
+        ? referencedFile.path
+        : `/data/workspace${referencedFile.path.startsWith('/') ? '' : '/'}${referencedFile.path}`;
+      const filePrefix = `[Referenced File: ${fullPath}]\n\n`;
       messageToSend = filePrefix + input;
     }
 
@@ -609,7 +613,9 @@ function PureMultimodalInput({
                 {referencedFile.name}
               </div>
               <div className="text-xs text-blue-600 dark:text-blue-400 truncate">
-                {referencedFile.path}
+                {referencedFile.path.startsWith('/data/workspace')
+                  ? referencedFile.path
+                  : `/data/workspace${referencedFile.path.startsWith('/') ? '' : '/'}${referencedFile.path}`}
               </div>
             </div>
             <button
