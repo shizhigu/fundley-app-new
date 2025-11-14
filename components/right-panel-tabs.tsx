@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, Calendar, Clock, LayoutDashboard, HardDrive } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
@@ -66,6 +66,32 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
       setShowCalendarView(false);
     }
   };
+
+  // Listen for navigate-to-file events from file links in chat
+  useEffect(() => {
+    const handleNavigateToFile = (event: CustomEvent) => {
+      const { path, directory } = event.detail;
+
+      // Switch to My Files tab
+      setActiveTab('files');
+
+      // Store the target path in localStorage for WorkspaceFilesPanel to pick up
+      localStorage.setItem('workspace-navigate-to', JSON.stringify({
+        path,
+        directory,
+        timestamp: Date.now()
+      }));
+
+      // Trigger event for WorkspaceFilesPanel
+      window.dispatchEvent(new CustomEvent('workspace-navigate-ready'));
+    };
+
+    window.addEventListener('navigate-to-file', handleNavigateToFile as EventListener);
+
+    return () => {
+      window.removeEventListener('navigate-to-file', handleNavigateToFile as EventListener);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">

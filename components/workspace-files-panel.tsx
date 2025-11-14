@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Papa from 'papaparse';
 import {
   Folder,
   FileText,
@@ -218,6 +219,81 @@ export function WorkspaceFilesPanel() {
       loadFiles(false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for preview file events from chat file links
+  useEffect(() => {
+    const handlePreviewFile = (event: CustomEvent) => {
+      const { path, name } = event.detail;
+
+      // Find the file in current files list
+      const file = files.find(f => f.path === path);
+
+      if (file) {
+        // File already loaded, open preview directly
+        setPreviewFile(file);
+      } else {
+        // File not in current list, create a temporary file object for preview
+        const tempFile: FileItem = {
+          name: name,
+          path: path,
+          type: 'file',
+          extension: '.' + name.split('.').pop(),
+        };
+        setPreviewFile(tempFile);
+      }
+    };
+
+    window.addEventListener('preview-file', handlePreviewFile as EventListener);
+
+    return () => {
+      window.removeEventListener('preview-file', handlePreviewFile as EventListener);
+    };
+  }, [files]);
+
+  // Listen for navigation events from file links in chat
+  useEffect(() => {
+    const handleNavigateReady = () => {
+      const navData = localStorage.getItem('workspace-navigate-to');
+      if (navData) {
+        try {
+          const { path, directory, timestamp } = JSON.parse(navData);
+
+          // Only process if timestamp is recent (within 5 seconds)
+          if (Date.now() - timestamp < 5000) {
+            // Navigate to the directory containing the file
+            setCurrentPath(directory);
+
+            // Force reload files in the new directory
+            loadFiles(true);
+
+            // Highlight/scroll to the file after a short delay
+            setTimeout(() => {
+              const fileName = path.split('/').pop();
+              const fileElement = document.querySelector(`[data-file-name="${fileName}"]`);
+              if (fileElement) {
+                fileElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                fileElement.classList.add('ring-2', 'ring-brand-primary');
+                setTimeout(() => {
+                  fileElement.classList.remove('ring-2', 'ring-brand-primary');
+                }, 2000);
+              }
+            }, 300);
+          }
+
+          // Clean up
+          localStorage.removeItem('workspace-navigate-to');
+        } catch (e) {
+          console.error('Failed to parse navigation data:', e);
+        }
+      }
+    };
+
+    window.addEventListener('workspace-navigate-ready', handleNavigateReady);
+
+    return () => {
+      window.removeEventListener('workspace-navigate-ready', handleNavigateReady);
+    };
+  }, [loadFiles, files]);
 
   // 获取当前目录的文件
   const currentFiles = flattenFiles(files, currentPath);
@@ -476,6 +552,7 @@ export function WorkspaceFilesPanel() {
                       'select-none'
                     )}
                     onDoubleClick={() => handleItemClick(item)}
+                    data-file-name={item.name}
                   >
                     {getFileIcon(item)}
                     <p className="line-clamp-2 w-full break-all text-center text-sm">
@@ -541,6 +618,7 @@ export function WorkspaceFilesPanel() {
                       'select-none'
                     )}
                     onDoubleClick={() => handleItemClick(item)}
+                    data-file-name={item.name}
                   >
                     <div className="shrink-0">
                       {getFileIcon(item, 'sm')}
@@ -636,16 +714,44 @@ function FilePreviewDialog({
   const ext = file.extension?.toLowerCase();
   const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(ext || '');
   const isHtml = ext === '.html';
-  const isText = ['.txt', '.md', '.json', '.py', '.js', '.ts', '.tsx', '.jsx', '.css', '.csv'].includes(ext || '');
+  const isCsv = ext === '.csv';
+  const isText = ['.txt', '.md', '.json', '.py', '.js', '.ts', '.tsx', '.jsx', '.css'].includes(ext || '');
   const isPdf = ext === '.pdf';
 
   // 使用 preview API（inline）而不是 download API（attachment）
   const previewUrl = `/api/workspace/preview?path=${encodeURIComponent(file.path)}`;
 
   const [textContent, setTextContent] = React.useState<string>('');
+  const [csvData, setCsvData] = React.useState<string[][]>([]);
   const [loadingText, setLoadingText] = React.useState(false);
+  const [loadingCsv, setLoadingCsv] = React.useState(false);
   const [loadingImage, setLoadingImage] = React.useState(false);
   const [loadingIframe, setLoadingIframe] = React.useState(false);
+
+  // Load CSV content and parse
+  React.useEffect(() => {
+    if (isCsv && file) {
+      setLoadingCsv(true);
+      fetch(previewUrl)
+        .then(res => res.text())
+        .then(csvText => {
+          Papa.parse(csvText, {
+            complete: (results) => {
+              setCsvData(results.data as string[][]);
+              setLoadingCsv(false);
+            },
+            error: (err: Error) => {
+              console.error('Failed to parse CSV:', err);
+              setLoadingCsv(false);
+            }
+          });
+        })
+        .catch(err => {
+          console.error('Failed to load CSV:', err);
+          setLoadingCsv(false);
+        });
+    }
+  }, [isCsv, file, previewUrl]);
 
   // Load text content for text files
   React.useEffect(() => {
@@ -739,6 +845,43 @@ function FilePreviewDialog({
                 title={file.name}
                 onLoad={() => setLoadingIframe(false)}
               />
+            </div>
+          ) : isCsv ? (
+            <div className="rounded-lg border bg-card">
+              {loadingCsv ? (
+                <div className="flex items-center justify-center p-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : csvData.length > 0 ? (
+                <div className="overflow-auto max-h-[600px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                      <tr>
+                        {csvData[0]?.map((header, i) => (
+                          <th key={i} className="px-4 py-2 text-left font-semibold border-b">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.slice(1).map((row, rowIndex) => (
+                        <tr key={rowIndex} className="border-b hover:bg-muted/50">
+                          {row.map((cell, cellIndex) => (
+                            <td key={cellIndex} className="px-4 py-2 border-r last:border-r-0">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-12 text-muted-foreground">
+                  Empty CSV file
+                </div>
+              )}
             </div>
           ) : isText ? (
             <div className="rounded-lg border bg-muted/50">
