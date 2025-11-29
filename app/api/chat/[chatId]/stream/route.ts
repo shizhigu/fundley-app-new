@@ -265,6 +265,10 @@ export async function POST(
     const { chatId } = await params;
     const userId = session.user.id;
 
+    // 🔍 DEBUG: Track userId per request to detect potential contamination
+    const requestId = crypto.randomUUID().slice(0, 8);
+    console.log(`🔍 [REQUEST ${requestId}] userId=${userId}, chatId=${chatId}, timestamp=${Date.now()}`);
+
     // 支持JSON和FormData两种请求格式
     const contentType = request.headers.get('content-type');
     let message: string;

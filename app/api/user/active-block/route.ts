@@ -111,6 +111,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { block_id, content, title } = body;
 
+    // 🔍 DEBUG: Track userId and block_id for every POST request
+    const requestId = Math.random().toString(36).slice(2, 10);
+    console.log(`🔍 [POST active-block ${requestId}] userId=${userId?.slice(0, 8)}..., block_id=${block_id?.slice(0, 8)}..., title="${title}"`);
+
     if (!block_id) {
       return NextResponse.json(
         { error: 'block_id is required' },
@@ -140,32 +144,57 @@ export async function POST(request: NextRequest) {
 
     // Add to block history if title is provided
     if (title) {
+      // ✅ FIX: Use Lua script for atomic read-modify-write
+      // This prevents race conditions when multiple requests
+      // concurrently update the same user's block_history
+      const luaScript = `
+        local key = KEYS[1]
+        local block_id = ARGV[1]
+        local title = ARGV[2]
+        local ttl = tonumber(ARGV[3])
+
+        -- Get current history
+        local history_str = redis.call('GET', key)
+        local history = {}
+
+        if history_str then
+          history = cjson.decode(history_str)
+        end
+
+        -- Remove if already exists (deduplication)
+        local new_history = {}
+        for i, item in ipairs(history) do
+          if item.id ~= block_id then
+            table.insert(new_history, item)
+          end
+        end
+
+        -- Add to front (most recent)
+        table.insert(new_history, 1, {id = block_id, title = title})
+
+        -- Keep only top 5
+        local final_history = {}
+        for i = 1, math.min(5, #new_history) do
+          table.insert(final_history, new_history[i])
+        end
+
+        -- Save back with TTL
+        redis.call('SETEX', key, ttl, cjson.encode(final_history))
+
+        return 1
+      `;
+
       const historyKey = `user:${userId}:block_history`;
-      const historyStr = await redis.get(historyKey);
+      const ttl = 30 * 24 * 60 * 60; // 30 days
 
-      let history: Array<{ id: string; title: string }> = [];
-      if (historyStr) {
-        try {
-          history = JSON.parse(historyStr);
-        } catch (e) {
-          console.error('Failed to parse block history:', e);
-        }
-      }
-
-      // Remove if already exists (deduplication)
-      history = history.filter(item => item.id !== block_id);
-
-      // Add to front (most recent)
-      history.unshift({ id: block_id, title });
-
-      // Keep only top 5
-      history = history.slice(0, 5);
-
-      // Save back to Redis (30 day expiry)
-      await redis.setEx(
-        historyKey,
-        30 * 24 * 60 * 60, // 30 days
-        JSON.stringify(history)
+      // Execute Lua script atomically
+      await redis.eval(
+        luaScript,
+        1, // num_keys
+        historyKey, // KEYS[1]
+        block_id, // ARGV[1]
+        title, // ARGV[2]
+        ttl.toString() // ARGV[3]
       );
     }
 

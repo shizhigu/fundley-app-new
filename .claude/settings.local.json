@@ -13,7 +13,17 @@
       "Bash(export PGPASSWORD='npg_BbVO3inf2xKM')",
       "Bash(psql:*)",
       "Bash(node:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(conda activate:*)",
+      "Bash(uvicorn:*)",
+      "Bash(/Users/gushizhi/anaconda3/bin/conda run:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:community.agno.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],
