@@ -416,7 +416,7 @@ export async function POST(
           if (creditBalance.is_internal) {
             agentTier = 'premium';
             agentEndpoint = 'financial-analyst';
-            isFreeUsage = true;  // Internal user 不扣费
+            isFreeUsage = true; // Internal user 不扣费
             console.log(
               `💳 [Internal User] Unlimited access - PREMIUM tier (FREE)`,
             );
@@ -433,7 +433,7 @@ export async function POST(
             } else {
               agentTier = 'budget';
               agentEndpoint = 'budget-financial-analyst';
-              isFreeUsage = true;  // 订阅用户的免费兜底福利
+              isFreeUsage = true; // 订阅用户的免费兜底福利
               console.log(
                 `💳 [Subscriber] Balance: ${creditBalance.total_credits.toFixed(2)} credits - BUDGET tier (FREE fallback)`,
               );
@@ -459,7 +459,7 @@ export async function POST(
 
             agentTier = 'premium';
             agentEndpoint = 'financial-analyst';
-            isFreeUsage = false;  // 免费用户试用 premium 需要扣费
+            isFreeUsage = false; // 免费用户试用 premium 需要扣费
             console.log(
               `💳 [Free User] Addon credits: ${creditBalance.addon_credits.toFixed(2)} - PREMIUM tier trial (paid, no fallback)`,
             );
@@ -521,7 +521,10 @@ export async function POST(
           // Configure fetch options with NO TIMEOUTS (unlimited wait)
           // Frontend will wait indefinitely for backend response
           // The only timeout is in Python backend (sandbox: 3 minutes per script)
-          const fetchOptions: RequestInit & { bodyTimeout?: number; headersTimeout?: number } = {
+          const fetchOptions: RequestInit & {
+            bodyTimeout?: number;
+            headersTimeout?: number;
+          } = {
             method: 'POST',
             signal: abortController.signal,
             // CRITICAL: Set to 0 for UNLIMITED timeout (never interrupt backend)
@@ -728,7 +731,8 @@ export async function POST(
 
                     if (displayMessage) {
                       // 过滤敏感信息后再发送
-                      const sanitizedMessage = sanitizeDisplayMessage(displayMessage);
+                      const sanitizedMessage =
+                        sanitizeDisplayMessage(displayMessage);
 
                       // 只有过滤后还有内容才发送
                       if (sanitizedMessage) {
@@ -814,8 +818,8 @@ export async function POST(
                             reasoning_tokens: metrics.reasoning_tokens || 0,
                             total_tokens: metrics.total_tokens || 0,
                           },
-                          agentTier,    // Pass agent tier for pricing differentiation
-                          isFreeUsage,  // Pass free usage flag (subscriber fallback benefit)
+                          agentTier, // Pass agent tier for pricing differentiation
+                          isFreeUsage, // Pass free usage flag (subscriber fallback benefit)
                         );
 
                         if (deduction) {
