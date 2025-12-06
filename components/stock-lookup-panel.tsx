@@ -92,11 +92,12 @@ const exportToExcel = (
 ) => {
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Quarterly Metrics
+  // Sheet 1: Quarterly Metrics - 使用和前端一致的格式
   const metricsRows = tableData.map((row) => {
     const exportRow: Record<string, any> = { Metric: row.metric };
     quarters.forEach((q) => {
-      exportRow[q] = row[q];
+      // 使用 formatValue 函数格式化，和前端显示一致
+      exportRow[q] = formatValue(row[q], row._format);
     });
     return exportRow;
   });
@@ -183,7 +184,8 @@ export function StockLookupPanel() {
     if (!data?.quarters?.length) return { tableData: [], columns: [] };
 
     const rows = data.rows || DEFAULT_ROWS;
-    const quarters = data.quarters;
+    // 按时间顺序排列（从旧到新）
+    const quarters = [...data.quarters].reverse();
 
     // 每行是一个指标
     const tableData = rows.map((row) => {
@@ -256,7 +258,7 @@ export function StockLookupPanel() {
               exportToExcel(
                 data?.symbol || '',
                 tableData,
-                data?.quarters.map((q) => q.quarter) || [],
+                [...(data?.quarters || [])].reverse().map((q) => q.quarter),
                 data?.epsAnnual,
                 data?.priceStats
               )
@@ -304,116 +306,119 @@ export function StockLookupPanel() {
         </div>
       )}
 
-      {/* EPS Annual Table + Price Stats side by side */}
-      <div className="flex gap-4">
-        {/* EPS Annual Table - format: FY24 | FY25 | FY26E | g(26E to 25) | FY27E | g(27E to 25) */}
-        {data?.epsAnnual?.years && data.epsAnnual.years.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border flex-1">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 font-medium text-left min-w-[80px]"></th>
-                  {data.epsAnnual.years.map((y) => (
-                    <React.Fragment key={y.label}>
-                      <th className="p-3 font-medium text-right min-w-[90px]">
-                        {y.label}
+      {/* EPS Annual Table */}
+      {data?.epsAnnual?.years && data.epsAnnual.years.length > 0 && (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-3 font-medium text-left min-w-[80px]"></th>
+                {data.epsAnnual.years.map((y) => (
+                  <React.Fragment key={y.label}>
+                    <th className="p-3 font-medium text-right min-w-[90px]">
+                      {y.label}
+                    </th>
+                    {y.is_estimate && (
+                      <th className="p-3 font-medium text-right min-w-[100px] text-muted-foreground italic">
+                        g ({y.label.replace('E', '')} to {data.epsAnnual?.base_year?.replace('FY', '')})
                       </th>
-                      {y.is_estimate && (
-                        <th className="p-3 font-medium text-right min-w-[100px] text-muted-foreground italic">
-                          g ({y.label.replace('E', '')} to {data.epsAnnual?.base_year?.replace('FY', '')})
-                        </th>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="hover:bg-muted/30">
+                <td className="p-3 font-medium">EPS</td>
+                {data.epsAnnual.years.map((y) => (
+                  <React.Fragment key={y.label}>
+                    <td className="p-3 text-right font-mono">
+                      {y.epsLow && y.epsHigh ? (
+                        <span>${y.epsLow.toFixed(2)} - ${y.epsHigh.toFixed(2)}</span>
+                      ) : y.eps !== null ? (
+                        `$${y.eps.toFixed(2)}`
+                      ) : (
+                        '-'
                       )}
-                    </React.Fragment>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="hover:bg-muted/30">
-                  <td className="p-3 font-medium">EPS</td>
-                  {data.epsAnnual.years.map((y) => (
-                    <React.Fragment key={y.label}>
-                      <td className="p-3 text-right font-mono">
-                        {y.epsLow && y.epsHigh ? (
-                          <span>${y.epsLow.toFixed(2)} - ${y.epsHigh.toFixed(2)}</span>
-                        ) : y.eps !== null ? (
-                          `$${y.eps.toFixed(2)}`
+                    </td>
+                    {y.is_estimate && (
+                      <td className="p-3 text-right font-mono italic">
+                        {y.growthLow !== undefined && y.growthHigh !== undefined ? (
+                          <span className={y.growthLow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {y.growthLow}%-{y.growthHigh}%
+                          </span>
+                        ) : y.growth !== undefined ? (
+                          <span className={y.growth >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {y.growth}%
+                          </span>
                         ) : (
                           '-'
                         )}
                       </td>
-                      {y.is_estimate && (
-                        <td className="p-3 text-right font-mono italic">
-                          {y.growthLow !== undefined && y.growthHigh !== undefined ? (
-                            <span className={y.growthLow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {y.growthLow}%-{y.growthHigh}%
-                            </span>
-                          ) : y.growth !== undefined ? (
-                            <span className={y.growth >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {y.growth}%
-                            </span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
+                    )}
+                  </React.Fragment>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {/* Price Stats Table */}
-        {data?.priceStats && (
-          <div className="overflow-x-auto rounded-lg border w-[200px] shrink-0">
-            <table className="w-full text-sm">
-              <tbody>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">Price</td>
-                  <td className="p-2 text-right font-mono">${data.priceStats.price?.toFixed(2)}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">1y High</td>
-                  <td className="p-2 text-right font-mono">${data.priceStats.high1y?.toFixed(2)}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">From 1y High</td>
-                  <td className="p-2 text-right font-mono">
-                    <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {data.priceStats.fromHigh1y}%
-                    </span>
-                  </td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">3m Volatility</td>
-                  <td className="p-2 text-right font-mono">{data.priceStats.volatility3m?.toFixed(2)}%</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">3m Performance</td>
-                  <td className="p-2 text-right font-mono">
-                    <span className={data.priceStats.performance3m >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {data.priceStats.performance3m >= 0 ? '+' : ''}{data.priceStats.performance3m}%
-                    </span>
-                  </td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">P/E (TTM)</td>
-                  <td className="p-2 text-right font-mono">{data.priceStats.peTTM?.toFixed(1)}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-medium">EV / EBITDA</td>
-                  <td className="p-2 text-right font-mono">{data.priceStats.evEbitda?.toFixed(1)}</td>
-                </tr>
-                <tr className="hover:bg-muted/30">
-                  <td className="p-2 font-medium">EV / OCF</td>
-                  <td className="p-2 text-right font-mono">{data.priceStats.evOcf?.toFixed(1)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Price Stats Table - using same style as quarterly metrics */}
+      {data?.priceStats && (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-3 font-medium text-left min-w-[140px]"></th>
+                <th className="p-3 font-medium text-right min-w-[100px]">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">Price</td>
+                <td className="p-3 text-right font-mono">${data.priceStats.price?.toFixed(3)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">1y High</td>
+                <td className="p-3 text-right font-mono">${data.priceStats.high1y?.toFixed(3)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">From 1y High</td>
+                <td className="p-3 text-right font-mono">
+                  <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {data.priceStats.fromHigh1y}%
+                  </span>
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">3m Volatility</td>
+                <td className="p-3 text-right font-mono">{data.priceStats.volatility3m?.toFixed(2)}%</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">3m Performance</td>
+                <td className="p-3 text-right font-mono">
+                  <span className={data.priceStats.performance3m >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {data.priceStats.performance3m}%
+                  </span>
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">P/E (TTM)</td>
+                <td className="p-3 text-right font-mono">{data.priceStats.peTTM?.toFixed(1)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">EV / EBITDA</td>
+                <td className="p-3 text-right font-mono">{data.priceStats.evEbitda?.toFixed(1)}</td>
+              </tr>
+              <tr className="border-b-0 hover:bg-muted/30">
+                <td className="p-3 font-medium">EV / OCF</td>
+                <td className="p-3 text-right font-mono">{data.priceStats.evOcf?.toFixed(1)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Empty State */}
       {!data && !loading && !error && (
