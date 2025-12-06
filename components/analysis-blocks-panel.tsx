@@ -24,8 +24,9 @@ import { useChatContext } from '@/lib/contexts/chat-context';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { useBlockViewStore } from '@/stores/block-view-store';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useActiveBlock } from '@/lib/hooks/use-active-block';
+import { StockLookupPanel } from './stock-lookup-panel';
 
 interface AnalysisBlocksPanelProps {
   chatId: string;
@@ -499,9 +500,23 @@ export function AnalysisBlocksPanel({
             duration: 0.5,
             ease: [0.34, 1.56, 0.64, 1], // 弹性曲线 (cubic-bezier)
           }}
-          className={`h-full ${className}`}
-          style={{ width: '100%', overflow: 'auto' }}
+          className={`h-full ${className} flex flex-col`}
+          style={{ width: '100%' }}
         >
+          {/* Tab Switch */}
+          <Tabs defaultValue="blocks" className="flex flex-col h-full">
+            <div className="px-4 pt-4 border-b border-border shrink-0">
+              <TabsList className="grid grid-cols-2 w-64">
+                <TabsTrigger value="blocks">Blocks</TabsTrigger>
+                <TabsTrigger value="lookup">Stock Lookup</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="lookup" className="flex-1 overflow-auto m-0">
+              <StockLookupPanel />
+            </TabsContent>
+
+            <TabsContent value="blocks" className="flex-1 overflow-auto m-0">
           <div className="space-y-4 p-4" style={{ maxWidth: '100%' }}>
             <div className="space-y-4 mb-6">
               {/* Header */}
@@ -833,6 +848,8 @@ export function AnalysisBlocksPanel({
               </div>
             )}
           </div>
+            </TabsContent>
+          </Tabs>
         </motion.div>
       )}
     </AnimatePresence>

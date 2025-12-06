@@ -23,7 +23,8 @@
       "WebSearch",
       "WebFetch(domain:community.agno.com)",
       "WebFetch(domain:github.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": [],
