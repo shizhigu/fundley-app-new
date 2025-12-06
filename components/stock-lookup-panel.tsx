@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,11 +11,40 @@ import {
   createColumnHelper,
   ColumnDef,
 } from '@tanstack/react-table';
+import * as XLSX from 'xlsx';
+
+interface EpsYear {
+  year: number;
+  label: string;
+  eps: number | null;
+  epsLow?: number;
+  epsHigh?: number;
+  is_estimate: boolean;
+  growth?: number;
+  growthLow?: number;
+  growthHigh?: number;
+  numAnalysts?: number;
+}
+
+interface PriceStats {
+  price: number;
+  high1y: number;
+  fromHigh1y: number;
+  volatility3m: number;
+  performance3m: number;
+  peTTM: number;
+  evEbitda: number;
+  evOcf: number;
+}
 
 interface MetricsResponse {
   symbol: string;
   quarters: Record<string, any>[];
-  // 后端可以返回 rows 定义，指定行顺序和格式
+  epsAnnual?: {
+    years: EpsYear[];
+    base_year: string | null;
+  };
+  priceStats?: PriceStats;
   rows?: { key: string; label: string; format?: string }[];
 }
 
@@ -51,6 +80,76 @@ const formatValue = (val: any, format?: string): string => {
     default:
       return String(val);
   }
+};
+
+// Excel 导出函数
+const exportToExcel = (
+  symbol: string,
+  tableData: Record<string, any>[],
+  quarters: string[],
+  epsData?: { years: EpsYear[]; base_year: string | null },
+  priceStats?: PriceStats
+) => {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Quarterly Metrics
+  const metricsRows = tableData.map((row) => {
+    const exportRow: Record<string, any> = { Metric: row.metric };
+    quarters.forEach((q) => {
+      exportRow[q] = row[q];
+    });
+    return exportRow;
+  });
+  const ws1 = XLSX.utils.json_to_sheet(metricsRows);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Quarterly Metrics');
+
+  // Sheet 2: EPS Annual - format: FY24 | FY25 | FY26E | g(26E to 25) | FY27E | g(27E to 25)
+  if (epsData?.years) {
+    const baseYear = epsData.base_year?.replace('FY', '') || '';
+    const epsRow: Record<string, string> = { '': 'EPS' };
+
+    epsData.years.forEach((y) => {
+      // EPS value column
+      epsRow[y.label] =
+        y.epsLow && y.epsHigh
+          ? `$${y.epsLow} - $${y.epsHigh}`
+          : y.eps !== null
+            ? `$${y.eps}`
+            : '-';
+
+      // Growth column for estimates
+      if (y.is_estimate) {
+        const gLabel = `g (${y.label.replace('E', '')} to ${baseYear})`;
+        epsRow[gLabel] =
+          y.growthLow !== undefined && y.growthHigh !== undefined
+            ? `${y.growthLow}%-${y.growthHigh}%`
+            : y.growth !== undefined
+              ? `${y.growth}%`
+              : '-';
+      }
+    });
+
+    const ws2 = XLSX.utils.json_to_sheet([epsRow]);
+    XLSX.utils.book_append_sheet(wb, ws2, 'EPS Annual');
+  }
+
+  // Sheet 3: Price Stats
+  if (priceStats) {
+    const priceRows = [
+      { Metric: 'Price', Value: `$${priceStats.price?.toFixed(2)}` },
+      { Metric: '1y High', Value: `$${priceStats.high1y?.toFixed(2)}` },
+      { Metric: 'From 1y High', Value: `${priceStats.fromHigh1y}%` },
+      { Metric: '3m Volatility', Value: `${priceStats.volatility3m?.toFixed(2)}%` },
+      { Metric: '3m Performance', Value: `${priceStats.performance3m}%` },
+      { Metric: 'P/E (TTM)', Value: priceStats.peTTM?.toFixed(1) },
+      { Metric: 'EV / EBITDA', Value: priceStats.evEbitda?.toFixed(1) },
+      { Metric: 'EV / OCF', Value: priceStats.evOcf?.toFixed(1) },
+    ];
+    const ws3 = XLSX.utils.json_to_sheet(priceRows);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Price Stats');
+  }
+
+  XLSX.writeFile(wb, `${symbol}_metrics.xlsx`);
 };
 
 export function StockLookupPanel() {
@@ -147,7 +246,29 @@ export function StockLookupPanel() {
 
       {error && <div className="text-sm text-red-500">{error}</div>}
 
-      {/* TanStack Table */}
+      {/* Export Button */}
+      {tableData.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportToExcel(
+                data?.symbol || '',
+                tableData,
+                data?.quarters.map((q) => q.quarter) || [],
+                data?.epsAnnual,
+                data?.priceStats
+              )
+            }
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export Excel
+          </Button>
+        </div>
+      )}
+
+      {/* Quarterly Metrics Table */}
       {tableData.length > 0 && (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
@@ -182,6 +303,117 @@ export function StockLookupPanel() {
           </table>
         </div>
       )}
+
+      {/* EPS Annual Table + Price Stats side by side */}
+      <div className="flex gap-4">
+        {/* EPS Annual Table - format: FY24 | FY25 | FY26E | g(26E to 25) | FY27E | g(27E to 25) */}
+        {data?.epsAnnual?.years && data.epsAnnual.years.length > 0 && (
+          <div className="overflow-x-auto rounded-lg border flex-1">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="p-3 font-medium text-left min-w-[80px]"></th>
+                  {data.epsAnnual.years.map((y) => (
+                    <React.Fragment key={y.label}>
+                      <th className="p-3 font-medium text-right min-w-[90px]">
+                        {y.label}
+                      </th>
+                      {y.is_estimate && (
+                        <th className="p-3 font-medium text-right min-w-[100px] text-muted-foreground italic">
+                          g ({y.label.replace('E', '')} to {data.epsAnnual?.base_year?.replace('FY', '')})
+                        </th>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="hover:bg-muted/30">
+                  <td className="p-3 font-medium">EPS</td>
+                  {data.epsAnnual.years.map((y) => (
+                    <React.Fragment key={y.label}>
+                      <td className="p-3 text-right font-mono">
+                        {y.epsLow && y.epsHigh ? (
+                          <span>${y.epsLow.toFixed(2)} - ${y.epsHigh.toFixed(2)}</span>
+                        ) : y.eps !== null ? (
+                          `$${y.eps.toFixed(2)}`
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      {y.is_estimate && (
+                        <td className="p-3 text-right font-mono italic">
+                          {y.growthLow !== undefined && y.growthHigh !== undefined ? (
+                            <span className={y.growthLow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {y.growthLow}%-{y.growthHigh}%
+                            </span>
+                          ) : y.growth !== undefined ? (
+                            <span className={y.growth >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {y.growth}%
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Price Stats Table */}
+        {data?.priceStats && (
+          <div className="overflow-x-auto rounded-lg border w-[200px] shrink-0">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">Price</td>
+                  <td className="p-2 text-right font-mono">${data.priceStats.price?.toFixed(2)}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">1y High</td>
+                  <td className="p-2 text-right font-mono">${data.priceStats.high1y?.toFixed(2)}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">From 1y High</td>
+                  <td className="p-2 text-right font-mono">
+                    <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {data.priceStats.fromHigh1y}%
+                    </span>
+                  </td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">3m Volatility</td>
+                  <td className="p-2 text-right font-mono">{data.priceStats.volatility3m?.toFixed(2)}%</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">3m Performance</td>
+                  <td className="p-2 text-right font-mono">
+                    <span className={data.priceStats.performance3m >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {data.priceStats.performance3m >= 0 ? '+' : ''}{data.priceStats.performance3m}%
+                    </span>
+                  </td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">P/E (TTM)</td>
+                  <td className="p-2 text-right font-mono">{data.priceStats.peTTM?.toFixed(1)}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-medium">EV / EBITDA</td>
+                  <td className="p-2 text-right font-mono">{data.priceStats.evEbitda?.toFixed(1)}</td>
+                </tr>
+                <tr className="hover:bg-muted/30">
+                  <td className="p-2 font-medium">EV / OCF</td>
+                  <td className="p-2 text-right font-mono">{data.priceStats.evOcf?.toFixed(1)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Empty State */}
       {!data && !loading && !error && (

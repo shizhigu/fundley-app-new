@@ -190,11 +190,10 @@ export async function POST(request: NextRequest) {
       // Execute Lua script atomically
       await redis.eval(
         luaScript,
-        1, // num_keys
-        historyKey, // KEYS[1]
-        block_id, // ARGV[1]
-        title, // ARGV[2]
-        ttl.toString() // ARGV[3]
+        {
+          keys: [historyKey],
+          arguments: [block_id, title, ttl.toString()]
+        }
       );
     }
 

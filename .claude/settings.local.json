@@ -24,7 +24,8 @@
       "WebFetch(domain:community.agno.com)",
       "WebFetch(domain:github.com)",
       "Bash(find:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": [],
