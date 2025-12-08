@@ -28,10 +28,10 @@ interface EpsYear {
 
 interface PriceStats {
   price: number;
-  high1y: number;
-  fromHigh1y: number;
-  volatility3m: number;
-  performance3m: number;
+  high6m: number;
+  fromHigh6m: number;
+  volatility6m: number;
+  performance6m: number;
   peTTM: number;
   evEbitda: number;
   evOcf: number;
@@ -137,11 +137,11 @@ const exportToExcel = (
   // Sheet 3: Price Stats
   if (priceStats) {
     const priceRows = [
-      { Metric: 'Price', Value: `$${priceStats.price?.toFixed(2)}` },
-      { Metric: '1y High', Value: `$${priceStats.high1y?.toFixed(2)}` },
-      { Metric: 'From 1y High', Value: `${priceStats.fromHigh1y}%` },
-      { Metric: '3m Volatility', Value: `${priceStats.volatility3m?.toFixed(2)}%` },
-      { Metric: '3m Performance', Value: `${priceStats.performance3m}%` },
+      { Metric: 'Price', Value: `$${priceStats.price?.toFixed(3)}` },
+      { Metric: '6M High', Value: `$${priceStats.high6m?.toFixed(3)}` },
+      { Metric: 'From 6M High', Value: `${priceStats.fromHigh6m}%` },
+      { Metric: '6M Volatility', Value: `${priceStats.volatility6m?.toFixed(2)}%` },
+      { Metric: '6M Performance', Value: `${priceStats.performance6m}%` },
       { Metric: 'P/E (TTM)', Value: priceStats.peTTM?.toFixed(1) },
       { Metric: 'EV / EBITDA', Value: priceStats.evEbitda?.toFixed(1) },
       { Metric: 'EV / OCF', Value: priceStats.evOcf?.toFixed(1) },
@@ -380,26 +380,26 @@ export function StockLookupPanel() {
                 <td className="p-3 text-right font-mono">${data.priceStats.price?.toFixed(3)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">1y High</td>
-                <td className="p-3 text-right font-mono">${data.priceStats.high1y?.toFixed(3)}</td>
+                <td className="p-3 font-medium">6M High</td>
+                <td className="p-3 text-right font-mono">${data.priceStats.high6m?.toFixed(3)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">From 1y High</td>
+                <td className="p-3 font-medium">From 6M High</td>
                 <td className="p-3 text-right font-mono">
-                  <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {data.priceStats.fromHigh1y}%
+                  <span className={data.priceStats.fromHigh6m >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {data.priceStats.fromHigh6m}%
                   </span>
                 </td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">3m Volatility</td>
-                <td className="p-3 text-right font-mono">{data.priceStats.volatility3m?.toFixed(2)}%</td>
+                <td className="p-3 font-medium">6M Volatility</td>
+                <td className="p-3 text-right font-mono">{data.priceStats.volatility6m?.toFixed(2)}%</td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">3m Performance</td>
+                <td className="p-3 font-medium">6M Performance</td>
                 <td className="p-3 text-right font-mono">
-                  <span className={data.priceStats.performance3m >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {data.priceStats.performance3m}%
+                  <span className={data.priceStats.performance6m >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {data.priceStats.performance6m}%
                   </span>
                 </td>
               </tr>
