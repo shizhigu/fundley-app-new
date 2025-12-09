@@ -28,8 +28,8 @@ interface EpsYear {
 
 interface PriceStats {
   price: number;
-  high6m: number;
-  fromHigh6m: number;
+  high1y: number;
+  fromHigh1y: number;
   volatility6m: number;
   performance6m: number;
   peTTM: number;
@@ -138,8 +138,8 @@ const exportToExcel = (
   if (priceStats) {
     const priceRows = [
       { Metric: 'Price', Value: `$${priceStats.price?.toFixed(3)}` },
-      { Metric: '6M High', Value: `$${priceStats.high6m?.toFixed(3)}` },
-      { Metric: 'From 6M High', Value: `${priceStats.fromHigh6m}%` },
+      { Metric: '1y High', Value: `$${priceStats.high1y?.toFixed(3)}` },
+      { Metric: 'From 1y High', Value: `${priceStats.fromHigh1y}%` },
       { Metric: '6M Volatility', Value: `${priceStats.volatility6m?.toFixed(2)}%` },
       { Metric: '6M Performance', Value: `${priceStats.performance6m}%` },
       { Metric: 'P/E (TTM)', Value: priceStats.peTTM?.toFixed(1) },
@@ -380,14 +380,14 @@ export function StockLookupPanel() {
                 <td className="p-3 text-right font-mono">${data.priceStats.price?.toFixed(3)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">6M High</td>
-                <td className="p-3 text-right font-mono">${data.priceStats.high6m?.toFixed(3)}</td>
+                <td className="p-3 font-medium">1y High</td>
+                <td className="p-3 text-right font-mono">${data.priceStats.high1y?.toFixed(3)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">From 6M High</td>
+                <td className="p-3 font-medium">From 1y High</td>
                 <td className="p-3 text-right font-mono">
-                  <span className={data.priceStats.fromHigh6m >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {data.priceStats.fromHigh6m}%
+                  <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {data.priceStats.fromHigh1y}%
                   </span>
                 </td>
               </tr>
