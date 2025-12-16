@@ -25,7 +25,8 @@
       "WebFetch(domain:github.com)",
       "Bash(find:*)",
       "Bash(git checkout:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)"
     ],
     "deny": [],
     "ask": [],

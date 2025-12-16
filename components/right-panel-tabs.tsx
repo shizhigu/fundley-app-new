@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, FileText } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
@@ -9,6 +9,7 @@ import { AnalysisBlocksPanel } from './analysis-blocks-panel';
 import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
+import { EarningsTranscriptPanel } from './earnings-transcript-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -18,7 +19,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist' | 'transcript';
 
 interface Tab {
   id: TabType;
@@ -45,6 +46,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'blocks', label: t('analysis'), icon: Layers },
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     { id: 'screener', label: t('screener'), icon: Search },
+    { id: 'transcript', label: t('transcript'), icon: FileText },
     // Chart tab hidden but kept in code
     // { id: 'chart', label: t('chart'), icon: TrendingUp },
     // Newsletter tab hidden but kept in code
@@ -150,6 +152,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
         {activeTab === 'screener' && (
           <div id="screener-panel" role="tabpanel" aria-labelledby="screener-tab" className="h-full">
             <ScreenerPanel />
+          </div>
+        )}
+
+        {activeTab === 'transcript' && (
+          <div id="transcript-panel" role="tabpanel" aria-labelledby="transcript-tab" className="h-full">
+            <EarningsTranscriptPanel />
           </div>
         )}
 

@@ -70,7 +70,8 @@
     "watchlist": "AI Table Analysis",
     "newsletter": "Newsletter",
     "screener": "Screener",
-    "chart": "Chart"
+    "chart": "Chart",
+    "transcript": "Transcript"
   },
   "newsletter": {
     "title": "Newsletter",
@@ -87,6 +88,27 @@
     "placeholder": "e.g., Show top 10 profitable companies in 2024",
     "search": "Search",
     "loading": "Loading..."
+  },
+  "transcript": {
+    "title": "Earnings Transcript",
+    "description": "View earnings call transcripts for any company",
+    "symbol": "Stock Symbol",
+    "symbolPlaceholder": "e.g., AAPL, MSFT, GOOGL",
+    "year": "Year",
+    "quarter": "Quarter",
+    "search": "Search",
+    "loading": "Loading...",
+    "noTranscript": "No transcript available for this period",
+    "noDates": "No transcripts available for this symbol",
+    "emptyTitle": "Search for earnings transcripts",
+    "emptyHint": "Enter a stock symbol to view available transcripts",
+    "back": "Back",
+    "translate": "Translate",
+    "translating": "Translating...",
+    "showOriginal": "Original",
+    "showTranslation": "Chinese",
+    "translated": "Translated",
+    "retranslate": "Retranslate"
   },
   "settings": {
     "title": "Settings",

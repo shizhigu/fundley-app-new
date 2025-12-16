@@ -70,7 +70,8 @@
     "watchlist": "自选股",
     "newsletter": "资讯",
     "screener": "筛选器",
-    "chart": "图表"
+    "chart": "图表",
+    "transcript": "财报电话会"
   },
   "newsletter": {
     "title": "资讯",
@@ -87,6 +88,27 @@
     "placeholder": "例如：显示2024年利润最高的10家公司",
     "search": "搜索",
     "loading": "加载中..."
+  },
+  "transcript": {
+    "title": "财报电话会议记录",
+    "description": "查看任何公司的财报电话会议记录",
+    "symbol": "股票代码",
+    "symbolPlaceholder": "例如：AAPL, MSFT, GOOGL",
+    "year": "年份",
+    "quarter": "季度",
+    "search": "搜索",
+    "loading": "加载中...",
+    "noTranscript": "该期间无可用记录",
+    "noDates": "该股票暂无可用记录",
+    "emptyTitle": "搜索财报电话会议记录",
+    "emptyHint": "输入股票代码查看可用的记录",
+    "back": "返回",
+    "translate": "翻译",
+    "translating": "翻译中...",
+    "showOriginal": "原文",
+    "showTranslation": "中文",
+    "translated": "已翻译",
+    "retranslate": "重新翻译"
   },
   "settings": {
     "title": "设置",
