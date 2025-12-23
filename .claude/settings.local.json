@@ -28,7 +28,8 @@
       "Bash(pnpm build:*)",
       "Bash(pnpm lint:*)",
       "Bash(ls:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": [],

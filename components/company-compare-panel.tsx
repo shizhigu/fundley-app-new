@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, GitCompareArrows, ArrowUp, ArrowDown, X, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface CompanyMetrics {
   symbol: string;
@@ -66,47 +66,130 @@ const formatTrend = (v: number | undefined | null): string => {
   return v > 0 ? '↑' : '↓';
 };
 
-// 导出 Excel
-const exportToExcel = (metricsData: CompanyMetrics[], compareDate: string) => {
-  const wb = XLSX.utils.book_new();
+// 导出 Excel (带样式 - 专业美观设计)
+const exportToExcel = async (metricsData: CompanyMetrics[], compareDate: string) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Fundley';
+  workbook.created = new Date();
 
-  // 构建表格数据
-  const headers = ['指标', ...metricsData.map((m) => m.symbol)];
+  const worksheet = workbook.addWorksheet('公司对比', {
+    views: [{ showGridLines: false }],
+  });
 
-  const rows = [
-    ['已动用资本回报率ROCE（TTM）', ...metricsData.map((m) => formatPercent(m.roce))],
-    ['营收增长（同比）', ...metricsData.map((m) => formatPercent(m.revenueGrowthYoY))],
-    ['毛利率（Q）', ...metricsData.map((m) => formatPercent(m.grossMargin))],
-    ['  环比', ...metricsData.map((m) => formatTrend(m.grossMarginQoQ))],
-    ['  同比', ...metricsData.map((m) => formatTrend(m.grossMarginYoY))],
-    ['营业利润率（Q）', ...metricsData.map((m) =>
-      m.operatingMargin !== undefined && m.operatingMargin < 0 ? '负' : formatPercent(m.operatingMargin)
-    )],
-    ['  环比', ...metricsData.map((m) => formatTrend(m.operatingMarginQoQ))],
-    ['  同比', ...metricsData.map((m) => formatTrend(m.operatingMarginYoY))],
-    ['现金转换率（Q）', ...metricsData.map((m) => formatCashConversion(m))],
-    ['自由现金流增长率（同比）', ...metricsData.map((m) => formatFcfGrowth(m))],
-    ['自由现金流/市值', ...metricsData.map((m) => formatFcfYield(m.fcfYield))],
-  ];
+  const colCount = metricsData.length + 1;
 
-  const wsData = [
-    [compareDate, ...metricsData.map((m) => m.symbol)],
-    ...rows,
-  ];
+  // 颜色定义
+  const colors = {
+    headerBg: 'FF1E3A5F',      // 深蓝色表头背景
+    headerText: 'FFFFFFFF',    // 白色表头文字
+    symbolText: 'FFFFD700',    // 金色股票代码
+    labelText: 'FF1E3A5F',     // 深蓝色指标标签
+    subLabelText: 'FF6B7280',  // 灰色子标签
+    arrowUp: 'FF16A34A',       // 绿色向上
+    arrowDown: 'FFDC2626',     // 红色向下
+    borderColor: 'FFD1D5DB',   // 浅灰色边框
+    alternateBg: 'FFF8FAFC',   // 交替行背景色
+  };
 
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // 边框样式
+  const thinBorder: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: colors.borderColor } },
+    left: { style: 'thin', color: { argb: colors.borderColor } },
+    bottom: { style: 'thin', color: { argb: colors.borderColor } },
+    right: { style: 'thin', color: { argb: colors.borderColor } },
+  };
+
+  // 表头行 (日期 + 股票代码) - 深蓝色背景
+  const headerRow = worksheet.addRow([compareDate, ...metricsData.map((m) => m.symbol)]);
+  headerRow.height = 28;
+  headerRow.eachCell((cell, colNumber) => {
+    cell.border = thinBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.headerBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    if (colNumber === 1) {
+      cell.font = { size: 11, bold: true, color: { argb: colors.headerText } };
+    } else {
+      // 股票代码 - 金色加粗
+      cell.font = { size: 12, bold: true, color: { argb: colors.symbolText } };
+    }
+  });
+
+  let rowIndex = 1; // 用于交替背景色
+
+  // 添加主指标行
+  const addMetricRow = (label: string, values: string[], isSubRow = false) => {
+    const row = worksheet.addRow([label, ...values]);
+    row.height = isSubRow ? 20 : 24;
+    const useAltBg = !isSubRow && rowIndex % 2 === 0;
+
+    row.eachCell((cell, colNumber) => {
+      cell.border = thinBorder;
+      cell.alignment = { horizontal: colNumber === 1 ? 'left' : 'center', vertical: 'middle' };
+
+      // 交替背景色
+      if (useAltBg) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.alternateBg } };
+      }
+
+      if (colNumber === 1) {
+        if (isSubRow) {
+          // 子行 - 右对齐灰色小字
+          cell.font = { size: 9, italic: true, color: { argb: colors.subLabelText } };
+          cell.alignment = { horizontal: 'right', vertical: 'middle', indent: 2 };
+        } else {
+          // 主指标 - 深蓝色
+          cell.font = { size: 10, bold: true, color: { argb: colors.labelText } };
+        }
+      } else {
+        const val = cell.value as string;
+        // 箭头颜色
+        if (val === '↑') {
+          cell.font = { size: 12, bold: true, color: { argb: colors.arrowUp } };
+        } else if (val === '↓') {
+          cell.font = { size: 12, bold: true, color: { argb: colors.arrowDown } };
+        } else {
+          cell.font = { size: 10, color: { argb: 'FF374151' } };
+        }
+      }
+    });
+
+    if (!isSubRow) rowIndex++;
+  };
+
+  // 数据行
+  addMetricRow('已动用资本回报率 ROCE（TTM）', metricsData.map((m) => formatPercent(m.roce)));
+  addMetricRow('营收增长（同比）', metricsData.map((m) => formatPercent(m.revenueGrowthYoY)));
+  addMetricRow('毛利率（Q）', metricsData.map((m) => formatPercent(m.grossMargin)));
+  addMetricRow('环比', metricsData.map((m) => formatTrend(m.grossMarginQoQ)), true);
+  addMetricRow('同比', metricsData.map((m) => formatTrend(m.grossMarginYoY)), true);
+  addMetricRow('营业利润率（Q）', metricsData.map((m) =>
+    m.operatingMargin !== undefined && m.operatingMargin < 0 ? '负' : formatPercent(m.operatingMargin)
+  ));
+  addMetricRow('环比', metricsData.map((m) => formatTrend(m.operatingMarginQoQ)), true);
+  addMetricRow('同比', metricsData.map((m) => formatTrend(m.operatingMarginYoY)), true);
+  addMetricRow('现金转换率（Q）', metricsData.map((m) => formatCashConversion(m)));
+  addMetricRow('自由现金流增长率（同比）', metricsData.map((m) => formatFcfGrowth(m)));
+  addMetricRow('自由现金流 / 市值', metricsData.map((m) => formatFcfYield(m.fcfYield)));
 
   // 设置列宽
-  ws['!cols'] = [
-    { wch: 28 },
-    ...metricsData.map(() => ({ wch: 15 })),
-  ];
+  worksheet.getColumn(1).width = 30;
+  for (let i = 2; i <= colCount; i++) {
+    worksheet.getColumn(i).width = 14;
+  }
 
-  XLSX.utils.book_append_sheet(wb, ws, '公司对比');
+  // 冻结表头行
+  worksheet.views = [{ state: 'frozen', ySplit: 1, showGridLines: false }];
 
-  // 生成文件名
+  // 导出文件
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
   const symbols = metricsData.map((m) => m.symbol).join('_');
-  XLSX.writeFile(wb, `公司对比_${symbols}.xlsx`);
+  link.download = `公司对比_${symbols}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 // 趋势箭头组件 - 红色向上，蓝色向下
@@ -410,7 +493,7 @@ export function CompanyComparePanel() {
                 数据来源：MotherDuck，仅供参考
               </p>
               <button
-                onClick={() => exportToExcel(metricsData, compareDate)}
+                onClick={() => void exportToExcel(metricsData, compareDate)}
                 className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
               >
                 <Download className="w-3 h-3" />
