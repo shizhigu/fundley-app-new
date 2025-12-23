@@ -71,7 +71,8 @@
     "newsletter": "资讯",
     "screener": "筛选器",
     "chart": "图表",
-    "transcript": "财报电话会"
+    "transcript": "财报电话会",
+    "compare": "公司对比"
   },
   "newsletter": {
     "title": "资讯",
@@ -109,6 +110,29 @@
     "showTranslation": "中文",
     "translated": "已翻译",
     "retranslate": "重新翻译"
+  },
+  "compare": {
+    "title": "公司对比",
+    "description": "对比多家公司的关键财务指标",
+    "symbolPlaceholder": "输入股票代码，如 AAPL, MSFT",
+    "add": "添加",
+    "compare": "开始对比",
+    "loading": "加载中...",
+    "needTwoSymbols": "请至少输入两个股票代码进行对比",
+    "metric": "指标",
+    "roce": "已动用资本回报率 ROCE (TTM)",
+    "revenueGrowth": "营收增长 (同比)",
+    "grossMargin": "毛利率 (Q)",
+    "operatingMargin": "营业利润率 (Q)",
+    "cashConversion": "现金转换率 (Q)",
+    "fcfGrowth": "自由现金流增长率 (同比)",
+    "fcfYield": "自由现金流/市值",
+    "priceToHigh": "股价/一年高价",
+    "qoq": "环比",
+    "yoy": "同比",
+    "emptyTitle": "对比公司财务指标",
+    "emptyHint": "添加至少两个股票代码开始对比",
+    "dataNote": "数据来源：FMP，仅供参考"
   },
   "settings": {
     "title": "设置",

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, FileText } from 'lucide-react';
+import { TrendingUp, BarChart3, Layers, Search, Star, ChevronsRight, Newspaper, FileText, GitCompareArrows } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TradingChart } from './trading-chart';
 import { FinancialDataPanel } from './financial-data-panel';
@@ -10,6 +10,7 @@ import { ScreenerPanel } from './screener-panel';
 import { WatchlistTablePanel } from './watchlist-table-panel';
 import { NewsletterPanel } from './newsletter-panel';
 import { EarningsTranscriptPanel } from './earnings-transcript-panel';
+import { CompanyComparePanel } from './company-compare-panel';
 import { useChatContext } from '@/lib/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -19,7 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist' | 'transcript';
+type TabType = 'data' | 'blocks' | 'chart' | 'screener' | 'watchlist' | 'transcript' | 'compare';
 
 interface Tab {
   id: TabType;
@@ -47,6 +48,7 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     { id: 'watchlist', label: t('watchlist'), icon: Star },
     { id: 'screener', label: t('screener'), icon: Search },
     { id: 'transcript', label: t('transcript'), icon: FileText },
+    { id: 'compare', label: t('compare'), icon: GitCompareArrows },
     // Chart tab hidden but kept in code
     // { id: 'chart', label: t('chart'), icon: TrendingUp },
     // Newsletter tab hidden but kept in code
@@ -158,6 +160,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
         {activeTab === 'transcript' && (
           <div id="transcript-panel" role="tabpanel" aria-labelledby="transcript-tab" className="h-full">
             <EarningsTranscriptPanel />
+          </div>
+        )}
+
+        {activeTab === 'compare' && (
+          <div id="compare-panel" role="tabpanel" aria-labelledby="compare-tab" className="h-full">
+            <CompanyComparePanel />
           </div>
         )}
 

@@ -71,7 +71,8 @@
     "newsletter": "Newsletter",
     "screener": "Screener",
     "chart": "Chart",
-    "transcript": "Transcript"
+    "transcript": "Transcript",
+    "compare": "Compare"
   },
   "newsletter": {
     "title": "Newsletter",
@@ -109,6 +110,29 @@
     "showTranslation": "Chinese",
     "translated": "Translated",
     "retranslate": "Retranslate"
+  },
+  "compare": {
+    "title": "Company Compare",
+    "description": "Compare key financial metrics across companies",
+    "symbolPlaceholder": "Enter symbols, e.g., AAPL, MSFT",
+    "add": "Add",
+    "compare": "Compare",
+    "loading": "Loading...",
+    "needTwoSymbols": "Please enter at least 2 symbols to compare",
+    "metric": "Metric",
+    "roce": "ROCE (TTM)",
+    "revenueGrowth": "Revenue Growth (YoY)",
+    "grossMargin": "Gross Margin (Q)",
+    "operatingMargin": "Operating Margin (Q)",
+    "cashConversion": "Cash Conversion Rate (Q)",
+    "fcfGrowth": "FCF Growth (YoY)",
+    "fcfYield": "FCF / Market Cap",
+    "priceToHigh": "Price / 52W High",
+    "qoq": "QoQ",
+    "yoy": "YoY",
+    "emptyTitle": "Compare Company Metrics",
+    "emptyHint": "Add at least 2 symbols to start comparing",
+    "dataNote": "Data source: FMP, for reference only"
   },
   "settings": {
     "title": "Settings",
