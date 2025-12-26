@@ -25,7 +25,6 @@ import { toast } from './toast';
 import type {
   FinancialDataPoint,
   FinancialAnalysisRequest,
-  ExcelDataRow,
 } from '@/lib/types/financial-data';
 import {
   Select,
@@ -274,60 +273,139 @@ function FinancialDataPanelComponent() {
     }
 
     const metricToFieldMapping = getMetricToFieldMapping();
+    const wb = XLSX.utils.book_new();
 
-    const excelData: ExcelDataRow[] = tableData.map((row) => {
-      const excelRow: ExcelDataRow = {
-        股票代码: row.symbol,
-        季度: `${row.period} ${row.fiscalYear}`,
-        日期: formatDate((row as any).filingdate) || '',
-      };
+    // Get unique symbols and organize data by symbol
+    const symbols = [...new Set(tableData.map((row) => row.symbol))];
 
-      selectedMetrics.forEach((metricId) => {
-        const fieldName = metricToFieldMapping[metricId];
-        const metricData = row.metrics[fieldName];
-        const metricName = getMetricDisplayName(metricId);
+    // Organize data: symbol -> sorted quarters
+    const symbolData: Record<string, FinancialDataPoint[]> = {};
+    tableData.forEach((row) => {
+      if (!symbolData[row.symbol]) symbolData[row.symbol] = [];
+      symbolData[row.symbol].push(row);
+    });
 
-        if (metricData) {
-          excelRow[metricName] = formatValue(metricData.value, metricId);
+    // Sort each symbol's data by date (newest first)
+    Object.keys(symbolData).forEach((symbol) => {
+      symbolData[symbol].sort((a, b) => {
+        const [periodA, yearA] = [a.period, a.fiscalYear];
+        const [periodB, yearB] = [b.period, b.fiscalYear];
+        const yearNumA = parseInt(String(yearA));
+        const yearNumB = parseInt(String(yearB));
+        const quarterA = parseInt(periodA.replace('Q', ''));
+        const quarterB = parseInt(periodB.replace('Q', ''));
+        if (yearNumB !== yearNumA) return yearNumB - yearNumA;
+        return quarterB - quarterA;
+      });
+    });
 
-          if (
-            metricData.qoq?.value !== null &&
-            metricData.qoq?.value !== undefined
-          ) {
-            excelRow[`${metricName} - QoQ`] =
-              `${metricData.qoq.value.toFixed(1)}%`;
-          }
+    // Get max quarters across all symbols
+    const maxQuarters = Math.max(
+      ...Object.values(symbolData).map((arr) => arr.length),
+    );
 
-          if (
-            metricData.yoy?.value !== null &&
-            metricData.yoy?.value !== undefined
-          ) {
-            excelRow[`${metricName} - YoY`] =
-              `${metricData.yoy.value.toFixed(1)}%`;
+    // Create a sheet for each metric
+    selectedMetrics.forEach((metricId) => {
+      const fieldName = metricToFieldMapping[metricId];
+      const metricName = getMetricDisplayName(metricId);
+
+      // Build header row: 股票代码, Q-0, Q-1, Q-2, ...
+      const headers = ['股票代码'];
+
+      // Get quarter labels from first symbol's data
+      const firstSymbolData = symbolData[symbols[0]] || [];
+      for (let i = 0; i < maxQuarters; i++) {
+        const quarterData = firstSymbolData[i];
+        if (quarterData) {
+          const date = formatDate((quarterData as any).filingdate);
+          headers.push(`Q-${i} (${quarterData.period} ${quarterData.fiscalYear}${date ? ' ' + date : ''})`);
+        } else {
+          headers.push(`Q-${i}`);
+        }
+      }
+
+      // Build data rows for this metric (main values)
+      const sheetData: any[][] = [headers];
+
+      // Add main value rows
+      symbols.forEach((symbol) => {
+        const row: any[] = [symbol];
+        const data = symbolData[symbol] || [];
+
+        for (let i = 0; i < maxQuarters; i++) {
+          const quarterData = data[i];
+          if (quarterData) {
+            const metricData = quarterData.metrics[fieldName];
+            // Export raw numeric value (not formatted string)
+            row.push(metricData?.value ?? null);
+          } else {
+            row.push(null);
           }
         }
+        sheetData.push(row);
       });
 
-      return excelRow;
+      // Add empty row separator
+      sheetData.push([]);
+
+      // Add QoQ section
+      sheetData.push(['QoQ 变化率 (%)', ...Array(maxQuarters).fill('')]);
+      symbols.forEach((symbol) => {
+        const row: any[] = [symbol];
+        const data = symbolData[symbol] || [];
+
+        for (let i = 0; i < maxQuarters; i++) {
+          const quarterData = data[i];
+          if (quarterData) {
+            const metricData = quarterData.metrics[fieldName];
+            // Export raw numeric value for QoQ
+            row.push(metricData?.qoq?.value ?? null);
+          } else {
+            row.push(null);
+          }
+        }
+        sheetData.push(row);
+      });
+
+      // Add empty row separator
+      sheetData.push([]);
+
+      // Add YoY section
+      sheetData.push(['YoY 变化率 (%)', ...Array(maxQuarters).fill('')]);
+      symbols.forEach((symbol) => {
+        const row: any[] = [symbol];
+        const data = symbolData[symbol] || [];
+
+        for (let i = 0; i < maxQuarters; i++) {
+          const quarterData = data[i];
+          if (quarterData) {
+            const metricData = quarterData.metrics[fieldName];
+            // Export raw numeric value for YoY
+            row.push(metricData?.yoy?.value ?? null);
+          } else {
+            row.push(null);
+          }
+        }
+        sheetData.push(row);
+      });
+
+      // Create worksheet from array of arrays
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+      // Set column widths
+      const colWidths = [{ wch: 15 }];
+      for (let i = 0; i < maxQuarters; i++) {
+        colWidths.push({ wch: 25 });
+      }
+      ws['!cols'] = colWidths;
+
+      // Truncate sheet name to 31 chars (Excel limit)
+      const sheetName = metricName.length > 31 ? metricName.substring(0, 31) : metricName;
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(excelData);
-
-    const colWidths = [{ wch: 12 }, { wch: 15 }, { wch: 12 }];
-
-    selectedMetrics.forEach(() => {
-      colWidths.push({ wch: 18 });
-      colWidths.push({ wch: 12 });
-      colWidths.push({ wch: 12 });
-    });
-
-    ws['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(wb, ws, '财务数据');
-
-    const symbols = [...new Set(tableData.map((row) => row.symbol))].join('_');
-    const fileName = `财务数据_${symbols}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const symbolsStr = symbols.join('_');
+    const fileName = `财务数据_${symbolsStr}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
 
