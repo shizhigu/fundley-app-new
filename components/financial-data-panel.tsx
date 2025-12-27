@@ -304,105 +304,108 @@ function FinancialDataPanelComponent() {
       ...Object.values(symbolData).map((arr) => arr.length),
     );
 
-    // Create a sheet for each metric
-    selectedMetrics.forEach((metricId) => {
-      const fieldName = metricToFieldMapping[metricId];
-      const metricName = getMetricDisplayName(metricId);
-
-      // Build header row: 股票代码, Q-0, Q-1, Q-2, ...
-      const headers = ['股票代码'];
-
-      // Get quarter labels from first symbol's data
-      const firstSymbolData = symbolData[symbols[0]] || [];
-      for (let i = 0; i < maxQuarters; i++) {
-        const quarterData = firstSymbolData[i];
-        if (quarterData) {
-          const date = formatDate((quarterData as any).filingdate);
-          headers.push(`Q-${i} (${quarterData.period} ${quarterData.fiscalYear}${date ? ' ' + date : ''})`);
-        } else {
-          headers.push(`Q-${i}`);
-        }
+    // Get quarter labels from first symbol's data
+    const firstSymbolData = symbolData[symbols[0]] || [];
+    const quarterHeaders: string[] = [];
+    for (let i = 0; i < maxQuarters; i++) {
+      const quarterData = firstSymbolData[i];
+      if (quarterData) {
+        const date = formatDate((quarterData as any).filingdate);
+        quarterHeaders.push(`Q-${i}\n${date || ''}`);
+      } else {
+        quarterHeaders.push(`Q-${i}`);
       }
+    }
 
-      // Build data rows for this metric (main values)
-      const sheetData: any[][] = [headers];
+    // Helper to round to 2 decimal places
+    const round2 = (val: number | null | undefined): number | null => {
+      if (val === null || val === undefined) return null;
+      return Math.round(val * 100) / 100;
+    };
 
-      // Add main value rows
-      symbols.forEach((symbol) => {
-        const row: any[] = [symbol];
+    // Build headers: 股票代码, 指标, Q-0, Q-1, Q-2, ...
+    const headers = ['股票代码', '指标', ...quarterHeaders];
+
+    // ========== Sheet 1: 数据值 ==========
+    const valueSheetData: any[][] = [headers];
+    symbols.forEach((symbol) => {
+      selectedMetrics.forEach((metricId) => {
+        const fieldName = metricToFieldMapping[metricId];
+        const metricName = getMetricDisplayName(metricId);
+        const row: any[] = [symbol, metricName];
         const data = symbolData[symbol] || [];
 
         for (let i = 0; i < maxQuarters; i++) {
           const quarterData = data[i];
           if (quarterData) {
             const metricData = quarterData.metrics[fieldName];
-            // Export raw numeric value (not formatted string)
-            row.push(metricData?.value ?? null);
+            row.push(round2(metricData?.value));
           } else {
             row.push(null);
           }
         }
-        sheetData.push(row);
+        valueSheetData.push(row);
       });
+    });
 
-      // Add empty row separator
-      sheetData.push([]);
-
-      // Add QoQ section
-      sheetData.push(['QoQ 变化率 (%)', ...Array(maxQuarters).fill('')]);
-      symbols.forEach((symbol) => {
-        const row: any[] = [symbol];
+    // ========== Sheet 2: QoQ变化率 ==========
+    const qoqSheetData: any[][] = [headers];
+    symbols.forEach((symbol) => {
+      selectedMetrics.forEach((metricId) => {
+        const fieldName = metricToFieldMapping[metricId];
+        const metricName = getMetricDisplayName(metricId);
+        const row: any[] = [symbol, metricName];
         const data = symbolData[symbol] || [];
 
         for (let i = 0; i < maxQuarters; i++) {
           const quarterData = data[i];
           if (quarterData) {
             const metricData = quarterData.metrics[fieldName];
-            // Export raw numeric value for QoQ
-            row.push(metricData?.qoq?.value ?? null);
+            row.push(round2(metricData?.qoq?.value));
           } else {
             row.push(null);
           }
         }
-        sheetData.push(row);
+        qoqSheetData.push(row);
       });
+    });
 
-      // Add empty row separator
-      sheetData.push([]);
-
-      // Add YoY section
-      sheetData.push(['YoY 变化率 (%)', ...Array(maxQuarters).fill('')]);
-      symbols.forEach((symbol) => {
-        const row: any[] = [symbol];
+    // ========== Sheet 3: YoY变化率 ==========
+    const yoySheetData: any[][] = [headers];
+    symbols.forEach((symbol) => {
+      selectedMetrics.forEach((metricId) => {
+        const fieldName = metricToFieldMapping[metricId];
+        const metricName = getMetricDisplayName(metricId);
+        const row: any[] = [symbol, metricName];
         const data = symbolData[symbol] || [];
 
         for (let i = 0; i < maxQuarters; i++) {
           const quarterData = data[i];
           if (quarterData) {
             const metricData = quarterData.metrics[fieldName];
-            // Export raw numeric value for YoY
-            row.push(metricData?.yoy?.value ?? null);
+            row.push(round2(metricData?.yoy?.value));
           } else {
             row.push(null);
           }
         }
-        sheetData.push(row);
+        yoySheetData.push(row);
       });
+    });
 
-      // Create worksheet from array of arrays
-      const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-      // Set column widths
-      const colWidths = [{ wch: 15 }];
+    // Helper to create worksheet with column widths
+    const createSheet = (data: any[][]) => {
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const colWidths = [{ wch: 12 }, { wch: 18 }];
       for (let i = 0; i < maxQuarters; i++) {
-        colWidths.push({ wch: 25 });
+        colWidths.push({ wch: 15 });
       }
       ws['!cols'] = colWidths;
+      return ws;
+    };
 
-      // Truncate sheet name to 31 chars (Excel limit)
-      const sheetName = metricName.length > 31 ? metricName.substring(0, 31) : metricName;
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
+    XLSX.utils.book_append_sheet(wb, createSheet(valueSheetData), '数据值');
+    XLSX.utils.book_append_sheet(wb, createSheet(qoqSheetData), 'QoQ变化率');
+    XLSX.utils.book_append_sheet(wb, createSheet(yoySheetData), 'YoY变化率');
 
     const symbolsStr = symbols.join('_');
     const fileName = `财务数据_${symbolsStr}_${new Date().toISOString().slice(0, 10)}.xlsx`;
