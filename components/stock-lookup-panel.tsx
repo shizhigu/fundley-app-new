@@ -489,61 +489,6 @@ export function StockLookupPanel() {
         </div>
       )}
 
-      {/* Price Stats Table - using same style as quarterly metrics */}
-      {data?.priceStats && (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="p-3 font-medium text-left min-w-[140px]"></th>
-                <th className="p-3 font-medium text-right min-w-[100px]">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">Price</td>
-                <td className="p-3 text-right font-mono">${data.priceStats.price?.toFixed(3)}</td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">1y High</td>
-                <td className="p-3 text-right font-mono">${data.priceStats.high1y?.toFixed(3)}</td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">From 1y High</td>
-                <td className="p-3 text-right font-mono">
-                  <span className={data.priceStats.fromHigh1y >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {data.priceStats.fromHigh1y}%
-                  </span>
-                </td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">6M Volatility</td>
-                <td className="p-3 text-right font-mono">{data.priceStats.volatility6m?.toFixed(2)}%</td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">6M Performance</td>
-                <td className="p-3 text-right font-mono">
-                  <span className={data.priceStats.performance6m >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {data.priceStats.performance6m}%
-                  </span>
-                </td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">P/E (TTM)</td>
-                <td className="p-3 text-right font-mono">{data.priceStats.peTTM?.toFixed(1)}</td>
-              </tr>
-              <tr className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">EV / EBITDA</td>
-                <td className="p-3 text-right font-mono">{data.priceStats.evEbitda?.toFixed(1)}</td>
-              </tr>
-              <tr className="border-b-0 hover:bg-muted/30">
-                <td className="p-3 font-medium">EV / OCF</td>
-                <td className="p-3 text-right font-mono">{data.priceStats.evOcf?.toFixed(1)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {/* Empty State */}
       {!data && !loading && !error && (
