@@ -37,6 +37,19 @@ interface PriceStats {
   evOcf: number;
 }
 
+interface StockPerformance {
+  ttmRevenue: number | null;
+  revenueYoY: number | null;
+  ttmNetIncome: number | null;
+  grossMargin: number | null;
+  roce: number | null;
+  marketCap: number | null;
+  peTTM: number | null;
+  evEbitda: number | null;
+  performance6m: number | null;
+  drawdownFrom1yHigh: number | null;
+}
+
 interface MetricsResponse {
   symbol: string;
   quarters: Record<string, any>[];
@@ -45,6 +58,7 @@ interface MetricsResponse {
     base_year: string | null;
   };
   priceStats?: PriceStats;
+  stockPerformance?: StockPerformance;
   rows?: { key: string; label: string; format?: string }[];
 }
 
@@ -82,13 +96,24 @@ const formatValue = (val: any, format?: string): string => {
   }
 };
 
+// 格式化大额金额 (用于Market Cap等)
+const formatLargeCurrency = (val: number | null | undefined): string => {
+  if (val === null || val === undefined) return '-';
+  const abs = Math.abs(val);
+  if (abs >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `$${(val / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
+  return `$${val.toLocaleString()}`;
+};
+
 // Excel 导出函数
 const exportToExcel = (
   symbol: string,
   tableData: Record<string, any>[],
   quarters: string[],
   epsData?: { years: EpsYear[]; base_year: string | null },
-  priceStats?: PriceStats
+  priceStats?: PriceStats,
+  stockPerformance?: StockPerformance
 ) => {
   const wb = XLSX.utils.book_new();
 
@@ -134,7 +159,25 @@ const exportToExcel = (
     XLSX.utils.book_append_sheet(wb, ws2, 'EPS Annual');
   }
 
-  // Sheet 3: Price Stats
+  // Sheet 3: Stock Performance (TTM)
+  if (stockPerformance) {
+    const perfRows = [
+      { Metric: 'TTM Revenue', Value: formatLargeCurrency(stockPerformance.ttmRevenue) },
+      { Metric: 'Revenue YoY', Value: stockPerformance.revenueYoY !== null ? `${stockPerformance.revenueYoY}%` : '-' },
+      { Metric: 'Net Income (TTM)', Value: formatLargeCurrency(stockPerformance.ttmNetIncome) },
+      { Metric: 'Gross Margin', Value: stockPerformance.grossMargin !== null ? `${stockPerformance.grossMargin}%` : '-' },
+      { Metric: 'ROCE (TTM)', Value: stockPerformance.roce !== null ? `${stockPerformance.roce}%` : '-' },
+      { Metric: 'Market Cap', Value: formatLargeCurrency(stockPerformance.marketCap) },
+      { Metric: 'P/E (TTM)', Value: stockPerformance.peTTM?.toFixed(1) ?? '-' },
+      { Metric: 'EV / EBITDA', Value: stockPerformance.evEbitda?.toFixed(1) ?? '-' },
+      { Metric: '6M Performance', Value: stockPerformance.performance6m !== null ? `${stockPerformance.performance6m}%` : '-' },
+      { Metric: 'Drawdown from 1Y High', Value: stockPerformance.drawdownFrom1yHigh !== null ? `${stockPerformance.drawdownFrom1yHigh}%` : '-' },
+    ];
+    const ws3 = XLSX.utils.json_to_sheet(perfRows);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Stock Performance');
+  }
+
+  // Sheet 4: Price Stats
   if (priceStats) {
     const priceRows = [
       { Metric: 'Price', Value: `$${priceStats.price?.toFixed(3)}` },
@@ -260,7 +303,8 @@ export function StockLookupPanel() {
                 tableData,
                 [...(data?.quarters || [])].reverse().map((q) => q.quarter),
                 data?.epsAnnual,
-                data?.priceStats
+                data?.priceStats,
+                data?.stockPerformance
               )
             }
           >
@@ -358,6 +402,87 @@ export function StockLookupPanel() {
                     )}
                   </React.Fragment>
                 ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Stock Performance Table - 股价表现 */}
+      {data?.stockPerformance && (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-3 font-medium text-left" colSpan={2}>股价表现 (TTM)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">TTM Revenue</td>
+                <td className="p-3 text-right font-mono">{formatLargeCurrency(data.stockPerformance.ttmRevenue)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">Revenue YoY</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.revenueYoY !== null ? (
+                    <span className={data.stockPerformance.revenueYoY >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {data.stockPerformance.revenueYoY}%
+                    </span>
+                  ) : '-'}
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">Net Income (TTM)</td>
+                <td className="p-3 text-right font-mono">{formatLargeCurrency(data.stockPerformance.ttmNetIncome)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">Gross Margin</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.grossMargin !== null ? `${data.stockPerformance.grossMargin}%` : '-'}
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">ROCE (TTM)</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.roce !== null ? `${data.stockPerformance.roce}%` : '-'}
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">Market Cap</td>
+                <td className="p-3 text-right font-mono">{formatLargeCurrency(data.stockPerformance.marketCap)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">P/E (TTM)</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.peTTM !== null ? data.stockPerformance.peTTM.toFixed(1) : '-'}
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">EV / EBITDA</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.evEbitda !== null ? data.stockPerformance.evEbitda.toFixed(1) : '-'}
+                </td>
+              </tr>
+              <tr className="border-b hover:bg-muted/30">
+                <td className="p-3 font-medium">6M Performance</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.performance6m !== null ? (
+                    <span className={data.stockPerformance.performance6m >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {data.stockPerformance.performance6m}%
+                    </span>
+                  ) : '-'}
+                </td>
+              </tr>
+              <tr className="border-b-0 hover:bg-muted/30">
+                <td className="p-3 font-medium">Drawdown from 1Y High</td>
+                <td className="p-3 text-right font-mono">
+                  {data.stockPerformance.drawdownFrom1yHigh !== null ? (
+                    <span className={data.stockPerformance.drawdownFrom1yHigh >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {data.stockPerformance.drawdownFrom1yHigh}%
+                    </span>
+                  ) : '-'}
+                </td>
               </tr>
             </tbody>
           </table>
