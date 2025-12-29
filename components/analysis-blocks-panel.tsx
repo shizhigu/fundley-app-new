@@ -27,6 +27,7 @@ import { useBlockViewStore } from '@/stores/block-view-store';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useActiveBlock } from '@/lib/hooks/use-active-block';
 import { StockLookupPanel } from './stock-lookup-panel';
+import { StockPerformanceComparePanel } from './stock-performance-compare-panel';
 
 interface AnalysisBlocksPanelProps {
   chatId: string;
@@ -506,14 +507,19 @@ export function AnalysisBlocksPanel({
           {/* Tab Switch */}
           <Tabs defaultValue="blocks" className="flex flex-col h-full">
             <div className="px-4 pt-4 border-b border-border shrink-0">
-              <TabsList className="grid grid-cols-2 w-64">
+              <TabsList className="grid grid-cols-3 w-auto">
                 <TabsTrigger value="blocks">Blocks</TabsTrigger>
                 <TabsTrigger value="lookup">Stock Lookup</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
               </TabsList>
             </div>
 
             <TabsContent value="lookup" className="flex-1 overflow-auto m-0">
               <StockLookupPanel />
+            </TabsContent>
+
+            <TabsContent value="performance" className="flex-1 overflow-auto m-0">
+              <StockPerformanceComparePanel />
             </TabsContent>
 
             <TabsContent value="blocks" className="flex-1 overflow-auto m-0">

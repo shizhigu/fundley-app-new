@@ -29,7 +29,8 @@
       "Bash(pnpm lint:*)",
       "Bash(ls:*)",
       "Bash(python:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": [],
