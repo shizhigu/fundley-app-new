@@ -15,11 +15,14 @@ import './globals.css';
 const branding = getBranding();
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://fundley.ai'),
+  metadataBase: new URL('https://fogapi.ai'),
   title: `${branding.name} - ${branding.tagline}`,
   description: branding.metaDescription,
   icons: {
-    icon: branding.favicon,
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/favicon.svg',
   },
 };
 

@@ -72,7 +72,7 @@ export function SimpleChatSelector({
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">{tSidebar('chats')}</h2>
+          <img src="/logo.svg" alt="Foga π" className="h-20 w-auto" />
 
           {/* Collapse sidebar button */}
           {onToggleSidebar && (

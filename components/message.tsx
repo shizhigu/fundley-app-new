@@ -4,7 +4,7 @@ import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState, useEffect } from 'react';
 import { LoaderIcon } from './icons';
-import { Shield, Heart } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { EnhancedAttachmentPreview } from './enhanced-attachment-preview';
@@ -453,7 +453,7 @@ const PurePreviewMessage = ({
                   onClick={() => setShowMetricsDialog(true)}
                   className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20 hover:ring-2 hover:ring-primary/30 transition-all hover:scale-105 cursor-pointer"
                 >
-                  <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
+                  <img src="/favicon.svg" alt="Foga π" className="size-5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>View run metrics</TooltipContent>
@@ -1132,7 +1132,7 @@ export const ThinkingMessage = () => {
     >
       <div className="flex gap-4 w-full">
         <div className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20">
-          <Heart size={16} className="text-brand-primary fill-brand-primary/20" strokeWidth={2.5} />
+          <img src="/favicon.svg" alt="Foga π" className="size-5" />
         </div>
 
         <div className="flex flex-col gap-2 w-full">

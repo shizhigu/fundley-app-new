@@ -15,24 +15,24 @@ export interface BrandingConfig {
 
 export const brandings: Record<string, BrandingConfig> = {
   fundley: {
-    name: 'Fundley',
+    name: 'Foga π',
     logo: '/logo.svg',
-    primaryColor: '#FF6B1A', // Vibrant Orange (default Fundley brand)
-    secondaryColor: '#F59E0B', // Amber
+    primaryColor: '#8EBF45', // Fresh Green
+    secondaryColor: '#E2F2C9', // Light Green
     tagline: 'AI-Powered Financial Analysis',
-    favicon: '/favicon.ico',
-    metaDescription: 'Professional AI-driven financial analysis and investment research platform',
+    favicon: '/favicon.svg',
+    metaDescription: 'Professional AI-driven financial analysis platform powered by Euler\'s identity',
   },
 
-  // Foga - Current client brand (your relative/friend)
+  // Legacy foga config
   foga: {
-    name: 'FogaAI',
-    logo: '/logo.svg', // Use same logo for now, or create /logo-foga.svg
-    primaryColor: '#8EBF45', // Fresh Green (Foga brand color)
-    secondaryColor: '#E2F2C9', // Light Green (accent color)
-    tagline: 'Private Equity AI Assistant',
-    favicon: '/favicon.ico',
-    metaDescription: 'Professional AI-powered assistant for private equity, hedge funds, and family offices',
+    name: 'Foga π',
+    logo: '/logo.svg',
+    primaryColor: '#8EBF45', // Fresh Green
+    secondaryColor: '#E2F2C9', // Light Green
+    tagline: 'AI-Powered Financial Analysis',
+    favicon: '/favicon.svg',
+    metaDescription: 'Professional AI-driven financial analysis platform powered by Euler\'s identity',
   },
 };
 

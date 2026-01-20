@@ -69,7 +69,12 @@ function RightPanelTabsComponent({ onCollapse }: RightPanelTabsComponentProps = 
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Tab Navigation - fundley 品牌下只显示 Analysis Blocks 一个选项 */}
       <nav className="flex items-center gap-1 p-2 border-b border-border bg-card" role="tablist">
-        {/* Collapse button - Left side */}
+        {/* Logo - Left side */}
+        <div className="flex items-center gap-2 pr-3 border-r border-border/50 mr-1">
+          <img src="/logo.svg" alt="Foga π" className="h-14 w-auto" />
+        </div>
+
+        {/* Collapse button */}
         {onCollapse && (
           <Tooltip>
             <TooltipTrigger asChild>
