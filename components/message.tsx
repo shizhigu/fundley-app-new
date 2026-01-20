@@ -453,7 +453,7 @@ const PurePreviewMessage = ({
                   onClick={() => setShowMetricsDialog(true)}
                   className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20 hover:ring-2 hover:ring-primary/30 transition-all hover:scale-105 cursor-pointer"
                 >
-                  <img src="/favicon.svg" alt="Foga π" className="size-5" />
+                  <img src="/favicon.svg" alt="Foga π" className="size-7" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>View run metrics</TooltipContent>
@@ -1132,7 +1132,7 @@ export const ThinkingMessage = () => {
     >
       <div className="flex gap-4 w-full">
         <div className="size-9 flex items-center rounded-full justify-center shrink-0 bg-brand-avatar border border-brand-primary/20">
-          <img src="/favicon.svg" alt="Foga π" className="size-5" />
+          <img src="/favicon.svg" alt="Foga π" className="size-7" />
         </div>
 
         <div className="flex flex-col gap-2 w-full">
