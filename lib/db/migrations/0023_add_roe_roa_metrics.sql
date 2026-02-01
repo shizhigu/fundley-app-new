@@ -11,7 +11,7 @@ SELECT
   'Return on Equity - 净利润除以平均股东权益（当期与上期平均值）',
   'ROE = \frac{Net\ Income}{\frac{Equity_t + Equity_{t-1}}{2}}',
   '{
-    "sql": "CAST(netincome AS NUMERIC) / NULLIF((CAST(totalstockholdersequity AS NUMERIC) + LAG(CAST(totalstockholdersequity AS NUMERIC), 1) OVER (ORDER BY fiscalyear, CASE period WHEN ''Q1'' THEN 1 WHEN ''Q2'' THEN 2 WHEN ''Q3'' THEN 3 WHEN ''Q4'' THEN 4 END)) / 2, 0) AS ROE",
+    "sql": "CAST(netincomeaccounting AS NUMERIC) / NULLIF((CAST(totalstockholdersequity AS NUMERIC) + LAG(CAST(totalstockholdersequity AS NUMERIC), 1) OVER (ORDER BY fiscalyear, CASE period WHEN ''Q1'' THEN 1 WHEN ''Q2'' THEN 2 WHEN ''Q3'' THEN 3 WHEN ''Q4'' THEN 4 END)) / 2, 0) AS ROE",
     "category": "profitability"
   }'::jsonb,
   'ratio',
@@ -34,7 +34,7 @@ SELECT
   'Return on Assets - 净利润除以平均总资产（当期与上期平均值）',
   'ROA = \frac{Net\ Income}{\frac{Total\ Assets_t + Total\ Assets_{t-1}}{2}}',
   '{
-    "sql": "CAST(netincome AS NUMERIC) / NULLIF((CAST(totalassets AS NUMERIC) + LAG(CAST(totalassets AS NUMERIC), 1) OVER (ORDER BY fiscalyear, CASE period WHEN ''Q1'' THEN 1 WHEN ''Q2'' THEN 2 WHEN ''Q3'' THEN 3 WHEN ''Q4'' THEN 4 END)) / 2, 0) AS ROA",
+    "sql": "CAST(netincomeaccounting AS NUMERIC) / NULLIF((CAST(totalassets AS NUMERIC) + LAG(CAST(totalassets AS NUMERIC), 1) OVER (ORDER BY fiscalyear, CASE period WHEN ''Q1'' THEN 1 WHEN ''Q2'' THEN 2 WHEN ''Q3'' THEN 3 WHEN ''Q4'' THEN 4 END)) / 2, 0) AS ROA",
     "category": "profitability"
   }'::jsonb,
   'ratio',

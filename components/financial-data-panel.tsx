@@ -198,7 +198,8 @@ function FinancialDataPanelComponent() {
 
   const extractFieldName = (sqlFormula: string): string => {
     if (sqlFormula.includes(' AS ')) {
-      return sqlFormula.split(' AS ')[1].trim();
+      const parts = sqlFormula.split(' AS ');
+      return parts[parts.length - 1].trim();
     }
     return sqlFormula;
   };
