@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Minus,
   AlertCircle,
+  ArrowUpDown,
 } from 'lucide-react';
 import { toast } from './toast';
 import type {
@@ -45,6 +46,7 @@ function FinancialDataPanelComponent() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [orderedMetrics, setOrderedMetrics] = useState<any[]>([]);
+  const [symbolSortMode, setSymbolSortMode] = useState<'original' | 'asc' | 'desc'>('original');
 
   // Zustand store
   const {
@@ -586,6 +588,26 @@ function FinancialDataPanelComponent() {
       return Array.from(new Set(tableData.map((row) => row.symbol)));
     }, []);
 
+    const sortedSymbols = useMemo(() => {
+      if (symbolSortMode === 'asc') return [...symbols].sort();
+      if (symbolSortMode === 'desc') return [...symbols].sort().reverse();
+      return symbols;
+    }, [symbols, symbolSortMode]);
+
+    const cycleSymbolSort = () => {
+      setSymbolSortMode((prev) =>
+        prev === 'original' ? 'asc' : prev === 'asc' ? 'desc' : 'original',
+      );
+    };
+
+    const sortLabel = symbolSortMode === 'asc' ? 'A-Z' : symbolSortMode === 'desc' ? 'Z-A' : '';
+
+    const sortedTableData = useMemo(() => {
+      if (symbolSortMode === 'original') return tableData;
+      const orderMap = new Map(sortedSymbols.map((s, i) => [s, i]));
+      return [...tableData].sort((a, b) => (orderMap.get(a.symbol) ?? 0) - (orderMap.get(b.symbol) ?? 0));
+    }, [tableData, sortedSymbols, symbolSortMode]);
+
     const relativeView = useMemo(() => {
       const symbolData: Record<
         string,
@@ -655,7 +677,15 @@ function FinancialDataPanelComponent() {
             <thead className="sticky top-0 z-10 bg-muted shadow-sm">
               <tr className="border-b border-border">
                 <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
-                  {tFinancial('stockSymbol')}
+                  <button
+                    onClick={cycleSymbolSort}
+                    className="flex items-center gap-1 hover:text-brand-primary transition-colors"
+                    title="Click to sort symbols"
+                  >
+                    {tFinancial('stockSymbol')}
+                    <ArrowUpDown size={14} className="text-muted-foreground" />
+                    {sortLabel && <span className="text-xs text-muted-foreground">({sortLabel})</span>}
+                  </button>
                 </th>
                 <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[120px] z-20 border-r border-border p-3 text-left">
                   {tFinancial('quarter')}
@@ -671,9 +701,9 @@ function FinancialDataPanelComponent() {
               </tr>
             </thead>
             <tbody>
-              {tableData.map((row, index) => {
+              {sortedTableData.map((row, index) => {
                 const isNewSymbolGroup =
-                  index === 0 || tableData[index - 1].symbol !== row.symbol;
+                  index === 0 || sortedTableData[index - 1].symbol !== row.symbol;
 
                 return (
                   <tr
@@ -738,7 +768,15 @@ function FinancialDataPanelComponent() {
             <thead className="sticky top-0 z-10 bg-muted shadow-sm">
               <tr className="border-b border-border">
                 <th className="sticky left-0 bg-muted text-foreground font-medium min-w-[100px] z-20 border-r border-border p-3 text-left">
-                  {tFinancial('stockSymbol')}
+                  <button
+                    onClick={cycleSymbolSort}
+                    className="flex items-center gap-1 hover:text-brand-primary transition-colors"
+                    title="Click to sort symbols"
+                  >
+                    {tFinancial('stockSymbol')}
+                    <ArrowUpDown size={14} className="text-muted-foreground" />
+                    {sortLabel && <span className="text-xs text-muted-foreground">({sortLabel})</span>}
+                  </button>
                 </th>
                 <th className="sticky left-[100px] bg-muted text-foreground font-medium min-w-[180px] z-20 border-r border-border p-3 text-left">
                   {tFinancial('metric')}
@@ -764,7 +802,7 @@ function FinancialDataPanelComponent() {
               </tr>
             </thead>
             <tbody>
-              {symbols.map((symbol) => {
+              {sortedSymbols.map((symbol) => {
                 return selectedMetrics.map((metricId, metricIndex) => {
                   const isFirstMetric = metricIndex === 0;
                   return (
