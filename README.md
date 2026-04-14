@@ -1,62 +1,66 @@
-<a href="https://chat.vercel.ai/">
-  <img alt="Next.js 14 and App Router-ready AI chatbot." src="app/(chat)/opengraph-image.png">
-  <h1 align="center">Chat SDK</h1>
-</a>
+# Fundley
 
-<p align="center">
-    Chat SDK is a free, open-source template built with Next.js and the AI SDK that helps you quickly build powerful chatbot applications. 
-</p>
+> AI-powered financial analysis platform that turns natural-language questions about public companies into interactive, reusable analysis reports.
 
-<p align="center">
-  <a href="https://chat-sdk.dev"><strong>Read Docs</strong></a> ·
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#model-providers"><strong>Model Providers</strong></a> ·
-  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
-  <a href="#running-locally"><strong>Running locally</strong></a>
-</p>
-<br/>
+## What is this?
 
-## Features
+Fundley collapses the fragmented financial analysis workflow -- Bloomberg for data, Excel for modeling, Python for computation, EDGAR for filings, PowerPoint for output -- into a single conversational interface. Ask a question like "Compare NVDA and AMD gross margins over the last 8 quarters," and a multi-agent pipeline retrieves verified data from institutional-grade APIs, executes Python in a sandboxed Jupyter notebook, generates interactive charts, and packages everything into a persistent Analysis Block that you can search, pin, duplicate, and export.
 
-- [Next.js](https://nextjs.org) App Router
-  - Advanced routing for seamless navigation and performance
-  - React Server Components (RSCs) and Server Actions for server-side rendering and increased performance
-- [AI SDK](https://sdk.vercel.ai/docs)
-  - Unified API for generating text, structured objects, and tool calls with LLMs
-  - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
-- [shadcn/ui](https://ui.shadcn.com)
-  - Styling with [Tailwind CSS](https://tailwindcss.com)
-  - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
-- Data Persistence
-  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
-  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
-- [Auth.js](https://authjs.dev)
-  - Simple and secure authentication
+## Why?
 
-## Model Providers
+I was frustrated that analysts spend 60-70% of their time on data wrangling rather than actual analysis, copy-pasting between disconnected tools with no audit trail. Generic AI chatbots hallucinate numbers and produce throwaway text -- the gap between "explain ROE" and "calculate trailing-four-quarter ROE for three companies and chart the trend" is enormous, and no product bridged it with verified data and auditable computation.
 
-This template ships with [xAI](https://x.ai) `grok-2-1212` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
+## How it works
 
-## Deploy Your Own
+A dual-runtime architecture: **Next.js 15** handles the frontend, auth, billing, and database, while a **Python agent service** (Agno framework) handles AI orchestration and code execution.
 
-You can deploy your own version of the Next.js AI Chatbot to Vercel with one click:
+1. User sends a natural-language question via the chat interface
+2. Next.js authenticates (Clerk), checks credits, and opens an SSE stream to the Python service
+3. The Financial Analyst agent (GPT-5.2 with reasoning) plans the workflow and calls tools: FMP API for financials, SEC-API for filings, E2B sandbox for Python/Jupyter execution, MotherDuck/DuckDB for warehouse queries
+4. Streaming events flow back through SSE -- chat text renders in the left panel, Analysis Blocks populate the right panel
+5. Each block stores its Jupyter notebook alongside results for full auditability
+6. Credits are deducted based on token-level billing at `RunCompleted`
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-chatbot&env=AUTH_SECRET&envDescription=Learn+more+about+how+to+get+the+API+Keys+for+the+application&envLink=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-chatbot%2Fblob%2Fmain%2F.env.example&demo-title=AI+Chatbot&demo-description=An+Open-Source+AI+Chatbot+Template+Built+With+Next.js+and+the+AI+SDK+by+Vercel.&demo-url=https%3A%2F%2Fchat.vercel.ai&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22ai%22%2C%22productSlug%22%3A%22grok%22%2C%22integrationSlug%22%3A%22xai%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22integrationSlug%22%3A%22upstash%22%7D%2C%7B%22type%22%3A%22blob%22%7D%5D)
+A custom metric engine parses user-defined formulas into ASTs, then transpiles them to DuckDB SQL with window functions for market-wide screening in a single query.
 
-## Running locally
+## Key Technical Highlights
 
-You will need to use the environment variables [defined in `.env.example`](.env.example) to run Next.js AI Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
+- **Analysis Blocks as knowledge artifacts**: Every analytical output is saved as an independent, searchable, exportable block -- not a disposable chat message -- enabling a growing library of institutional knowledge.
+- **Three-layer metric engine**: User formulas are parsed into ASTs, compiled to step-by-step LLM instructions for auditability, and transpiled to DuckDB SQL with window functions for instant market-wide computation.
+- **RAG-based API discovery**: 270+ FMP and Polygon API endpoints are embedded in a vector store; the agent discovers the right endpoint via semantic search rather than hardcoded mappings, automatically leveraging new endpoints as docs are added.
 
-> Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
+## Tech Stack
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
-3. Download your environment variables: `vercel env pull`
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui |
+| State | Zustand, TanStack Query |
+| Charts | Recharts, Chart.js, Lightweight Charts |
+| Auth | Clerk |
+| Database | PostgreSQL (Neon Serverless) |
+| ORM | Drizzle ORM |
+| Data Warehouse | MotherDuck / DuckDB |
+| Vector DB | Qdrant |
+| AI Framework | Agno (AgentOS) |
+| LLMs | GPT-5.2, GPT-5-mini, xAI Grok-4-fast |
+| Code Sandbox | E2B Code Interpreter |
+| Financial Data | FMP, Polygon.io, EODHD, SEC-API.io |
+| Payments | Stripe |
+| Caching | Redis |
+| Deployment | Vercel (frontend), Render (Python) |
+
+## Quick Start
 
 ```bash
-pnpm install
-pnpm dev
+git clone https://github.com/shizhigu/fundley-app-new.git
+cd fundley-app-new
+cp .env.example .env.local  # fill in API keys
+npm install
+npm run dev
+# In a separate terminal, start the Python agent service
+cd agent-service && pip install -r requirements.txt && uvicorn main:app --reload
 ```
 
-Your app template should now be running on [localhost:3000](http://localhost:3000).
+## License
+
+MIT
