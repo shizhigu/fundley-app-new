@@ -337,11 +337,13 @@ export function AnalysisBlockRenderer({
   // Generic file download handler
   const handleDownloadFile = useCallback(
     (filename: string) => {
-      const url = `/api/files/${filename}?block_id=${blockId}`;
+      const url = `/api/files/${filename}?block_id=${blockId}&download=true`;
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     },
     [blockId],
   );
@@ -460,7 +462,10 @@ export function AnalysisBlockRenderer({
       const url = `/api/files/${chartFile}?block_id=${blockId}&download=true&title=${encodeURIComponent(title)}`;
       const link = document.createElement('a');
       link.href = url;
+      link.download = chartFile;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     },
     [blockId, title],
   );
