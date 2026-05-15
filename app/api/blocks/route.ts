@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const chatId = searchParams.get('chatId'); // Optional: filter by chat
     const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
+    const limit = parseInt(searchParams.get('limit') || '300', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     console.log('📦 GET /api/blocks - userId:', userId, 'chatId:', chatId);
